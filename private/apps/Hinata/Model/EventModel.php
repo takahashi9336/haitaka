@@ -18,11 +18,12 @@ class EventModel extends BaseModel {
     protected bool $isUserIsolated = false;
 
     public function getEventsForCalendar(string $start, string $end): array {
-        $sql = "SELECT e.*, s.status as my_status, v.video_key
+        $sql = "SELECT e.*, s.status as my_status,
+                       ma.media_key as video_key
                 FROM {$this->table} e
                 LEFT JOIN hn_user_events_status s ON e.id = s.event_id AND s.user_id = :uid
                 LEFT JOIN hn_event_movies em ON e.id = em.event_id
-                LEFT JOIN com_youtube_embed_data v ON em.movie_id = v.id
+                LEFT JOIN com_media_assets ma ON em.movie_id = ma.id AND ma.platform = 'youtube'
                 WHERE e.event_date BETWEEN :start AND :end
                 ORDER BY e.event_date ASC";
         

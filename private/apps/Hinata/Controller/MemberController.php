@@ -95,18 +95,53 @@ class MemberController {
             // 2. YouTube 紹介動画
             $pvMovieId = $currentMember['pv_movie_id'] ?? null;
             if (!empty($_POST['pv_youtube_url'])) {
-                $movieModel = new MovieModel();
-                $movieModel->parseAndSave($_POST['pv_youtube_url'], $_POST['name'] . ' 紹介動画', 'Introduction');
-                $newMovieId = (int)$pdo->lastInsertId();
-                if ($newMovieId) {
-                    $pvMovieId = $newMovieId;
-                } else {
-                    preg_match('%(?:youtube(?:-nocookie)?\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?)/|.*[?&]v=)|youtu\.be/)([^"&?/ ]{11})%i', $_POST['pv_youtube_url'], $match);
-                    $key = $match[1] ?? null;
-                    if ($key) {
-                        $stmt = $pdo->prepare("SELECT id FROM com_youtube_embed_data WHERE video_key = ?");
-                        $stmt->execute([$key]);
-                        $pvMovieId = $stmt->fetchColumn() ?: $pvMovieId;
+                // YouTube URL から video_key を抽出
+                preg_match('%(?:youtube(?:-nocookie)?\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?)/|.*[?&]v=)|youtu\.be/)([^"&?/ ]{11})%i', $_POST['pv_youtube_url'], $match);
+                $key = $match[1] ?? null;
+
+                if ($key) {
+                    // 1) com_media_assets を取得または作成
+                    $stmt = $pdo->prepare("SELECT id FROM com_media_assets WHERE platform = 'youtube' AND media_key = ?");
+                    $stmt->execute([$key]);
+                    $assetId = $stmt->fetchColumn();
+
+                    if (!$assetId) {
+                        $stmt = $pdo->prepare("
+                            INSERT INTO com_media_assets (platform, media_key, title, thumbnail_url, created_at)
+                            VALUES ('youtube', ?, ?, ?, NOW())
+                        ");
+                        $title = ($_POST['name'] ?? '') . ' 紹介動画';
+                        $thumbnail = "https://img.youtube.com/vi/{$key}/mqdefault.jpg";
+                        $stmt->execute([$key, $title, $thumbnail]);
+                        $assetId = (int)$pdo->lastInsertId();
+                    }
+
+                    if ($assetId) {
+                        // 2) hn_media_metadata (category = member_kojin_pv) を取得または作成
+                        $stmt = $pdo->prepare("
+                            SELECT id FROM hn_media_metadata
+                            WHERE asset_id = ? AND category = 'member_kojin_pv'
+                        ");
+                        $stmt->execute([$assetId]);
+                        $metaId = $stmt->fetchColumn();
+
+                        if (!$metaId) {
+                            $stmt = $pdo->prepare("
+                                INSERT INTO hn_media_metadata (asset_id, category, release_date)
+                                VALUES (?, 'member_kojin_pv', NULL)
+                            ");
+                            $stmt->execute([$assetId]);
+                            $metaId = (int)$pdo->lastInsertId();
+                        }
+
+                        if ($metaId) {
+                            // 3) hn_media_members の紐付けを INSERT IGNORE で確実に作成
+                            $stmt = $pdo->prepare("
+                                INSERT IGNORE INTO hn_media_members (media_meta_id, member_id)
+                                VALUES (?, ?)
+                            ");
+                            $stmt->execute([$metaId, (int)$id]);
+                        }
                     }
                 }
             }
@@ -127,6 +162,7 @@ class MemberController {
                 'twitter_url'  => $_POST['twitter_url'] ?? '',
                 'member_info'  => $_POST['member_info'] ?? '',
                 'image_url'    => $imageUrl,
+                // 旧構成カラムは後方互換のため残すが、新メディア構成では未使用
                 'pv_movie_id'  => $pvMovieId,
                 'is_active'    => (int)$_POST['is_active']
             ];

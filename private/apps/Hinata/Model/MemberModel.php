@@ -30,7 +30,26 @@ class MemberModel extends BaseModel {
         $sql = "SELECT m.*,
                        c1.color_code as color1, c1.color_name as color1_name,
                        c2.color_code as color2, c2.color_name as color2_name,
-                       v.video_key as pv_video_key, v.title as pv_title,
+                       (
+                           SELECT ma.media_key
+                           FROM hn_media_members hmm
+                           JOIN hn_media_metadata hmeta ON hmeta.id = hmm.media_meta_id
+                           JOIN com_media_assets ma ON ma.id = hmeta.asset_id
+                           WHERE hmm.member_id = m.id
+                             AND hmeta.category = 'member_kojin_pv'
+                             AND ma.platform = 'youtube'
+                           LIMIT 1
+                       ) as pv_video_key,
+                       (
+                           SELECT ma.title
+                           FROM hn_media_members hmm
+                           JOIN hn_media_metadata hmeta ON hmeta.id = hmm.media_meta_id
+                           JOIN com_media_assets ma ON ma.id = hmeta.asset_id
+                           WHERE hmm.member_id = m.id
+                             AND hmeta.category = 'member_kojin_pv'
+                             AND ma.platform = 'youtube'
+                           LIMIT 1
+                       ) as pv_title,
                        (
                            SELECT COALESCE(MAX(level), 0)
                            FROM hn_favorites f
@@ -39,7 +58,6 @@ class MemberModel extends BaseModel {
                 FROM {$this->table} m
                 LEFT JOIN hn_colors c1 ON m.color_id1 = c1.id
                 LEFT JOIN hn_colors c2 ON m.color_id2 = c2.id
-                LEFT JOIN com_youtube_embed_data v ON m.pv_movie_id = v.id
                 WHERE m.id = :mid";
         
         $stmt = $this->pdo->prepare($sql);
@@ -54,11 +72,19 @@ class MemberModel extends BaseModel {
         $sql = "SELECT m.*,
                        c1.color_code as color1, c1.color_name as color1_name,
                        c2.color_code as color2, c2.color_name as color2_name,
-                       v.video_key as pv_video_key
+                       (
+                           SELECT ma.media_key
+                           FROM hn_media_members hmm
+                           JOIN hn_media_metadata hmeta ON hmeta.id = hmm.media_meta_id
+                           JOIN com_media_assets ma ON ma.id = hmeta.asset_id
+                           WHERE hmm.member_id = m.id
+                             AND hmeta.category = 'member_kojin_pv'
+                             AND ma.platform = 'youtube'
+                           LIMIT 1
+                       ) as pv_video_key
                 FROM {$this->table} m
                 LEFT JOIN hn_colors c1 ON m.color_id1 = c1.id
                 LEFT JOIN hn_colors c2 ON m.color_id2 = c2.id
-                LEFT JOIN com_youtube_embed_data v ON m.pv_movie_id = v.id
                 ORDER BY m.is_active DESC, m.generation ASC, m.kana ASC";
         return $this->pdo->query($sql)->fetchAll();
     }
