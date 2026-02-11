@@ -1,0 +1,14 @@
+{
+    "name": "haitaka/integrated-platform",
+    "description": "Integrated Platform for Personal Management",
+    "type": "project",
+    "autoload": {
+        "psr-4": {
+            "Core\\": "lib/",
+            "App\\": "apps/"
+        }
+    },
+    "require": {
+        "php": ">=8.2.0"
+    }
+}

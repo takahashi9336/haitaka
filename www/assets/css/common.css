@@ -1,0 +1,19 @@
+/* Base Layout Styles */
+:root {
+    --sidebar-width: 240px;
+}
+
+body {
+    background-color: #f8fafc;
+    color: #1e293b;
+}
+
+.main-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+.content-wrapper {
+    flex: 1;
+    overflow-y: auto;
+}
