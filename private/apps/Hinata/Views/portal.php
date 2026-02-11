@@ -1,6 +1,6 @@
 <?php
 /**
- * 日向坂ポータル View (リンク・日本語化修正版)
+ * 日向坂ポータル View
  * 物理パス: haitaka/private/apps/Hinata/Views/portal.php
  */
 ?>
@@ -49,10 +49,45 @@
 
         <div class="flex-1 overflow-y-auto p-6 md:p-10 custom-scroll">
             <div class="max-w-5xl mx-auto">
-                <div class="mb-12">
+                <div class="mb-8">
                     <h2 class="text-3xl font-black text-slate-800 tracking-tight mb-2">おかえりなさい！</h2>
                     <p class="text-slate-500 font-medium">お疲れ様です。今日も日向坂46を応援しましょう。</p>
                 </div>
+
+                <?php if (!empty($nextEvent) && isset($nextEvent['days_left']) && (int)$nextEvent['days_left'] >= 0): ?>
+                <div class="mb-10 flex items-center">
+                    <div class="flex items-center gap-4 bg-white rounded-3xl border border-sky-100 shadow-sm px-5 py-4 w-full md:w-auto">
+                        <div class="w-10 h-10 rounded-2xl bg-sky-500 text-white flex items-center justify-center shadow-md">
+                            <i class="fa-solid fa-calendar-day"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-[10px] font-bold text-sky-500 uppercase tracking-[0.2em] mb-1">Next Event</p>
+                            <p class="text-sm font-bold text-slate-800 mb-0.5">
+                                <?= htmlspecialchars($nextEvent['event_name'] ?? '次のイベント') ?>
+                            </p>
+                            <p class="text-xs text-slate-500">
+                                <?php
+                                    $days = (int)$nextEvent['days_left'];
+                                    $dateText = isset($nextEvent['event_date']) ? date('Y/m/d', strtotime($nextEvent['event_date'])) : '';
+                                    if ($days === 0) {
+                                        echo '本日開催';
+                                    } elseif ($days === 1) {
+                                        echo 'あと 1 日';
+                                    } else {
+                                        echo 'あと ' . $days . ' 日';
+                                    }
+                                    if ($dateText) {
+                                        echo '（' . $dateText . '）';
+                                    }
+                                ?>
+                            </p>
+                        </div>
+                        <a href="/hinata/events.php" class="hidden md:inline-flex items-center justify-center w-8 h-8 rounded-full border border-sky-100 text-sky-500 hover:bg-sky-50 transition">
+                            <i class="fa-solid fa-chevron-right text-xs"></i>
+                        </a>
+                    </div>
+                </div>
+                <?php endif; ?>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <!-- ミーグリネタ帳：リンク先を talk.php に修正 -->

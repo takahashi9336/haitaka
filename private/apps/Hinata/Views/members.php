@@ -1,6 +1,6 @@
 <?php
 /**
- * メンバー帳 View (日本語版)
+ * メンバー帳 View
  * 物理パス: haitaka/private/apps/Hinata/Views/members.php
  */
 ?>
@@ -38,7 +38,7 @@
         <header class="h-14 bg-white border-b border-sky-100 flex items-center justify-between px-4 shrink-0 sticky top-0 z-10 shadow-sm">
             <div class="flex items-center gap-2">
                 <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
-                <a href="/hinata/portal.php" class="text-slate-400 p-2"><i class="fa-solid fa-chevron-left text-lg"></i></a>
+                <a href="/hinata/index.php" class="text-slate-400 p-2"><i class="fa-solid fa-chevron-left text-lg"></i></a>
                 <h1 class="font-black text-slate-700 text-lg uppercase tracking-tight">メンバー帳</h1>
             </div>
             <?php if (($user['role'] ?? '') === 'admin'): ?>
@@ -84,18 +84,29 @@
 
                 <div class="w-full md:w-[380px] shrink-0 border-r border-slate-50 flex flex-col bg-white">
                     <div id="modalHeader" class="h-64 md:h-72 relative shrink-0 flex flex-col justify-end p-8 text-white overflow-hidden bg-slate-200">
-                        <div class="absolute inset-0" id="modalBg"></div>
-                        <img id="modalImg" src="" class="absolute inset-0 w-full h-full object-cover opacity-60 mix-blend-overlay hidden">
+                        <img id="modalImg" src="" class="absolute inset-0 w-full h-full object-cover hidden">
                         <div class="relative z-10 text-white drop-shadow-md">
                             <span id="modalGen" class="text-[10px] font-black opacity-90 uppercase tracking-widest bg-black/20 px-2 py-0.5 rounded"></span>
                             <h2 id="modalName" class="text-4xl font-black mt-2 leading-tight"></h2>
                         </div>
+                        <?php if (($user['role'] ?? '') === 'admin'): ?>
+                        <a id="adminEditBtn" href="#" class="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-sky-500 text-white flex items-center justify-center shadow-lg hover:bg-sky-600 transition hidden" title="このメンバーを編集">
+                            <i class="fa-solid fa-user-pen"></i>
+                        </a>
+                        <?php endif; ?>
                     </div>
 
                     <div class="p-8 space-y-8 overflow-y-auto custom-scroll">
                         <div id="modalInfoArea" class="hidden bg-sky-50/50 p-5 rounded-3xl border border-sky-100/50">
                             <p class="text-[9px] font-black text-sky-400 uppercase mb-1 tracking-widest">紹介文</p>
                             <p id="modalInfo" class="text-sm font-medium text-slate-600 leading-relaxed whitespace-pre-wrap"></p>
+                        </div>
+                        <div id="penlightSection" class="hidden bg-white p-5 rounded-3xl border border-slate-100/70">
+                            <p class="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">サイリウムカラー</p>
+                            <div class="flex items-center gap-3">
+                                <div id="penlight1" class="flex-1 h-9 rounded-2xl flex items-center justify-center text-[11px] font-bold shadow-sm border border-slate-100"></div>
+                                <div id="penlight2" class="flex-1 h-9 rounded-2xl flex items-center justify-center text-[11px] font-bold shadow-sm border border-slate-100"></div>
+                            </div>
                         </div>
                         <div class="grid grid-cols-2 gap-4 text-center">
                             <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100"><p class="text-[9px] font-black text-slate-400 uppercase mb-1 tracking-widest">血液型</p><p id="modalBlood" class="text-base font-black text-slate-700">--</p></div>
@@ -128,6 +139,7 @@
 
     <script src="/assets/js/core.js"></script>
     <script>
+        const IS_ADMIN = <?= (($user['role'] ?? '') === 'admin') ? 'true' : 'false' ?>;
         document.getElementById('mobileMenuBtn').onclick = () => document.getElementById('sidebar').classList.add('mobile-open');
 
         function filterGen(gen) {
@@ -152,12 +164,61 @@
             document.getElementById('modalHeight').innerHTML = d.height ? `${d.height} <span class="text-[10px] text-slate-400 font-bold">cm</span>` : '--';
             document.getElementById('modalBirth').innerText = d.birth_date ? d.birth_date.replace(/-/g, '/') : '--';
             document.getElementById('modalPlace').innerText = d.birth_place || '--';
-            document.getElementById('modalBg').style.background = `linear-gradient(135deg, ${d.color1 || '#7cc7e8'}, ${d.color2 || '#ffffff'})`;
-            
+
             const mImg = document.getElementById('modalImg');
             if (d.image_url) { mImg.src = '/assets/img/members/' + d.image_url; mImg.classList.remove('hidden'); } else { mImg.classList.add('hidden'); }
 
             if (d.member_info) { document.getElementById('modalInfo').innerText = d.member_info; document.getElementById('modalInfoArea').classList.remove('hidden'); } else { document.getElementById('modalInfoArea').classList.add('hidden'); }
+
+            const penlightSection = document.getElementById('penlightSection');
+            const c1 = d.color1 || null;
+            const c2 = d.color2 || null;
+            const n1 = d.color1_name || '';
+            const n2 = d.color2_name || '';
+            const getTextColor = (hex) => {
+                if (!hex) return '#111827';
+                const h = hex.replace('#', '');
+                const r = parseInt(h.substring(0, 2), 16);
+                const g = parseInt(h.substring(2, 4), 16);
+                const b = parseInt(h.substring(4, 6), 16);
+                const luminance = (0.299 * r + 0.587 * g + 0.114 * b);
+                return luminance > 186 ? '#111827' : '#ffffff';
+            };
+            if (c1 || c2) {
+                penlightSection.classList.remove('hidden');
+                const p1 = document.getElementById('penlight1');
+                const p2 = document.getElementById('penlight2');
+                if (c1) {
+                    p1.style.backgroundColor = c1;
+                    p1.style.color = getTextColor(c1);
+                    p1.textContent = n1 || c1;
+                } else {
+                    p1.style.backgroundColor = '#e5e7eb';
+                    p1.style.color = '#111827';
+                    p1.textContent = '未設定';
+                }
+                if (c2) {
+                    p2.style.backgroundColor = c2;
+                    p2.style.color = getTextColor(c2);
+                    p2.textContent = n2 || c2;
+                } else {
+                    p2.style.backgroundColor = '#e5e7eb';
+                    p2.style.color = '#111827';
+                    p2.textContent = '未設定';
+                }
+            } else {
+                penlightSection.classList.add('hidden');
+            }
+
+            const adminBtn = document.getElementById('adminEditBtn');
+            if (adminBtn) {
+                if (IS_ADMIN && d.id) {
+                    adminBtn.href = `/hinata/member_admin.php?member_id=${encodeURIComponent(d.id)}`;
+                    adminBtn.classList.remove('hidden');
+                } else {
+                    adminBtn.classList.add('hidden');
+                }
+            }
 
             const setLink = (id, url) => { const el = document.getElementById(id); if(url){ el.href = url; el.classList.remove('hidden'); }else{ el.classList.add('hidden'); } };
             setLink('blogBtn', d.blog_url); setLink('instaBtn', d.insta_url);

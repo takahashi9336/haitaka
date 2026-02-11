@@ -112,7 +112,7 @@
                     <section class="bg-white p-6 rounded-[2rem] border border-sky-50 shadow-sm overflow-hidden">
                         <div class="space-y-1 max-h-[600px] overflow-y-auto custom-scroll pr-2">
                             <?php foreach ($members as $m): ?>
-                            <div onclick='selectMember(<?= json_encode($m) ?>)' class="p-2 rounded-2xl hover:bg-sky-50 cursor-pointer flex items-center gap-3 transition-all border border-transparent hover:border-sky-100 <?= $m['is_active'] ? '' : 'opacity-40' ?>">
+                            <div onclick='selectMember(<?= json_encode($m, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>)' class="p-2 rounded-2xl hover:bg-sky-50 cursor-pointer flex items-center gap-3 transition-all border border-transparent hover:border-sky-100 <?= $m['is_active'] ? '' : 'opacity-40' ?>">
                                 <?php if($m['image_url']): ?>
                                     <img src="/assets/img/members/<?= $m['image_url'] ?>" class="w-10 h-10 rounded-xl object-cover">
                                 <?php else: ?>
@@ -130,6 +130,7 @@
 
     <script src="/assets/js/core.js"></script>
     <script>
+        const MEMBER_MAP = <?= json_encode(array_column($members, null, 'id'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         document.getElementById('mobileMenuBtn').onclick = () => document.getElementById('sidebar').classList.add('mobile-open');
 
         // プレビュー表示
@@ -191,6 +192,15 @@
                 alert('エラー: ' + res.message);
             }
         };
+
+        // クエリパラメータからmember_id指定時、自動で該当メンバーを選択
+        (function () {
+            const params = new URLSearchParams(location.search);
+            const id = params.get('member_id');
+            if (id && MEMBER_MAP[id]) {
+                selectMember(MEMBER_MAP[id]);
+            }
+        })();
     </script>
 </body>
 </html>

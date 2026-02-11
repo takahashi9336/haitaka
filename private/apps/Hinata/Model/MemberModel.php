@@ -27,7 +27,9 @@ class MemberModel extends BaseModel {
      * メンバー詳細情報の取得
      */
     public function getMemberDetail(int $memberId): ?array {
-        $sql = "SELECT m.*, c1.color_code as color1, c2.color_code as color2,
+        $sql = "SELECT m.*,
+                       c1.color_code as color1, c1.color_name as color1_name,
+                       c2.color_code as color2, c2.color_name as color2_name,
                        v.video_key as pv_video_key, v.title as pv_title
                 FROM {$this->table} m
                 LEFT JOIN hn_colors c1 ON m.color_id1 = c1.id
