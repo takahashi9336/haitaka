@@ -30,7 +30,12 @@ class MemberModel extends BaseModel {
         $sql = "SELECT m.*,
                        c1.color_code as color1, c1.color_name as color1_name,
                        c2.color_code as color2, c2.color_name as color2_name,
-                       v.video_key as pv_video_key, v.title as pv_title
+                       v.video_key as pv_video_key, v.title as pv_title,
+                       (
+                           SELECT COALESCE(MAX(level), 0)
+                           FROM hn_favorites f
+                           WHERE f.member_id = m.id AND f.user_id = :uid_fav
+                       ) as favorite_level
                 FROM {$this->table} m
                 LEFT JOIN hn_colors c1 ON m.color_id1 = c1.id
                 LEFT JOIN hn_colors c2 ON m.color_id2 = c2.id
@@ -38,7 +43,7 @@ class MemberModel extends BaseModel {
                 WHERE m.id = :mid";
         
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute(['mid' => $memberId]);
+        $stmt->execute(['mid' => $memberId, 'uid_fav' => $this->userId]);
         return $stmt->fetch() ?: null;
     }
 
@@ -64,13 +69,17 @@ class MemberModel extends BaseModel {
     public function getActiveMembersWithColors(): array {
         $sql = "SELECT m.*,
                        c1.color_code as color1, c1.color_name as color1_name,
-                       c2.color_code as color2, c2.color_name as color2_name
+                       c2.color_code as color2, c2.color_name as color2_name,
+                       COALESCE(f.level, 0) as favorite_level
                 FROM {$this->table} m
                 LEFT JOIN hn_colors c1 ON m.color_id1 = c1.id
                 LEFT JOIN hn_colors c2 ON m.color_id2 = c2.id
+                LEFT JOIN hn_favorites f ON f.member_id = m.id AND f.user_id = :uid_fav
                 WHERE m.is_active = 1
-                ORDER BY m.generation ASC, m.kana ASC";
-        return $this->pdo->query($sql)->fetchAll();
+                ORDER BY favorite_level DESC, m.generation ASC, m.kana ASC";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(['uid_fav' => $this->userId]);
+        return $stmt->fetchAll();
     }
 
     /**

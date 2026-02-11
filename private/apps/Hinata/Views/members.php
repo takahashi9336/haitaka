@@ -28,6 +28,48 @@
         #memberModal.active { display: block !important; overflow-y: auto; -webkit-overflow-scrolling: touch; }
         @keyframes slideInUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .animate-up { animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+        /* 推し・気になるボタン用 */
+        .fav-btn-base {
+            width: 2.25rem;
+            height: 2.25rem;
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            transition: all 0.18s ease-out;
+        }
+        .fav-btn-base:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.25);
+        }
+        .fav-btn-inactive {
+            background-color: rgba(15,23,42,0.65);
+        }
+        .fav-btn-active-star {
+            background-color: #eab308; /* yellow-500 */
+        }
+        .fav-btn-active-heart {
+            background-color: #ec4899; /* pink-500 */
+        }
+        .fav-icon-star {
+            color: #fde68a; /* yellow-200 */
+        }
+        .fav-icon-heart {
+            color: #fbcfe8; /* pink-200 */
+        }
+        .fav-icon-on {
+            color: #ffffff;
+        }
+        @keyframes favorite-pop {
+            0% { transform: scale(1); }
+            40% { transform: scale(1.25); }
+            100% { transform: scale(1); }
+        }
+        .favorite-pop {
+            animation: favorite-pop 0.22s ease-out;
+        }
     </style>
 </head>
 <body class="bg-slate-50 flex h-screen overflow-hidden text-slate-800">
@@ -209,15 +251,25 @@
                 <div class="w-full md:w-[380px] shrink-0 border-r border-slate-50 flex flex-col bg-white">
                     <div id="modalHeader" class="h-64 md:h-72 relative shrink-0 flex flex-col justify-end p-8 text-white overflow-hidden bg-slate-200">
                         <img id="modalImg" src="" class="absolute inset-0 w-full h-full object-cover hidden">
-                        <div class="relative z-10 text-white drop-shadow-md">
-                            <span id="modalGen" class="text-[10px] font-black opacity-90 uppercase tracking-widest bg-black/20 px-2 py-0.5 rounded"></span>
-                            <h2 id="modalName" class="text-4xl font-black mt-2 leading-tight"></h2>
+                        <div class="relative z-10 text-white drop-shadow-md h-full flex flex-col justify-between">
+                            <span id="modalGen" class="text-[10px] font-black opacity-90 uppercase tracking-widest bg-black/20 px-2 py-0.5 rounded self-start"></span>
+                            <div class="flex items-end justify-between gap-3 mt-auto">
+                                <h2 id="modalName" class="text-3xl md:text-4xl font-black leading-tight break-words"></h2>
+                                <div id="favButtonBar" class="flex items-center gap-2">
+                                    <button id="favStarBtn" class="fav-btn-base fav-btn-inactive" title="気になる">
+                                        <i class="fa-regular fa-star fav-icon-star"></i>
+                                    </button>
+                                    <button id="favHeartBtn" class="fav-btn-base fav-btn-inactive" title="推し">
+                                        <i class="fa-regular fa-heart fav-icon-heart"></i>
+                                    </button>
+                                    <?php if (($user['role'] ?? '') === 'admin'): ?>
+                                    <a id="adminEditBtn" href="#" class="fav-btn-base bg-sky-500 text-white shadow-lg hover:bg-sky-600 transition hidden" title="このメンバーを編集">
+                                        <i class="fa-solid fa-user-pen text-xs"></i>
+                                    </a>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
                         </div>
-                        <?php if (($user['role'] ?? '') === 'admin'): ?>
-                        <a id="adminEditBtn" href="#" class="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-sky-500 text-white flex items-center justify-center shadow-lg hover:bg-sky-600 transition hidden" title="このメンバーを編集">
-                            <i class="fa-solid fa-user-pen"></i>
-                        </a>
-                        <?php endif; ?>
                     </div>
 
                     <div class="p-8 space-y-8 overflow-y-auto custom-scroll">
@@ -264,6 +316,9 @@
     <script src="/assets/js/core.js"></script>
     <script>
         const IS_ADMIN = <?= (($user['role'] ?? '') === 'admin') ? 'true' : 'false' ?>;
+        let currentMemberId = null;
+        let currentFavoriteLevel = 0;
+        const FAVORITE_LEVELS = {};
         document.getElementById('mobileMenuBtn').onclick = () => document.getElementById('sidebar').classList.add('mobile-open');
 
         let currentGen = 'all';
@@ -334,10 +389,81 @@
             applyFilters();
         }
 
+        function updateFavoriteUI(level) {
+            currentFavoriteLevel = level || 0;
+            const heartBtn = document.getElementById('favHeartBtn');
+            const starBtn = document.getElementById('favStarBtn');
+            const heartIcon = heartBtn.querySelector('i');
+            const starIcon = starBtn.querySelector('i');
+
+            // reset classes
+            heartBtn.classList.remove('fav-btn-active-heart', 'fav-btn-inactive');
+            starBtn.classList.remove('fav-btn-active-star', 'fav-btn-inactive');
+            heartIcon.className = 'fa-regular fa-heart fav-icon-heart';
+            starIcon.className = 'fa-regular fa-star fav-icon-star';
+
+            if (currentFavoriteLevel >= 2) {
+                // 推し：ハート＆星の両方ON
+                heartBtn.classList.add('fav-btn-active-heart');
+                starBtn.classList.add('fav-btn-active-star');
+                heartIcon.className = 'fa-solid fa-heart fav-icon-on';
+                starIcon.className = 'fa-solid fa-star fav-icon-on';
+            } else if (currentFavoriteLevel === 1) {
+                // 気になる：星のみON
+                starBtn.classList.add('fav-btn-active-star');
+                heartBtn.classList.add('fav-btn-inactive');
+                starIcon.className = 'fa-solid fa-star fav-icon-on';
+            } else {
+                // 未登録
+                heartBtn.classList.add('fav-btn-inactive');
+                starBtn.classList.add('fav-btn-inactive');
+            }
+        }
+
+        async function setFavoriteLevel(level) {
+            if (!currentMemberId) return;
+            const targetBtn = level === 2 ? document.getElementById('favHeartBtn')
+                             : level === 1 ? document.getElementById('favStarBtn')
+                             : null;
+            const res = await fetch('/hinata/api/toggle_favorite.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ member_id: currentMemberId, level })
+            }).then(r => r.json());
+            if (res.status === 'success') {
+                const newLevel = res.level ?? level ?? 0;
+                updateFavoriteUI(newLevel);
+                if (targetBtn) {
+                    targetBtn.classList.remove('favorite-pop');
+                    // reflow
+                    void targetBtn.offsetWidth;
+                    targetBtn.classList.add('favorite-pop');
+                }
+            } else {
+                alert('お気に入りの更新に失敗しました: ' + (res.message || ''));
+            }
+        }
+
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('#favHeartBtn')) {
+                e.stopPropagation();
+                const next = currentFavoriteLevel === 2 ? 0 : 2;
+                setFavoriteLevel(next);
+            }
+            if (e.target.closest('#favStarBtn')) {
+                e.stopPropagation();
+                let next = 1;
+                if (currentFavoriteLevel === 1) next = 0;
+                else if (currentFavoriteLevel === 2) next = 1; // 推し→気になる
+                setFavoriteLevel(next);
+            }
+        });
+
         async function showDetail(id) {
             const res = await fetch(`members.php?action=detail&id=${id}`).then(r => r.json());
             if (res.status !== 'success') return;
             const d = res.data;
+            currentMemberId = d.id;
 
             const modal = document.getElementById('memberModal');
             modal.classList.add('active');
@@ -395,6 +521,13 @@
             } else {
                 penlightSection.classList.add('hidden');
             }
+
+            const serverLevelRaw = typeof d.favorite_level !== 'undefined' && d.favorite_level !== null
+                ? parseInt(d.favorite_level, 10)
+                : 0;
+            const serverLevel = Number.isNaN(serverLevelRaw) ? 0 : serverLevelRaw;
+            FAVORITE_LEVELS[currentMemberId] = serverLevel;
+            updateFavoriteUI(serverLevel);
 
             const adminBtn = document.getElementById('adminEditBtn');
             if (adminBtn) {

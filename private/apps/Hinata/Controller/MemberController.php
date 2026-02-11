@@ -41,6 +41,14 @@ class MemberController {
     public function detail(): void {
         header('Content-Type: application/json');
         try {
+            // セッションおよび認証を必ず初期化しておく（favorite_level取得にuser_idが必要なため）
+            $auth = new Auth();
+            if (!$auth->check()) {
+                http_response_code(401);
+                echo json_encode(['status' => 'error', 'message' => 'unauthorized']);
+                return;
+            }
+
             $id = $_GET['id'] ?? null;
             if (!$id) throw new \Exception('ID missing');
             $model = new MemberModel();

@@ -17,13 +17,14 @@ class NetaModel extends BaseModel {
      */
     public function getGroupedNeta(): array {
         $sql = "SELECT n.*, m.name as member_name, c1.color_code as color1, c2.color_code as color2,
-                       (SELECT COUNT(*) FROM hn_favorites f WHERE f.member_id = m.id AND f.user_id = :uid_fav) as is_favorite
+                       COALESCE(f.level, 0) as favorite_level
                 FROM {$this->table} n
                 JOIN hn_members m ON n.member_id = m.id
                 LEFT JOIN hn_colors c1 ON m.color_id1 = c1.id
                 LEFT JOIN hn_colors c2 ON m.color_id2 = c2.id
+                LEFT JOIN hn_favorites f ON f.member_id = m.id AND f.user_id = :uid_fav
                 WHERE n.user_id = :uid_neta AND n.status != 'delete'
-                ORDER BY is_favorite DESC, m.generation ASC, m.kana ASC, n.created_at DESC";
+                ORDER BY favorite_level DESC, m.generation ASC, m.kana ASC, n.created_at DESC";
         
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute(['uid_fav' => $this->userId, 'uid_neta' => $this->userId]);

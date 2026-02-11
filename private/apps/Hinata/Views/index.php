@@ -70,7 +70,11 @@
                         <select name="member_id" id="form_member_id" required class="w-full h-11 border border-slate-100 rounded-2xl px-4 text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-sky-100 transition-all">
                             <option value="">メンバーを選択</option>
                             <?php if(!empty($members)): foreach ($members as $m): ?>
-                                <option value="<?= $m['id'] ?>"><?= $m['is_favorite']?'⭐ ':'' ?><?= htmlspecialchars($m['name']) ?></option>
+                                <?php $favLevel = (int)($m['favorite_level'] ?? 0); ?>
+                                <option value="<?= $m['id'] ?>">
+                                    <?= $favLevel >= 2 ? '❤️ ' : ($favLevel === 1 ? '⭐ ' : '') ?>
+                                    <?= htmlspecialchars($m['name']) ?>
+                                </option>
                             <?php endforeach; endif; ?>
                         </select>
                         <textarea name="content" id="form_content" required placeholder="何を話す？" class="w-full border border-slate-100 rounded-2xl p-4 text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-sky-100 min-h-[80px] transition-all"></textarea>
