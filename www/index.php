@@ -8,6 +8,7 @@ require_once __DIR__ . '/../private/vendor/autoload.php';
 use Core\Auth;
 use App\TaskManager\Model\TaskModel;
 use App\Hinata\Model\NetaModel;
+use App\Hinata\Model\EventModel;
 
 $auth = new Auth();
 if (!$auth->check()) { header('Location: /login.php'); exit; }
@@ -20,6 +21,10 @@ $netaModel = new NetaModel();
 $netaCount = 0;
 $groupedNeta = $netaModel->getGroupedNeta();
 foreach($groupedNeta as $group) { $netaCount += count($group['items']); }
+
+// 日向坂ポータルと同じ「次のイベント」情報
+$eventModel = new EventModel();
+$nextEvent = $eventModel->getNextEvent();
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -57,11 +62,46 @@ foreach($groupedNeta as $group) { $netaCount += count($group['items']); }
 
         <div class="flex-1 overflow-y-auto p-6 md:p-12">
             <div class="max-w-5xl mx-auto">
-                <header class="mb-10">
+                <header class="mb-6">
                     <h1 class="text-3xl font-black text-slate-800 tracking-tight">ダッシュボード</h1>
                     <p class="text-slate-400 font-medium mt-1">おかえりなさい、<?= htmlspecialchars($user['id_name']) ?> さん</p>
                 </header>
-                
+
+                <?php if (!empty($nextEvent) && isset($nextEvent['days_left']) && (int)$nextEvent['days_left'] >= 0): ?>
+                <div class="mb-8">
+                    <div class="flex items-center gap-4 bg-white rounded-3xl border border-sky-100 shadow-sm px-5 py-4">
+                        <div class="w-10 h-10 rounded-2xl bg-sky-500 text-white flex items-center justify-center shadow-md">
+                            <i class="fa-solid fa-calendar-day"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-[10px] font-bold text-sky-500 uppercase tracking-[0.2em] mb-1">Hinata Next Event</p>
+                            <p class="text-sm font-bold text-slate-800 mb-0.5">
+                                <?= htmlspecialchars($nextEvent['event_name'] ?? '次のイベント') ?>
+                            </p>
+                            <p class="text-xs text-slate-500">
+                                <?php
+                                    $days = (int)$nextEvent['days_left'];
+                                    $dateText = isset($nextEvent['event_date']) ? date('Y/m/d', strtotime($nextEvent['event_date'])) : '';
+                                    if ($days === 0) {
+                                        echo '本日開催';
+                                    } elseif ($days === 1) {
+                                        echo 'あと 1 日';
+                                    } else {
+                                        echo 'あと ' . $days . ' 日';
+                                    }
+                                    if ($dateText) {
+                                        echo '（' . $dateText . '）';
+                                    }
+                                ?>
+                            </p>
+                        </div>
+                        <a href="/hinata/events.php" class="hidden md:inline-flex items-center justify-center w-8 h-8 rounded-full border border-sky-100 text-sky-500 hover:bg-sky-50 transition">
+                            <i class="fa-solid fa-chevron-right text-xs"></i>
+                        </a>
+                    </div>
+                </div>
+                <?php endif; ?>
+
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <!-- タスク管理 -->
                     <a href="/task_manager/" class="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col justify-between h-56 hover:translate-y-[-4px] transition-all">

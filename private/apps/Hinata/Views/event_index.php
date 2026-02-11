@@ -46,7 +46,7 @@ $getCatInfo = function($catId) {
         <header class="h-14 bg-white border-b border-sky-100 flex items-center justify-between px-4 shrink-0 sticky top-0 z-10 shadow-sm">
             <div class="flex items-center gap-2">
                 <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
-                <a href="/hinata/portal.php" class="text-slate-400 p-2"><i class="fa-solid fa-chevron-left text-lg"></i></a>
+                <a href="/hinata/index.php" class="text-slate-400 p-2"><i class="fa-solid fa-chevron-left text-lg"></i></a>
                 <h1 class="font-black text-slate-700 text-lg uppercase tracking-tight">イベント</h1>
             </div>
             <div class="flex items-center gap-2">

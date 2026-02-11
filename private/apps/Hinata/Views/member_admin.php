@@ -21,6 +21,29 @@
             .sidebar.mobile-open { transform: translateX(0); }
         }
         .image-preview { width: 100px; height: 100px; border-radius: 24px; object-fit: cover; background: #f1f5f9; border: 2px solid #e2e8f0; }
+
+        /* 一覧編集テーブル：ID・名前を横スクロール時も固定表示 */
+        :root {
+            --member-admin-id-width: 3.5rem;
+        }
+        .sticky-col-id {
+            position: sticky;
+            left: 0;
+            z-index: 10;
+            background-color: #ffffff;
+            min-width: var(--member-admin-id-width);
+            max-width: var(--member-admin-id-width);
+        }
+        .sticky-col-name {
+            position: sticky;
+            left: var(--member-admin-id-width); /* ID列幅ぶんだけ右へずらす */
+            z-index: 10;
+            background-color: #ffffff;
+        }
+        thead .sticky-col-id,
+        thead .sticky-col-name {
+            z-index: 20;
+        }
     </style>
 </head>
 <body class="bg-slate-50 flex h-screen overflow-hidden text-slate-800">
@@ -36,9 +59,13 @@
             <a href="/hinata/members.php" class="text-xs font-bold text-sky-500 bg-sky-50 px-4 py-2 rounded-full hover:bg-sky-100 transition">戻る</a>
         </header>
 
-        <div class="p-4 md:p-8 max-w-5xl mx-auto w-full">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                
+        <div class="p-4 md:p-8 max-w-6xl mx-auto w-full">
+            <div class="mb-4 flex gap-2">
+                <button id="tabDetail" class="px-4 py-1.5 rounded-full text-xs font-bold bg-slate-800 text-white">詳細編集</button>
+                <button id="tabBulk" class="px-4 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-500">一覧編集</button>
+            </div>
+
+            <div id="detailSection" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div class="lg:col-span-2">
                     <section id="formArea" class="bg-white p-6 md:p-8 rounded-[2.5rem] border border-sky-100 shadow-sm">
                         <div class="mb-6 flex items-center gap-5 border-b border-slate-50 pb-6">
@@ -123,7 +150,96 @@
                             <?php endforeach; ?>
                         </div>
                     </section>
+
                 </div>
+            </div>
+
+            <!-- 一括編集用セクション（別タブ） -->
+            <div id="bulkSection" class="hidden">
+                <section class="bg-white p-6 rounded-[2rem] border border-sky-50 shadow-sm overflow-hidden">
+                        <h2 class="text-sm font-black text-slate-800 mb-4">一覧編集（全メンバー）</h2>
+                        <p class="text-[11px] text-slate-400 mb-3">テキストや期・状態・サイリウム・SNSをまとめて更新できます。画像やPVは「詳細編集」タブで編集してください。</p>
+                        <div class="mb-2 text-right">
+                            <button type="button" id="saveAllBtn" class="px-4 py-1.5 rounded-full bg-emerald-500 text-white text-[11px] font-bold hover:bg-emerald-600">一括保存</button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full text-xs">
+                                <thead class="bg-slate-50/80">
+                                    <tr>
+                                        <th class="px-2 py-2 text-left font-bold text-slate-500 sticky-col-id">ID</th>
+                                        <th class="px-2 py-2 text-left font-bold text-slate-500 sticky-col-name">名前</th>
+                                        <th class="px-2 py-2 text-left font-bold text-slate-500">Kana</th>
+                                        <th class="px-2 py-2 text-left font-bold text-slate-500">期</th>
+                                        <th class="px-2 py-2 text-left font-bold text-slate-500">状態</th>
+                                        <th class="px-2 py-2 text-left font-bold text-slate-500">Penlight 1</th>
+                                        <th class="px-2 py-2 text-left font-bold text-slate-500">Penlight 2</th>
+                                        <th class="px-2 py-2 text-left font-bold text-slate-500">Blog</th>
+                                        <th class="px-2 py-2 text-left font-bold text-slate-500">Instagram</th>
+                                        <th class="px-2 py-2 text-left font-bold text-slate-500">X(Twitter)</th>
+                                        <th class="px-2 py-2 text-left font-bold text-slate-500">メモ</th>
+                                        <th class="px-2 py-2 text-left font-bold text-slate-500"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($members as $m): ?>
+                                    <tr class="border-t border-slate-100 <?= $m['is_active'] ? '' : 'bg-slate-50' ?> member-admin-row" data-id="<?= $m['id'] ?>">
+                                        <td class="px-2 py-1 text-slate-400 font-mono sticky-col-id bg-white"><?= $m['id'] ?></td>
+                                        <td class="px-2 py-1 sticky-col-name">
+                                            <input type="text" id="row_<?= $m['id'] ?>_name" value="<?= htmlspecialchars($m['name']) ?>" class="w-32 border border-slate-200 rounded px-2 py-1 text-[11px]">
+                                        </td>
+                                        <td class="px-2 py-1">
+                                            <input type="text" id="row_<?= $m['id'] ?>_kana" value="<?= htmlspecialchars($m['kana']) ?>" class="w-32 border border-slate-200 rounded px-2 py-1 text-[11px]">
+                                        </td>
+                                        <td class="px-2 py-1">
+                                            <select id="row_<?= $m['id'] ?>_generation" class="border border-slate-200 rounded px-1 py-1 text-[11px]">
+                                                <?php for($g=1;$g<=5;$g++): ?>
+                                                    <option value="<?= $g ?>" <?= (int)$m['generation']===$g?'selected':'' ?>><?= $g ?>期</option>
+                                                <?php endfor; ?>
+                                            </select>
+                                        </td>
+                                        <td class="px-2 py-1">
+                                            <select id="row_<?= $m['id'] ?>_is_active" class="border border-slate-200 rounded px-1 py-1 text-[11px]">
+                                                <option value="1" <?= $m['is_active'] ? 'selected' : '' ?>>現役</option>
+                                                <option value="0" <?= !$m['is_active'] ? 'selected' : '' ?>>卒業</option>
+                                            </select>
+                                        </td>
+                                        <td class="px-2 py-1">
+                                            <select id="row_<?= $m['id'] ?>_color_id1" class="border border-slate-200 rounded px-1 py-1 text-[11px]">
+                                                <option value="">--</option>
+                                                <?php foreach($colors as $c): ?>
+                                                    <option value="<?= $c['id'] ?>" <?= (int)$m['color_id1'] === (int)$c['id'] ? 'selected' : '' ?>><?= htmlspecialchars($c['color_name']) ?></option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </td>
+                                        <td class="px-2 py-1">
+                                            <select id="row_<?= $m['id'] ?>_color_id2" class="border border-slate-200 rounded px-1 py-1 text-[11px]">
+                                                <option value="">--</option>
+                                                <?php foreach($colors as $c): ?>
+                                                    <option value="<?= $c['id'] ?>" <?= (int)$m['color_id2'] === (int)$c['id'] ? 'selected' : '' ?>><?= htmlspecialchars($c['color_name']) ?></option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </td>
+                                        <td class="px-2 py-1">
+                                            <input type="text" id="row_<?= $m['id'] ?>_blog_url" value="<?= htmlspecialchars($m['blog_url']) ?>" class="w-36 border border-slate-200 rounded px-2 py-1 text-[11px]">
+                                        </td>
+                                        <td class="px-2 py-1">
+                                            <input type="text" id="row_<?= $m['id'] ?>_insta_url" value="<?= htmlspecialchars($m['insta_url']) ?>" class="w-36 border border-slate-200 rounded px-2 py-1 text-[11px]">
+                                        </td>
+                                        <td class="px-2 py-1">
+                                            <input type="text" id="row_<?= $m['id'] ?>_twitter_url" value="<?= htmlspecialchars($m['twitter_url']) ?>" class="w-36 border border-slate-200 rounded px-2 py-1 text-[11px]">
+                                        </td>
+                                        <td class="px-2 py-1">
+                                            <input type="text" id="row_<?= $m['id'] ?>_member_info" value="<?= htmlspecialchars($m['member_info']) ?>" class="w-48 border border-slate-200 rounded px-2 py-1 text-[11px]">
+                                        </td>
+                                        <td class="px-2 py-1 text-right">
+                                            <button type="button" class="px-3 py-1 rounded-full bg-slate-800 text-white text-[11px] font-bold hover:bg-slate-900" onclick="saveRow(<?= $m['id'] ?>)">保存</button>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                </section>
             </div>
         </div>
     </main>
@@ -132,6 +248,30 @@
     <script>
         const MEMBER_MAP = <?= json_encode(array_column($members, null, 'id'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         document.getElementById('mobileMenuBtn').onclick = () => document.getElementById('sidebar').classList.add('mobile-open');
+
+        // タブ切り替え
+        const detailSection = document.getElementById('detailSection');
+        const bulkSection = document.getElementById('bulkSection');
+        const tabDetail = document.getElementById('tabDetail');
+        const tabBulk = document.getElementById('tabBulk');
+
+        tabDetail.onclick = () => {
+            detailSection.classList.remove('hidden');
+            bulkSection.classList.add('hidden');
+            tabDetail.classList.add('bg-slate-800', 'text-white');
+            tabDetail.classList.remove('bg-slate-100', 'text-slate-500');
+            tabBulk.classList.remove('bg-slate-800', 'text-white');
+            tabBulk.classList.add('bg-slate-100', 'text-slate-500');
+        };
+
+        tabBulk.onclick = () => {
+            detailSection.classList.add('hidden');
+            bulkSection.classList.remove('hidden');
+            tabBulk.classList.add('bg-slate-800', 'text-white');
+            tabBulk.classList.remove('bg-slate-100', 'text-slate-500');
+            tabDetail.classList.remove('bg-slate-800', 'text-white');
+            tabDetail.classList.add('bg-slate-100', 'text-slate-500');
+        };
 
         // プレビュー表示
         document.getElementById('f_image').onchange = function(e) {
@@ -190,6 +330,70 @@
                 location.reload();
             } else {
                 alert('エラー: ' + res.message);
+            }
+        };
+
+        async function saveRow(id) {
+            const fd = new FormData();
+            fd.append('id', id);
+            fd.append('name', document.getElementById(`row_${id}_name`).value);
+            fd.append('kana', document.getElementById(`row_${id}_kana`).value);
+            fd.append('generation', document.getElementById(`row_${id}_generation`).value);
+            fd.append('is_active', document.getElementById(`row_${id}_is_active`).value);
+            fd.append('color_id1', document.getElementById(`row_${id}_color_id1`).value);
+            fd.append('color_id2', document.getElementById(`row_${id}_color_id2`).value);
+            fd.append('blog_url', document.getElementById(`row_${id}_blog_url`).value);
+            fd.append('insta_url', document.getElementById(`row_${id}_insta_url`).value);
+            fd.append('twitter_url', document.getElementById(`row_${id}_twitter_url`).value);
+            fd.append('member_info', document.getElementById(`row_${id}_member_info`).value);
+
+            const res = await fetch('api/save_member_basic.php', {
+                method: 'POST',
+                body: fd
+            }).then(r => r.json());
+
+            if (res.status === 'success') {
+                // 軽くフィードバック
+                const row = event.target.closest('tr');
+                if (row) {
+                    row.classList.add('bg-emerald-50');
+                    setTimeout(() => row.classList.remove('bg-emerald-50'), 800);
+                }
+            } else {
+                alert('保存に失敗しました: ' + res.message);
+            }
+        }
+
+        // 一括保存
+        document.getElementById('saveAllBtn').onclick = async () => {
+            const rows = Array.from(document.querySelectorAll('.member-admin-row'));
+            const items = rows.map(row => {
+                const id = row.dataset.id;
+                return {
+                    id: id,
+                    name: document.getElementById(`row_${id}_name`).value,
+                    kana: document.getElementById(`row_${id}_kana`).value,
+                    generation: document.getElementById(`row_${id}_generation`).value,
+                    is_active: document.getElementById(`row_${id}_is_active`).value,
+                    color_id1: document.getElementById(`row_${id}_color_id1`).value,
+                    color_id2: document.getElementById(`row_${id}_color_id2`).value,
+                    blog_url: document.getElementById(`row_${id}_blog_url`).value,
+                    insta_url: document.getElementById(`row_${id}_insta_url`).value,
+                    twitter_url: document.getElementById(`row_${id}_twitter_url`).value,
+                    member_info: document.getElementById(`row_${id}_member_info`).value,
+                };
+            });
+
+            const res = await fetch('api/save_member_basic_bulk.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items })
+            }).then(r => r.json());
+
+            if (res.status === 'success') {
+                alert('一括保存が完了しました。');
+            } else {
+                alert('一括保存に失敗しました: ' + res.message);
             }
         };
 

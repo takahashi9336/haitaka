@@ -43,10 +43,28 @@ class MemberModel extends BaseModel {
     }
 
     /**
-     * 現役メンバー一覧の取得
+     * メンバー帳用：現役＋卒業メンバー一覧（カラー・PVキー付き）
+     */
+    public function getMembersForBook(): array {
+        $sql = "SELECT m.*,
+                       c1.color_code as color1, c1.color_name as color1_name,
+                       c2.color_code as color2, c2.color_name as color2_name,
+                       v.video_key as pv_video_key
+                FROM {$this->table} m
+                LEFT JOIN hn_colors c1 ON m.color_id1 = c1.id
+                LEFT JOIN hn_colors c2 ON m.color_id2 = c2.id
+                LEFT JOIN com_youtube_embed_data v ON m.pv_movie_id = v.id
+                ORDER BY m.is_active DESC, m.generation ASC, m.kana ASC";
+        return $this->pdo->query($sql)->fetchAll();
+    }
+
+    /**
+     * ミーグリネタ帳用：現役メンバー一覧（カラー付き）
      */
     public function getActiveMembersWithColors(): array {
-        $sql = "SELECT m.*, c1.color_code as color1, c2.color_code as color2
+        $sql = "SELECT m.*,
+                       c1.color_code as color1, c1.color_name as color1_name,
+                       c2.color_code as color2, c2.color_name as color2_name
                 FROM {$this->table} m
                 LEFT JOIN hn_colors c1 ON m.color_id1 = c1.id
                 LEFT JOIN hn_colors c2 ON m.color_id2 = c2.id

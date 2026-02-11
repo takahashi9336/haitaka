@@ -46,18 +46,29 @@
             <?php endif; ?>
         </header>
 
-        <div class="bg-white border-b border-sky-50 px-4 py-3 flex gap-2 overflow-x-auto no-scrollbar shrink-0">
-            <button onclick="filterGen('all')" class="filter-btn active px-6 py-1.5 rounded-full border border-slate-100 text-[10px] font-black uppercase transition-all">全員</button>
-            <?php foreach([1,2,3,4,5] as $g): ?>
-                <button onclick="filterGen(<?= $g ?>)" class="filter-btn px-6 py-1.5 rounded-full border border-slate-100 text-[10px] font-black uppercase transition-all"><?= $g ?>期生</button>
-            <?php endforeach; ?>
+        <div class="bg-white border-b border-sky-50 px-4 py-3 flex flex-wrap gap-3 items-center justify-between shrink-0">
+            <div class="flex gap-2 overflow-x-auto no-scrollbar">
+                <button onclick="filterGen('all')" class="filter-btn active px-6 py-1.5 rounded-full border border-slate-100 text-[10px] font-black uppercase transition-all">全員</button>
+                <?php foreach([1,2,3,4,5] as $g): ?>
+                    <button onclick="filterGen(<?= $g ?>)" class="filter-btn px-6 py-1.5 rounded-full border border-slate-100 text-[10px] font-black uppercase transition-all"><?= $g ?>期生</button>
+                <?php endforeach; ?>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="flex bg-slate-100 rounded-full p-1 text-[10px] font-black">
+                    <button id="viewCardBtn" class="px-3 py-1 rounded-full bg-white shadow text-slate-700" onclick="setViewMode('card')"><i class="fa-solid fa-border-all mr-1"></i>カード</button>
+                    <button id="viewListBtn" class="px-3 py-1 rounded-full text-slate-500" onclick="setViewMode('list')"><i class="fa-solid fa-list mr-1"></i>一覧</button>
+                </div>
+                <button id="toggleGradBtn" class="px-3 py-1.5 rounded-full border border-slate-200 text-[10px] font-black text-slate-500 bg-white" onclick="toggleGraduates()">
+                    卒業メンバー非表示
+                </button>
+            </div>
         </div>
 
         <div class="flex-1 overflow-y-auto p-4 md:p-8 custom-scroll pb-24">
             <div id="memberGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 max-w-6xl mx-auto">
                 <?php foreach ($members as $m): ?>
                 <div class="member-card bg-white rounded-[2.5rem] p-4 shadow-sm border border-sky-50/50 cursor-pointer flex flex-col items-center text-center relative overflow-hidden" 
-                     data-gen="<?= $m['generation'] ?>" onclick="showDetail(<?= $m['id'] ?>)">
+                     data-gen="<?= $m['generation'] ?>" data-active="<?= $m['is_active'] ?>" onclick="showDetail(<?= $m['id'] ?>)">
                     <div class="absolute top-0 left-0 w-full h-1.5" style="background: linear-gradient(to right, <?= $m['color1'] ?: '#ccc' ?>, <?= $m['color2'] ?: '#ddd' ?>);"></div>
                     <div class="w-full aspect-square rounded-[2rem] bg-sky-50 mb-4 shadow-inner overflow-hidden flex items-center justify-center">
                         <?php if(!empty($m['image_url'])): ?>
@@ -69,9 +80,122 @@
                     <div class="space-y-1">
                         <span class="text-[9px] font-black text-sky-400 uppercase tracking-widest"><?= $m['generation'] ?>期生</span>
                         <h3 class="font-black text-slate-800 text-base"><?= htmlspecialchars($m['name']) ?></h3>
+                        <?php if(!$m['is_active']): ?>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-[10px] font-bold text-slate-500">卒業</span>
+                        <?php endif; ?>
                     </div>
                 </div>
                 <?php endforeach; ?>
+            </div>
+
+            <div id="memberList" class="hidden max-w-5xl mx-auto mt-4">
+                <div class="overflow-x-auto bg-white rounded-3xl border border-sky-50 shadow-sm">
+                    <table class="min-w-full text-xs md:text-sm">
+                        <thead class="bg-slate-50/80">
+                            <tr>
+                                <th class="px-3 py-2 text-left font-bold text-slate-500">SNS</th>
+                                <th class="px-3 py-2 text-left font-bold text-slate-500 w-12">画像</th>
+                                <th class="px-3 py-2 text-left font-bold text-slate-500">名前</th>
+                                <th class="px-3 py-2 text-left font-bold text-slate-500">期</th>
+                                <th class="px-3 py-2 text-left font-bold text-slate-500 whitespace-nowrap">サイリウム</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php
+                            $currentGroup = null;
+                            $penlightCell = function (?string $code, ?string $name): string {
+                                if (empty($code) && empty($name)) {
+                                    return '<span class="inline-flex items-center px-2 py-1 rounded-2xl bg-slate-100 text-[11px] font-bold text-slate-500 whitespace-nowrap">未設定</span>';
+                                }
+                                $label = htmlspecialchars($name ?: $code, ENT_QUOTES, 'UTF-8');
+                                $hex = ltrim((string)$code, '#');
+                                if (strlen($hex) === 6) {
+                                    $r = hexdec(substr($hex, 0, 2));
+                                    $g = hexdec(substr($hex, 2, 2));
+                                    $b = hexdec(substr($hex, 4, 2));
+                                    $lum = 0.299 * $r + 0.587 * $g + 0.114 * $b;
+                                    $textColor = $lum > 186 ? '#111827' : '#ffffff';
+                                } else {
+                                    $textColor = '#111827';
+                                }
+                                $bg = $code ?: '#e5e7eb';
+                                return '<span class="inline-flex items-center px-2 py-1 rounded-2xl text-[11px] font-bold whitespace-nowrap" style="background-color:'
+                                    . htmlspecialchars($bg, ENT_QUOTES, 'UTF-8')
+                                    . ';color:' . htmlspecialchars($textColor, ENT_QUOTES, 'UTF-8') . ';">'
+                                    . $label . '</span>';
+                            };
+                            ?>
+                            <?php foreach ($members as $m): ?>
+                            <?php
+                                $group = $m['is_active'] ? 'active' : 'graduated';
+                                if ($group !== $currentGroup):
+                                    $currentGroup = $group;
+                            ?>
+                            <tr class="border-t border-slate-100 bg-slate-50/60">
+                                <td colspan="5" class="px-3 py-2 text-[11px] font-bold text-slate-500 uppercase tracking-[0.2em]">
+                                    <?= $group === 'active' ? '現役メンバー' : '卒業メンバー' ?>
+                                </td>
+                            </tr>
+                            <?php endif; ?>
+                            <tr class="member-row border-t border-slate-50 hover:bg-sky-50/60 cursor-pointer"
+                                data-gen="<?= $m['generation'] ?>" data-active="<?= $m['is_active'] ?>" onclick="showDetail(<?= $m['id'] ?>)">
+                                <td class="px-3 py-2">
+                                    <div class="flex items-center gap-2" onclick="event.stopPropagation()">
+                                        <?php $hasBlog = !empty($m['blog_url']); ?>
+                                        <?php $hasInsta = !empty($m['insta_url']); ?>
+                                        <?php $hasPv = !empty($m['pv_video_key']); ?>
+                                        <?php if ($hasBlog): ?>
+                                            <a href="<?= htmlspecialchars($m['blog_url']) ?>" target="_blank" class="w-7 h-7 rounded-full flex items-center justify-center bg-sky-50 text-sky-600 hover:bg-sky-100 text-xs" title="ブログ">
+                                                <i class="fa-solid fa-blog"></i>
+                                            </a>
+                                        <?php else: ?>
+                                            <span class="w-7 h-7 rounded-full flex items-center justify-center bg-slate-50 text-slate-300 text-xs" title="ブログ">
+                                                <i class="fa-solid fa-blog"></i>
+                                            </span>
+                                        <?php endif; ?>
+                                        <?php if ($hasInsta): ?>
+                                            <a href="<?= htmlspecialchars($m['insta_url']) ?>" target="_blank" class="w-7 h-7 rounded-full flex items-center justify-center bg-pink-50 text-pink-600 hover:bg-pink-100 text-xs" title="Instagram">
+                                                <i class="fa-brands fa-instagram"></i>
+                                            </a>
+                                        <?php else: ?>
+                                            <span class="w-7 h-7 rounded-full flex items-center justify-center bg-slate-50 text-slate-300 text-xs" title="Instagram">
+                                                <i class="fa-brands fa-instagram"></i>
+                                            </span>
+                                        <?php endif; ?>
+                                        <?php if ($hasPv): ?>
+                                            <a href="https://www.youtube.com/watch?v=<?= htmlspecialchars($m['pv_video_key']) ?>" target="_blank" class="w-7 h-7 rounded-full flex items-center justify-center bg-red-50 text-red-600 hover:bg-red-100 text-xs" title="個人PV">
+                                                <i class="fa-brands fa-youtube"></i>
+                                            </a>
+                                        <?php else: ?>
+                                            <span class="w-7 h-7 rounded-full flex items-center justify-center bg-slate-50 text-slate-300 text-xs" title="個人PV">
+                                                <i class="fa-brands fa-youtube"></i>
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                                <td class="px-3 py-2">
+                                    <div class="w-10 h-10 rounded-xl overflow-hidden bg-slate-100 flex items-center justify-center">
+                                        <?php if (!empty($m['image_url'])): ?>
+                                            <img src="/assets/img/members/<?= $m['image_url'] ?>" class="w-full h-full object-cover">
+                                        <?php else: ?>
+                                            <span class="text-[11px] font-black text-slate-400"><?= htmlspecialchars(mb_substr($m['name'], 0, 1)) ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                                <td class="px-3 py-2 font-bold text-slate-800 whitespace-nowrap"><?= htmlspecialchars($m['name']) ?></td>
+                                <td class="px-3 py-2 text-slate-600 whitespace-nowrap"><?= $m['generation'] ?>期</td>
+                                <td class="px-3 py-2">
+                                    <div class="flex items-center gap-1 flex-wrap">
+                                        <?= $penlightCell($m['color1'] ?? null, $m['color1_name'] ?? null) ?>
+                                        <span class="text-[11px] text-slate-400 font-bold mx-1">×</span>
+                                        <?= $penlightCell($m['color2'] ?? null, $m['color2_name'] ?? null) ?>
+                                    </div>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </main>
@@ -142,10 +266,72 @@
         const IS_ADMIN = <?= (($user['role'] ?? '') === 'admin') ? 'true' : 'false' ?>;
         document.getElementById('mobileMenuBtn').onclick = () => document.getElementById('sidebar').classList.add('mobile-open');
 
+        let currentGen = 'all';
+        let viewMode = 'card';
+        let showGraduates = false;
+
+        function applyFilters() {
+            const cards = document.querySelectorAll('.member-card');
+            const rows = document.querySelectorAll('.member-row');
+            const shouldShow = (el) => {
+                const gen = el.dataset.gen;
+                const isActive = el.dataset.active === '1';
+                if (!showGraduates && !isActive) return false;
+                if (currentGen === 'all') return true;
+                return String(gen) === String(currentGen);
+            };
+            cards.forEach(card => {
+                card.style.display = shouldShow(card) ? 'flex' : 'none';
+            });
+            rows.forEach(row => {
+                row.style.display = shouldShow(row) ? '' : 'none';
+            });
+        }
+
         function filterGen(gen) {
+            currentGen = gen;
             document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            document.querySelectorAll('.member-card').forEach(card => card.style.display = (gen === 'all' || card.dataset.gen == gen) ? 'flex' : 'none');
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
+            applyFilters();
+        }
+
+        function setViewMode(mode) {
+            viewMode = mode;
+            const grid = document.getElementById('memberGrid');
+            const list = document.getElementById('memberList');
+            const cardBtn = document.getElementById('viewCardBtn');
+            const listBtn = document.getElementById('viewListBtn');
+            if (mode === 'card') {
+                grid.classList.remove('hidden');
+                list.classList.add('hidden');
+                cardBtn.classList.add('bg-white', 'shadow', 'text-slate-700');
+                listBtn.classList.remove('bg-white', 'shadow', 'text-slate-700');
+                listBtn.classList.add('text-slate-500');
+            } else {
+                grid.classList.add('hidden');
+                list.classList.remove('hidden');
+                listBtn.classList.add('bg-white', 'shadow', 'text-slate-700');
+                cardBtn.classList.remove('bg-white', 'shadow', 'text-slate-700');
+                cardBtn.classList.add('text-slate-500');
+            }
+            applyFilters();
+        }
+
+        function toggleGraduates() {
+            showGraduates = !showGraduates;
+            const btn = document.getElementById('toggleGradBtn');
+            if (showGraduates) {
+                btn.textContent = '卒業メンバー表示中';
+                btn.classList.remove('text-slate-500', 'bg-white');
+                btn.classList.add('text-sky-600', 'bg-sky-50', 'border-sky-200');
+            } else {
+                btn.textContent = '卒業メンバー非表示';
+                btn.classList.remove('text-sky-600', 'bg-sky-50', 'border-sky-200');
+                btn.classList.add('text-slate-500', 'bg-white', 'border-slate-200');
+            }
+            applyFilters();
         }
 
         async function showDetail(id) {
@@ -241,6 +427,9 @@
             document.body.style.overflow = '';
         }
         document.getElementById('memberModal').onclick = (e) => { if (e.target.id === 'memberModal') closeModal(); };
+
+        // 初期状態：カード表示・卒業メンバー非表示でフィルタ適用
+        applyFilters();
     </script>
 </body>
 </html>
