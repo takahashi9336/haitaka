@@ -25,9 +25,56 @@
         .member-card { transition: all 0.3s ease; }
         .member-card:hover { transform: translateY(-4px); border-color: #7cc7e8; }
         .portrait-img { width: 100%; height: 100%; object-fit: cover; }
-        #memberModal.active { display: block !important; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-        @keyframes slideInUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        .animate-up { animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        #memberModal { opacity: 0; }
+        #memberModal.active { 
+            display: block !important; 
+            overflow-y: auto; 
+            -webkit-overflow-scrolling: touch;
+            opacity: 1;
+        }
+        
+        /* モーダル拡大アニメーション（クリック位置から中央へ移動） */
+        @keyframes backdropFadeIn {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+        @keyframes backdropFadeOut {
+            0% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+        #memberModal.modal-opening {
+            animation: backdropFadeIn 0.65s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        }
+        #memberModal.modal-opening .modal-content {
+            animation: modalExpandFromPoint 0.65s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        }
+        #memberModal.modal-closing {
+            animation: backdropFadeOut 0.3s cubic-bezier(0.55, 0.09, 0.68, 0.53) forwards;
+        }
+        #memberModal.modal-closing .modal-content {
+            animation: modalShrinkToPoint 0.3s cubic-bezier(0.55, 0.09, 0.68, 0.53) forwards;
+        }
+        
+        @keyframes modalExpandFromPoint {
+            0% {
+                transform: translate(var(--modal-translate-x, 0), var(--modal-translate-y, 0)) scale(0.3);
+                opacity: 0;
+            }
+            100% {
+                transform: translate(0, 0) scale(1);
+                opacity: 1;
+            }
+        }
+        @keyframes modalShrinkToPoint {
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(var(--modal-translate-x, 0), var(--modal-translate-y, 0)) scale(0.3);
+                opacity: 0;
+            }
+        }
 
         /* 推し・気になるボタン用 */
         .fav-btn-base {
@@ -110,7 +157,7 @@
             <div id="memberGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 max-w-6xl mx-auto">
                 <?php foreach ($members as $m): ?>
                 <div class="member-card bg-white rounded-[2.5rem] p-4 shadow-sm border border-sky-50/50 cursor-pointer flex flex-col items-center text-center relative overflow-hidden" 
-                     data-gen="<?= $m['generation'] ?>" data-active="<?= $m['is_active'] ?>" onclick="showDetail(<?= $m['id'] ?>)">
+                     data-gen="<?= $m['generation'] ?>" data-active="<?= $m['is_active'] ?>" onclick="showDetail(<?= $m['id'] ?>, event)">
                     <div class="absolute top-0 left-0 w-full h-1.5" style="background: linear-gradient(to right, <?= $m['color1'] ?: '#ccc' ?>, <?= $m['color2'] ?: '#ddd' ?>);"></div>
                     <div class="w-full aspect-square rounded-[2rem] bg-sky-50 mb-4 shadow-inner overflow-hidden flex items-center justify-center">
                         <?php if(!empty($m['image_url'])): ?>
@@ -180,7 +227,7 @@
                             </tr>
                             <?php endif; ?>
                             <tr class="member-row border-t border-slate-50 hover:bg-sky-50/60 cursor-pointer"
-                                data-gen="<?= $m['generation'] ?>" data-active="<?= $m['is_active'] ?>" onclick="showDetail(<?= $m['id'] ?>)">
+                                data-gen="<?= $m['generation'] ?>" data-active="<?= $m['is_active'] ?>" onclick="showDetail(<?= $m['id'] ?>, event)">
                                 <td class="px-3 py-2">
                                     <div class="flex items-center gap-2" onclick="event.stopPropagation()">
                                         <?php $hasBlog = !empty($m['blog_url']); ?>
@@ -245,7 +292,7 @@
     <!-- モーダル -->
     <div id="memberModal" class="fixed inset-0 z-[100] hidden overflow-y-auto bg-slate-900/80 backdrop-blur-xl transition-all">
         <div class="relative w-full max-w-5xl mx-auto md:my-10 min-h-full flex items-center">
-            <div class="bg-white w-full h-full md:h-auto md:max-h-[90vh] md:rounded-[3rem] shadow-2xl relative flex flex-col md:flex-row md:overflow-hidden min-h-screen md:min-h-0 animate-up">
+            <div class="modal-content bg-white w-full h-full md:h-auto md:max-h-[90vh] md:rounded-[3rem] shadow-2xl relative flex flex-col md:flex-row md:overflow-hidden min-h-screen md:min-h-0">
                 <button onclick="closeModal()" class="fixed md:absolute top-4 right-4 md:top-6 md:right-6 w-12 h-12 rounded-full bg-slate-100/90 text-slate-500 flex items-center justify-center z-[110] hover:bg-white shadow-lg"><i class="fa-solid fa-xmark text-lg"></i></button>
 
                 <div class="w-full md:w-[380px] shrink-0 border-r border-slate-50 flex flex-col bg-white">
@@ -459,16 +506,42 @@
             }
         });
 
-        async function showDetail(id) {
+        async function showDetail(id, sourceEvent) {
             const res = await fetch(`members.php?action=detail&id=${id}`).then(r => r.json());
             if (res.status !== 'success') return;
             const d = res.data;
             currentMemberId = d.id;
 
             const modal = document.getElementById('memberModal');
-            modal.classList.add('active');
+            
+            // クリック位置から画面中央までの移動距離を計算
+            if (sourceEvent && sourceEvent.currentTarget) {
+                const rect = sourceEvent.currentTarget.getBoundingClientRect();
+                const clickX = rect.left + rect.width / 2;
+                const clickY = rect.top + rect.height / 2;
+                const viewportCenterX = window.innerWidth / 2;
+                const viewportCenterY = window.innerHeight / 2;
+                
+                // クリック位置から中央への移動距離（初期位置は逆方向）
+                const translateX = clickX - viewportCenterX;
+                const translateY = clickY - viewportCenterY;
+                
+                modal.style.setProperty('--modal-translate-x', `${translateX}px`);
+                modal.style.setProperty('--modal-translate-y', `${translateY}px`);
+            } else {
+                modal.style.setProperty('--modal-translate-x', '0');
+                modal.style.setProperty('--modal-translate-y', '0');
+            }
+
+            modal.classList.remove('modal-closing');
+            modal.classList.add('active', 'modal-opening');
             modal.scrollTop = 0;
             document.body.style.overflow = 'hidden';
+            
+            // アニメーション終了後にクラスを削除
+            setTimeout(() => {
+                modal.classList.remove('modal-opening');
+            }, 650);
 
             document.getElementById('modalName').innerText = d.name || '--';
             document.getElementById('modalGen').innerText = d.generation ? `${d.generation}期生` : '--';
@@ -555,9 +628,16 @@
         }
 
         function closeModal() {
-            document.getElementById('memberModal').classList.remove('active');
-            document.getElementById('modalVideo').src = "";
-            document.body.style.overflow = '';
+            const modal = document.getElementById('memberModal');
+            modal.classList.remove('modal-opening');
+            modal.classList.add('modal-closing');
+            
+            // アニメーション完了後にモーダルを非表示
+            setTimeout(() => {
+                modal.classList.remove('active', 'modal-closing');
+                document.getElementById('modalVideo').src = "";
+                document.body.style.overflow = '';
+            }, 300);
         }
         document.getElementById('memberModal').onclick = (e) => { if (e.target.id === 'memberModal') closeModal(); };
 
