@@ -4,8 +4,8 @@ namespace App\Hinata\Controller;
 
 use App\Hinata\Model\MemberModel;
 use Core\Auth;
-use Core\MovieModel;
 use Core\Database;
+use Core\MediaAssetModel;
 
 /**
  * メンバーメンテナンス コントローラ (DB完全同期 & 画像アップロード対応)
@@ -95,47 +95,26 @@ class MemberController {
             // 2. YouTube 紹介動画
             $pvMovieId = $currentMember['pv_movie_id'] ?? null;
             if (!empty($_POST['pv_youtube_url'])) {
-                // YouTube URL から video_key を抽出
-                preg_match('%(?:youtube(?:-nocookie)?\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?)/|.*[?&]v=)|youtu\.be/)([^"&?/ ]{11})%i', $_POST['pv_youtube_url'], $match);
-                $key = $match[1] ?? null;
-
-                if ($key) {
-                    // 1) com_media_assets を取得または作成
-                    $stmt = $pdo->prepare("SELECT id FROM com_media_assets WHERE platform = 'youtube' AND media_key = ?");
-                    $stmt->execute([$key]);
-                    $assetId = $stmt->fetchColumn();
-
-                    if (!$assetId) {
-                        $stmt = $pdo->prepare("
-                            INSERT INTO com_media_assets (platform, media_key, title, thumbnail_url, created_at)
-                            VALUES ('youtube', ?, ?, ?, NOW())
-                        ");
-                        $title = ($_POST['name'] ?? '') . ' 紹介動画';
-                        $thumbnail = "https://img.youtube.com/vi/{$key}/mqdefault.jpg";
-                        $stmt->execute([$key, $title, $thumbnail]);
-                        $assetId = (int)$pdo->lastInsertId();
-                    }
+                $mediaModel = new MediaAssetModel();
+                $parsed = $mediaModel->parseUrl($_POST['pv_youtube_url']);
+                if ($parsed && $parsed['platform'] === 'youtube') {
+                    $title = ($_POST['name'] ?? '') . ' 紹介動画';
+                    $assetId = $mediaModel->findOrCreateAsset(
+                        $parsed['platform'],
+                        $parsed['media_key'],
+                        $parsed['sub_key'],
+                        $title
+                    );
 
                     if ($assetId) {
-                        // 2) hn_media_metadata (category = member_kojin_pv) を取得または作成
-                        $stmt = $pdo->prepare("
-                            SELECT id FROM hn_media_metadata
-                            WHERE asset_id = ? AND category = 'member_kojin_pv'
-                        ");
-                        $stmt->execute([$assetId]);
-                        $metaId = $stmt->fetchColumn();
-
-                        if (!$metaId) {
-                            $stmt = $pdo->prepare("
-                                INSERT INTO hn_media_metadata (asset_id, category, release_date)
-                                VALUES (?, 'member_kojin_pv', NULL)
-                            ");
-                            $stmt->execute([$assetId]);
-                            $metaId = (int)$pdo->lastInsertId();
-                        }
+                        $metaId = $mediaModel->findOrCreateMetadata(
+                            $assetId,
+                            'member_kojin_pv',
+                            null
+                        );
 
                         if ($metaId) {
-                            // 3) hn_media_members の紐付けを INSERT IGNORE で確実に作成
+                            // hn_media_members の紐付けを INSERT IGNORE で作成
                             $stmt = $pdo->prepare("
                                 INSERT IGNORE INTO hn_media_members (media_meta_id, member_id)
                                 VALUES (?, ?)

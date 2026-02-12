@@ -6,7 +6,7 @@ use App\Hinata\Model\EventModel;
 use App\Hinata\Model\MemberModel;
 use Core\Auth;
 use Core\Database;
-use Core\MovieModel;
+use Core\MediaAssetModel;
 
 /**
  * 日向坂イベント制御コントローラ
@@ -80,46 +80,26 @@ class EventController {
             }
 
             if (!empty($input['youtube_url'])) {
-                // YouTube URL から video_key を抽出
-                preg_match('%(?:youtube(?:-nocookie)?\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?)/|.*[?&]v=)|youtu\.be/)([^"&?/ ]{11})%i', $input['youtube_url'], $match);
-                $key = $match[1] ?? null;
-
-                if ($key) {
-                    // 1) com_media_assets を取得または作成
-                    $stmt = $pdo->prepare("SELECT id FROM com_media_assets WHERE platform = 'youtube' AND media_key = ?");
-                    $stmt->execute([$key]);
-                    $assetId = $stmt->fetchColumn();
-
-                    if (!$assetId) {
-                        $stmt = $pdo->prepare("
-                            INSERT INTO com_media_assets (platform, media_key, title, thumbnail_url, created_at)
-                            VALUES ('youtube', ?, ?, ?, NOW())
-                        ");
-                        $title = $input['event_name'] ?? '';
-                        $thumbnail = "https://img.youtube.com/vi/{$key}/mqdefault.jpg";
-                        $stmt->execute([$key, $title, $thumbnail]);
-                        $assetId = (int)$pdo->lastInsertId();
-                    }
+                $mediaModel = new MediaAssetModel();
+                $parsed = $mediaModel->parseUrl($input['youtube_url']);
+                if ($parsed && $parsed['platform'] === 'youtube') {
+                    $title = $input['event_name'] ?? '';
+                    $assetId = $mediaModel->findOrCreateAsset(
+                        $parsed['platform'],
+                        $parsed['media_key'],
+                        $parsed['sub_key'],
+                        $title
+                    );
 
                     if ($assetId) {
                         // 任意：イベント用メタデータも保持しておく（後続機能拡張を見越して）
-                        $stmt = $pdo->prepare("
-                            SELECT id FROM hn_media_metadata
-                            WHERE asset_id = ? AND category = 'Event'
-                        ");
-                        $stmt->execute([$assetId]);
-                        $metaId = $stmt->fetchColumn();
+                        $metaId = $mediaModel->findOrCreateMetadata(
+                            $assetId,
+                            'Event',
+                            $input['event_date'] ?? null
+                        );
 
-                        if (!$metaId) {
-                            $stmt = $pdo->prepare("
-                                INSERT INTO hn_media_metadata (asset_id, category, release_date)
-                                VALUES (?, 'Event', ?)
-                            ");
-                            // release_date はとりあえずイベント日を採用
-                            $stmt->execute([$assetId, $input['event_date'] ?? null]);
-                        }
-
-                        // 2) イベントとメディアアセットの紐付け（movie_id は com_media_assets.id として扱う）
+                        // イベントとメディアアセットの紐付け（movie_id は com_media_assets.id として扱う）
                         $stmt = $pdo->prepare("INSERT INTO hn_event_movies (event_id, movie_id) VALUES (?, ?)");
                         $stmt->execute([$eventId, $assetId]);
                     }
