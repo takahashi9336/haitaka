@@ -15,7 +15,21 @@ if (!$auth->check()) { header('Location: /login.php'); exit; }
 $user = $_SESSION['user'];
 
 $taskModel = new TaskModel();
-$activeTasksCount = count($taskModel->getActiveTasks());
+$activeTasks = $taskModel->getActiveTasks();
+$activeTasksCount = count($activeTasks);
+
+// 優先度×期日順でソートして最優先タスクを取得
+$topTask = null;
+if (!empty($activeTasks)) {
+    usort($activeTasks, function($a, $b) {
+        if ($a['priority'] !== $b['priority']) return $b['priority'] - $a['priority'];
+        if (!isset($a['due_date']) && !isset($b['due_date'])) return 0;
+        if (!isset($a['due_date'])) return 1;
+        if (!isset($b['due_date'])) return -1;
+        return strcmp($a['due_date'], $b['due_date']);
+    });
+    $topTask = $activeTasks[0];
+}
 
 $netaModel = new NetaModel();
 $netaCount = 0;
@@ -54,18 +68,24 @@ $nextEvent = $eventModel->getNextEvent();
     <?php require_once __DIR__ . '/../private/components/sidebar.php'; ?>
 
     <main class="flex-1 flex flex-col min-w-0 relative">
-        <header class="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-6 shrink-0 md:hidden">
-            <button id="mobileMenuBtn" class="text-slate-400 p-2"><i class="fa-solid fa-bars text-xl"></i></button>
-            <h1 class="font-black text-slate-800 tracking-tighter">MyPlatform</h1>
-            <div class="w-8"></div>
+        <header class="h-16 bg-white/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-6 shrink-0 sticky top-0 z-10">
+            <div class="flex items-center gap-3">
+                <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
+                <div class="w-8 h-8 bg-slate-700 rounded-lg flex items-center justify-center text-white shadow-lg shadow-slate-300">
+                    <i class="fa-solid fa-home text-sm"></i>
+                </div>
+                <h1 class="font-black text-slate-700 text-xl tracking-tighter">ダッシュボード</h1>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="hidden md:flex flex-col items-end">
+                    <span class="text-[10px] font-bold text-slate-400 tracking-wider">ログインユーザー</span>
+                    <span class="text-xs font-black text-slate-700"><?= htmlspecialchars($user['id_name']) ?></span>
+                </div>
+            </div>
         </header>
 
         <div class="flex-1 overflow-y-auto p-6 md:p-12">
             <div class="max-w-5xl mx-auto">
-                <header class="mb-6">
-                    <h1 class="text-3xl font-black text-slate-800 tracking-tight">ダッシュボード</h1>
-                    <p class="text-slate-400 font-medium mt-1">おかえりなさい、<?= htmlspecialchars($user['id_name']) ?> さん</p>
-                </header>
 
                 <!-- クイックメモ (Google Keep風) -->
                 <div class="mb-6">
@@ -99,12 +119,12 @@ $nextEvent = $eventModel->getNextEvent();
 
                 <?php if (!empty($nextEvent) && isset($nextEvent['days_left']) && (int)$nextEvent['days_left'] >= 0): ?>
                 <div class="mb-6">
-                    <div class="flex items-center gap-3 bg-white rounded-xl border border-sky-100 shadow-sm px-4 py-3">
+                    <a href="/hinata/events.php?event_id=<?= $nextEvent['id'] ?>" class="flex items-center gap-3 bg-white rounded-xl border border-sky-100 shadow-sm px-4 py-3 hover:border-sky-200 hover:shadow-md transition-all cursor-pointer">
                         <div class="w-8 h-8 rounded-lg bg-sky-500 text-white flex items-center justify-center shadow-md">
                             <i class="fa-solid fa-calendar-day text-sm"></i>
                         </div>
                         <div class="flex-1">
-                            <p class="text-[9px] font-bold text-sky-500 uppercase tracking-[0.2em] mb-1">Hinata Next Event</p>
+                            <p class="text-[9px] font-bold text-sky-500 tracking-wider mb-1">日向坂 次のイベント</p>
                             <p class="text-sm font-bold text-slate-800 mb-0.5">
                                 <?= htmlspecialchars($nextEvent['event_name'] ?? '次のイベント') ?>
                             </p>
@@ -125,10 +145,68 @@ $nextEvent = $eventModel->getNextEvent();
                                 ?>
                             </p>
                         </div>
-                        <a href="/hinata/events.php" class="hidden md:inline-flex items-center justify-center w-8 h-8 rounded-full border border-sky-100 text-sky-500 hover:bg-sky-50 transition">
+                        <div class="hidden md:inline-flex items-center justify-center w-8 h-8 rounded-full border border-sky-100 text-sky-500">
                             <i class="fa-solid fa-chevron-right text-xs"></i>
-                        </a>
-                    </div>
+                        </div>
+                    </a>
+                </div>
+                <?php endif; ?>
+
+                <?php if (!empty($topTask)): ?>
+                <?php
+                    // 期限が当日以降かチェック
+                    $isUrgent = false;
+                    $urgentText = '';
+                    if (!empty($topTask['due_date'])) {
+                        $dueDate = strtotime($topTask['due_date']);
+                        $today = strtotime(date('Y-m-d'));
+                        $daysLeft = floor(($dueDate - $today) / (60 * 60 * 24));
+                        
+                        if ($daysLeft < 0) {
+                            $isUrgent = true;
+                            $urgentText = abs($daysLeft) . '日超過';
+                        } elseif ($daysLeft === 0) {
+                            $isUrgent = true;
+                            $urgentText = '本日期限';
+                        } elseif ($daysLeft === 1) {
+                            $isUrgent = true;
+                            $urgentText = '明日期限';
+                        }
+                    }
+                    
+                    $cardClass = $isUrgent ? 'bg-gradient-to-r from-red-50 to-orange-50 border-red-200' : 'bg-white border-indigo-100';
+                    $iconBg = $isUrgent ? 'bg-red-500' : 'bg-indigo-600';
+                    $iconShadow = $isUrgent ? 'shadow-red-200' : 'shadow-indigo-200';
+                    $labelColor = $isUrgent ? 'text-red-600' : 'text-indigo-600';
+                ?>
+                <div class="mb-6">
+                    <a href="/task_manager/?task_id=<?= $topTask['id'] ?>" class="flex items-center gap-3 <?= $cardClass ?> rounded-xl border shadow-sm px-4 py-3 <?= $isUrgent ? 'ring-2 ring-red-200 animate-pulse' : '' ?> hover:shadow-md transition-all cursor-pointer">
+                        <div class="w-8 h-8 rounded-lg <?= $iconBg ?> text-white flex items-center justify-center shadow-md <?= $iconShadow ?>">
+                            <i class="fa-solid fa-<?= $isUrgent ? 'triangle-exclamation' : 'exclamation' ?> text-sm"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-[9px] font-bold <?= $labelColor ?> tracking-wider mb-1">最優先タスク<?= $isUrgent ? ' 🔥' : '' ?></p>
+                            <p class="text-sm font-bold text-slate-800 mb-0.5">
+                                <?= htmlspecialchars($topTask['title']) ?>
+                            </p>
+                            <div class="flex items-center gap-2 text-xs text-slate-500">
+                                <span class="text-[10px] font-black <?= $topTask['priority'] == 3 ? 'text-red-500' : 'text-orange-400' ?>">
+                                    <?= str_repeat('!', $topTask['priority']) ?>
+                                </span>
+                                <?php if (!empty($topTask['category_name'])): ?>
+                                    <span class="px-1.5 py-0.5 bg-slate-100 rounded text-[10px] font-bold"><?= htmlspecialchars($topTask['category_name']) ?></span>
+                                <?php endif; ?>
+                                <?php if (!empty($topTask['due_date'])): ?>
+                                    <span class="<?= $isUrgent ? 'text-red-600 font-black' : '' ?>">
+                                        <?= $urgentText ?: date('m/d', strtotime($topTask['due_date'])) . ' 期限' ?>
+                                    </span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <div class="hidden md:inline-flex items-center justify-center w-8 h-8 rounded-full border <?= $isUrgent ? 'border-red-200 text-red-600' : 'border-indigo-100 text-indigo-600' ?>">
+                            <i class="fa-solid fa-chevron-right text-xs"></i>
+                        </div>
+                    </a>
                 </div>
                 <?php endif; ?>
 
@@ -144,7 +222,7 @@ $nextEvent = $eventModel->getNextEvent();
                         </div>
                         <div class="flex items-end justify-between">
                             <span class="text-3xl font-black text-slate-800"><?= $activeTasksCount ?></span>
-                            <span class="text-indigo-600 text-xs font-bold uppercase tracking-widest">開く <i class="fa-solid fa-arrow-right ml-1"></i></span>
+                            <span class="text-indigo-600 text-xs font-bold tracking-wider">開く <i class="fa-solid fa-arrow-right ml-1"></i></span>
                         </div>
                     </a>
 
@@ -159,7 +237,7 @@ $nextEvent = $eventModel->getNextEvent();
                         </div>
                         <div class="flex items-end justify-between">
                             <span class="text-3xl font-black text-slate-800"><?= $netaCount ?></span>
-                            <span class="text-sky-500 text-xs font-bold uppercase tracking-widest">移動する <i class="fa-solid fa-arrow-right ml-1"></i></span>
+                            <span class="text-sky-500 text-xs font-bold tracking-wider">移動する <i class="fa-solid fa-arrow-right ml-1"></i></span>
                         </div>
                     </a>
                 </div>

@@ -54,7 +54,7 @@
         <header class="h-14 bg-white border-b border-sky-100 flex items-center justify-between px-4 shrink-0 sticky top-0 z-10 shadow-sm">
             <div class="flex items-center gap-2">
                 <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
-                <h1 class="font-black text-slate-700 text-lg uppercase tracking-tight">Member Admin</h1>
+                <h1 class="font-black text-slate-700 text-lg tracking-tight">メンバー管理</h1>
             </div>
             <a href="/hinata/members.php" class="text-xs font-bold text-sky-500 bg-sky-50 px-4 py-2 rounded-full hover:bg-sky-100 transition">戻る</a>
         </header>
@@ -75,7 +75,7 @@
                             </div>
                             <div>
                                 <h2 id="formTitle" class="text-xl font-black text-slate-800 tracking-tight">メンバーを選択</h2>
-                                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Identity & Media Management</p>
+                                <p class="text-[10px] text-slate-400 font-bold tracking-wider mt-1">メンバー情報・メディア管理</p>
                             </div>
                         </div>
 
@@ -83,20 +83,20 @@
                             <input type="hidden" name="id" id="m_id">
                             
                             <div class="bg-slate-50 p-4 rounded-lg border border-slate-100">
-                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 text-sky-500">Portrait Image Upload</label>
+                                <label class="block text-[10px] font-black text-slate-400 mb-2 ml-1 text-sky-500 tracking-wider">写真アップロード</label>
                                 <input type="file" name="image_file" id="f_image" accept="image/*" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:bg-sky-50 file:text-sky-600 hover:file:bg-sky-100 cursor-pointer">
                             </div>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div><label class="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1">Name</label><input type="text" name="name" id="f_name" required class="w-full h-11 border border-slate-100 rounded-xl px-4 text-sm outline-none bg-slate-50"></div>
-                                <div><label class="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1">Kana</label><input type="text" name="kana" id="f_kana" required class="w-full h-11 border border-slate-100 rounded-xl px-4 text-sm outline-none bg-slate-50"></div>
+                                <div><label class="block text-[10px] font-black text-slate-400 mb-1 ml-1 tracking-wider">名前</label><input type="text" name="name" id="f_name" required class="w-full h-11 border border-slate-100 rounded-xl px-4 text-sm outline-none bg-slate-50"></div>
+                                <div><label class="block text-[10px] font-black text-slate-400 mb-1 ml-1 tracking-wider">かな</label><input type="text" name="kana" id="f_kana" required class="w-full h-11 border border-slate-100 rounded-xl px-4 text-sm outline-none bg-slate-50"></div>
                             </div>
 
                             <div class="grid grid-cols-3 gap-4">
-                                <div><label class="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1">Blood</label><select name="blood_type" id="f_blood" class="w-full h-11 border border-slate-100 rounded-xl px-4 text-sm outline-none bg-slate-50"><option value="">未設定</option><option value="A">A型</option><option value="B">B型</option><option value="O">O型</option><option value="AB">AB型</option><option value="不明">不明</option></select></div>
-                                <div><label class="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1">Height</label><input type="number" name="height" id="f_height" step="0.1" class="w-full h-11 border border-slate-100 rounded-xl px-4 text-sm outline-none bg-slate-50"></div>
+                                <div><label class="block text-[10px] font-black text-slate-400 mb-1 ml-1 tracking-wider">血液型</label><select name="blood_type" id="f_blood" class="w-full h-11 border border-slate-100 rounded-xl px-4 text-sm outline-none bg-slate-50"><option value="">未設定</option><option value="A">A型</option><option value="B">B型</option><option value="O">O型</option><option value="AB">AB型</option><option value="不明">不明</option></select></div>
+                                <div><label class="block text-[10px] font-black text-slate-400 mb-1 ml-1 tracking-wider">身長</label><input type="number" name="height" id="f_height" step="0.1" class="w-full h-11 border border-slate-100 rounded-xl px-4 text-sm outline-none bg-slate-50"></div>
                                 <div>
-                                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1">Gen</label>
+                                    <label class="block text-[10px] font-black text-slate-400 mb-1 ml-1 tracking-wider">期生</label>
                                     <select name="generation" id="f_gen" class="w-full h-11 border border-slate-100 rounded-xl px-4 text-sm outline-none bg-slate-50">
                                         <option value="1">1期</option>
                                         <option value="2">2期</option>
@@ -108,18 +108,18 @@
                             </div>
 
                             <div class="grid grid-cols-2 gap-4">
-                                <div><label class="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1">Birth Date</label><input type="date" name="birth_date" id="f_birth_date" class="w-full h-11 border border-slate-100 rounded-xl px-4 text-sm outline-none bg-slate-50"></div>
-                                <div><label class="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1">Birth Place</label><input type="text" name="birth_place" id="f_birth_place" class="w-full h-11 border border-slate-100 rounded-xl px-4 text-sm outline-none bg-slate-50"></div>
+                                <div><label class="block text-[10px] font-black text-slate-400 mb-1 ml-1 tracking-wider">生年月日</label><input type="date" name="birth_date" id="f_birth_date" class="w-full h-11 border border-slate-100 rounded-xl px-4 text-sm outline-none bg-slate-50"></div>
+                                <div><label class="block text-[10px] font-black text-slate-400 mb-1 ml-1 tracking-wider">出身地</label><input type="text" name="birth_place" id="f_birth_place" class="w-full h-11 border border-slate-100 rounded-xl px-4 text-sm outline-none bg-slate-50"></div>
                             </div>
 
                             <div>
-                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1">Member Information</label>
+                                <label class="block text-[10px] font-black text-slate-400 mb-1 ml-1 tracking-wider">メンバー情報</label>
                                 <textarea name="member_info" id="f_info" rows="3" class="w-full border border-slate-100 rounded-xl p-4 text-sm outline-none bg-slate-50 focus:bg-white transition-all" placeholder="紹介文、メモ等..."></textarea>
                             </div>
 
                             <div class="grid grid-cols-2 gap-4">
-                                <div><label class="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1">Penlight 1</label><select name="color_id1" id="f_c1" class="w-full h-11 border border-slate-100 rounded-xl px-4 text-sm outline-none bg-slate-50"><?php foreach($colors as $c): ?><option value="<?= $c['id'] ?>"><?= $c['color_name'] ?></option><?php endforeach; ?></select></div>
-                                <div><label class="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1">Penlight 2</label><select name="color_id2" id="f_c2" class="w-full h-11 border border-slate-100 rounded-xl px-4 text-sm outline-none bg-slate-50"><?php foreach($colors as $c): ?><option value="<?= $c['id'] ?>"><?= $c['color_name'] ?></option><?php endforeach; ?></select></div>
+                                <div><label class="block text-[10px] font-black text-slate-400 mb-1 ml-1 tracking-wider">サイリウムカラー 1</label><select name="color_id1" id="f_c1" class="w-full h-11 border border-slate-100 rounded-xl px-4 text-sm outline-none bg-slate-50"><?php foreach($colors as $c): ?><option value="<?= $c['id'] ?>"><?= $c['color_name'] ?></option><?php endforeach; ?></select></div>
+                                <div><label class="block text-[10px] font-black text-slate-400 mb-1 ml-1 tracking-wider">サイリウムカラー 2</label><select name="color_id2" id="f_c2" class="w-full h-11 border border-slate-100 rounded-xl px-4 text-sm outline-none bg-slate-50"><?php foreach($colors as $c): ?><option value="<?= $c['id'] ?>"><?= $c['color_name'] ?></option><?php endforeach; ?></select></div>
                             </div>
 
                             <div class="pt-4 border-t border-slate-50 space-y-4">

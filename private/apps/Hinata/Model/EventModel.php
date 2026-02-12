@@ -39,4 +39,13 @@ class EventModel extends BaseModel {
                 ORDER BY event_date ASC LIMIT 1";
         return $this->pdo->query($sql)->fetch() ?: null;
     }
+    
+    public function getAllUpcomingEvents(): array {
+        // 過去3ヶ月から未来1年のイベントを取得
+        $sql = "SELECT * FROM {$this->table} 
+                WHERE event_date >= DATE_SUB(NOW(), INTERVAL 3 MONTH)
+                  AND event_date <= DATE_ADD(NOW(), INTERVAL 1 YEAR)
+                ORDER BY event_date ASC";
+        return $this->pdo->query($sql)->fetchAll();
+    }
 }

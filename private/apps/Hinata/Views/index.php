@@ -64,7 +64,7 @@
                     <form id="netaForm" class="space-y-4">
                         <input type="hidden" name="id" id="neta_id">
                         <div class="flex justify-between items-center">
-                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Post / Edit Talk</label>
+                            <label class="text-[10px] font-black text-slate-400 tracking-wider">ネタを投稿・編集</label>
                             <button type="button" id="cancelEdit" class="hidden text-[10px] text-red-400 font-bold bg-red-50 px-2 py-0.5 rounded">キャンセル</button>
                         </div>
                         <select name="member_id" id="form_member_id" required class="w-full h-11 border border-slate-100 rounded-lg px-4 text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-sky-100 transition-all">
@@ -94,7 +94,7 @@
                                 <div class="flex items-center justify-between px-4 py-4 cursor-pointer hover:bg-slate-50 transition" onclick="toggleAccordion(<?= $mid ?>)">
                                     <div class="flex items-center gap-3">
                                         <span class="font-bold text-slate-700"><?= htmlspecialchars($group['member_name']) ?></span>
-                                        <span class="text-[10px] text-slate-400 font-bold px-2 py-0.5 bg-slate-100 rounded-full"><?= count($group['items']) ?> items</span>
+                                        <span class="text-[10px] text-slate-400 font-bold px-2 py-0.5 bg-slate-100 rounded-full"><?= count($group['items']) ?> 件</span>
                                     </div>
                                     <i id="icon-<?= $mid ?>" class="fa-solid fa-chevron-down text-slate-300 text-xs transition-transform duration-300"></i>
                                 </div>
@@ -120,7 +120,7 @@
                             </div>
                         </div>
                     <?php endforeach; else: ?>
-                        <p class="text-center text-slate-400 text-xs py-10 uppercase tracking-widest">No Data Stocked</p>
+                        <p class="text-center text-slate-400 text-xs py-10 tracking-wider">データがありません</p>
                     <?php endif; ?>
                 </div>
             </div>

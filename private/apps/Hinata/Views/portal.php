@@ -37,11 +37,11 @@
                 <div class="w-8 h-8 bg-sky-500 rounded-lg flex items-center justify-center text-white shadow-lg shadow-sky-200">
                     <i class="fa-solid fa-sun text-sm"></i>
                 </div>
-                <h1 class="font-black text-slate-700 text-xl tracking-tighter uppercase">Hinata Portal</h1>
+                <h1 class="font-black text-slate-700 text-xl tracking-tighter">日向坂ポータル</h1>
             </div>
             <div class="flex items-center gap-4">
                 <div class="hidden md:flex flex-col items-end">
-                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ログインユーザー</span>
+                    <span class="text-[10px] font-bold text-slate-400 tracking-wider">ログインユーザー</span>
                     <span class="text-xs font-black text-sky-500"><?= htmlspecialchars($user['id_name'] ?? 'ゲスト') ?></span>
                 </div>
             </div>
@@ -61,7 +61,7 @@
                             <i class="fa-solid fa-calendar-day"></i>
                         </div>
                         <div class="flex-1">
-                            <p class="text-[10px] font-bold text-sky-500 uppercase tracking-[0.2em] mb-1">Next Event</p>
+                            <p class="text-[10px] font-bold text-sky-500 tracking-wider mb-1">次のイベント</p>
                             <p class="text-sm font-bold text-slate-800 mb-0.5">
                                 <?= htmlspecialchars($nextEvent['event_name'] ?? '次のイベント') ?>
                             </p>
@@ -99,8 +99,7 @@
                             <div class="w-12 h-12 bg-sky-50 rounded-lg flex items-center justify-center text-sky-500 mb-6 group-hover:bg-sky-500 group-hover:text-white transition-colors">
                                 <i class="fa-solid fa-comment-dots"></i>
                             </div>
-                            <h3 class="text-xl font-black text-slate-800 mb-2">ミーグリネタ帳</h3>
-                            <p class="text-xs text-slate-500 font-bold uppercase tracking-widest mb-4">Talk Topics</p>
+                            <h3 class="text-xl font-black text-slate-800 mb-4">ミーグリネタ帳</h3>
                             <p class="text-sm text-slate-400 leading-relaxed">メンバーとの会話ネタや、ミーグリのレポを記録・管理します。</p>
                         </div>
                     </a>
@@ -114,8 +113,7 @@
                             <div class="w-12 h-12 bg-sky-50 rounded-lg flex items-center justify-center text-sky-500 mb-6 group-hover:bg-sky-500 group-hover:text-white transition-colors">
                                 <i class="fa-solid fa-calendar-check"></i>
                             </div>
-                            <h3 class="text-xl font-black text-slate-800 mb-2">イベント</h3>
-                            <p class="text-xs text-slate-500 font-bold uppercase tracking-widest mb-4">Event Schedule</p>
+                            <h3 class="text-xl font-black text-slate-800 mb-4">イベント</h3>
                             <p class="text-sm text-slate-400 leading-relaxed">ライブやミーグリ、発売日などの重要日程を確認します。</p>
                         </div>
                     </a>
@@ -129,8 +127,7 @@
                             <div class="w-12 h-12 bg-sky-50 rounded-lg flex items-center justify-center text-sky-500 mb-6 group-hover:bg-sky-500 group-hover:text-white transition-colors">
                                 <i class="fa-solid fa-address-card"></i>
                             </div>
-                            <h3 class="text-xl font-black text-slate-800 mb-2">メンバー帳</h3>
-                            <p class="text-xs text-slate-500 font-bold uppercase tracking-widest mb-4">Member Bio</p>
+                            <h3 class="text-xl font-black text-slate-800 mb-4">メンバー帳</h3>
                             <p class="text-sm text-slate-400 leading-relaxed">メンバーのプロフィール、サイリウムカラーなどをチェックします。</p>
                         </div>
                     </a>

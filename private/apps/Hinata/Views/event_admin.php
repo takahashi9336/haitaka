@@ -30,8 +30,8 @@
     <main class="flex-1 flex flex-col min-w-0 bg-[#f0f9ff] overflow-y-auto">
         <header class="h-16 bg-white border-b border-sky-100 flex items-center justify-between px-6 shrink-0 sticky top-0 z-10 shadow-sm">
             <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-xl"></i></button>
-            <h1 class="font-black text-slate-700 tracking-tighter text-xl uppercase">Event Admin</h1>
-            <a href="/hinata/" class="text-xs font-bold text-sky-500 bg-sky-50 px-4 py-2 rounded-full hover:bg-sky-100 transition">Portal</a>
+            <h1 class="font-black text-slate-700 tracking-tighter text-xl">イベント管理</h1>
+            <a href="/hinata/" class="text-xs font-bold text-sky-500 bg-sky-50 px-4 py-2 rounded-full hover:bg-sky-100 transition">ポータル</a>
         </header>
 
         <div class="p-4 md:p-12 max-w-5xl mx-auto w-full">
@@ -49,11 +49,11 @@
                             
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Event Name</label>
+                                    <label class="block text-[10px] font-black text-slate-400 mb-1 tracking-wider">イベント名</label>
                                     <input type="text" name="event_name" id="f_name" required class="w-full h-12 border border-slate-100 rounded-lg px-4 text-sm outline-none focus:ring-2 focus:ring-sky-100">
                                 </div>
                                 <div>
-                                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Date</label>
+                                    <label class="block text-[10px] font-black text-slate-400 mb-1 tracking-wider">日付</label>
                                     <input type="date" name="event_date" id="f_date" required class="w-full h-12 border border-slate-100 rounded-lg px-4 text-sm bg-white outline-none">
                                 </div>
                             </div>
@@ -61,7 +61,7 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <!-- カテゴリ欄を復活 -->
                                 <div>
-                                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Category</label>
+                                    <label class="block text-[10px] font-black text-slate-400 mb-1 tracking-wider">カテゴリ</label>
                                     <select name="category" id="f_category" class="w-full h-12 border border-slate-100 rounded-lg px-4 text-sm bg-slate-50 outline-none">
                                         <option value="1">LIVE / ライブ</option>
                                         <option value="2">ミーグリ</option>
@@ -73,7 +73,7 @@
                                     </select>
                                 </div>
                                 <div>
-                                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Venue / Location</label>
+                                    <label class="block text-[10px] font-black text-slate-400 mb-1 tracking-wider">会場・場所</label>
                                     <input type="text" name="event_place" id="f_place" class="w-full h-12 border border-slate-100 rounded-lg px-4 text-sm outline-none" placeholder="場所">
                                 </div>
                             </div>
@@ -86,7 +86,7 @@
                             </div>
 
                             <div class="pt-2">
-                                <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">Cast / Members</label>
+                                <label class="block text-[10px] font-black text-slate-400 mb-2 tracking-wider">出演メンバー</label>
                                 <div class="flex gap-6 mb-3">
                                     <label class="flex items-center gap-1 cursor-pointer font-bold text-sm"><input type="radio" name="cast_type" value="group" checked onchange="toggleMemberSelect()"> 全員</label>
                                     <label class="flex items-center gap-1 cursor-pointer font-bold text-sm"><input type="radio" name="cast_type" value="individual" onchange="toggleMemberSelect()"> 個別</label>
@@ -108,7 +108,7 @@
 
                 <div class="space-y-4">
                     <section class="bg-white p-6 rounded-xl border border-sky-50 shadow-sm">
-                        <h3 class="text-xs font-black text-slate-400 uppercase mb-4 tracking-widest">Edit Recent</h3>
+                        <h3 class="text-xs font-black text-slate-400 mb-4 tracking-wider">最近の編集</h3>
                         <div class="space-y-2">
                             <?php foreach ($events as $ev): ?>
                             <div onclick='editEvent(<?= json_encode($ev) ?>)' class="p-3 border border-slate-50 rounded-xl hover:border-sky-200 hover:bg-sky-50/30 transition-all cursor-pointer">

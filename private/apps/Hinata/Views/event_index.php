@@ -47,7 +47,7 @@ $getCatInfo = function($catId) {
             <div class="flex items-center gap-2">
                 <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
                 <a href="/hinata/index.php" class="text-slate-400 p-2"><i class="fa-solid fa-chevron-left text-lg"></i></a>
-                <h1 class="font-black text-slate-700 text-lg uppercase tracking-tight">イベント</h1>
+                <h1 class="font-black text-slate-700 text-lg tracking-tight">イベント</h1>
             </div>
             <div class="flex items-center gap-2">
                 <?php if (($user['role'] ?? '') === 'admin'): ?>
@@ -61,10 +61,10 @@ $getCatInfo = function($catId) {
 
         <div class="bg-white border-b border-sky-50 px-4 py-2 flex items-center justify-between shrink-0">
             <div class="flex p-1 bg-slate-100 rounded-xl">
-                <button onclick="switchTab('list')" id="tab-list" class="tab-btn active px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all">リスト</button>
-                <button onclick="switchTab('calendar')" id="tab-calendar" class="tab-btn px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all">カレンダー</button>
+                <button onclick="switchTab('list')" id="tab-list" class="tab-btn active px-4 py-1.5 rounded-lg text-[10px] font-black tracking-wider transition-all">リスト</button>
+                <button onclick="switchTab('calendar')" id="tab-calendar" class="tab-btn px-4 py-1.5 rounded-lg text-[10px] font-black tracking-wider transition-all">カレンダー</button>
             </div>
-            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest"><?= date('n月 Y年') ?></span>
+            <span class="text-[10px] font-black text-slate-400 tracking-wider"><?= date('n月 Y年') ?></span>
         </div>
 
         <div class="flex-1 overflow-y-auto custom-scroll">
@@ -83,17 +83,17 @@ $getCatInfo = function($catId) {
                         $dateD = ['Sun' => '日', 'Mon' => '月', 'Tue' => '火', 'Wed' => '水', 'Thu' => '木', 'Fri' => '金', 'Sat' => '土'][date('D', strtotime($e['event_date']))];
                         $isToday = date('Y-m-d') === date('Y-m-d', strtotime($e['event_date']));
                     ?>
-                    <div class="bg-white rounded-lg border border-sky-50 shadow-sm overflow-hidden hover:border-sky-200 transition-all">
+                    <div id="event-card-<?= $e['id'] ?>" class="bg-white rounded-lg border border-sky-50 shadow-sm overflow-hidden hover:border-sky-200 transition-all" data-event-id="<?= $e['id'] ?>">
                         <div class="flex items-stretch cursor-pointer active:bg-slate-50" onclick="toggleDetail(<?= $e['id'] ?>)">
                             <div class="date-col flex flex-col items-center justify-center py-4 bg-slate-50/50 border-r border-slate-100 <?= $isToday ? 'bg-sky-50' : '' ?>">
-                                <span class="text-[10px] font-black text-slate-400 uppercase tracking-tighter"><?= $dateD ?></span>
+                                <span class="text-[10px] font-black text-slate-400 tracking-wider"><?= $dateD ?></span>
                                 <span class="text-lg font-black text-slate-700 leading-none"><?= $dateM ?></span>
                             </div>
                             <div class="w-1.5 shrink-0" style="background-color: <?= $cat['color'] ?>;"></div>
                             <div class="flex-1 p-4 min-w-0 flex items-center justify-between">
                                 <div class="min-w-0">
                                     <div class="flex items-center gap-2 mb-1">
-                                        <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest"><?= htmlspecialchars($cat['name']) ?></span>
+                                        <span class="text-[9px] font-black text-slate-400 tracking-wider"><?= htmlspecialchars($cat['name']) ?></span>
                                         <span class="text-[10px] font-bold text-slate-400"><?= $time ?></span>
                                     </div>
                                     <h3 class="font-black text-slate-800 text-sm md:text-base truncate"><?= htmlspecialchars($e['event_name']) ?></h3>
@@ -142,10 +142,32 @@ $getCatInfo = function($catId) {
         function toggleDetail(id) {
             const detail = document.getElementById('detail-' + id);
             const arrow = document.getElementById('arrow-' + id);
+            const card = document.getElementById('event-card-' + id);
             if (!detail) return;
             const isHidden = detail.classList.contains('hidden');
             detail.classList.toggle('hidden');
             if (arrow) arrow.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+            
+            // 選択状態の背景色を更新
+            if (isHidden) {
+                // 展開する場合: まず全てのイベントカードの黄色背景を削除
+                document.querySelectorAll('[data-event-id]').forEach(eventCard => {
+                    eventCard.classList.remove('bg-yellow-50', 'border-yellow-300');
+                    eventCard.classList.add('bg-white', 'border-sky-50');
+                });
+                
+                // このカードのみ黄色背景に
+                if (card) {
+                    card.classList.add('bg-yellow-50', 'border-yellow-300');
+                    card.classList.remove('bg-white', 'border-sky-50');
+                }
+            } else {
+                // 閉じる場合: このカードの白背景に戻す
+                if (card) {
+                    card.classList.remove('bg-yellow-50', 'border-yellow-300');
+                    card.classList.add('bg-white', 'border-sky-50');
+                }
+            }
         }
 
         let calendar = null;
@@ -175,6 +197,24 @@ $getCatInfo = function($catId) {
                 }
             });
             calendar.render();
+            
+            // URLパラメータからイベントIDを取得して自動選択
+            const urlParams = new URLSearchParams(window.location.search);
+            const eventId = urlParams.get('event_id');
+            if (eventId) {
+                setTimeout(() => {
+                    switchTab('list');
+                    const card = document.getElementById('detail-' + eventId);
+                    if (card) {
+                        card.parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        if (card.classList.contains('hidden')) {
+                            toggleDetail(parseInt(eventId));
+                        }
+                    }
+                    // URLパラメータをクリア
+                    window.history.replaceState({}, '', '/hinata/events.php');
+                }, 500);
+            }
         });
 
         function switchTab(mode) {

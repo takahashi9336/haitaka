@@ -4,6 +4,7 @@ namespace App\TaskManager\Controller;
 
 use App\TaskManager\Model\TaskModel;
 use App\TaskManager\Model\CategoryModel;
+use App\Hinata\Model\EventModel;
 use Core\Auth;
 use Core\Validator;
 use Core\Logger;
@@ -17,6 +18,11 @@ class TaskController {
         $tasks = $model->getActiveTasks();
         $catModel = new CategoryModel();
         $categories = $catModel->all();
+        
+        // 日向坂イベントを取得
+        $eventModel = new EventModel();
+        $hinataEvents = $eventModel->getAllUpcomingEvents();
+        
         $user = $_SESSION['user'];
         require_once __DIR__ . '/../Views/index.php';
     }

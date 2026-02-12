@@ -128,7 +128,7 @@
             <div class="flex items-center gap-2">
                 <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
                 <a href="/hinata/index.php" class="text-slate-400 p-2"><i class="fa-solid fa-chevron-left text-lg"></i></a>
-                <h1 class="font-black text-slate-700 text-lg uppercase tracking-tight">メンバー帳</h1>
+                <h1 class="font-black text-slate-700 text-lg tracking-tight">メンバー帳</h1>
             </div>
             <?php if (($user['role'] ?? '') === 'admin'): ?>
             <a href="/hinata/member_admin.php" class="text-[10px] font-bold text-sky-500 bg-sky-50 px-3 py-1.5 rounded-full"><i class="fa-solid fa-user-gear mr-1"></i>管理</a>
@@ -137,12 +137,23 @@
 
         <div class="bg-white border-b border-sky-50 px-4 py-3 flex flex-wrap gap-3 items-center justify-between shrink-0">
             <div class="flex gap-2 overflow-x-auto no-scrollbar">
-                <button onclick="filterGen('all')" class="filter-btn active px-6 py-1.5 rounded-full border border-slate-100 text-[10px] font-black uppercase transition-all">全員</button>
+                <button onclick="filterGen('all')" class="filter-btn active px-6 py-1.5 rounded-full border border-slate-100 text-[10px] font-black tracking-wider transition-all">全員</button>
                 <?php foreach([1,2,3,4,5] as $g): ?>
-                    <button onclick="filterGen(<?= $g ?>)" class="filter-btn px-6 py-1.5 rounded-full border border-slate-100 text-[10px] font-black uppercase transition-all"><?= $g ?>期生</button>
+                    <button onclick="filterGen(<?= $g ?>)" class="filter-btn px-6 py-1.5 rounded-full border border-slate-100 text-[10px] font-black tracking-wider transition-all"><?= $g ?>期生</button>
                 <?php endforeach; ?>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 flex-wrap">
+                <div class="flex items-center gap-1">
+                    <select id="sortSelect" onchange="changeSortOrder()" class="px-3 py-1.5 rounded-full border border-slate-200 text-[10px] font-black text-slate-600 bg-white cursor-pointer outline-none">
+                        <option value="generation">期生順</option>
+                        <option value="name">名前順</option>
+                        <option value="birthdate">生年月日順</option>
+                        <option value="height">身長順</option>
+                    </select>
+                    <button id="sortOrderBtn" onclick="toggleSortOrder()" class="w-8 h-8 rounded-full border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 transition flex items-center justify-center" title="昇順・降順切り替え">
+                        <i class="fa-solid fa-arrow-up-short-wide text-sm"></i>
+                    </button>
+                </div>
                 <div class="flex bg-slate-100 rounded-full p-1 text-[10px] font-black">
                     <button id="viewCardBtn" class="px-3 py-1 rounded-full bg-white shadow text-slate-700" onclick="setViewMode('card')"><i class="fa-solid fa-border-all mr-1"></i>カード</button>
                     <button id="viewListBtn" class="px-3 py-1 rounded-full text-slate-500" onclick="setViewMode('list')"><i class="fa-solid fa-list mr-1"></i>一覧</button>
@@ -155,26 +166,7 @@
 
         <div class="flex-1 overflow-y-auto p-4 md:p-8 custom-scroll pb-24">
             <div id="memberGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 max-w-6xl mx-auto">
-                <?php foreach ($members as $m): ?>
-                <div class="member-card bg-white rounded-xl p-4 shadow-sm border border-sky-50/50 cursor-pointer flex flex-col items-center text-center relative overflow-hidden" 
-                     data-gen="<?= $m['generation'] ?>" data-active="<?= $m['is_active'] ?>" onclick="showDetail(<?= $m['id'] ?>, event)">
-                    <div class="absolute top-0 left-0 w-full h-1.5" style="background: linear-gradient(to right, <?= $m['color1'] ?: '#ccc' ?>, <?= $m['color2'] ?: '#ddd' ?>);"></div>
-                    <div class="w-full aspect-square rounded-xl bg-sky-50 mb-4 shadow-inner overflow-hidden flex items-center justify-center">
-                        <?php if(!empty($m['image_url'])): ?>
-                            <img src="/assets/img/members/<?= $m['image_url'] ?>" class="portrait-img">
-                        <?php else: ?>
-                            <span class="text-4xl font-black text-sky-200"><?= mb_substr($m['name'], 0, 1) ?></span>
-                        <?php endif; ?>
-                    </div>
-                    <div class="space-y-1">
-                        <span class="text-[9px] font-black text-sky-400 uppercase tracking-widest"><?= $m['generation'] ?>期生</span>
-                        <h3 class="font-black text-slate-800 text-base"><?= htmlspecialchars($m['name']) ?></h3>
-                        <?php if(!$m['is_active']): ?>
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-[10px] font-bold text-slate-500">卒業</span>
-                        <?php endif; ?>
-                    </div>
-                </div>
-                <?php endforeach; ?>
+                <!-- JavaScriptで動的に生成 -->
             </div>
 
             <div id="memberList" class="hidden max-w-5xl mx-auto mt-4">
@@ -190,98 +182,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <?php
-                            $currentGroup = null;
-                            $penlightCell = function (?string $code, ?string $name): string {
-                                if (empty($code) && empty($name)) {
-                                    return '<span class="inline-flex items-center px-2 py-1 rounded-lg bg-slate-100 text-[11px] font-bold text-slate-500 whitespace-nowrap">未設定</span>';
-                                }
-                                $label = htmlspecialchars($name ?: $code, ENT_QUOTES, 'UTF-8');
-                                $hex = ltrim((string)$code, '#');
-                                if (strlen($hex) === 6) {
-                                    $r = hexdec(substr($hex, 0, 2));
-                                    $g = hexdec(substr($hex, 2, 2));
-                                    $b = hexdec(substr($hex, 4, 2));
-                                    $lum = 0.299 * $r + 0.587 * $g + 0.114 * $b;
-                                    $textColor = $lum > 186 ? '#111827' : '#ffffff';
-                                } else {
-                                    $textColor = '#111827';
-                                }
-                                $bg = $code ?: '#e5e7eb';
-                                return '<span class="inline-flex items-center px-2 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap" style="background-color:'
-                                    . htmlspecialchars($bg, ENT_QUOTES, 'UTF-8')
-                                    . ';color:' . htmlspecialchars($textColor, ENT_QUOTES, 'UTF-8') . ';">'
-                                    . $label . '</span>';
-                            };
-                            ?>
-                            <?php foreach ($members as $m): ?>
-                            <?php
-                                $group = $m['is_active'] ? 'active' : 'graduated';
-                                if ($group !== $currentGroup):
-                                    $currentGroup = $group;
-                            ?>
-                            <tr class="border-t border-slate-100 bg-slate-50/60">
-                                <td colspan="5" class="px-3 py-2 text-[11px] font-bold text-slate-500 uppercase tracking-[0.2em]">
-                                    <?= $group === 'active' ? '現役メンバー' : '卒業メンバー' ?>
-                                </td>
-                            </tr>
-                            <?php endif; ?>
-                            <tr class="member-row border-t border-slate-50 hover:bg-sky-50/60 cursor-pointer"
-                                data-gen="<?= $m['generation'] ?>" data-active="<?= $m['is_active'] ?>" onclick="showDetail(<?= $m['id'] ?>, event)">
-                                <td class="px-3 py-2">
-                                    <div class="flex items-center gap-2" onclick="event.stopPropagation()">
-                                        <?php $hasBlog = !empty($m['blog_url']); ?>
-                                        <?php $hasInsta = !empty($m['insta_url']); ?>
-                                        <?php $hasPv = !empty($m['pv_video_key']); ?>
-                                        <?php if ($hasBlog): ?>
-                                            <a href="<?= htmlspecialchars($m['blog_url']) ?>" target="_blank" class="w-7 h-7 rounded-full flex items-center justify-center bg-sky-50 text-sky-600 hover:bg-sky-100 text-xs" title="ブログ">
-                                                <i class="fa-solid fa-blog"></i>
-                                            </a>
-                                        <?php else: ?>
-                                            <span class="w-7 h-7 rounded-full flex items-center justify-center bg-slate-50 text-slate-300 text-xs" title="ブログ">
-                                                <i class="fa-solid fa-blog"></i>
-                                            </span>
-                                        <?php endif; ?>
-                                        <?php if ($hasInsta): ?>
-                                            <a href="<?= htmlspecialchars($m['insta_url']) ?>" target="_blank" class="w-7 h-7 rounded-full flex items-center justify-center bg-pink-50 text-pink-600 hover:bg-pink-100 text-xs" title="Instagram">
-                                                <i class="fa-brands fa-instagram"></i>
-                                            </a>
-                                        <?php else: ?>
-                                            <span class="w-7 h-7 rounded-full flex items-center justify-center bg-slate-50 text-slate-300 text-xs" title="Instagram">
-                                                <i class="fa-brands fa-instagram"></i>
-                                            </span>
-                                        <?php endif; ?>
-                                        <?php if ($hasPv): ?>
-                                            <a href="https://www.youtube.com/watch?v=<?= htmlspecialchars($m['pv_video_key']) ?>" target="_blank" class="w-7 h-7 rounded-full flex items-center justify-center bg-red-50 text-red-600 hover:bg-red-100 text-xs" title="個人PV">
-                                                <i class="fa-brands fa-youtube"></i>
-                                            </a>
-                                        <?php else: ?>
-                                            <span class="w-7 h-7 rounded-full flex items-center justify-center bg-slate-50 text-slate-300 text-xs" title="個人PV">
-                                                <i class="fa-brands fa-youtube"></i>
-                                            </span>
-                                        <?php endif; ?>
-                                    </div>
-                                </td>
-                                <td class="px-3 py-2">
-                                    <div class="w-10 h-10 rounded-xl overflow-hidden bg-slate-100 flex items-center justify-center">
-                                        <?php if (!empty($m['image_url'])): ?>
-                                            <img src="/assets/img/members/<?= $m['image_url'] ?>" class="w-full h-full object-cover">
-                                        <?php else: ?>
-                                            <span class="text-[11px] font-black text-slate-400"><?= htmlspecialchars(mb_substr($m['name'], 0, 1)) ?></span>
-                                        <?php endif; ?>
-                                    </div>
-                                </td>
-                                <td class="px-3 py-2 font-bold text-slate-800 whitespace-nowrap"><?= htmlspecialchars($m['name']) ?></td>
-                                <td class="px-3 py-2 text-slate-600 whitespace-nowrap"><?= $m['generation'] ?>期</td>
-                                <td class="px-3 py-2">
-                                    <div class="flex items-center gap-1 flex-wrap">
-                                        <?= $penlightCell($m['color1'] ?? null, $m['color1_name'] ?? null) ?>
-                                        <span class="text-[11px] text-slate-400 font-bold mx-1">×</span>
-                                        <?= $penlightCell($m['color2'] ?? null, $m['color2_name'] ?? null) ?>
-                                    </div>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
+                            <!-- JavaScriptで動的に生成 -->
                         </tbody>
                     </table>
                 </div>
@@ -299,7 +200,7 @@
                     <div id="modalHeader" class="h-64 md:h-72 relative shrink-0 flex flex-col justify-end p-8 text-white overflow-hidden bg-slate-200">
                         <img id="modalImg" src="" class="absolute inset-0 w-full h-full object-cover hidden">
                         <div class="relative z-10 text-white drop-shadow-md h-full flex flex-col justify-between">
-                            <span id="modalGen" class="text-[10px] font-black opacity-90 uppercase tracking-widest bg-black/20 px-2 py-0.5 rounded self-start"></span>
+                            <span id="modalGen" class="text-[10px] font-black opacity-90 tracking-wider bg-black/20 px-2 py-0.5 rounded self-start"></span>
                             <div class="flex items-end justify-between gap-3 mt-auto">
                                 <h2 id="modalName" class="text-3xl md:text-4xl font-black leading-tight break-words"></h2>
                                 <div id="favButtonBar" class="flex items-center gap-2">
@@ -321,21 +222,21 @@
 
                     <div class="p-8 space-y-8 overflow-y-auto custom-scroll">
                         <div id="modalInfoArea" class="hidden bg-sky-50/50 p-5 rounded-xl border border-sky-100/50">
-                            <p class="text-[9px] font-black text-sky-400 uppercase mb-1 tracking-widest">紹介文</p>
+                            <p class="text-[9px] font-black text-sky-400 mb-1 tracking-wider">紹介文</p>
                             <p id="modalInfo" class="text-sm font-medium text-slate-600 leading-relaxed whitespace-pre-wrap"></p>
                         </div>
                         <div id="penlightSection" class="hidden bg-white p-5 rounded-xl border border-slate-100/70">
-                            <p class="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">サイリウムカラー</p>
+                            <p class="text-[9px] font-black text-slate-400 mb-2 tracking-wider">サイリウムカラー</p>
                             <div class="flex items-center gap-3">
                                 <div id="penlight1" class="flex-1 h-9 rounded-lg flex items-center justify-center text-[11px] font-bold shadow-sm border border-slate-100"></div>
                                 <div id="penlight2" class="flex-1 h-9 rounded-lg flex items-center justify-center text-[11px] font-bold shadow-sm border border-slate-100"></div>
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-4 text-center">
-                            <div class="bg-slate-50 p-3 rounded-lg border border-slate-100"><p class="text-[9px] font-black text-slate-400 uppercase mb-1 tracking-widest">血液型</p><p id="modalBlood" class="text-base font-black text-slate-700">--</p></div>
-                            <div class="bg-slate-50 p-3 rounded-lg border border-slate-100"><p class="text-[9px] font-black text-slate-400 uppercase mb-1 tracking-widest">身長</p><p id="modalHeight" class="text-base font-black text-slate-700">--</p></div>
-                            <div class="bg-slate-50 p-3 rounded-lg border border-slate-100"><p class="text-[9px] font-black text-slate-400 uppercase mb-1 tracking-widest">生年月日</p><p id="modalBirth" class="text-base font-black text-slate-700">--</p></div>
-                            <div class="bg-slate-50 p-3 rounded-lg border border-slate-100"><p class="text-[9px] font-black text-slate-400 uppercase mb-1 tracking-widest">出身地</p><p id="modalPlace" class="text-base font-black text-slate-700">--</p></div>
+                            <div class="bg-slate-50 p-3 rounded-lg border border-slate-100"><p class="text-[9px] font-black text-slate-400 mb-1 tracking-wider">血液型</p><p id="modalBlood" class="text-base font-black text-slate-700">--</p></div>
+                            <div class="bg-slate-50 p-3 rounded-lg border border-slate-100"><p class="text-[9px] font-black text-slate-400 mb-1 tracking-wider">身長</p><p id="modalHeight" class="text-base font-black text-slate-700">--</p></div>
+                            <div class="bg-slate-50 p-3 rounded-lg border border-slate-100"><p class="text-[9px] font-black text-slate-400 mb-1 tracking-wider">生年月日</p><p id="modalBirth" class="text-base font-black text-slate-700">--</p></div>
+                            <div class="bg-slate-50 p-3 rounded-lg border border-slate-100"><p class="text-[9px] font-black text-slate-400 mb-1 tracking-wider">出身地</p><p id="modalPlace" class="text-base font-black text-slate-700">--</p></div>
                         </div>
                         <div id="snsLinks" class="grid grid-cols-1 gap-2 pb-10 md:pb-0">
                             <a id="blogBtn" href="#" target="_blank" class="h-12 bg-sky-50 rounded-xl flex items-center px-4 gap-3 text-xs font-black text-sky-600 border border-sky-100/50 hover:bg-sky-100 transition-all"><i class="fa-solid fa-blog"></i> 公式ブログ</a>
@@ -346,14 +247,14 @@
 
                 <div id="videoContainer" class="flex-1 bg-slate-50 p-6 md:p-12 flex flex-col justify-center pb-32 md:pb-12 overflow-y-auto">
                     <div id="videoArea" class="hidden w-full max-w-3xl mx-auto">
-                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 text-center">紹介動画</p>
+                        <p class="text-[10px] font-black text-slate-400 tracking-wider mb-4 text-center">紹介動画</p>
                         <div class="aspect-video w-full rounded-[1.5rem] md:rounded-[2.5rem] overflow-hidden bg-black shadow-2xl ring-4 md:ring-8 ring-white">
                             <iframe id="modalVideo" width="100%" height="100%" frameborder="0" allowfullscreen></iframe>
                         </div>
                     </div>
                     <div id="noVideoMsg" class="text-center text-slate-300 py-20">
                         <i class="fa-brands fa-youtube text-6xl mb-4 opacity-20"></i>
-                        <p class="text-[10px] font-bold uppercase tracking-widest">紹介動画はありません</p>
+                        <p class="text-[10px] font-bold tracking-wider">紹介動画はありません</p>
                     </div>
                 </div>
             </div>
@@ -371,23 +272,276 @@
         let currentGen = 'all';
         let viewMode = 'card';
         let showGraduates = false;
+        let currentSortOrder = 'generation';
+        let isAscending = true; // true: 昇順, false: 降順
+        
+        // メンバーデータをJavaScript配列として保持
+        const membersData = <?= json_encode($members, JSON_UNESCAPED_UNICODE) ?>;
 
-        function applyFilters() {
-            const cards = document.querySelectorAll('.member-card');
-            const rows = document.querySelectorAll('.member-row');
-            const shouldShow = (el) => {
-                const gen = el.dataset.gen;
-                const isActive = el.dataset.active === '1';
-                if (!showGraduates && !isActive) return false;
+        function changeSortOrder() {
+            const select = document.getElementById('sortSelect');
+            currentSortOrder = select.value;
+            renderMembers();
+        }
+        
+        function toggleSortOrder() {
+            isAscending = !isAscending;
+            const btn = document.getElementById('sortOrderBtn');
+            const icon = btn.querySelector('i');
+            
+            if (isAscending) {
+                icon.className = 'fa-solid fa-arrow-up-short-wide text-sm';
+                btn.title = '昇順';
+            } else {
+                icon.className = 'fa-solid fa-arrow-down-wide-short text-sm';
+                btn.title = '降順';
+            }
+            
+            renderMembers();
+        }
+        
+        function sortMembers(members) {
+            const sorted = [...members];
+            const direction = isAscending ? 1 : -1;
+            
+            switch(currentSortOrder) {
+                case 'name':
+                    sorted.sort((a, b) => {
+                        const result = (a.kana || a.name).localeCompare(b.kana || b.name, 'ja');
+                        return result * direction;
+                    });
+                    break;
+                case 'birthdate':
+                    sorted.sort((a, b) => {
+                        if (!a.birth_date && !b.birth_date) return 0;
+                        if (!a.birth_date) return 1;
+                        if (!b.birth_date) return -1;
+                        const result = a.birth_date.localeCompare(b.birth_date);
+                        return result * direction;
+                    });
+                    break;
+                case 'height':
+                    sorted.sort((a, b) => {
+                        const ha = parseFloat(a.height) || 0;
+                        const hb = parseFloat(b.height) || 0;
+                        const result = ha - hb;
+                        return result * direction;
+                    });
+                    break;
+                case 'generation':
+                default:
+                    sorted.sort((a, b) => {
+                        // 現役優先（昇順・降順に関わらず維持）
+                        if (a.is_active !== b.is_active) return b.is_active - a.is_active;
+                        // 期生順
+                        if (a.generation !== b.generation) {
+                            const result = a.generation - b.generation;
+                            return result * direction;
+                        }
+                        // かな順
+                        const result = (a.kana || a.name).localeCompare(b.kana || b.name, 'ja');
+                        return result * direction;
+                    });
+                    break;
+            }
+            
+            return sorted;
+        }
+        
+        function renderMembers() {
+            const filtered = membersData.filter(m => {
+                if (!showGraduates && !m.is_active) return false;
                 if (currentGen === 'all') return true;
-                return String(gen) === String(currentGen);
+                return String(m.generation) === String(currentGen);
+            });
+            
+            const sorted = sortMembers(filtered);
+            
+            // カード表示の再レンダリング
+            const gridContainer = document.getElementById('memberGrid');
+            gridContainer.innerHTML = '';
+            
+            if (currentSortOrder === 'generation') {
+                // 期生順の場合はグルーピング表示
+                const generations = {};
+                sorted.forEach(m => {
+                    if (!generations[m.generation]) {
+                        generations[m.generation] = [];
+                    }
+                    generations[m.generation].push(m);
+                });
+                
+                // 期生グループの順序を昇順・降順で制御
+                const genKeys = Object.keys(generations).sort((a, b) => {
+                    return isAscending ? (a - b) : (b - a);
+                });
+                
+                genKeys.forEach(gen => {
+                    // 期生ヘッダー
+                    const genHeader = document.createElement('div');
+                    genHeader.className = 'col-span-full mt-6 mb-3 pb-2 border-b-2 border-sky-200';
+                    genHeader.innerHTML = `<h2 class="text-lg font-black text-sky-600">${gen}期生</h2>`;
+                    gridContainer.appendChild(genHeader);
+                    
+                    // メンバーカード
+                    generations[gen].forEach(m => {
+                        gridContainer.appendChild(createMemberCard(m));
+                    });
+                });
+            } else {
+                // その他のソート順は通常表示
+                sorted.forEach(m => {
+                    gridContainer.appendChild(createMemberCard(m));
+                });
+            }
+            
+            // リスト表示の再レンダリング
+            renderListView(sorted);
+        }
+        
+        function createMemberCard(m) {
+            const card = document.createElement('div');
+            card.className = 'member-card bg-white rounded-xl p-4 shadow-sm border border-sky-50/50 cursor-pointer flex flex-col items-center text-center relative overflow-hidden';
+            card.dataset.gen = m.generation;
+            card.dataset.active = m.is_active ? '1' : '0';
+            card.onclick = (e) => showDetail(m.id, e);
+            
+            const colorStrip = document.createElement('div');
+            colorStrip.className = 'absolute top-0 left-0 w-full h-1.5';
+            colorStrip.style.background = `linear-gradient(to right, ${m.color1 || '#ccc'}, ${m.color2 || '#ddd'})`;
+            card.appendChild(colorStrip);
+            
+            const imageContainer = document.createElement('div');
+            imageContainer.className = 'w-full aspect-square rounded-xl bg-sky-50 mb-4 shadow-inner overflow-hidden flex items-center justify-center';
+            if (m.image_url) {
+                const img = document.createElement('img');
+                img.src = `/assets/img/members/${m.image_url}`;
+                img.className = 'portrait-img';
+                imageContainer.appendChild(img);
+            } else {
+                const initial = document.createElement('span');
+                initial.className = 'text-4xl font-black text-sky-200';
+                initial.textContent = m.name.substring(0, 1);
+                imageContainer.appendChild(initial);
+            }
+            card.appendChild(imageContainer);
+            
+            const info = document.createElement('div');
+            info.className = 'space-y-1';
+            info.innerHTML = `
+                <span class="text-[9px] font-black text-sky-400 tracking-wider">${m.generation}期生</span>
+                <h3 class="font-black text-slate-800 text-base">${m.name}</h3>
+                ${!m.is_active ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-[10px] font-bold text-slate-500">卒業</span>' : ''}
+            `;
+            card.appendChild(info);
+            
+            return card;
+        }
+        
+        function renderListView(members) {
+            const tbody = document.querySelector('#memberList tbody');
+            // グループヘッダー行を削除
+            tbody.querySelectorAll('tr').forEach(tr => tr.remove());
+            
+            if (currentSortOrder === 'generation') {
+                // 期生順の場合はグルーピング表示
+                const generations = {};
+                members.forEach(m => {
+                    if (!generations[m.generation]) {
+                        generations[m.generation] = [];
+                    }
+                    generations[m.generation].push(m);
+                });
+                
+                // 期生グループの順序を昇順・降順で制御
+                const genKeys = Object.keys(generations).sort((a, b) => {
+                    return isAscending ? (a - b) : (b - a);
+                });
+                
+                genKeys.forEach(gen => {
+                    // グループヘッダー行
+                    const headerRow = document.createElement('tr');
+                    headerRow.className = 'border-t border-slate-100 bg-slate-50/60';
+                    headerRow.innerHTML = `<td colspan="5" class="px-3 py-2 text-[11px] font-bold text-slate-500 tracking-wider">${gen}期生</td>`;
+                    tbody.appendChild(headerRow);
+                    
+                    // メンバー行
+                    generations[gen].forEach(m => {
+                        tbody.appendChild(createMemberRow(m));
+                    });
+                });
+            } else {
+                members.forEach(m => {
+                    tbody.appendChild(createMemberRow(m));
+                });
+            }
+        }
+        
+        function createMemberRow(m) {
+            const row = document.createElement('tr');
+            row.className = 'member-row hover:bg-sky-50/50 border-t border-slate-100 cursor-pointer';
+            row.dataset.gen = m.generation;
+            row.dataset.active = m.is_active ? '1' : '0';
+            row.onclick = () => showDetail(m.id);
+            
+            const penlightCell = (code, name) => {
+                if (!code && !name) {
+                    return '<span class="inline-flex items-center px-2 py-1 rounded-lg bg-slate-100 text-[11px] font-bold text-slate-500 whitespace-nowrap">未設定</span>';
+                }
+                const label = name || code;
+                const hex = code ? code.replace('#', '') : '';
+                return `<span class="inline-flex items-center px-2 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap" style="background-color: ${code}; color: ${getTextColorForBg(hex)};">${label}</span>`;
             };
-            cards.forEach(card => {
-                card.style.display = shouldShow(card) ? 'flex' : 'none';
-            });
-            rows.forEach(row => {
-                row.style.display = shouldShow(row) ? '' : 'none';
-            });
+            
+            const createSnsIcon = (url, icon, title, activeColor, bgColor) => {
+                if (url) {
+                    return `<a href="${url}" target="_blank" onclick="event.stopPropagation()" class="w-7 h-7 rounded-full flex items-center justify-center ${bgColor} ${activeColor} hover:brightness-110 text-xs" title="${title}"><i class="${icon}"></i></a>`;
+                } else {
+                    return `<span class="w-7 h-7 rounded-full flex items-center justify-center bg-slate-50 text-slate-300 text-xs" title="${title}"><i class="${icon}"></i></span>`;
+                }
+            };
+            
+            row.innerHTML = `
+                <td class="px-3 py-2">
+                    <div class="flex items-center gap-2" onclick="event.stopPropagation()">
+                        ${createSnsIcon(m.blog_url, 'fa-solid fa-blog', 'ブログ', 'text-sky-600', 'bg-sky-50')}
+                        ${createSnsIcon(m.insta_url, 'fa-brands fa-instagram', 'Instagram', 'text-pink-600', 'bg-pink-50')}
+                        ${createSnsIcon(m.pv_video_key ? 'https://www.youtube.com/watch?v='+m.pv_video_key : null, 'fa-brands fa-youtube', '個人PV', 'text-red-600', 'bg-red-50')}
+                    </div>
+                </td>
+                <td class="px-3 py-2">
+                    <div class="w-10 h-10 rounded-xl overflow-hidden bg-slate-100 flex items-center justify-center">
+                        ${m.image_url ? '<img src="/assets/img/members/'+m.image_url+'" class="w-full h-full object-cover">' : '<span class="text-[11px] font-black text-slate-400">'+m.name.substring(0,1)+'</span>'}
+                    </div>
+                </td>
+                <td class="px-3 py-2 font-bold text-slate-800 whitespace-nowrap">
+                    ${m.name}
+                    ${!m.is_active ? '<span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full bg-slate-100 text-[10px] font-bold text-slate-500">卒業</span>' : ''}
+                </td>
+                <td class="px-3 py-2 text-slate-600 whitespace-nowrap">${m.generation}期</td>
+                <td class="px-3 py-2">
+                    <div class="flex items-center gap-1 flex-wrap">
+                        ${penlightCell(m.color1, m.color1_name)}
+                        <span class="text-[11px] text-slate-400 font-bold mx-1">×</span>
+                        ${penlightCell(m.color2, m.color2_name)}
+                    </div>
+                </td>
+            `;
+            
+            return row;
+        }
+        
+        function getTextColorForBg(hex) {
+            if (!hex) return '#111827';
+            const r = parseInt(hex.substring(0, 2), 16);
+            const g = parseInt(hex.substring(2, 4), 16);
+            const b = parseInt(hex.substring(4, 6), 16);
+            const luminance = (0.299 * r + 0.587 * g + 0.114 * b);
+            return luminance > 186 ? '#111827' : '#ffffff';
+        }
+        
+        function applyFilters() {
+            renderMembers();
         }
 
         function filterGen(gen) {
@@ -641,8 +795,8 @@
         }
         document.getElementById('memberModal').onclick = (e) => { if (e.target.id === 'memberModal') closeModal(); };
 
-        // 初期状態：カード表示・卒業メンバー非表示でフィルタ適用
-        applyFilters();
+        // 初期表示
+        renderMembers();
     </script>
 </body>
 </html>

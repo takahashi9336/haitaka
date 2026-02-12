@@ -156,25 +156,26 @@
     <?php require_once __DIR__ . '/../../../../private/components/sidebar.php'; ?>
 
     <main class="flex-1 flex flex-col min-w-0 relative">
-        <header class="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-6 shrink-0 md:hidden">
-            <button id="mobileMenuBtn" class="text-slate-400 p-2"><i class="fa-solid fa-bars text-xl"></i></button>
-            <h1 class="font-black text-slate-800 tracking-tighter">メモ</h1>
-            <div class="w-8"></div>
+        <header class="h-16 bg-white/80 backdrop-blur-md border-b border-amber-100 flex items-center justify-between px-6 shrink-0 sticky top-0 z-10">
+            <div class="flex items-center gap-3">
+                <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
+                <div class="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center text-white shadow-lg shadow-amber-200">
+                    <i class="fa-solid fa-lightbulb text-sm"></i>
+                </div>
+                <h1 class="font-black text-slate-700 text-xl tracking-tighter">メモ</h1>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="hidden md:flex flex-col items-end">
+                    <span class="text-[10px] font-bold text-slate-400 tracking-wider">すべてのメモを管理</span>
+                    <a href="/" class="text-xs font-black text-amber-500 hover:text-amber-600 transition">
+                        <i class="fa-solid fa-arrow-left mr-1"></i> ダッシュボード
+                    </a>
+                </div>
+            </div>
         </header>
 
         <div class="flex-1 overflow-y-auto p-6 md:p-12">
             <div class="max-w-7xl mx-auto">
-                <header class="mb-6">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <h1 class="text-3xl font-black text-slate-800 tracking-tight">メモ一覧</h1>
-                            <p class="text-slate-400 font-medium mt-1 text-sm">すべてのメモを管理</p>
-                        </div>
-                        <a href="/" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition">
-                            <i class="fa-solid fa-arrow-left mr-2"></i> ダッシュボードに戻る
-                        </a>
-                    </div>
-                </header>
 
                 <!-- クイックメモ追加 -->
                 <div class="mb-6">
