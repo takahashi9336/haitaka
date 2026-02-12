@@ -61,7 +61,13 @@
             <button onclick="switchMode('calendar')" id="tab-calendar" class="tab-btn">カレンダー</button>
         </div>
 
-        <div id="mainScroll" class="flex-1 overflow-y-auto p-3 md:p-6 custom-scroll">
+        <div id="mainScroll" class="flex-1 overflow-y-auto p-3 md:p-6 custom-scroll relative">
+            
+            <!-- Pull-to-Refresh インジケーター（モバイルのみ） -->
+            <div id="pullToRefresh" class="md:hidden absolute top-0 left-0 right-0 flex flex-col items-center justify-center text-indigo-600 transition-all duration-300 pointer-events-none" style="height: 60px; transform: translateY(-60px); opacity: 0;">
+                <i id="pullIcon" class="fa-solid fa-arrow-down text-2xl mb-1 transition-transform duration-300"></i>
+                <span id="pullText" class="text-xs font-bold">引っ張って更新</span>
+            </div>
             
             <!-- モバイル用タスク追加ボタン -->
             <button id="quickAddToggle" onclick="toggleQuickAdd()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-xl font-black text-sm mb-4 shadow-lg transition-all flex items-center justify-center gap-2">
@@ -550,6 +556,84 @@
 
         function resetForm() { $('task_id').value = ''; $('taskForm').reset(); $('btnSubmit').innerText = 'タスクを追加'; $('btnCancelEdit').classList.add('hidden'); $('btnDelete').classList.add('hidden'); renderCurrentMode(); }
         async function toggleStatus(id, checked) { await App.post('api/update.php', { id, status: checked ? 'done' : 'todo' }); location.reload(); }
+        
+        // Pull-to-Refresh 機能（モバイルのみ）
+        (function() {
+            if (window.innerWidth > 768) return; // デスクトップでは無効
+            
+            const mainScroll = $('mainScroll');
+            const pullIndicator = $('pullToRefresh');
+            const pullIcon = $('pullIcon');
+            const pullText = $('pullText');
+            
+            let startY = 0;
+            let currentY = 0;
+            let pulling = false;
+            const threshold = 80; // リロードするための閾値（ピクセル）
+            
+            mainScroll.addEventListener('touchstart', (e) => {
+                if (mainScroll.scrollTop === 0) {
+                    startY = e.touches[0].clientY;
+                    pulling = true;
+                }
+            }, { passive: true });
+            
+            mainScroll.addEventListener('touchmove', (e) => {
+                if (!pulling) return;
+                
+                currentY = e.touches[0].clientY;
+                const pullDistance = currentY - startY;
+                
+                if (pullDistance > 0 && mainScroll.scrollTop === 0) {
+                    const distance = Math.min(pullDistance, threshold * 1.5);
+                    const progress = Math.min(distance / threshold, 1);
+                    
+                    // インジケーターの表示と位置
+                    pullIndicator.style.transform = `translateY(${distance - 60}px)`;
+                    pullIndicator.style.opacity = progress;
+                    
+                    // アイコンの回転
+                    pullIcon.style.transform = `rotate(${progress * 180}deg)`;
+                    
+                    // テキストの変更
+                    if (distance >= threshold) {
+                        pullText.textContent = '離して更新';
+                        pullIcon.classList.remove('fa-arrow-down');
+                        pullIcon.classList.add('fa-rotate-right');
+                    } else {
+                        pullText.textContent = '引っ張って更新';
+                        pullIcon.classList.remove('fa-rotate-right');
+                        pullIcon.classList.add('fa-arrow-down');
+                    }
+                }
+            }, { passive: true });
+            
+            mainScroll.addEventListener('touchend', (e) => {
+                if (!pulling) return;
+                
+                const pullDistance = currentY - startY;
+                
+                if (pullDistance >= threshold && mainScroll.scrollTop === 0) {
+                    // リロード実行
+                    pullText.textContent = '更新中...';
+                    pullIcon.classList.remove('fa-arrow-down', 'fa-rotate-right');
+                    pullIcon.classList.add('fa-spinner', 'fa-spin');
+                    
+                    setTimeout(() => {
+                        location.reload();
+                    }, 300);
+                } else {
+                    // リセット
+                    pullIndicator.style.transform = 'translateY(-60px)';
+                    pullIndicator.style.opacity = '0';
+                    pullIcon.style.transform = 'rotate(0deg)';
+                }
+                
+                pulling = false;
+                startY = 0;
+                currentY = 0;
+            }, { passive: true });
+        })();
     </script>
 </body>
 </html>

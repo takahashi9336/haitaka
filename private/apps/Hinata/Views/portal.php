@@ -89,46 +89,46 @@
                 </div>
                 <?php endif; ?>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="grid grid-cols-3 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                     <!-- ミーグリネタ帳：リンク先を talk.php に修正 -->
-                    <a href="/hinata/talk.php" class="app-card group relative bg-white p-8 rounded-xl border border-sky-100 shadow-sm overflow-hidden">
-                        <div class="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform">
+                    <a href="/hinata/talk.php" class="app-card group relative bg-white rounded-xl border border-sky-100 shadow-sm overflow-hidden flex flex-col items-center justify-center p-4 md:p-8 md:block">
+                        <div class="hidden md:block absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform">
                             <i class="fa-solid fa-book-open text-6xl text-sky-500"></i>
                         </div>
-                        <div class="relative z-10">
-                            <div class="w-12 h-12 bg-sky-50 rounded-lg flex items-center justify-center text-sky-500 mb-6 group-hover:bg-sky-500 group-hover:text-white transition-colors">
-                                <i class="fa-solid fa-comment-dots"></i>
+                        <div class="relative z-10 flex flex-col items-center md:block">
+                            <div class="w-16 h-16 md:w-12 md:h-12 bg-sky-50 rounded-lg flex items-center justify-center text-sky-500 mb-2 md:mb-6 group-hover:bg-sky-500 group-hover:text-white transition-colors">
+                                <i class="fa-solid fa-comment-dots text-2xl md:text-base"></i>
                             </div>
-                            <h3 class="text-xl font-black text-slate-800 mb-4">ミーグリネタ帳</h3>
-                            <p class="text-sm text-slate-400 leading-relaxed">メンバーとの会話ネタや、ミーグリのレポを記録・管理します。</p>
+                            <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-4 text-center md:text-left">ミーグリネタ帳</h3>
+                            <p class="hidden md:block text-sm text-slate-400 leading-relaxed">メンバーとの会話ネタや、ミーグリのレポを記録・管理します。</p>
                         </div>
                     </a>
 
                     <!-- イベント -->
-                    <a href="/hinata/events.php" class="app-card group relative bg-white p-8 rounded-xl border border-sky-100 shadow-sm overflow-hidden">
-                        <div class="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform">
+                    <a href="/hinata/events.php" class="app-card group relative bg-white rounded-xl border border-sky-100 shadow-sm overflow-hidden flex flex-col items-center justify-center p-4 md:p-8 md:block">
+                        <div class="hidden md:block absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform">
                             <i class="fa-solid fa-calendar-days text-6xl text-sky-500"></i>
                         </div>
-                        <div class="relative z-10">
-                            <div class="w-12 h-12 bg-sky-50 rounded-lg flex items-center justify-center text-sky-500 mb-6 group-hover:bg-sky-500 group-hover:text-white transition-colors">
-                                <i class="fa-solid fa-calendar-check"></i>
+                        <div class="relative z-10 flex flex-col items-center md:block">
+                            <div class="w-16 h-16 md:w-12 md:h-12 bg-sky-50 rounded-lg flex items-center justify-center text-sky-500 mb-2 md:mb-6 group-hover:bg-sky-500 group-hover:text-white transition-colors">
+                                <i class="fa-solid fa-calendar-check text-2xl md:text-base"></i>
                             </div>
-                            <h3 class="text-xl font-black text-slate-800 mb-4">イベント</h3>
-                            <p class="text-sm text-slate-400 leading-relaxed">ライブやミーグリ、発売日などの重要日程を確認します。</p>
+                            <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-4 text-center md:text-left">イベント</h3>
+                            <p class="hidden md:block text-sm text-slate-400 leading-relaxed">ライブやミーグリ、発売日などの重要日程を確認します。</p>
                         </div>
                     </a>
 
                     <!-- メンバー帳 -->
-                    <a href="/hinata/members.php" class="app-card group relative bg-white p-8 rounded-xl border border-sky-100 shadow-sm overflow-hidden">
-                        <div class="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform">
+                    <a href="/hinata/members.php" class="app-card group relative bg-white rounded-xl border border-sky-100 shadow-sm overflow-hidden flex flex-col items-center justify-center p-4 md:p-8 md:block">
+                        <div class="hidden md:block absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform">
                             <i class="fa-solid fa-users text-6xl text-sky-500"></i>
                         </div>
-                        <div class="relative z-10">
-                            <div class="w-12 h-12 bg-sky-50 rounded-lg flex items-center justify-center text-sky-500 mb-6 group-hover:bg-sky-500 group-hover:text-white transition-colors">
-                                <i class="fa-solid fa-address-card"></i>
+                        <div class="relative z-10 flex flex-col items-center md:block">
+                            <div class="w-16 h-16 md:w-12 md:h-12 bg-sky-50 rounded-lg flex items-center justify-center text-sky-500 mb-2 md:mb-6 group-hover:bg-sky-500 group-hover:text-white transition-colors">
+                                <i class="fa-solid fa-address-card text-2xl md:text-base"></i>
                             </div>
-                            <h3 class="text-xl font-black text-slate-800 mb-4">メンバー帳</h3>
-                            <p class="text-sm text-slate-400 leading-relaxed">メンバーのプロフィール、サイリウムカラーなどをチェックします。</p>
+                            <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-4 text-center md:text-left">メンバー帳</h3>
+                            <p class="hidden md:block text-sm text-slate-400 leading-relaxed">メンバーのプロフィール、サイリウムカラーなどをチェックします。</p>
                         </div>
                     </a>
                 </div>

@@ -71,3 +71,85 @@ $inactiveClass = "text-slate-500 hover:bg-slate-50 transition";
         </div>
     </div>
 </aside>
+
+<script>
+(function() {
+    const sidebar = document.getElementById('sidebar');
+    if (!sidebar) return;
+    
+    let startX = 0;
+    let currentX = 0;
+    let isSwiping = false;
+    const swipeThreshold = 100; // スワイプと認識する最小距離（ピクセル）
+    
+    // 画面の左側25%の範囲をスワイプ開始エリアとする（ブラウザの「戻る」と干渉しない）
+    function getEdgeThreshold() {
+        return window.innerWidth * 0.25;
+    }
+    
+    // サイドバーを開く
+    function openSidebar() {
+        sidebar.classList.add('mobile-open');
+    }
+    
+    // サイドバーを閉じる
+    function closeSidebar() {
+        sidebar.classList.remove('mobile-open');
+    }
+    
+    // 画面全体でのタッチイベント
+    document.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        const isSidebarOpen = sidebar.classList.contains('mobile-open');
+        
+        // 画面の左側エリアからのスワイプ、またはサイドバーが開いている状態でのスワイプ
+        if (startX <= getEdgeThreshold() || isSidebarOpen) {
+            isSwiping = true;
+        }
+    }, { passive: true });
+    
+    document.addEventListener('touchmove', (e) => {
+        if (!isSwiping) return;
+        currentX = e.touches[0].clientX;
+    }, { passive: true });
+    
+    document.addEventListener('touchend', (e) => {
+        if (!isSwiping) {
+            startX = 0;
+            currentX = 0;
+            return;
+        }
+        
+        const deltaX = currentX - startX;
+        const isSidebarOpen = sidebar.classList.contains('mobile-open');
+        
+        // 画面の左側エリアから右へのスワイプ → サイドバーを開く
+        if (!isSidebarOpen && startX <= getEdgeThreshold() && deltaX > swipeThreshold) {
+            openSidebar();
+        }
+        // サイドバーが開いている状態で右から左へのスワイプ → サイドバーを閉じる
+        else if (isSidebarOpen && deltaX < -swipeThreshold) {
+            closeSidebar();
+        }
+        
+        isSwiping = false;
+        startX = 0;
+        currentX = 0;
+    }, { passive: true });
+    
+    // 既存の閉じるボタン
+    const closeBtn = document.getElementById('sidebarClose');
+    if (closeBtn) {
+        closeBtn.onclick = closeSidebar;
+    }
+    
+    // サイドバー外をクリックで閉じる
+    document.addEventListener('click', (e) => {
+        if (sidebar.classList.contains('mobile-open') && 
+            !sidebar.contains(e.target) && 
+            !e.target.closest('#mobileMenuBtn')) {
+            closeSidebar();
+        }
+    });
+})();
+</script>
