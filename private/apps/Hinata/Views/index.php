@@ -60,14 +60,14 @@
             <div class="max-w-2xl mx-auto w-full space-y-4">
                 
                 <!-- 登録・編集フォーム -->
-                <section id="netaFormContainer" class="bg-white border border-sky-100 rounded-3xl p-5 shadow-sm form-hidden md:block">
+                <section id="netaFormContainer" class="bg-white border border-sky-100 rounded-xl p-5 shadow-sm form-hidden md:block">
                     <form id="netaForm" class="space-y-4">
                         <input type="hidden" name="id" id="neta_id">
                         <div class="flex justify-between items-center">
                             <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Post / Edit Talk</label>
                             <button type="button" id="cancelEdit" class="hidden text-[10px] text-red-400 font-bold bg-red-50 px-2 py-0.5 rounded">キャンセル</button>
                         </div>
-                        <select name="member_id" id="form_member_id" required class="w-full h-11 border border-slate-100 rounded-2xl px-4 text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-sky-100 transition-all">
+                        <select name="member_id" id="form_member_id" required class="w-full h-11 border border-slate-100 rounded-lg px-4 text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-sky-100 transition-all">
                             <option value="">メンバーを選択</option>
                             <?php if(!empty($members)): foreach ($members as $m): ?>
                                 <?php $favLevel = (int)($m['favorite_level'] ?? 0); ?>
@@ -77,8 +77,8 @@
                                 </option>
                             <?php endforeach; endif; ?>
                         </select>
-                        <textarea name="content" id="form_content" required placeholder="何を話す？" class="w-full border border-slate-100 rounded-2xl p-4 text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-sky-100 min-h-[80px] transition-all"></textarea>
-                        <button type="submit" id="submitBtn" class="w-full bg-sky-500 text-white h-12 rounded-2xl font-bold shadow-lg shadow-sky-200 active:scale-95 transition-transform">
+                        <textarea name="content" id="form_content" required placeholder="何を話す？" class="w-full border border-slate-100 rounded-lg p-4 text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-sky-100 min-h-[80px] transition-all"></textarea>
+                        <button type="submit" id="submitBtn" class="w-full bg-sky-500 text-white h-12 rounded-lg font-bold shadow-lg shadow-sky-200 active:scale-95 transition-transform">
                             ネタを追加
                         </button>
                     </form>
@@ -87,7 +87,7 @@
                 <!-- 一覧エリア -->
                 <div class="space-y-3">
                     <?php if(!empty($groupedNeta)): foreach ($groupedNeta as $mid => $group): ?>
-                        <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm flex">
+                        <div class="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm flex">
                             <!-- グラデーション帯 -->
                             <div class="color-strip" style="background: linear-gradient(to bottom, <?= $group['color1'] ?>, <?= $group['color2'] ?>);"></div>
                             <div class="flex-1">

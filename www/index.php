@@ -67,14 +67,44 @@ $nextEvent = $eventModel->getNextEvent();
                     <p class="text-slate-400 font-medium mt-1">おかえりなさい、<?= htmlspecialchars($user['id_name']) ?> さん</p>
                 </header>
 
+                <!-- クイックメモ (Google Keep風) -->
+                <div class="mb-6">
+                    <div class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+                        <div class="p-4">
+                            <div class="flex items-center gap-2 mb-3">
+                                <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                                    <i class="fa-solid fa-lightbulb text-sm"></i>
+                                </div>
+                                <h2 class="text-sm font-bold text-slate-800">クイックメモ</h2>
+                            </div>
+                            <textarea 
+                                id="quickMemoInput" 
+                                placeholder="メモを入力... (タイトルは自動生成されます)"
+                                class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none transition-all text-sm"
+                                rows="3"
+                            ></textarea>
+                            <div id="quickMemoActions" class="mt-3 flex items-center justify-between opacity-0 transition-opacity duration-200">
+                                <div class="flex gap-2">
+                                    <button onclick="QuickMemo.clearInput()" class="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50 rounded-lg transition">
+                                        <i class="fa-solid fa-times mr-1"></i> キャンセル
+                                    </button>
+                                </div>
+                                <button id="quickMemoSaveBtn" onclick="QuickMemo.save(event)" class="px-4 py-1.5 bg-amber-500 text-white text-xs font-bold rounded-lg hover:bg-amber-600 transition shadow-sm">
+                                    <i class="fa-solid fa-plus mr-1"></i> 保存
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <?php if (!empty($nextEvent) && isset($nextEvent['days_left']) && (int)$nextEvent['days_left'] >= 0): ?>
-                <div class="mb-8">
-                    <div class="flex items-center gap-4 bg-white rounded-3xl border border-sky-100 shadow-sm px-5 py-4">
-                        <div class="w-10 h-10 rounded-2xl bg-sky-500 text-white flex items-center justify-center shadow-md">
-                            <i class="fa-solid fa-calendar-day"></i>
+                <div class="mb-6">
+                    <div class="flex items-center gap-3 bg-white rounded-xl border border-sky-100 shadow-sm px-4 py-3">
+                        <div class="w-8 h-8 rounded-lg bg-sky-500 text-white flex items-center justify-center shadow-md">
+                            <i class="fa-solid fa-calendar-day text-sm"></i>
                         </div>
                         <div class="flex-1">
-                            <p class="text-[10px] font-bold text-sky-500 uppercase tracking-[0.2em] mb-1">Hinata Next Event</p>
+                            <p class="text-[9px] font-bold text-sky-500 uppercase tracking-[0.2em] mb-1">Hinata Next Event</p>
                             <p class="text-sm font-bold text-slate-800 mb-0.5">
                                 <?= htmlspecialchars($nextEvent['event_name'] ?? '次のイベント') ?>
                             </p>
@@ -102,29 +132,33 @@ $nextEvent = $eventModel->getNextEvent();
                 </div>
                 <?php endif; ?>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <!-- タスク管理 -->
-                    <a href="/task_manager/" class="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col justify-between h-56 hover:translate-y-[-4px] transition-all">
+                    <a href="/task_manager/" class="bg-white p-5 rounded-xl border border-slate-100 shadow-sm flex flex-col justify-between h-44 hover:translate-y-[-2px] transition-all">
                         <div>
-                            <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-4"><i class="fa-solid fa-list-check text-xl"></i></div>
-                            <h3 class="font-bold text-slate-800 text-lg">タスク管理</h3>
-                            <p class="text-slate-400 text-xs font-medium">現在の未完了タスク数</p>
+                            <div class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center mb-3">
+                                <i class="fa-solid fa-list-check text-lg"></i>
+                            </div>
+                            <h3 class="font-bold text-slate-800 text-base">タスク管理</h3>
+                            <p class="text-slate-400 text-xs font-medium mt-1">現在の未完了タスク数</p>
                         </div>
                         <div class="flex items-end justify-between">
-                            <span class="text-4xl font-black text-slate-800"><?= $activeTasksCount ?></span>
+                            <span class="text-3xl font-black text-slate-800"><?= $activeTasksCount ?></span>
                             <span class="text-indigo-600 text-xs font-bold uppercase tracking-widest">開く <i class="fa-solid fa-arrow-right ml-1"></i></span>
                         </div>
                     </a>
 
                     <!-- 日向坂ポータル -->
-                    <a href="/hinata/" class="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col justify-between h-56 hover:translate-y-[-4px] transition-all">
+                    <a href="/hinata/" class="bg-white p-5 rounded-xl border border-slate-100 shadow-sm flex flex-col justify-between h-44 hover:translate-y-[-2px] transition-all">
                         <div>
-                            <div class="w-12 h-12 bg-sky-50 text-sky-500 rounded-2xl flex items-center justify-center mb-4"><i class="fa-solid fa-star text-xl"></i></div>
-                            <h3 class="font-bold text-slate-800 text-lg">日向坂ポータル</h3>
-                            <p class="text-slate-400 text-xs font-medium">保存済みのネタ数</p>
+                            <div class="w-10 h-10 bg-sky-50 text-sky-500 rounded-lg flex items-center justify-center mb-3">
+                                <i class="fa-solid fa-star text-lg"></i>
+                            </div>
+                            <h3 class="font-bold text-slate-800 text-base">日向坂ポータル</h3>
+                            <p class="text-slate-400 text-xs font-medium mt-1">保存済みのネタ数</p>
                         </div>
                         <div class="flex items-end justify-between">
-                            <span class="text-4xl font-black text-slate-800"><?= $netaCount ?></span>
+                            <span class="text-3xl font-black text-slate-800"><?= $netaCount ?></span>
                             <span class="text-sky-500 text-xs font-bold uppercase tracking-widest">移動する <i class="fa-solid fa-arrow-right ml-1"></i></span>
                         </div>
                     </a>
@@ -133,5 +167,81 @@ $nextEvent = $eventModel->getNextEvent();
         </div>
     </main>
     <script src="/assets/js/core.js"></script>
+    <script>
+        const QuickMemo = {
+            input: null,
+            actions: null,
+
+            init() {
+                this.input = document.getElementById('quickMemoInput');
+                this.actions = document.getElementById('quickMemoActions');
+                
+                if (this.input) {
+                    // フォーカス時にアクションボタンを表示
+                    this.input.addEventListener('focus', () => {
+                        this.actions.classList.remove('opacity-0');
+                        this.actions.classList.add('opacity-100');
+                    });
+                }
+            },
+
+            async save(event) {
+                const content = this.input.value.trim();
+                
+                if (!content) {
+                    alert('メモの内容を入力してください');
+                    return;
+                }
+
+                // ボタン要素を取得
+                const btn = event ? event.target : document.getElementById('quickMemoSaveBtn');
+
+                try {
+                    const result = await App.post('/note/api/save.php', {
+                        content: content
+                    });
+
+                    console.log('API Response:', result); // デバッグ用
+
+                    if (result && result.status === 'success') {
+                        // 成功時は入力欄をクリア
+                        this.clearInput();
+                        
+                        // 簡易フィードバック
+                        if (btn) {
+                            const originalText = btn.innerHTML;
+                            btn.innerHTML = '<i class="fa-solid fa-check mr-2"></i> 保存しました';
+                            btn.classList.add('bg-green-500');
+                            btn.classList.remove('bg-amber-500', 'hover:bg-amber-600');
+                            
+                            setTimeout(() => {
+                                btn.innerHTML = originalText;
+                                btn.classList.remove('bg-green-500');
+                                btn.classList.add('bg-amber-500', 'hover:bg-amber-600');
+                            }, 2000);
+                        }
+                    } else {
+                        console.error('API Error Response:', result);
+                        const errorMsg = result && result.message ? result.message : '保存に失敗しました';
+                        alert('エラー: ' + errorMsg + '\n\n詳細はコンソールを確認してください');
+                    }
+                } catch (error) {
+                    console.error('Save error:', error);
+                    alert('保存中にエラーが発生しました\n\n詳細: ' + error.message + '\n\nコンソールを確認してください');
+                }
+            },
+
+            clearInput() {
+                this.input.value = '';
+                this.input.blur();
+                this.actions.classList.remove('opacity-100');
+                this.actions.classList.add('opacity-0');
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            QuickMemo.init();
+        });
+    </script>
 </body>
 </html>

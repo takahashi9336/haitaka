@@ -83,7 +83,7 @@ $getCatInfo = function($catId) {
                         $dateD = ['Sun' => '日', 'Mon' => '月', 'Tue' => '火', 'Wed' => '水', 'Thu' => '木', 'Fri' => '金', 'Sat' => '土'][date('D', strtotime($e['event_date']))];
                         $isToday = date('Y-m-d') === date('Y-m-d', strtotime($e['event_date']));
                     ?>
-                    <div class="bg-white rounded-2xl border border-sky-50 shadow-sm overflow-hidden hover:border-sky-200 transition-all">
+                    <div class="bg-white rounded-lg border border-sky-50 shadow-sm overflow-hidden hover:border-sky-200 transition-all">
                         <div class="flex items-stretch cursor-pointer active:bg-slate-50" onclick="toggleDetail(<?= $e['id'] ?>)">
                             <div class="date-col flex flex-col items-center justify-center py-4 bg-slate-50/50 border-r border-slate-100 <?= $isToday ? 'bg-sky-50' : '' ?>">
                                 <span class="text-[10px] font-black text-slate-400 uppercase tracking-tighter"><?= $dateD ?></span>
@@ -117,7 +117,7 @@ $getCatInfo = function($catId) {
                                 </a>
                             <?php endif; ?>
                             <?php if (!empty($e['video_key'])): ?>
-                                <div class="aspect-video w-full max-w-2xl mx-auto rounded-2xl overflow-hidden bg-black shadow-lg ring-4 ring-white">
+                                <div class="aspect-video w-full max-w-2xl mx-auto rounded-lg overflow-hidden bg-black shadow-lg ring-4 ring-white">
                                     <iframe width="100%" height="100%" src="https://www.youtube.com/embed/<?= htmlspecialchars($e['video_key']) ?>?rel=0" frameborder="0" allowfullscreen></iframe>
                                 </div>
                             <?php endif; ?>

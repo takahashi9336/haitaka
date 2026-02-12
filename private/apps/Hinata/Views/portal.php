@@ -23,7 +23,7 @@
         }
 
         .app-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .app-card:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1); }
+        .app-card:hover { transform: translateY(-2px); box-shadow: 0 10px 20px -5px rgb(0 0 0 / 0.08); }
     </style>
 </head>
 <body class="bg-[#f0f9ff] flex h-screen overflow-hidden text-slate-800">
@@ -56,8 +56,8 @@
 
                 <?php if (!empty($nextEvent) && isset($nextEvent['days_left']) && (int)$nextEvent['days_left'] >= 0): ?>
                 <div class="mb-10 flex items-center">
-                    <div class="flex items-center gap-4 bg-white rounded-3xl border border-sky-100 shadow-sm px-5 py-4 w-full md:w-auto">
-                        <div class="w-10 h-10 rounded-2xl bg-sky-500 text-white flex items-center justify-center shadow-md">
+                    <div class="flex items-center gap-4 bg-white rounded-xl border border-sky-100 shadow-sm px-5 py-4 w-full md:w-auto">
+                        <div class="w-10 h-10 rounded-lg bg-sky-500 text-white flex items-center justify-center shadow-md">
                             <i class="fa-solid fa-calendar-day"></i>
                         </div>
                         <div class="flex-1">
@@ -91,12 +91,12 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <!-- ミーグリネタ帳：リンク先を talk.php に修正 -->
-                    <a href="/hinata/talk.php" class="app-card group relative bg-white p-8 rounded-[2.5rem] border border-sky-100 shadow-sm overflow-hidden">
+                    <a href="/hinata/talk.php" class="app-card group relative bg-white p-8 rounded-xl border border-sky-100 shadow-sm overflow-hidden">
                         <div class="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform">
                             <i class="fa-solid fa-book-open text-6xl text-sky-500"></i>
                         </div>
                         <div class="relative z-10">
-                            <div class="w-12 h-12 bg-sky-50 rounded-2xl flex items-center justify-center text-sky-500 mb-6 group-hover:bg-sky-500 group-hover:text-white transition-colors">
+                            <div class="w-12 h-12 bg-sky-50 rounded-lg flex items-center justify-center text-sky-500 mb-6 group-hover:bg-sky-500 group-hover:text-white transition-colors">
                                 <i class="fa-solid fa-comment-dots"></i>
                             </div>
                             <h3 class="text-xl font-black text-slate-800 mb-2">ミーグリネタ帳</h3>
@@ -106,12 +106,12 @@
                     </a>
 
                     <!-- イベント -->
-                    <a href="/hinata/events.php" class="app-card group relative bg-white p-8 rounded-[2.5rem] border border-sky-100 shadow-sm overflow-hidden">
+                    <a href="/hinata/events.php" class="app-card group relative bg-white p-8 rounded-xl border border-sky-100 shadow-sm overflow-hidden">
                         <div class="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform">
                             <i class="fa-solid fa-calendar-days text-6xl text-sky-500"></i>
                         </div>
                         <div class="relative z-10">
-                            <div class="w-12 h-12 bg-sky-50 rounded-2xl flex items-center justify-center text-sky-500 mb-6 group-hover:bg-sky-500 group-hover:text-white transition-colors">
+                            <div class="w-12 h-12 bg-sky-50 rounded-lg flex items-center justify-center text-sky-500 mb-6 group-hover:bg-sky-500 group-hover:text-white transition-colors">
                                 <i class="fa-solid fa-calendar-check"></i>
                             </div>
                             <h3 class="text-xl font-black text-slate-800 mb-2">イベント</h3>
@@ -121,12 +121,12 @@
                     </a>
 
                     <!-- メンバー帳 -->
-                    <a href="/hinata/members.php" class="app-card group relative bg-white p-8 rounded-[2.5rem] border border-sky-100 shadow-sm overflow-hidden">
+                    <a href="/hinata/members.php" class="app-card group relative bg-white p-8 rounded-xl border border-sky-100 shadow-sm overflow-hidden">
                         <div class="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform">
                             <i class="fa-solid fa-users text-6xl text-sky-500"></i>
                         </div>
                         <div class="relative z-10">
-                            <div class="w-12 h-12 bg-sky-50 rounded-2xl flex items-center justify-center text-sky-500 mb-6 group-hover:bg-sky-500 group-hover:text-white transition-colors">
+                            <div class="w-12 h-12 bg-sky-50 rounded-lg flex items-center justify-center text-sky-500 mb-6 group-hover:bg-sky-500 group-hover:text-white transition-colors">
                                 <i class="fa-solid fa-address-card"></i>
                             </div>
                             <h3 class="text-xl font-black text-slate-800 mb-2">メンバー帳</h3>

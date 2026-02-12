@@ -23,7 +23,7 @@
         }
         .filter-btn.active { background-color: #7cc7e8; color: white; border-color: #7cc7e8; }
         .member-card { transition: all 0.3s ease; }
-        .member-card:hover { transform: translateY(-4px); border-color: #7cc7e8; }
+        .member-card:hover { transform: translateY(-2px); border-color: #7cc7e8; }
         .portrait-img { width: 100%; height: 100%; object-fit: cover; }
         #memberModal { opacity: 0; }
         #memberModal.active { 
@@ -156,10 +156,10 @@
         <div class="flex-1 overflow-y-auto p-4 md:p-8 custom-scroll pb-24">
             <div id="memberGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 max-w-6xl mx-auto">
                 <?php foreach ($members as $m): ?>
-                <div class="member-card bg-white rounded-[2.5rem] p-4 shadow-sm border border-sky-50/50 cursor-pointer flex flex-col items-center text-center relative overflow-hidden" 
+                <div class="member-card bg-white rounded-xl p-4 shadow-sm border border-sky-50/50 cursor-pointer flex flex-col items-center text-center relative overflow-hidden" 
                      data-gen="<?= $m['generation'] ?>" data-active="<?= $m['is_active'] ?>" onclick="showDetail(<?= $m['id'] ?>, event)">
                     <div class="absolute top-0 left-0 w-full h-1.5" style="background: linear-gradient(to right, <?= $m['color1'] ?: '#ccc' ?>, <?= $m['color2'] ?: '#ddd' ?>);"></div>
-                    <div class="w-full aspect-square rounded-[2rem] bg-sky-50 mb-4 shadow-inner overflow-hidden flex items-center justify-center">
+                    <div class="w-full aspect-square rounded-xl bg-sky-50 mb-4 shadow-inner overflow-hidden flex items-center justify-center">
                         <?php if(!empty($m['image_url'])): ?>
                             <img src="/assets/img/members/<?= $m['image_url'] ?>" class="portrait-img">
                         <?php else: ?>
@@ -178,7 +178,7 @@
             </div>
 
             <div id="memberList" class="hidden max-w-5xl mx-auto mt-4">
-                <div class="overflow-x-auto bg-white rounded-3xl border border-sky-50 shadow-sm">
+                <div class="overflow-x-auto bg-white rounded-xl border border-sky-50 shadow-sm">
                     <table class="min-w-full text-xs md:text-sm">
                         <thead class="bg-slate-50/80">
                             <tr>
@@ -194,7 +194,7 @@
                             $currentGroup = null;
                             $penlightCell = function (?string $code, ?string $name): string {
                                 if (empty($code) && empty($name)) {
-                                    return '<span class="inline-flex items-center px-2 py-1 rounded-2xl bg-slate-100 text-[11px] font-bold text-slate-500 whitespace-nowrap">未設定</span>';
+                                    return '<span class="inline-flex items-center px-2 py-1 rounded-lg bg-slate-100 text-[11px] font-bold text-slate-500 whitespace-nowrap">未設定</span>';
                                 }
                                 $label = htmlspecialchars($name ?: $code, ENT_QUOTES, 'UTF-8');
                                 $hex = ltrim((string)$code, '#');
@@ -208,7 +208,7 @@
                                     $textColor = '#111827';
                                 }
                                 $bg = $code ?: '#e5e7eb';
-                                return '<span class="inline-flex items-center px-2 py-1 rounded-2xl text-[11px] font-bold whitespace-nowrap" style="background-color:'
+                                return '<span class="inline-flex items-center px-2 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap" style="background-color:'
                                     . htmlspecialchars($bg, ENT_QUOTES, 'UTF-8')
                                     . ';color:' . htmlspecialchars($textColor, ENT_QUOTES, 'UTF-8') . ';">'
                                     . $label . '</span>';
@@ -320,22 +320,22 @@
                     </div>
 
                     <div class="p-8 space-y-8 overflow-y-auto custom-scroll">
-                        <div id="modalInfoArea" class="hidden bg-sky-50/50 p-5 rounded-3xl border border-sky-100/50">
+                        <div id="modalInfoArea" class="hidden bg-sky-50/50 p-5 rounded-xl border border-sky-100/50">
                             <p class="text-[9px] font-black text-sky-400 uppercase mb-1 tracking-widest">紹介文</p>
                             <p id="modalInfo" class="text-sm font-medium text-slate-600 leading-relaxed whitespace-pre-wrap"></p>
                         </div>
-                        <div id="penlightSection" class="hidden bg-white p-5 rounded-3xl border border-slate-100/70">
+                        <div id="penlightSection" class="hidden bg-white p-5 rounded-xl border border-slate-100/70">
                             <p class="text-[9px] font-black text-slate-400 uppercase mb-2 tracking-widest">サイリウムカラー</p>
                             <div class="flex items-center gap-3">
-                                <div id="penlight1" class="flex-1 h-9 rounded-2xl flex items-center justify-center text-[11px] font-bold shadow-sm border border-slate-100"></div>
-                                <div id="penlight2" class="flex-1 h-9 rounded-2xl flex items-center justify-center text-[11px] font-bold shadow-sm border border-slate-100"></div>
+                                <div id="penlight1" class="flex-1 h-9 rounded-lg flex items-center justify-center text-[11px] font-bold shadow-sm border border-slate-100"></div>
+                                <div id="penlight2" class="flex-1 h-9 rounded-lg flex items-center justify-center text-[11px] font-bold shadow-sm border border-slate-100"></div>
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-4 text-center">
-                            <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100"><p class="text-[9px] font-black text-slate-400 uppercase mb-1 tracking-widest">血液型</p><p id="modalBlood" class="text-base font-black text-slate-700">--</p></div>
-                            <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100"><p class="text-[9px] font-black text-slate-400 uppercase mb-1 tracking-widest">身長</p><p id="modalHeight" class="text-base font-black text-slate-700">--</p></div>
-                            <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100"><p class="text-[9px] font-black text-slate-400 uppercase mb-1 tracking-widest">生年月日</p><p id="modalBirth" class="text-base font-black text-slate-700">--</p></div>
-                            <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100"><p class="text-[9px] font-black text-slate-400 uppercase mb-1 tracking-widest">出身地</p><p id="modalPlace" class="text-base font-black text-slate-700">--</p></div>
+                            <div class="bg-slate-50 p-3 rounded-lg border border-slate-100"><p class="text-[9px] font-black text-slate-400 uppercase mb-1 tracking-widest">血液型</p><p id="modalBlood" class="text-base font-black text-slate-700">--</p></div>
+                            <div class="bg-slate-50 p-3 rounded-lg border border-slate-100"><p class="text-[9px] font-black text-slate-400 uppercase mb-1 tracking-widest">身長</p><p id="modalHeight" class="text-base font-black text-slate-700">--</p></div>
+                            <div class="bg-slate-50 p-3 rounded-lg border border-slate-100"><p class="text-[9px] font-black text-slate-400 uppercase mb-1 tracking-widest">生年月日</p><p id="modalBirth" class="text-base font-black text-slate-700">--</p></div>
+                            <div class="bg-slate-50 p-3 rounded-lg border border-slate-100"><p class="text-[9px] font-black text-slate-400 uppercase mb-1 tracking-widest">出身地</p><p id="modalPlace" class="text-base font-black text-slate-700">--</p></div>
                         </div>
                         <div id="snsLinks" class="grid grid-cols-1 gap-2 pb-10 md:pb-0">
                             <a id="blogBtn" href="#" target="_blank" class="h-12 bg-sky-50 rounded-xl flex items-center px-4 gap-3 text-xs font-black text-sky-600 border border-sky-100/50 hover:bg-sky-100 transition-all"><i class="fa-solid fa-blog"></i> 公式ブログ</a>

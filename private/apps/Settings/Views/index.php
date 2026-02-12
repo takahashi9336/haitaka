@@ -46,7 +46,7 @@
                 <?php endif; ?>
 
                 <section id="section-profile" class="space-y-6">
-                    <div class="bg-white p-5 md:p-8 rounded-3xl border border-slate-200 shadow-sm">
+                    <div class="bg-white p-5 md:p-8 rounded-xl border border-slate-200 shadow-sm">
                         <h2 class="text-lg font-bold text-slate-800 mb-1">パスワード変更</h2>
                         <p class="text-[10px] font-bold text-slate-400 mb-6 uppercase tracking-widest">Change Password</p>
                         
@@ -67,12 +67,12 @@
                 <?php if ($user['role'] === 'admin'): ?>
                 <section id="section-users" class="hidden space-y-6">
                     <div class="flex flex-col md:flex-row gap-4 mb-4">
-                        <button onclick="document.getElementById('createUserModal').classList.remove('hidden')" class="w-full md:w-auto bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black uppercase tracking-widest px-6 h-14 rounded-2xl shadow-xl transition-all flex items-center justify-center gap-2">
+                        <button onclick="document.getElementById('createUserModal').classList.remove('hidden')" class="w-full md:w-auto bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black uppercase tracking-widest px-6 h-14 rounded-lg shadow-xl transition-all flex items-center justify-center gap-2">
                             <i class="fa-solid fa-user-plus"></i> ユーザーを追加
                         </button>
                     </div>
 
-                    <div class="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+                    <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                         <div class="overflow-x-auto w-full">
                             <table class="w-full text-left text-sm min-w-[500px]">
                                 <thead class="bg-slate-50 border-b border-slate-100">

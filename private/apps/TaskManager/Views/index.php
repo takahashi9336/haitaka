@@ -50,7 +50,7 @@
 
         <div id="mainScroll" class="flex-1 overflow-y-auto p-3 md:p-6 custom-scroll">
             
-            <section id="quickAddContainer" class="bg-white border border-slate-200 rounded-2xl p-4 mb-6 shadow-sm mobile-hidden">
+            <section id="quickAddContainer" class="bg-white border border-slate-200 rounded-lg p-4 mb-6 shadow-sm mobile-hidden">
                 <form id="taskForm" class="flex flex-col gap-4">
                     <input type="hidden" name="id" id="task_id">
                     <div class="grid grid-cols-3 gap-3">
@@ -110,7 +110,7 @@
 
             <div id="mode-list" class="space-y-2"></div>
             <div id="mode-gantt" class="hidden">
-                <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                <div class="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
                     <div class="overflow-x-auto" id="gantt-x-scroll">
                         <div class="inline-block min-w-full" id="gantt-render-root"></div>
                     </div>
@@ -172,7 +172,7 @@
             let tasks = rawTasks.filter(t => showCompleted || t.status !== 'done');
             tasks.forEach(task => {
                 const el = document.createElement('div');
-                el.className = `bg-white border border-slate-200 rounded-xl p-3 shadow-sm flex items-center gap-3 cursor-pointer hover:border-indigo-200 ${task.status==='done'?'row-done':''}`;
+                el.className = `bg-white border border-slate-200 rounded-lg p-3 shadow-sm flex items-center gap-3 cursor-pointer hover:border-indigo-200 ${task.status==='done'?'row-done':''}`;
                 el.style.borderLeft = `5px solid ${task.category_color||'#cbd5e1'}`;
                 el.onclick = () => editTask(task);
                 el.innerHTML = `

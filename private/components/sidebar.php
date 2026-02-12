@@ -39,6 +39,10 @@ $inactiveClass = "text-slate-500 hover:bg-slate-50 transition";
             <i class="fa-solid fa-check-to-slot w-6 text-center"></i>
             <span class="nav-text ml-2 text-sm">タスク管理</span>
         </a>
+        <a href="/note/" class="nav-item flex items-center px-3 py-3 rounded-xl <?= strpos($uri, '/note/') !== false ? $activeClass : $inactiveClass ?>">
+            <i class="fa-solid fa-lightbulb w-6 text-center"></i>
+            <span class="nav-text ml-2 text-sm">メモ</span>
+        </a>
         <div class="space-y-1">
             <a href="/hinata/" class="nav-item flex items-center px-3 py-3 rounded-xl <?= $isHinata ? 'bg-sky-50 text-sky-600 font-bold' : $inactiveClass ?>">
                 <i class="fa-solid fa-star w-6 text-center <?= $isHinata ? 'text-sky-500' : 'text-sky-400' ?>"></i>

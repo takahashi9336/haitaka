@@ -82,7 +82,7 @@
                         <form id="memberForm" class="space-y-6 opacity-30 pointer-events-none transition-opacity">
                             <input type="hidden" name="id" id="m_id">
                             
-                            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                            <div class="bg-slate-50 p-4 rounded-lg border border-slate-100">
                                 <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1 text-sky-500">Portrait Image Upload</label>
                                 <input type="file" name="image_file" id="f_image" accept="image/*" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:bg-sky-50 file:text-sky-600 hover:file:bg-sky-100 cursor-pointer">
                             </div>
@@ -130,16 +130,16 @@
                                 <select name="is_active" id="f_active" class="w-full h-11 border border-slate-100 rounded-xl px-4 text-sm outline-none bg-slate-50"><option value="1">現役メンバー</option><option value="0">卒業メンバー</option></select>
                             </div>
 
-                            <button type="submit" class="w-full bg-slate-800 text-white h-14 rounded-2xl font-black text-sm shadow-xl hover:bg-slate-900 transition-all">メンバー情報を保存</button>
+                            <button type="submit" class="w-full bg-slate-800 text-white h-14 rounded-lg font-black text-sm shadow-xl hover:bg-slate-900 transition-all">メンバー情報を保存</button>
                         </form>
                     </section>
                 </div>
 
                 <div class="space-y-4">
-                    <section class="bg-white p-6 rounded-[2rem] border border-sky-50 shadow-sm overflow-hidden">
+                    <section class="bg-white p-6 rounded-xl border border-sky-50 shadow-sm overflow-hidden">
                         <div class="space-y-1 max-h-[600px] overflow-y-auto custom-scroll pr-2">
                             <?php foreach ($members as $m): ?>
-                            <div onclick='selectMember(<?= json_encode($m, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>)' class="p-2 rounded-2xl hover:bg-sky-50 cursor-pointer flex items-center gap-3 transition-all border border-transparent hover:border-sky-100 <?= $m['is_active'] ? '' : 'opacity-40' ?>">
+                            <div onclick='selectMember(<?= json_encode($m, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>)' class="p-2 rounded-lg hover:bg-sky-50 cursor-pointer flex items-center gap-3 transition-all border border-transparent hover:border-sky-100 <?= $m['is_active'] ? '' : 'opacity-40' ?>">
                                 <?php if($m['image_url']): ?>
                                     <img src="/assets/img/members/<?= $m['image_url'] ?>" class="w-10 h-10 rounded-xl object-cover">
                                 <?php else: ?>
@@ -156,7 +156,7 @@
 
             <!-- 一括編集用セクション（別タブ） -->
             <div id="bulkSection" class="hidden">
-                <section class="bg-white p-6 rounded-[2rem] border border-sky-50 shadow-sm overflow-hidden">
+                <section class="bg-white p-6 rounded-xl border border-sky-50 shadow-sm overflow-hidden">
                         <h2 class="text-sm font-black text-slate-800 mb-4">一覧編集（全メンバー）</h2>
                         <p class="text-[11px] text-slate-400 mb-3">テキストや期・状態・サイリウム・SNSをまとめて更新できます。画像やPVは「詳細編集」タブで編集してください。</p>
                         <div class="mb-2 text-right">
