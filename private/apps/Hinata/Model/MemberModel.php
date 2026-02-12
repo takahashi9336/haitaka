@@ -36,7 +36,7 @@ class MemberModel extends BaseModel {
                            JOIN hn_media_metadata hmeta ON hmeta.id = hmm.media_meta_id
                            JOIN com_media_assets ma ON ma.id = hmeta.asset_id
                            WHERE hmm.member_id = m.id
-                             AND hmeta.category = 'member_kojin_pv'
+                             AND hmeta.category = 'SoloPV'
                              AND ma.platform = 'youtube'
                            LIMIT 1
                        ) as pv_video_key,
@@ -46,7 +46,7 @@ class MemberModel extends BaseModel {
                            JOIN hn_media_metadata hmeta ON hmeta.id = hmm.media_meta_id
                            JOIN com_media_assets ma ON ma.id = hmeta.asset_id
                            WHERE hmm.member_id = m.id
-                             AND hmeta.category = 'member_kojin_pv'
+                             AND hmeta.category = 'SoloPV'
                              AND ma.platform = 'youtube'
                            LIMIT 1
                        ) as pv_title,
@@ -78,7 +78,7 @@ class MemberModel extends BaseModel {
                            JOIN hn_media_metadata hmeta ON hmeta.id = hmm.media_meta_id
                            JOIN com_media_assets ma ON ma.id = hmeta.asset_id
                            WHERE hmm.member_id = m.id
-                             AND hmeta.category = 'member_kojin_pv'
+                             AND hmeta.category = 'SoloPV'
                              AND ma.platform = 'youtube'
                            LIMIT 1
                        ) as pv_video_key

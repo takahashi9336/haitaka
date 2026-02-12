@@ -109,7 +109,7 @@ class MemberController {
                     if ($assetId) {
                         $metaId = $mediaModel->findOrCreateMetadata(
                             $assetId,
-                            'member_kojin_pv',
+                            'SoloPV',
                             null
                         );
 

@@ -39,7 +39,7 @@ CREATE TABLE `hn_media_metadata` (
   FOREIGN KEY (`asset_id`) REFERENCES `com_media_assets`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 ```
-既存のメンバー管理画面で登録したyoutube動画については'member_kojin_pv'として登録済み。
+既存のメンバー管理画面で登録したyoutube動画については'SoloPV'として登録済み。
 
 ### 2.3 hn_media_members (出演者紐付け)
 - 「1つの動画に複数メンバーが出演する（ユニット曲、全体MV）」および「1人のメンバーが複数動画に出演する」関係を管理する中間テーブル。

@@ -131,6 +131,64 @@
                             <p class="hidden md:block text-sm text-slate-400 leading-relaxed">メンバーのプロフィール、サイリウムカラーなどをチェックします。</p>
                         </div>
                     </a>
+
+                    <!-- 動画一覧 -->
+                    <a href="/hinata/media_list.php" class="app-card group relative bg-white rounded-xl border border-sky-100 shadow-sm overflow-hidden flex flex-col items-center justify-center p-4 md:p-8 md:block">
+                        <div class="hidden md:block absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-video text-6xl text-sky-500"></i>
+                        </div>
+                        <div class="relative z-10 flex flex-col items-center md:block">
+                            <div class="w-16 h-16 md:w-12 md:h-12 bg-sky-50 rounded-lg flex items-center justify-center text-sky-500 mb-2 md:mb-6 group-hover:bg-sky-500 group-hover:text-white transition-colors">
+                                <i class="fa-solid fa-play-circle text-2xl md:text-base"></i>
+                            </div>
+                            <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-4 text-center md:text-left">動画一覧</h3>
+                            <p class="hidden md:block text-sm text-slate-400 leading-relaxed">登録されたすべての動画を閲覧します。</p>
+                        </div>
+                    </a>
+
+                    <?php if (($_SESSION['user']['role'] ?? '') === 'admin'): ?>
+                    <!-- リリース管理（管理者のみ） -->
+                    <a href="/hinata/release_admin.php" class="app-card group relative bg-white rounded-xl border border-sky-100 shadow-sm overflow-hidden flex flex-col items-center justify-center p-4 md:p-8 md:block">
+                        <div class="hidden md:block absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-compact-disc text-6xl text-sky-500"></i>
+                        </div>
+                        <div class="relative z-10 flex flex-col items-center md:block">
+                            <div class="w-16 h-16 md:w-12 md:h-12 bg-sky-50 rounded-lg flex items-center justify-center text-sky-500 mb-2 md:mb-6 group-hover:bg-sky-500 group-hover:text-white transition-colors">
+                                <i class="fa-solid fa-compact-disc text-2xl md:text-base"></i>
+                            </div>
+                            <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-4 text-center md:text-left">リリース管理</h3>
+                            <p class="hidden md:block text-sm text-slate-400 leading-relaxed">シングル・アルバム情報を管理します。</p>
+                        </div>
+                    </a>
+
+                    <!-- 動画・メンバー紐付け管理（管理者のみ） -->
+                    <a href="/hinata/media_member_admin.php" class="app-card group relative bg-white rounded-xl border border-sky-100 shadow-sm overflow-hidden flex flex-col items-center justify-center p-4 md:p-8 md:block">
+                        <div class="hidden md:block absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-link text-6xl text-sky-500"></i>
+                        </div>
+                        <div class="relative z-10 flex flex-col items-center md:block">
+                            <div class="w-16 h-16 md:w-12 md:h-12 bg-sky-50 rounded-lg flex items-center justify-center text-sky-500 mb-2 md:mb-6 group-hover:bg-sky-500 group-hover:text-white transition-colors">
+                                <i class="fa-solid fa-link text-2xl md:text-base"></i>
+                            </div>
+                            <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-4 text-center md:text-left">動画・メンバー紐付け</h3>
+                            <p class="hidden md:block text-sm text-slate-400 leading-relaxed">動画に出演メンバーを紐づけます。</p>
+                        </div>
+                    </a>
+
+                    <!-- 動画一括登録（管理者のみ） -->
+                    <a href="/hinata/media_import.php" class="app-card group relative bg-white rounded-xl border border-sky-100 shadow-sm overflow-hidden flex flex-col items-center justify-center p-4 md:p-8 md:block">
+                        <div class="hidden md:block absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-cloud-arrow-up text-6xl text-sky-500"></i>
+                        </div>
+                        <div class="relative z-10 flex flex-col items-center md:block">
+                            <div class="w-16 h-16 md:w-12 md:h-12 bg-sky-50 rounded-lg flex items-center justify-center text-sky-500 mb-2 md:mb-6 group-hover:bg-sky-500 group-hover:text-white transition-colors">
+                                <i class="fa-solid fa-film text-2xl md:text-base"></i>
+                            </div>
+                            <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-4 text-center md:text-left">動画一括登録</h3>
+                            <p class="hidden md:block text-sm text-slate-400 leading-relaxed">YouTube動画を一括でインポートします。</p>
+                        </div>
+                    </a>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

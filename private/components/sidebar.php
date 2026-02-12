@@ -50,9 +50,14 @@ $inactiveClass = "text-slate-500 hover:bg-slate-50 transition";
             </a>
             <?php if ($isHinata): ?>
             <div class="pl-8 space-y-1 nav-text">
-                <a href="/hinata/members.php" class="block py-1.5 text-[11px] font-bold <?= strpos($uri, 'members.php') ? 'text-sky-500' : 'text-slate-400' ?> hover:text-sky-500 transition">メンバー帳</a>
-                <a href="/hinata/events.php" class="block py-1.5 text-[11px] font-bold <?= strpos($uri, 'events.php') ? 'text-sky-500' : 'text-slate-400' ?> hover:text-sky-500 transition">イベント</a>
-                <a href="/hinata/talk.php" class="block py-1.5 text-[11px] font-bold <?= strpos($uri, 'talk.php') ? 'text-sky-500' : 'text-slate-400' ?> hover:text-sky-500 transition">ミーグリネタ帳</a>
+                <a href="/hinata/members.php" class="block py-1.5 text-[11px] font-bold <?= strpos($uri, 'members.php') !== false ? 'text-sky-500' : 'text-slate-400' ?> hover:text-sky-500 transition">メンバー帳</a>
+                <a href="/hinata/events.php" class="block py-1.5 text-[11px] font-bold <?= strpos($uri, 'events.php') !== false ? 'text-sky-500' : 'text-slate-400' ?> hover:text-sky-500 transition">イベント</a>
+                <a href="/hinata/talk.php" class="block py-1.5 text-[11px] font-bold <?= strpos($uri, 'talk.php') !== false ? 'text-sky-500' : 'text-slate-400' ?> hover:text-sky-500 transition">ミーグリネタ帳</a>
+                <a href="/hinata/media_list.php" class="block py-1.5 text-[11px] font-bold <?= strpos($uri, 'media_list.php') !== false ? 'text-sky-500' : 'text-slate-400' ?> hover:text-sky-500 transition">動画一覧</a>
+                <?php if (($user['role'] ?? '') === 'admin'): ?>
+                <a href="/hinata/media_import.php" class="block py-1.5 text-[11px] font-bold <?= strpos($uri, 'media_import.php') !== false ? 'text-sky-500' : 'text-slate-400' ?> hover:text-sky-500 transition">動画一括登録</a>
+                <a href="/hinata/media_member_admin.php" class="block py-1.5 text-[11px] font-bold <?= strpos($uri, 'media_member_admin.php') !== false ? 'text-sky-500' : 'text-slate-400' ?> hover:text-sky-500 transition">動画・メンバー紐付け</a>
+                <?php endif; ?>
             </div>
             <?php endif; ?>
         </div>

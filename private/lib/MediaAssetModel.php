@@ -79,18 +79,23 @@ class MediaAssetModel extends BaseModel {
     }
 
     /**
-     * asset_id + category で hn_media_metadata を取得 or 作成し、meta_id を返す
+     * asset_id で hn_media_metadata を取得 or 作成し、meta_id を返す
+     * 
+     * ※ asset_id は UNIQUE KEY のため、1動画に1メタデータが原則
+     * カテゴリは後から更新可能
      */
     public function findOrCreateMetadata(int $assetId, string $category, ?string $releaseDate = null): ?int {
-        $sql = "SELECT id FROM hn_media_metadata WHERE asset_id = :asset_id AND category = :category";
+        $sql = "SELECT id FROM hn_media_metadata WHERE asset_id = :asset_id";
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute(['asset_id' => $assetId, 'category' => $category]);
+        $stmt->execute(['asset_id' => $assetId]);
         $metaId = $stmt->fetchColumn();
 
         if ($metaId) {
+            // 既存のメタデータが存在する場合、カテゴリを更新（必要に応じて）
             return (int)$metaId;
         }
 
+        // 新規作成
         $stmt = $this->pdo->prepare("
             INSERT INTO hn_media_metadata (asset_id, category, release_date)
             VALUES (:asset_id, :category, :release_date)
@@ -103,6 +108,18 @@ class MediaAssetModel extends BaseModel {
 
         $newId = $this->lastInsertId();
         return $newId ? (int)$newId : null;
+    }
+
+    /**
+     * メタデータIDでカテゴリを更新
+     */
+    public function updateMetadataCategory(int $metaId, string $category): bool {
+        $stmt = $this->pdo->prepare("
+            UPDATE hn_media_metadata 
+            SET category = :category 
+            WHERE id = :id
+        ");
+        return $stmt->execute(['id' => $metaId, 'category' => $category]);
     }
 }
 
