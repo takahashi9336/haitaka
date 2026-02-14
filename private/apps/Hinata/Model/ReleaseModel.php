@@ -12,7 +12,7 @@ class ReleaseModel extends BaseModel {
     protected string $table = 'hn_releases';
     protected array $fields = [
         'id', 'release_type', 'release_number', 'title', 'title_kana',
-        'release_date', 'jacket_image_url', 'description', 'created_at'
+        'release_date', 'description', 'created_at'
     ];
 
     /**
@@ -51,13 +51,11 @@ class ReleaseModel extends BaseModel {
             return null;
         }
 
-        // 収録曲を取得
-        $sql = "SELECT s.*, 
-                       m.name as center_name,
+        // 収録曲を取得（センターは hn_song_members.is_center で管理）
+        $sql = "SELECT s.*,
                        hmeta.category,
                        ma.media_key, ma.thumbnail_url
                 FROM hn_songs s
-                LEFT JOIN hn_members m ON s.center_member_id = m.id
                 LEFT JOIN hn_media_metadata hmeta ON s.media_meta_id = hmeta.id
                 LEFT JOIN com_media_assets ma ON hmeta.asset_id = ma.id
                 WHERE s.release_id = :rid
@@ -66,6 +64,10 @@ class ReleaseModel extends BaseModel {
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute(['rid' => $releaseId]);
         $release['songs'] = $stmt->fetchAll();
+
+        // 版別情報（editions）を取得
+        $editionModel = new ReleaseEditionModel();
+        $release['editions'] = $editionModel->getByReleaseId($releaseId);
 
         return $release;
     }

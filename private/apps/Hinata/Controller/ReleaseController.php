@@ -3,6 +3,7 @@
 namespace App\Hinata\Controller;
 
 use App\Hinata\Model\ReleaseModel;
+use App\Hinata\Model\ReleaseEditionModel;
 use App\Hinata\Model\SongModel;
 use App\Hinata\Model\SongMemberModel;
 use App\Hinata\Model\MemberModel;
@@ -23,13 +24,17 @@ class ReleaseController {
         $auth->requireAdmin();
 
         $releaseModel = new ReleaseModel();
+        $editionModel = new ReleaseEditionModel();
         $memberModel = new MemberModel();
 
         $releases = $releaseModel->getAllReleases();
+        $releaseIds = array_column($releases, 'id');
+        $editionsByRelease = $editionModel->getEditionsByReleaseIds($releaseIds ?: [0]);
+
         $members = $memberModel->getAllWithColors();
         $releaseTypes = ReleaseModel::RELEASE_TYPES;
         $trackTypes = SongModel::TRACK_TYPES;
-        $roles = SongMemberModel::ROLES;
+        $editionLabels = ReleaseEditionModel::EDITIONS;
 
         $user = $_SESSION['user'];
         require_once __DIR__ . '/../Views/release_admin.php';
@@ -53,17 +58,17 @@ class ReleaseController {
             $pdo->beginTransaction();
 
             $releaseModel = new ReleaseModel();
+            $editionModel = new ReleaseEditionModel();
             $songModel = new SongModel();
             $songMemberModel = new SongMemberModel();
 
-            // リリース情報の保存
+            // リリース情報の保存（ジャケットは hn_release_editions で管理）
             $releaseData = [
                 'release_type' => $input['release_type'] ?? 'single',
                 'release_number' => $input['release_number'] ?? null,
                 'title' => $input['title'],
                 'title_kana' => $input['title_kana'] ?? null,
                 'release_date' => $input['release_date'] ?? null,
-                'jacket_image_url' => $input['jacket_image_url'] ?? null,
                 'description' => $input['description'] ?? null,
             ];
 
@@ -75,6 +80,11 @@ class ReleaseController {
                 // 新規作成
                 $releaseModel->create($releaseData);
                 $releaseId = (int)$pdo->lastInsertId();
+            }
+
+            // 版別情報の保存（type_a はメインジャケットのため必須チェックは画面側で実施）
+            if (isset($input['editions']) && is_array($input['editions'])) {
+                $editionModel->saveForRelease($releaseId, $input['editions']);
             }
 
             // 収録曲の保存（オプション）

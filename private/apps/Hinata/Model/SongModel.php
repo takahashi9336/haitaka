@@ -39,9 +39,7 @@ class SongModel extends BaseModel {
                 LEFT JOIN hn_colors c1 ON m.color_id1 = c1.id
                 LEFT JOIN hn_colors c2 ON m.color_id2 = c2.id
                 WHERE sm.song_id = :sid
-                ORDER BY 
-                    FIELD(sm.role, 'center', 'fukujin', 'under', 'other'),
-                    sm.position ASC";
+                ORDER BY sm.row_number ASC, sm.position ASC";
         
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute(['sid' => $songId]);
@@ -51,14 +49,14 @@ class SongModel extends BaseModel {
     }
 
     /**
-     * メンバーが主役級で参加している楽曲を取得
+     * メンバーがセンターで参加している楽曲を取得
      */
     public function getFeaturedSongsByMember(int $memberId, int $limit = 5): array {
         $sql = "SELECT 
                     r.title as release_title,
                     r.release_date,
                     s.title as song_title,
-                    sm.role,
+                    sm.is_center,
                     sm.position,
                     ma.media_key,
                     ma.thumbnail_url
@@ -68,7 +66,7 @@ class SongModel extends BaseModel {
                 LEFT JOIN hn_media_metadata hmeta ON s.media_meta_id = hmeta.id
                 LEFT JOIN com_media_assets ma ON hmeta.asset_id = ma.id
                 WHERE sm.member_id = :mid
-                  AND sm.is_featured = 1
+                  AND sm.is_center = 1
                   AND s.media_meta_id IS NOT NULL
                 ORDER BY r.release_date DESC
                 LIMIT :limit";
@@ -90,8 +88,7 @@ class SongModel extends BaseModel {
         $sql = "SELECT 
                     sm.row_number,
                     sm.position,
-                    sm.role,
-                    sm.is_featured,
+                    sm.is_center,
                     m.id as member_id,
                     m.name,
                     m.image_url,
@@ -148,7 +145,7 @@ class SongModel extends BaseModel {
                 FROM hn_song_members sm
                 JOIN hn_members m ON sm.member_id = m.id
                 WHERE sm.song_id = :sid
-                  AND sm.role = 'center'
+                  AND sm.is_center = 1
                 ORDER BY sm.position ASC";
         
         $stmt = $this->pdo->prepare($sql);

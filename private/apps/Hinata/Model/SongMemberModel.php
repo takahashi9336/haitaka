@@ -11,8 +11,8 @@ use Core\BaseModel;
 class SongMemberModel extends BaseModel {
     protected string $table = 'hn_song_members';
     protected array $fields = [
-        'id', 'song_id', 'member_id', 'role', 'row_number', 'position',
-        'is_featured', 'part_description'
+        'id', 'song_id', 'member_id', 'is_center', 'row_number', 'position',
+        'part_description'
     ];
 
     /**
@@ -22,9 +22,10 @@ class SongMemberModel extends BaseModel {
 
     /**
      * 楽曲に参加メンバーを一括登録
-     * 
+     *
      * @param int $songId 楽曲ID
-     * @param array $members [['member_id' => 1, 'role' => 'center', 'position' => 1, 'is_featured' => 1], ...]
+     * @param array $members [['member_id' => 1, 'is_center' => 1, 'row_number' => 1, 'position' => 2], ...]
+     *   position: 列内で左端=1、右にカウントアップ（ダブルセンター時は 2,3 がセンター）
      */
     public function bulkInsertMembers(int $songId, array $members): bool {
         // 既存のメンバーを削除
@@ -35,36 +36,24 @@ class SongMemberModel extends BaseModel {
             return true;
         }
 
-        // 一括登録
         $stmt = $this->pdo->prepare("
-            INSERT INTO {$this->table} (song_id, member_id, role, row_number, position, is_featured, part_description)
-            VALUES (:song_id, :member_id, :role, :row_number, :position, :is_featured, :part_description)
+            INSERT INTO {$this->table} (song_id, member_id, is_center, row_number, position, part_description)
+            VALUES (:song_id, :member_id, :is_center, :row_number, :position, :part_description)
         ");
 
         foreach ($members as $member) {
             $stmt->execute([
                 'song_id' => $songId,
                 'member_id' => $member['member_id'],
-                'role' => $member['role'] ?? 'member',
+                'is_center' => !empty($member['is_center']) ? 1 : 0,
                 'row_number' => $member['row_number'] ?? null,
                 'position' => $member['position'] ?? null,
-                'is_featured' => $member['is_featured'] ?? 0,
                 'part_description' => $member['part_description'] ?? null,
             ]);
         }
 
         return true;
     }
-
-    /**
-     * 役割の定数
-     */
-    public const ROLES = [
-        'center' => 'センター',
-        'member' => '通常参加',
-        'under' => 'アンダー',
-        'other' => 'その他',
-    ];
 
     /**
      * フォーメーション列の定数
