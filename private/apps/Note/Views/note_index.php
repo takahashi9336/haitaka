@@ -20,11 +20,12 @@
             .sidebar.mobile-open .nav-text, .sidebar.mobile-open .logo-text, .sidebar.mobile-open .user-info { display: inline !important; }
         }
 
-        /* Google Keep風のMasonry風レイアウト */
+        /* Google Keep風のMasonry風レイアウト（カード高さはコンテンツに応じて可変） */
         .notes-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
             gap: 0.75rem;
+            align-items: start;
         }
 
         .note-card {
@@ -40,6 +41,9 @@
         .note-content {
             white-space: pre-line;
             word-wrap: break-word;
+            line-height: 1.45;
+            margin: 0;
+            padding: 0;
         }
 
         /* Google Keep風: カードアクションはホバー時のみ表示 */
@@ -181,11 +185,13 @@
                 <div class="mb-6">
                     <div class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
                         <div class="p-4">
+                            <input type="text" id="quickMemoTitle" placeholder="タイトル（任意）"
+                                class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm font-medium mb-2">
                             <textarea 
                                 id="quickMemoInput" 
-                                placeholder="メモを入力... (タイトルは自動生成されます)"
-                                class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none transition-all text-sm"
-                                rows="3"
+                                placeholder="メモを入力..."
+                                class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none overflow-hidden transition-all text-sm min-h-[2.5rem]"
+                                rows="1"
                             ></textarea>
                             <div id="quickMemoActions" class="mt-3 flex items-center justify-end opacity-0 transition-opacity duration-200">
                                 <button id="quickMemoSaveBtn" onclick="QuickMemo.save(event)" class="px-4 py-1.5 bg-amber-500 text-white text-xs font-bold rounded-lg hover:bg-amber-600 transition shadow-sm">
@@ -221,9 +227,13 @@
                                         <h3 class="font-bold text-slate-800 mb-2 text-base"><?= htmlspecialchars($note['title']) ?></h3>
                                     <?php endif; ?>
                                     
-                                    <div class="note-content text-slate-700 text-sm mb-3 leading-relaxed">
-                                        <?= nl2br(htmlspecialchars($note['content'])) ?>
-                                    </div>
+                                    <div class="note-content text-slate-700 text-sm mb-3"><?php
+                                        $raw = (string)($note['content'] ?? '');
+                                        $raw = preg_replace('/\r\n|\r/u', "\n", $raw);
+                                        $raw = preg_replace('/\n{2,}/u', "\n", $raw);
+                                        $raw = trim($raw);
+                                        echo htmlspecialchars($raw, ENT_QUOTES, 'UTF-8');
+                                    ?></div>
                                     
                                     <div class="text-xs text-slate-400 mb-3">
                                         <?= date('Y/m/d H:i', strtotime($note['created_at'])) ?>
@@ -277,8 +287,8 @@
                 
                 <!-- 内容 -->
                 <textarea id="detailContent" placeholder="メモを入力..." 
-                          class="w-full text-slate-700 px-3 py-2 border-0 focus:outline-none resize-none text-sm leading-relaxed" 
-                          rows="12"></textarea>
+                          class="w-full text-slate-700 px-3 py-2 border-0 focus:outline-none resize-none overflow-hidden text-sm min-h-[2.5rem]" 
+                          rows="1"></textarea>
                 
                 <!-- メタ情報 -->
                 <div class="mt-4 pt-4 border-t border-slate-200">
@@ -336,13 +346,21 @@
 
     <script src="/assets/js/core.js"></script>
     <script>
+        // テキストエリアの高さを内容に合わせて自動伸長
+        function autoResizeTextarea(ta) {
+            ta.style.height = 'auto';
+            ta.style.height = Math.max(40, Math.min(ta.scrollHeight, 400)) + 'px';
+        }
+
         // クイックメモ機能
         const QuickMemo = {
             input: null,
+            titleInput: null,
             actions: null,
 
             init() {
                 this.input = document.getElementById('quickMemoInput');
+                this.titleInput = document.getElementById('quickMemoTitle');
                 this.actions = document.getElementById('quickMemoActions');
                 
                 if (this.input) {
@@ -351,10 +369,12 @@
                         this.actions.classList.add('opacity-100');
                     });
                     
-                    this.input.addEventListener('blur', (e) => {
-                        // アクションボタンがクリックされた場合は閉じない
+                    this.input.addEventListener('input', () => autoResizeTextarea(this.input));
+                    this.input.addEventListener('focus', () => autoResizeTextarea(this.input));
+                    
+                    this.input.addEventListener('blur', () => {
                         setTimeout(() => {
-                            if (!this.input.value.trim()) {
+                            if (!this.input.value.trim() && (!this.titleInput || !this.titleInput.value.trim())) {
                                 this.actions.classList.remove('opacity-100');
                                 this.actions.classList.add('opacity-0');
                             }
@@ -364,6 +384,7 @@
             },
 
             async save(event) {
+                const title = this.titleInput ? this.titleInput.value.trim() : '';
                 const content = this.input.value.trim();
                 
                 if (!content) {
@@ -371,10 +392,8 @@
                     return;
                 }
 
-                const btn = event ? event.target : document.getElementById('quickMemoSaveBtn');
-
                 try {
-                    const result = await App.post('/note/api/save.php', { content: content });
+                    const result = await App.post('/note/api/save.php', { title: title, content: content });
 
                     if (result && result.status === 'success') {
                         location.reload();
@@ -550,7 +569,9 @@
                 this.currentNoteId = noteId;
                 document.getElementById('detailNoteId').value = noteId;
                 document.getElementById('detailTitle').value = note.title || '';
-                document.getElementById('detailContent').value = note.content || '';
+                const detailContent = document.getElementById('detailContent');
+                detailContent.value = note.content || '';
+                autoResizeTextarea(detailContent);
                 document.getElementById('detailTimestamp').textContent = 
                     '作成: ' + note.created_at + (note.updated_at !== note.created_at ? ' / 更新: ' + note.updated_at : '');
                 
@@ -678,6 +699,10 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             QuickMemo.init();
+            const detailContent = document.getElementById('detailContent');
+            if (detailContent) {
+                detailContent.addEventListener('input', () => autoResizeTextarea(detailContent));
+            }
         });
     </script>
 </body>

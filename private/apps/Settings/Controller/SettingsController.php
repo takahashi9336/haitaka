@@ -107,6 +107,11 @@ class SettingsController {
         }
 
         $userModel = new UserModel();
+        $existing = $userModel->findByIdName($idName);
+        if ($existing) {
+            echo json_encode(['status' => 'error', 'message' => 'このユーザーIDは既に登録されています']);
+            return;
+        }
         $success = $userModel->createUser($idName, password_hash($password, PASSWORD_DEFAULT), $role);
 
         if ($success) {

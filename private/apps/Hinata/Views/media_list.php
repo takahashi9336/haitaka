@@ -27,8 +27,8 @@
             cursor: pointer;
         }
         .video-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 24px -6px rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.1);
         }
 
         .video-thumbnail {
@@ -36,6 +36,7 @@
             padding-bottom: 56.25%; /* 16:9 */
             background: #f1f5f9;
             overflow: hidden;
+            border-radius: 2px;
         }
         .video-thumbnail img {
             position: absolute;
@@ -44,6 +45,30 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
+        }
+        /* 公式VIDEO風：セクションタイトル（ティール/ミント） */
+        .video-section-title {
+            color: #0d9488;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+        /* 公式チャンネルボタン（青→緑グラデーション） */
+        .btn-official-channel {
+            background: linear-gradient(90deg, #0ea5e9 0%, #10b981 100%);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-size: 0.8125rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: opacity 0.2s, transform 0.2s;
+            box-shadow: 0 2px 8px rgba(14, 165, 233, 0.35);
+        }
+        .btn-official-channel:hover {
+            opacity: 0.95;
+            transform: translateY(-1px);
         }
         .video-thumbnail .play-icon {
             position: absolute;
@@ -151,8 +176,22 @@
         </header>
 
         <div class="flex-1 overflow-y-auto p-6 md:p-10" id="mainScrollArea">
-            <div class="max-w-7xl mx-auto">
+            <div class="max-w-5xl mx-auto">
                 
+                <!-- VIDEOセクション風ヘッダー（公式サイトに寄せたレイアウト） -->
+                <section class="mb-8">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                        <h2 class="video-section-title text-xl md:text-2xl">動画</h2>
+                        <a href="https://www.youtube.com/@46officialyoutubechannel99" target="_blank" rel="noopener noreferrer" class="btn-official-channel shrink-0">
+                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                            </svg>
+                            <span>youtube 公式チャンネル</span>
+                            <i class="fa-solid fa-chevron-right text-[10px] opacity-90"></i>
+                        </a>
+                    </div>
+                </section>
+
                 <!-- フィルター・表示切替 -->
                 <section class="bg-white rounded-2xl border border-sky-100 shadow-sm p-4 mb-6">
                     <div class="flex flex-wrap items-center gap-4">
@@ -216,8 +255,8 @@
                     </div>
                 </section>
 
-                <!-- 動画コンテナ -->
-                <div id="videoContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                <!-- 動画コンテナ（公式VIDEO風：2列・余白多め） -->
+                <div id="videoContainer" class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                     <!-- JavaScript で動的生成 -->
                 </div>
 
@@ -317,7 +356,7 @@
                 btnViewGrid.classList.add('bg-sky-500', 'text-white');
                 btnViewList.classList.remove('bg-sky-500', 'text-white');
                 btnViewList.classList.add('bg-slate-100', 'text-slate-600');
-                videoContainer.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6';
+                videoContainer.className = 'grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8';
             } else {
                 btnViewList.classList.remove('bg-slate-100', 'text-slate-600');
                 btnViewList.classList.add('bg-sky-500', 'text-white');
@@ -399,24 +438,18 @@
                 created_at: video.created_at || ''
             }).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 
+            const dateStr = video.release_date ? new Date(video.release_date).toLocaleDateString('ja-JP') : '';
             return `
-                <div class="video-card bg-white rounded-2xl border border-sky-100 shadow-sm overflow-hidden" data-video="${dataVideo}" onclick="openVideoModal(this, event)">
-                    <div class="video-thumbnail">
+                <div class="video-card bg-white rounded-sm border border-slate-100 overflow-hidden" data-video="${dataVideo}" onclick="openVideoModal(this, event)">
+                    <div class="video-thumbnail rounded-t-sm">
                         <img src="${video.thumbnail_url || '/assets/images/no-image.jpg'}" alt="${escapeHtml(video.title)}">
                         <div class="play-icon">
                             <i class="fa-solid fa-play text-white text-2xl ml-1"></i>
                         </div>
                     </div>
-                    <div class="p-4">
-                        <div class="mb-2">
-                            <span class="category-badge ${categoryColor}">
-                                ${video.category}
-                            </span>
-                        </div>
-                        <h3 class="text-sm font-bold text-slate-800 mb-1 line-clamp-2">${escapeHtml(video.title)}</h3>
-                        <p class="text-xs text-slate-400">
-                            ${video.release_date ? new Date(video.release_date).toLocaleDateString('ja-JP') : ''}
-                        </p>
+                    <div class="pt-3 pb-1">
+                        <h3 class="text-sm text-slate-700 leading-snug line-clamp-2">${escapeHtml(video.title)}</h3>
+                        ${dateStr ? `<p class="text-xs text-slate-400 mt-1">${dateStr}</p>` : ''}
                     </div>
                 </div>
             `;

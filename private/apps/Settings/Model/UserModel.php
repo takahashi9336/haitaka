@@ -28,12 +28,22 @@ class UserModel extends BaseModel {
     }
 
     /**
-     * ID名からユーザー取得
+     * 数値IDでユーザー取得
      */
     public function findById(int $id): ?array {
         $sql = "SELECT * FROM {$this->table} WHERE id = :id";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute(['id' => $id]);
+        return $stmt->fetch() ?: null;
+    }
+
+    /**
+     * ログインID（id_name）でユーザー取得
+     */
+    public function findByIdName(string $idName): ?array {
+        $sql = "SELECT * FROM {$this->table} WHERE id_name = :name";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(['name' => $idName]);
         return $stmt->fetch() ?: null;
     }
 

@@ -40,8 +40,8 @@
                 
                 <?php if ($user['role'] === 'admin'): ?>
                 <div class="flex gap-6 mb-8 border-b border-slate-200 overflow-x-auto whitespace-nowrap">
-                    <button onclick="switchTab('profile')" id="tab-profile" class="pb-3 text-xs font-black tracking-wider border-b-2 border-indigo-600 text-indigo-600">マイアカウント</button>
-                    <button onclick="switchTab('users')" id="tab-users" class="pb-3 text-xs font-black tracking-wider border-b-2 border-transparent text-slate-400 hover:text-slate-600">ユーザー管理</button>
+                    <button type="button" onclick="switchTab('profile')" id="tab-profile" class="tab-btn pb-3 text-xs font-black tracking-wider border-b-2 border-indigo-600 text-indigo-600">マイアカウント</button>
+                    <button type="button" onclick="switchTab('users')" id="tab-users" class="tab-btn pb-3 text-xs font-black tracking-wider border-b-2 border-transparent text-slate-400 hover:text-slate-600">ユーザー管理</button>
                 </div>
                 <?php endif; ?>
 
@@ -103,14 +103,61 @@
         </div>
     </main>
 
+    <?php if ($user['role'] === 'admin'): ?>
+    <!-- ユーザー追加モーダル -->
+    <div id="createUserModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm" aria-modal="true">
+        <div class="flex min-h-full items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 md:p-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-lg font-bold text-slate-800">ユーザーを追加</h2>
+                    <button type="button" onclick="document.getElementById('createUserModal').classList.add('hidden')" class="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+                <form id="formCreateUser" class="space-y-4">
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 tracking-wider mb-1">ユーザーID（ログインID）</label>
+                        <input type="text" name="id_name" required maxlength="64" class="w-full border border-slate-200 rounded-xl h-12 px-4 text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-100 outline-none transition-all" placeholder="半角英数字など">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 tracking-wider mb-1">初期パスワード</label>
+                        <input type="password" name="password" required minlength="6" class="w-full border border-slate-200 rounded-xl h-12 px-4 text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-100 outline-none transition-all" placeholder="6文字以上">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 tracking-wider mb-1">権限</label>
+                        <select name="role" class="w-full border border-slate-200 rounded-xl h-12 px-4 text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-100 outline-none transition-all">
+                            <option value="user">ユーザー</option>
+                        </select>
+                    </div>
+                    <div class="flex gap-3 pt-2">
+                        <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black tracking-wider h-12 rounded-xl transition-all">登録する</button>
+                        <button type="button" onclick="document.getElementById('createUserModal').classList.add('hidden')" class="px-6 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold h-12 rounded-xl transition-all">キャンセル</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <script src="/assets/js/core.js"></script>
     <script>
         document.getElementById('mobileMenuBtn').onclick = () => document.getElementById('sidebar').classList.add('mobile-open');
+
         const switchTab = (tab) => {
-            document.getElementById('section-profile').classList.toggle('hidden', tab !== 'profile');
+            const isProfile = (tab === 'profile');
+            document.getElementById('section-profile').classList.toggle('hidden', !isProfile);
             document.getElementById('section-users').classList.toggle('hidden', tab !== 'users');
-            document.getElementById('tab-profile').classList.toggle('border-indigo-600', tab === 'profile');
-            document.getElementById('tab-users').classList.toggle('border-indigo-600', tab === 'users');
+            const tabProfile = document.getElementById('tab-profile');
+            const tabUsers = document.getElementById('tab-users');
+            if (!tabProfile || !tabUsers) return;
+            tabProfile.classList.toggle('border-indigo-600', isProfile);
+            tabProfile.classList.toggle('text-indigo-600', isProfile);
+            tabProfile.classList.toggle('border-transparent', !isProfile);
+            tabProfile.classList.toggle('text-slate-400', !isProfile);
+            tabUsers.classList.toggle('border-indigo-600', !isProfile);
+            tabUsers.classList.toggle('text-indigo-600', !isProfile);
+            tabUsers.classList.toggle('border-transparent', isProfile);
+            tabUsers.classList.toggle('text-slate-400', isProfile);
         };
         
         document.getElementById('formSelfPass').onsubmit = async (e) => {
@@ -119,6 +166,23 @@
             if (res.status === 'success') { alert('パスワードを更新しました'); e.target.reset(); }
             else { alert('エラー: ' + res.message); }
         };
+
+        const formCreateUser = document.getElementById('formCreateUser');
+        if (formCreateUser) {
+            formCreateUser.onsubmit = async (e) => {
+                e.preventDefault();
+                const data = Object.fromEntries(new FormData(e.target));
+                const res = await App.post('api/create_user.php', data);
+                if (res.status === 'success') {
+                    alert('ユーザーを登録しました');
+                    document.getElementById('createUserModal').classList.add('hidden');
+                    e.target.reset();
+                    location.reload();
+                } else {
+                    alert('エラー: ' + (res.message || '登録に失敗しました'));
+                }
+            };
+        }
     </script>
 </body>
 </html>

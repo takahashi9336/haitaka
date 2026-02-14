@@ -22,6 +22,32 @@
         }
         .video-row:hover { background: #f0f9ff; }
         .video-row.selected { background: #e0f2fe; border-left: 4px solid #0ea5e9; }
+        /* スマホ: 左右を均等に高さ確保し、メンバー選択エリアが操作できるようにする */
+        @media (max-width: 767px) {
+            .media-member-wrap { flex-direction: column; }
+            .media-member-wrap .video-list-section {
+                flex: 0 0 auto;
+                max-height: 45vh;
+                min-height: 200px;
+                display: flex;
+                flex-direction: column;
+            }
+            .media-member-wrap .video-list-section #videoList {
+                min-height: 0;
+            }
+            .media-member-wrap .member-panel-section {
+                flex: 1 1 0;
+                min-height: 280px;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+            }
+            .media-member-wrap .member-panel-section #selectionPanel {
+                min-height: 0;
+                overflow: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+        }
     </style>
 </head>
 <body class="bg-[#f0f9ff] flex h-screen overflow-hidden text-slate-800">
@@ -42,9 +68,9 @@
             </a>
         </header>
 
-        <div class="flex-1 flex flex-col md:flex-row min-h-0">
+        <div class="media-member-wrap flex-1 flex flex-col md:flex-row min-h-0">
             <!-- 左：動画一覧 -->
-            <section class="w-full md:w-96 shrink-0 border-r border-sky-100 bg-white flex flex-col">
+            <section class="video-list-section w-full md:w-96 shrink-0 border-r border-sky-100 bg-white flex flex-col min-h-0">
                 <div class="p-4 border-b border-sky-100 space-y-3">
                     <input type="text" id="searchVideo" placeholder="動画を検索..." class="w-full h-10 px-4 border border-sky-100 rounded-lg text-sm outline-none focus:ring-2 focus:ring-sky-200">
                     <select id="filterCategory" class="w-full h-10 px-4 border border-sky-100 rounded-lg text-sm outline-none bg-slate-50">
@@ -63,7 +89,7 @@
             </section>
 
             <!-- 右：選択した動画のメンバー紐付け -->
-            <section class="flex-1 flex flex-col min-w-0 bg-slate-50/50">
+            <section class="member-panel-section flex-1 flex flex-col min-w-0 min-h-0 bg-slate-50/50">
                 <div id="noSelection" class="flex-1 flex items-center justify-center text-slate-400">
                     <div class="text-center">
                         <i class="fa-solid fa-video text-6xl mb-4 opacity-30"></i>
@@ -188,6 +214,12 @@
             noSelection.classList.add('hidden');
             selectionPanel.classList.remove('hidden');
             await loadLinkedMembers();
+            // スマホではメンバー選択エリアが見えるようにスクロール
+            if (window.innerWidth < 768) {
+                setTimeout(() => {
+                    selectionPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+            }
         }
 
         async function loadLinkedMembers() {

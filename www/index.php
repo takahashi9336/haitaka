@@ -97,11 +97,13 @@ $nextEvent = $eventModel->getNextEvent();
                                 </div>
                                 <h2 class="text-sm font-bold text-slate-800">クイックメモ</h2>
                             </div>
+                            <input type="text" id="quickMemoTitle" placeholder="タイトル（任意）"
+                                class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm font-medium mb-2">
                             <textarea 
                                 id="quickMemoInput" 
-                                placeholder="メモを入力... (タイトルは自動生成されます)"
-                                class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none transition-all text-sm"
-                                rows="3"
+                                placeholder="メモを入力..."
+                                class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none overflow-hidden transition-all text-sm min-h-[2.5rem]"
+                                rows="1"
                             ></textarea>
                             <div id="quickMemoActions" class="mt-3 flex items-center justify-between opacity-0 transition-opacity duration-200">
                                 <div class="flex gap-2">
@@ -246,24 +248,33 @@ $nextEvent = $eventModel->getNextEvent();
     </main>
     <script src="/assets/js/core.js"></script>
     <script>
+        function autoResizeTextarea(ta) {
+            ta.style.height = 'auto';
+            ta.style.height = Math.max(40, Math.min(ta.scrollHeight, 400)) + 'px';
+        }
+
         const QuickMemo = {
             input: null,
+            titleInput: null,
             actions: null,
 
             init() {
                 this.input = document.getElementById('quickMemoInput');
+                this.titleInput = document.getElementById('quickMemoTitle');
                 this.actions = document.getElementById('quickMemoActions');
                 
                 if (this.input) {
-                    // フォーカス時にアクションボタンを表示
                     this.input.addEventListener('focus', () => {
                         this.actions.classList.remove('opacity-0');
                         this.actions.classList.add('opacity-100');
                     });
+                    this.input.addEventListener('input', () => autoResizeTextarea(this.input));
+                    this.input.addEventListener('focus', () => autoResizeTextarea(this.input));
                 }
             },
 
             async save(event) {
+                const title = this.titleInput ? this.titleInput.value.trim() : '';
                 const content = this.input.value.trim();
                 
                 if (!content) {
@@ -271,11 +282,11 @@ $nextEvent = $eventModel->getNextEvent();
                     return;
                 }
 
-                // ボタン要素を取得
                 const btn = event ? event.target : document.getElementById('quickMemoSaveBtn');
 
                 try {
                     const result = await App.post('/note/api/save.php', {
+                        title: title,
                         content: content
                     });
 
@@ -311,6 +322,8 @@ $nextEvent = $eventModel->getNextEvent();
 
             clearInput() {
                 this.input.value = '';
+                if (this.titleInput) this.titleInput.value = '';
+                this.input.style.height = 'auto';
                 this.input.blur();
                 this.actions.classList.remove('opacity-100');
                 this.actions.classList.add('opacity-0');
