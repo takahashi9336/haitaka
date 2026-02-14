@@ -3,21 +3,15 @@
 namespace App\Settings\Controller;
 
 use Core\Auth;
-use App\Settings\Model\UserModel;
+use Core\UserModel;
 
 class SettingsController {
     
     public function index(): void {
         $auth = new Auth();
-        if (!$auth->check()) { header('Location: /login.php'); exit; }
+        $auth->requireLogin();
 
         $user = $_SESSION['user'];
-        $userModel = new UserModel();
-        
-        $allUsers = [];
-        if ($user['role'] === 'admin') {
-            $allUsers = $userModel->getAllUsers();
-        }
 
         require_once __DIR__ . '/../Views/index.php';
     }
@@ -27,10 +21,9 @@ class SettingsController {
 
         try {
             $auth = new Auth();
-            
-            if (!$auth->check()) { 
+            if (!$auth->check()) {
                 echo json_encode(['status' => 'error', 'message' => 'セッション切れ']);
-                exit; 
+                exit;
             }
 
             $input = json_decode(file_get_contents('php://input'), true);
@@ -63,9 +56,9 @@ class SettingsController {
     public function adminReset(): void {
         header('Content-Type: application/json');
         $auth = new Auth();
-        if (!$auth->check() || $_SESSION['user']['role'] !== 'admin') { 
+        if (!$auth->check() || !$auth->isAdmin()) {
             echo json_encode(['status' => 'error', 'message' => '権限なし']);
-            exit; 
+            exit;
         }
 
         $input = json_decode(file_get_contents('php://input'), true);
@@ -85,10 +78,9 @@ class SettingsController {
     public function createUser(): void {
         header('Content-Type: application/json');
         $auth = new Auth();
-        
-        if (!$auth->check() || $_SESSION['user']['role'] !== 'admin') { 
+        if (!$auth->check() || !$auth->isAdmin()) {
             echo json_encode(['status' => 'error', 'message' => '権限なし']);
-            exit; 
+            exit;
         }
 
         $input = json_decode(file_get_contents('php://input'), true);

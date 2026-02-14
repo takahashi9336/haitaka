@@ -236,7 +236,7 @@
                                     ?></div>
                                     
                                     <div class="text-xs text-slate-400 mb-3">
-                                        <?= date('Y/m/d H:i', strtotime($note['created_at'])) ?>
+                                        <?= \Core\Utils\DateUtil::format($note['created_at'], 'Y/m/d H:i') ?>
                                     </div>
                                     
                                     <div class="note-actions flex items-center justify-between pt-2.5 border-t border-slate-200">

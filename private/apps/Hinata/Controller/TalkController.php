@@ -18,7 +18,7 @@ class TalkController {
      */
     public function index(): void {
         $auth = new Auth();
-        if (!$auth->check()) { header('Location: /login.php'); exit; }
+        $auth->requireLogin();
         
         $memberModel = new MemberModel();
         $netaModel = new NetaModel();

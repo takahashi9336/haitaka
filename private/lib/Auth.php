@@ -53,9 +53,12 @@ class Auth {
                     'manage_users'
                 ]
             ];
-            
+
+            Logger::info("login success id_name={$user['id_name']} user_id={$user['id']}");
             return true;
         }
+
+        Logger::info("login failed id_name=" . substr($idName, 0, 20));
         return false;
     }
 
@@ -63,7 +66,40 @@ class Auth {
         return isset($_SESSION['user']['id']);
     }
 
+    /**
+     * ログイン必須。未ログインならリダイレクトして終了。
+     */
+    public function requireLogin(string $redirectUrl = '/login.php'): void {
+        if (!$this->check()) {
+            header('Location: ' . $redirectUrl);
+            exit;
+        }
+    }
+
+    /**
+     * 管理者必須。未ログインなら /login.php、非管理者なら指定URLへリダイレクトして終了。
+     */
+    public function requireAdmin(string $redirectUrl = '/index.php'): void {
+        if (!$this->check()) {
+            header('Location: /login.php');
+            exit;
+        }
+        if (($_SESSION['user']['role'] ?? '') !== 'admin') {
+            header('Location: ' . $redirectUrl);
+            exit;
+        }
+    }
+
+    /**
+     * 現在ユーザーが管理者かどうか
+     */
+    public function isAdmin(): bool {
+        return ($_SESSION['user']['role'] ?? '') === 'admin';
+    }
+
     public function logout(): void {
+        $idName = $_SESSION['user']['id_name'] ?? '';
+        Logger::info("logout id_name=$idName");
         $_SESSION = [];
         session_destroy();
     }

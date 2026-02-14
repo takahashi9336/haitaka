@@ -68,7 +68,7 @@
                             <p class="text-xs text-slate-500">
                                 <?php
                                     $days = (int)$nextEvent['days_left'];
-                                    $dateText = isset($nextEvent['event_date']) ? date('Y/m/d', strtotime($nextEvent['event_date'])) : '';
+                                    $dateText = !empty($nextEvent['event_date']) ? \Core\Utils\DateUtil::format($nextEvent['event_date'], 'Y/m/d') : '';
                                     if ($days === 0) {
                                         echo '本日開催';
                                     } elseif ($days === 1) {

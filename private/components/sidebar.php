@@ -7,6 +7,7 @@ $uri = $_SERVER['REQUEST_URI'];
 $isPortal = ($uri === '/' || strpos($uri, '/index.php') === 0);
 $isTask   = strpos($uri, '/task_manager/') !== false;
 $isHinata = strpos($uri, '/hinata/') !== false;
+$isAdmin  = strpos($uri, '/admin') !== false || strpos($uri, '/db_viewer') !== false;
 
 $user = $_SESSION['user'] ?? ['id_name' => 'ゲスト', 'role' => ''];
 $initial = mb_substr($user['id_name'], 0, 1);
@@ -30,7 +31,7 @@ $inactiveClass = "text-slate-500 hover:bg-slate-50 transition";
         </button>
     </div>
 
-    <nav class="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
+    <nav class="flex-1 flex flex-col px-3 py-6 space-y-1 overflow-y-auto">
         <a href="/index.php" class="nav-item flex items-center px-3 py-3 rounded-xl <?= $isPortal ? $activeClass : $inactiveClass ?>">
             <i class="fa-solid fa-house w-6 text-center text-lg"></i>
             <span class="nav-text ml-2 text-sm">ダッシュボード</span>
@@ -61,6 +62,12 @@ $inactiveClass = "text-slate-500 hover:bg-slate-50 transition";
             </div>
             <?php endif; ?>
         </div>
+        <?php if (($user['role'] ?? '') === 'admin'): ?>
+        <a href="/admin/" class="nav-item flex items-center px-3 py-3 rounded-xl mt-auto <?= $isAdmin ? 'bg-slate-100 text-slate-800 font-bold shadow-sm' : $inactiveClass ?>">
+            <i class="fa-solid fa-shield-halved w-6 text-center text-lg"></i>
+            <span class="nav-text ml-2 text-sm">管理画面</span>
+        </a>
+        <?php endif; ?>
     </nav>
 
     <div class="p-4 border-t border-slate-100 bg-slate-50/50 shrink-0">
@@ -72,7 +79,10 @@ $inactiveClass = "text-slate-500 hover:bg-slate-50 transition";
                 <p class="font-bold text-slate-900 leading-none"><?= htmlspecialchars($user['id_name']) ?></p>
                 <p class="text-[10px] text-slate-400 mt-1 font-bold tracking-wider"><?= $user['role'] === 'admin' ? '管理者' : '一般ユーザー' ?></p>
             </div>
-            <a href="/users_settings/" class="ml-auto text-slate-400 hover:text-indigo-600 p-2"><i class="fa-solid fa-gear"></i></a>
+            <div class="ml-auto flex items-center">
+                <a href="/users_settings/" class="text-slate-400 hover:text-indigo-600 p-2" title="設定"><i class="fa-solid fa-gear"></i></a>
+                <a href="/logout.php" class="text-slate-400 hover:text-red-500 p-2" title="ログアウト"><i class="fa-solid fa-right-from-bracket"></i></a>
+            </div>
         </div>
     </div>
 </aside>

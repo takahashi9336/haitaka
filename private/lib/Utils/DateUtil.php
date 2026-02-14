@@ -4,7 +4,11 @@ namespace Core\Utils;
 
 class DateUtil {
     public static function format(string $date, string $format = 'Y/m/d'): string {
-        return date($format, strtotime($date));
+        if ($date === '') {
+            return '';
+        }
+        $ts = strtotime($date);
+        return $ts !== false ? date($format, $ts) : '';
     }
 
     public static function diffDays(string $targetDate): int {

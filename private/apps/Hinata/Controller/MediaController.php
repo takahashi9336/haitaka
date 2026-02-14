@@ -30,10 +30,7 @@ class MediaController {
      */
     public function list(): void {
         $auth = new Auth();
-        if (!$auth->check()) {
-            header('Location: /login.php');
-            exit;
-        }
+        $auth->requireLogin();
 
         $memberModel = new \App\Hinata\Model\MemberModel();
         $categories = self::CATEGORIES;
@@ -141,15 +138,7 @@ class MediaController {
      */
     public function import(): void {
         $auth = new Auth();
-        if (!$auth->check()) {
-            header('Location: /login.php');
-            exit;
-        }
-
-        // 管理者権限チェック
-        if (($_SESSION['user']['role'] ?? '') !== 'admin') {
-            die('権限がありません');
-        }
+        $auth->requireAdmin();
 
         $categories = self::CATEGORIES;
         $user = $_SESSION['user'];
@@ -161,13 +150,7 @@ class MediaController {
      */
     public function mediaMemberAdmin(): void {
         $auth = new Auth();
-        if (!$auth->check()) {
-            header('Location: /login.php');
-            exit;
-        }
-        if (($_SESSION['user']['role'] ?? '') !== 'admin') {
-            die('権限がありません');
-        }
+        $auth->requireAdmin();
         $memberModel = new \App\Hinata\Model\MemberModel();
         $categories = self::CATEGORIES;
         $members = $memberModel->getAllWithColors();
@@ -183,7 +166,7 @@ class MediaController {
         header('Content-Type: application/json');
         try {
             $auth = new Auth();
-            if (!$auth->check() || ($_SESSION['user']['role'] ?? '') !== 'admin') {
+            if (!$auth->check() || !$auth->isAdmin()) {
                 echo json_encode(['status' => 'error', 'message' => '権限がありません']);
                 return;
             }
@@ -230,7 +213,7 @@ class MediaController {
         header('Content-Type: application/json');
         try {
             $auth = new Auth();
-            if (!$auth->check() || ($_SESSION['user']['role'] ?? '') !== 'admin') {
+            if (!$auth->check() || !$auth->isAdmin()) {
                 echo json_encode(['status' => 'error', 'message' => '権限がありません']);
                 return;
             }
@@ -262,7 +245,7 @@ class MediaController {
         header('Content-Type: application/json');
         try {
             $auth = new Auth();
-            if (!$auth->check() || ($_SESSION['user']['role'] ?? '') !== 'admin') {
+            if (!$auth->check() || !$auth->isAdmin()) {
                 echo json_encode(['status' => 'error', 'message' => '権限がありません']);
                 return;
             }

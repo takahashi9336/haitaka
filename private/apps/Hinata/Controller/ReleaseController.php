@@ -20,15 +20,7 @@ class ReleaseController {
      */
     public function admin(): void {
         $auth = new Auth();
-        if (!$auth->check()) {
-            header('Location: /login.php');
-            exit;
-        }
-
-        // 管理者権限チェック
-        if (($_SESSION['user']['role'] ?? '') !== 'admin') {
-            die('権限がありません');
-        }
+        $auth->requireAdmin();
 
         $releaseModel = new ReleaseModel();
         $memberModel = new MemberModel();

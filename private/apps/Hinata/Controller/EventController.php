@@ -16,7 +16,7 @@ class EventController {
 
     public function index(): void {
         $auth = new Auth();
-        if (!$auth->check()) { header('Location: /login.php'); exit; }
+        $auth->requireLogin();
 
         $eventModel = new EventModel();
         
@@ -31,8 +31,7 @@ class EventController {
 
     public function admin(): void {
         $auth = new Auth();
-        if (!$auth->check()) { header('Location: /login.php'); exit; }
-        if (($_SESSION['user']['role'] ?? '') !== 'admin') { die('権限がありません'); }
+        $auth->requireAdmin();
 
         $memberModel = new MemberModel();
         $eventModel = new EventModel();

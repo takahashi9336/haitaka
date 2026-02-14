@@ -16,10 +16,7 @@ class NoteController {
      */
     public function index(): void {
         $auth = new Auth();
-        if (!$auth->check()) { 
-            header('Location: /login.php'); 
-            exit; 
-        }
+        $auth->requireLogin();
 
         try {
             $noteModel = new NoteModel();

@@ -15,7 +15,7 @@ class MemberController {
 
     public function index(): void {
         $auth = new Auth();
-        if (!$auth->check()) { header('Location: /login.php'); exit; }
+        $auth->requireLogin();
         
         try {
             $model = new MemberModel();
@@ -29,7 +29,7 @@ class MemberController {
 
     public function admin(): void {
         $auth = new Auth();
-        if (!$auth->check() || ($_SESSION['user']['role'] ?? '') !== 'admin') { header('Location: /hinata/'); exit; }
+        $auth->requireAdmin('/hinata/');
         
         $model = new MemberModel();
         $members = $model->getAllWithColors();

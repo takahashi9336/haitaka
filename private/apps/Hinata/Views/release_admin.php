@@ -87,7 +87,7 @@
                                             <?= htmlspecialchars($rel['title']) ?>
                                         </td>
                                         <td class="p-3 text-sm text-slate-600">
-                                            <?= $rel['release_date'] ? date('Y/m/d', strtotime($rel['release_date'])) : '-' ?>
+                                            <?= !empty($rel['release_date']) ? \Core\Utils\DateUtil::format($rel['release_date'], 'Y/m/d') : '-' ?>
                                         </td>
                                         <td class="p-3">
                                             <button class="btn-edit text-sky-500 hover:text-sky-700 text-xs font-bold mr-3" data-id="<?= $rel['id'] ?>">

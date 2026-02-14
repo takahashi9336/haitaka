@@ -78,10 +78,10 @@ $getCatInfo = function($catId) {
                     <?php 
                     foreach ($events as $e): 
                         $cat = $getCatInfo($e['category']);
-                        $time = date('H:i', strtotime($e['event_date']));
-                        $dateM = date('n/j', strtotime($e['event_date']));
-                        $dateD = ['Sun' => '日', 'Mon' => '月', 'Tue' => '火', 'Wed' => '水', 'Thu' => '木', 'Fri' => '金', 'Sat' => '土'][date('D', strtotime($e['event_date']))];
-                        $isToday = date('Y-m-d') === date('Y-m-d', strtotime($e['event_date']));
+                        $time = \Core\Utils\DateUtil::format($e['event_date'], 'H:i');
+                        $dateM = \Core\Utils\DateUtil::format($e['event_date'], 'n/j');
+                        $dateD = ['Sun' => '日', 'Mon' => '月', 'Tue' => '火', 'Wed' => '水', 'Thu' => '木', 'Fri' => '金', 'Sat' => '土'][\Core\Utils\DateUtil::format($e['event_date'], 'D')];
+                        $isToday = date('Y-m-d') === \Core\Utils\DateUtil::format($e['event_date'], 'Y-m-d');
                     ?>
                     <div id="event-card-<?= $e['id'] ?>" class="bg-white rounded-lg border border-sky-50 shadow-sm overflow-hidden hover:border-sky-200 transition-all" data-event-id="<?= $e['id'] ?>">
                         <div class="flex items-stretch cursor-pointer active:bg-slate-50" onclick="toggleDetail(<?= $e['id'] ?>)">

@@ -13,7 +13,7 @@ use Core\Auth;
 class HinataController {
     public function portal(): void {
         $auth = new Auth();
-        if (!$auth->check()) { header('Location: /login.php'); exit; }
+        $auth->requireLogin();
 
         $netaModel = new NetaModel();
         $eventModel = new EventModel();

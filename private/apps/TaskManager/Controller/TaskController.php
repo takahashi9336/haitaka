@@ -13,7 +13,7 @@ class TaskController {
     
     public function index(): void {
         $auth = new Auth();
-        if (!$auth->check()) { header('Location: /login.php'); exit; }
+        $auth->requireLogin();
         $model = new TaskModel();
         $tasks = $model->getActiveTasks();
         $catModel = new CategoryModel();
