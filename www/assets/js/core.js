@@ -3,6 +3,46 @@
  * 物理パス: haitaka/www/assets/js/core.js
  */
 const App = {
+    /**
+     * サイト全体で利用可能なトースト通知
+     * 使用例: App.toast('コピーしました。');
+     * @param {string} message - 表示するメッセージ
+     * @param {number} [duration=2500] - 表示時間（ミリ秒）
+     */
+    toast(message, duration) {
+        let el = document.getElementById('app-toast');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'app-toast';
+            el.setAttribute('aria-live', 'polite');
+            Object.assign(el.style, {
+                position: 'fixed',
+                top: '1.5rem',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: '99999',
+                padding: '0.75rem 1.25rem',
+                borderRadius: '0.75rem',
+                background: '#fff',
+                color: '#334155',
+                fontSize: '0.875rem',
+                fontWeight: '500',
+                boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)',
+                border: '1px solid #f1f5f9',
+                pointerEvents: 'none',
+                transition: 'opacity 0.3s',
+                opacity: '0'
+            });
+            document.body.appendChild(el);
+        }
+        el.textContent = message;
+        el.style.opacity = '1';
+        clearTimeout(App._toastTimer);
+        App._toastTimer = setTimeout(() => {
+            el.style.opacity = '0';
+        }, duration ?? 2500);
+    },
+
     async post(url, data) {
         try {
             const response = await fetch(url, {

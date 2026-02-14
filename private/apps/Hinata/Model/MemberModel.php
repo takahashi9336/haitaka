@@ -62,7 +62,11 @@ class MemberModel extends BaseModel {
         
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute(['mid' => $memberId, 'uid_fav' => $this->userId]);
-        return $stmt->fetch() ?: null;
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+        if (!$row) return null;
+        $row['images'] = array_column($this->getMemberImages($memberId), 'image_url');
+        $row['image_url'] = $row['images'][0] ?? $row['image_url'] ?? null;
+        return $row;
     }
 
     /**
@@ -86,7 +90,14 @@ class MemberModel extends BaseModel {
                 LEFT JOIN hn_colors c1 ON m.color_id1 = c1.id
                 LEFT JOIN hn_colors c2 ON m.color_id2 = c2.id
                 ORDER BY m.is_active DESC, m.generation ASC, m.kana ASC";
-        return $this->pdo->query($sql)->fetchAll();
+        $rows = $this->pdo->query($sql)->fetchAll(\PDO::FETCH_ASSOC);
+        $ids = array_column($rows, 'id');
+        $imagesMap = $this->getMemberImagesMap($ids);
+        foreach ($rows as &$r) {
+            $r['images'] = $imagesMap[$r['id']] ?? [];
+            $r['image_url'] = $r['images'][0] ?? $r['image_url'] ?? null;
+        }
+        return $rows;
     }
 
     /**
@@ -117,10 +128,61 @@ class MemberModel extends BaseModel {
                 LEFT JOIN hn_colors c1 ON m.color_id1 = c1.id
                 LEFT JOIN hn_colors c2 ON m.color_id2 = c2.id
                 ORDER BY m.is_active DESC, m.generation ASC, m.kana ASC";
-        return $this->pdo->query($sql)->fetchAll();
+        $rows = $this->pdo->query($sql)->fetchAll(\PDO::FETCH_ASSOC);
+        $ids = array_column($rows, 'id');
+        $imagesMap = $this->getMemberImagesMap($ids);
+        foreach ($rows as &$r) {
+            $r['images'] = $imagesMap[$r['id']] ?? [];
+            $r['image_url'] = $r['images'][0] ?? $r['image_url'] ?? null;
+        }
+        return $rows;
     }
 
     public function getColorMaster(): array {
         return $this->pdo->query("SELECT * FROM hn_colors ORDER BY id ASC")->fetchAll();
+    }
+
+    /**
+     * メンバーの画像一覧を取得（最大5枚、sort_order順）
+     */
+    public function getMemberImages(int $memberId): array {
+        $stmt = $this->pdo->prepare("SELECT image_url, sort_order FROM hn_member_images WHERE member_id = ? ORDER BY sort_order ASC, id ASC LIMIT 5");
+        $stmt->execute([$memberId]);
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * メンバー複数画像を一括取得（member_id => [images]）
+     */
+    public function getMemberImagesMap(array $memberIds): array {
+        if (empty($memberIds)) return [];
+        $placeholders = implode(',', array_fill(0, count($memberIds), '?'));
+        $stmt = $this->pdo->prepare("SELECT member_id, image_url, sort_order FROM hn_member_images WHERE member_id IN ($placeholders) ORDER BY member_id, sort_order ASC, id ASC");
+        $stmt->execute(array_values($memberIds));
+        $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        $map = [];
+        foreach ($memberIds as $mid) $map[$mid] = [];
+        foreach ($rows as $r) {
+            if (count($map[$r['member_id']]) < 5) {
+                $map[$r['member_id']][] = $r['image_url'];
+            }
+        }
+        return $map;
+    }
+
+    /**
+     * メンバー画像を保存（既存を削除してから挿入、最大5枚）
+     */
+    public function saveMemberImages(int $memberId, array $imageUrls): bool {
+        $this->pdo->prepare("DELETE FROM hn_member_images WHERE member_id = ?")->execute([$memberId]);
+        $imageUrls = array_slice(array_values($imageUrls), 0, 5);
+        if (empty($imageUrls)) return true;
+        $stmt = $this->pdo->prepare("INSERT INTO hn_member_images (member_id, image_url, sort_order) VALUES (?, ?, ?)");
+        foreach ($imageUrls as $i => $url) {
+            if ($url !== '' && $url !== null) {
+                $stmt->execute([$memberId, $url, $i]);
+            }
+        }
+        return true;
     }
 }

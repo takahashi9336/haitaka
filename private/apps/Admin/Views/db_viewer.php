@@ -76,6 +76,35 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                         <a href="/db_viewer/" class="text-slate-500 hover:text-slate-700 text-sm font-bold">クリア</a>
                         <?php endif; ?>
                     </form>
+                    <?php if ($selectedTable && !empty($columns)): ?>
+                    <div class="mt-4 pt-4 border-t border-slate-100 flex flex-wrap items-center gap-4">
+                        <div class="flex items-center gap-4">
+                            <span class="text-xs text-slate-500 font-bold">区切り文字</span>
+                            <label class="flex items-center gap-2 cursor-pointer text-sm text-slate-600">
+                                <input type="radio" name="db_delimiter" value="tab" checked class="rounded-full border-slate-300 text-slate-600 focus:ring-slate-500">
+                                タブ
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer text-sm text-slate-600">
+                                <input type="radio" name="db_delimiter" value="comma" class="rounded-full border-slate-300 text-slate-600 focus:ring-slate-500">
+                                カンマ
+                            </label>
+                        </div>
+                        <label class="flex items-center gap-2 cursor-pointer text-sm text-slate-600">
+                            <input type="checkbox" name="db_header" id="db_header" class="rounded border-slate-300 text-slate-600 focus:ring-slate-500">
+                            ヘッダーあり
+                        </label>
+                        <div class="flex items-center gap-2">
+                            <button type="button" id="db_download_btn" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                <i class="fa-solid fa-download text-xs"></i>
+                                <span class="db_btn_text">ダウンロード</span>
+                            </button>
+                            <button type="button" id="db_copy_btn" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
+                                <i class="fa-solid fa-copy text-xs"></i>
+                                コピー
+                            </button>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                 </div>
 
                 <?php if ($selectedTable && !empty($columns)): ?>
@@ -129,6 +158,85 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         document.getElementById('mobileMenuBtn') && (document.getElementById('mobileMenuBtn').onclick = function() {
             document.getElementById('sidebar').classList.add('mobile-open');
         });
+
+        <?php if ($selectedTable && !empty($columns) && isset($rows)): ?>
+        (function() {
+            var data = {
+                columns: <?= json_encode(array_column($columns, 'COLUMN_NAME')) ?>,
+                rows: <?= json_encode($rows) ?>
+            };
+            function showToast(msg) {
+                var el = document.getElementById('app-toast');
+                if (typeof App !== 'undefined' && App.toast) {
+                    App.toast(msg);
+                } else if (el) {
+                    el.textContent = msg;
+                    el.style.opacity = '1';
+                    setTimeout(function() { el.style.opacity = '0'; }, 2500);
+                }
+            }
+            function getDelimiter() {
+                var r = document.querySelector('input[name="db_delimiter"]:checked');
+                return r && r.value === 'comma' ? ',' : '\t';
+            }
+            function getHeader() {
+                return document.getElementById('db_header') && document.getElementById('db_header').checked;
+            }
+            function buildCsv() {
+                var colNames = data.columns;
+                var rows = data.rows;
+                var delim = getDelimiter();
+                var withHeader = getHeader();
+                var escape = function(v) {
+                    var s = String(v == null ? '' : v);
+                    if (s.indexOf(delim) >= 0 || s.indexOf('"') >= 0 || s.indexOf('\n') >= 0 || s.indexOf('\r') >= 0)
+                        return '"' + s.replace(/"/g, '""') + '"';
+                    return s;
+                };
+                var lines = [];
+                if (withHeader) lines.push(colNames.map(escape).join(delim));
+                rows.forEach(function(r) {
+                    lines.push(colNames.map(function(c) { return escape(r[c]); }).join(delim));
+                });
+                return lines.join('\r\n');
+            }
+            var downloadBtn = document.getElementById('db_download_btn');
+            if (downloadBtn) {
+                downloadBtn.onclick = function() {
+                    var btn = this;
+                    var icon = btn.querySelector('i');
+                    var text = btn.querySelector('.db_btn_text');
+                    btn.disabled = true;
+                    if (icon) icon.className = 'fa-solid fa-spinner fa-spin text-xs';
+                    if (text) text.textContent = '処理中...';
+                    var csv = buildCsv();
+                    var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+                    var a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = (document.querySelector('select[name="table"]').value || 'table') + '.csv';
+                    a.click();
+                    URL.revokeObjectURL(a.href);
+                    setTimeout(function() {
+                        btn.disabled = false;
+                        if (icon) icon.className = 'fa-solid fa-download text-xs';
+                        if (text) text.textContent = 'ダウンロード';
+                        showToast('ダウンロードを実行しました。');
+                    }, 100);
+                };
+            }
+            var copyBtn = document.getElementById('db_copy_btn');
+            if (copyBtn) {
+                copyBtn.onclick = function() {
+                    var csv = buildCsv();
+                    navigator.clipboard.writeText(csv).then(function() {
+                        showToast('コピーしました。');
+                    }).catch(function() {
+                        showToast('コピーに失敗しました。');
+                    });
+                };
+            }
+        })();
+        <?php endif; ?>
     </script>
 </body>
 </html>

@@ -21,12 +21,23 @@ class ReleaseModel extends BaseModel {
     protected bool $isUserIsolated = false;
 
     /**
-     * リリース一覧を発売日順で取得
+     * リリース一覧をカテゴリ単位・リリース順（発売日昇順）で取得
      */
     public function getAllReleases(): array {
         $sql = "SELECT " . implode(', ', $this->fields) . " 
                 FROM {$this->table} 
-                ORDER BY release_date DESC, id DESC";
+                ORDER BY 
+                    CASE release_type 
+                        WHEN 'single' THEN 1 
+                        WHEN 'album' THEN 2 
+                        WHEN 'digital' THEN 3 
+                        WHEN 'ep' THEN 4 
+                        WHEN 'best' THEN 5 
+                        ELSE 6 
+                    END,
+                    release_date IS NULL,
+                    release_date ASC,
+                    id ASC";
         return $this->pdo->query($sql)->fetchAll();
     }
 

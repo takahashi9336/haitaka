@@ -199,7 +199,7 @@ $inactiveClass = "text-slate-500 hover:bg-slate-50 transition";
         </div>
     </div>
 </aside>
-
+<div id="app-toast" aria-live="polite" style="position:fixed;top:1.5rem;left:50%;transform:translateX(-50%);z-index:99999;padding:0.75rem 1.25rem;border-radius:0.75rem;background:#fff;color:#334155;font-size:0.875rem;font-weight:500;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);border:1px solid #f1f5f9;pointer-events:none;transition:opacity 0.3s;opacity:0;"></div>
 <script>
 (function() {
     const sidebar = document.getElementById('sidebar');

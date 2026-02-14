@@ -75,20 +75,40 @@ class MemberController {
             $pdo = Database::connect();
             $pdo->beginTransaction();
 
-            // 1. 画像アップロード (image_url)
-            $imageUrl = $currentMember['image_url'] ?? null;
-            if (!empty($_FILES['image_file']['name'])) {
-                $file = $_FILES['image_file'];
-                $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-                $newFileName = "member_{$id}.{$ext}";
-                $uploadDir = __DIR__ . '/../../../../www/assets/img/members/';
-                
-                if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
-                if ($imageUrl && file_exists($uploadDir . $imageUrl)) {
-                    @unlink($uploadDir . $imageUrl);
+            // 1. 複数画像アップロード（最大5枚）
+            $docRoot = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
+            $uploadDir = ($docRoot !== '' ? $docRoot . '/' : __DIR__ . '/../../../../www/') . 'assets/img/members/';
+            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+
+            $existingRaw = $_POST['image_existing'] ?? [];
+            $existing = is_array($existingRaw) ? array_values($existingRaw) : [];
+            $savedImages = [];
+            $allowedExt = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+
+            for ($i = 0; $i < 5; $i++) {
+                $key = 'image_file_' . $i;
+                if (!empty($_FILES[$key]['name']) && $_FILES[$key]['error'] === UPLOAD_ERR_OK) {
+                    $file = $_FILES[$key];
+                    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+                    if (!in_array($ext, $allowedExt, true)) {
+                        throw new \Exception('対応形式は jpg, png, gif, webp です（スロット' . ($i + 1) . '）');
+                    }
+                    $newFileName = "member_{$id}_{$i}.{$ext}";
+                    if (!move_uploaded_file($file['tmp_name'], $uploadDir . $newFileName)) {
+                        throw new \Exception('画像の保存に失敗しました（スロット' . ($i + 1) . '）');
+                    }
+                    $savedImages[] = $newFileName;
+                } elseif (!empty($existing[$i]) && is_string($existing[$i]) && preg_match('/^[\w\-\.]+$/', $existing[$i])) {
+                    $savedImages[] = $existing[$i];
                 }
-                if (move_uploaded_file($file['tmp_name'], $uploadDir . $newFileName)) {
-                    $imageUrl = $newFileName;
+            }
+
+            $oldImages = array_column($model->getMemberImages((int)$id), 'image_url');
+            $model->saveMemberImages((int)$id, $savedImages);
+            $imageUrl = $savedImages[0] ?? null;
+            foreach ($oldImages as $old) {
+                if ($old && !in_array($old, $savedImages, true) && file_exists($uploadDir . $old)) {
+                    @unlink($uploadDir . $old);
                 }
             }
 

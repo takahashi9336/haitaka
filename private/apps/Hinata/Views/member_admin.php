@@ -75,22 +75,29 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 <div class="lg:col-span-2">
                     <section id="formArea" class="bg-white p-6 md:p-8 rounded-[2.5rem] border <?= $cardBorder ?> shadow-sm">
                         <div class="mb-6 flex items-center gap-5 border-b border-slate-50 pb-6">
-                            <div class="relative group">
-                                <img id="imgPreview" src="" class="image-preview hidden">
-                                <div id="imgPlaceholder" class="image-preview flex items-center justify-center text-slate-300"><i class="fa-solid fa-camera text-2xl"></i></div>
-                            </div>
+                            <div id="imgPreviewMain" class="image-preview flex items-center justify-center text-slate-300 bg-slate-50"><i class="fa-solid fa-camera text-2xl"></i></div>
                             <div>
                                 <h2 id="formTitle" class="text-xl font-black text-slate-800 tracking-tight">メンバーを選択</h2>
                                 <p class="text-[10px] text-slate-400 font-bold tracking-wider mt-1">メンバー情報・メディア管理</p>
                             </div>
                         </div>
 
-                        <form id="memberForm" class="space-y-6 opacity-30 pointer-events-none transition-opacity">
+                        <form id="memberForm" class="space-y-6 opacity-30 pointer-events-none transition-opacity" enctype="multipart/form-data">
                             <input type="hidden" name="id" id="m_id">
                             
                             <div class="bg-slate-50 p-4 rounded-lg border border-slate-100">
-                                <label class="block text-[10px] font-black text-slate-400 mb-2 ml-1 <?= $cardIconText ?> tracking-wider"<?= $cardDecoStyle ? ' style="' . htmlspecialchars($cardDecoStyle) . '"' : '' ?>>写真アップロード</label>
-                                <input type="file" name="image_file" id="f_image" accept="image/*" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:cursor-pointer <?= !$isThemeHex ? 'file:bg-' . $themeTailwind . '-50 file:text-' . $themeTailwind . '-600 hover:file:bg-' . $themeTailwind . '-100' : '' ?>">
+                                <label class="block text-[10px] font-black text-slate-400 mb-3 ml-1 <?= $cardIconText ?> tracking-wider"<?= $cardDecoStyle ? ' style="' . htmlspecialchars($cardDecoStyle) . '"' : '' ?>>写真（最大5枚）</label>
+                                <div class="grid grid-cols-5 gap-3">
+                                    <?php for ($i = 0; $i < 5; $i++): ?>
+                                    <div class="image-slot flex flex-col items-center gap-2" data-slot="<?= $i ?>">
+                                        <div class="w-16 h-16 rounded-xl bg-white border border-slate-200 overflow-hidden flex items-center justify-center shrink-0 img-slot-preview">
+                                            <span class="text-slate-300 text-xs"><i class="fa-solid fa-plus"></i></span>
+                                        </div>
+                                        <input type="hidden" name="image_existing[<?= $i ?>]" class="img-existing" value="">
+                                        <input type="file" name="image_file_<?= $i ?>" accept="image/*" class="img-file text-[10px] w-full max-w-[100px]">
+                                    </div>
+                                    <?php endfor; ?>
+                                </div>
                             </div>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -147,7 +154,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                             <?php foreach ($members as $m): ?>
                             <div onclick='selectMember(<?= json_encode($m, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>)' class="p-2 rounded-lg hover:bg-sky-50 cursor-pointer flex items-center gap-3 transition-all border border-transparent hover:border-sky-100 <?= $m['is_active'] ? '' : 'opacity-40' ?>">
                                 <?php if($m['image_url']): ?>
-                                    <img src="/assets/img/members/<?= $m['image_url'] ?>" class="w-10 h-10 rounded-xl object-cover">
+                                    <img src="/assets/img/members/<?= $m['image_url'] ?>?v=<?= time() ?>" class="w-10 h-10 rounded-xl object-cover">
                                 <?php else: ?>
                                     <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-300"><?= $m['generation'] ?></div>
                                 <?php endif; ?>
@@ -253,6 +260,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
     <script src="/assets/js/core.js"></script>
     <script>
         const MEMBER_MAP = <?= json_encode(array_column($members, null, 'id'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        const IMG_CACHE_BUST = '?v=<?= time() ?>';
         document.getElementById('mobileMenuBtn').onclick = () => document.getElementById('sidebar').classList.add('mobile-open');
 
         // タブ切り替え
@@ -279,17 +287,19 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             tabDetail.classList.add('bg-slate-100', 'text-slate-500');
         };
 
-        // プレビュー表示
-        document.getElementById('f_image').onchange = function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const url = URL.createObjectURL(file);
-                const preview = document.getElementById('imgPreview');
-                preview.src = url;
-                preview.classList.remove('hidden');
-                document.getElementById('imgPlaceholder').classList.add('hidden');
-            }
-        };
+        const IMG_BASE = '/assets/img/members/';
+
+        document.querySelectorAll('.img-file').forEach((input, i) => {
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                const slot = e.target.closest('.image-slot');
+                const preview = slot.querySelector('.img-slot-preview');
+                if (file) {
+                    const url = URL.createObjectURL(file);
+                    preview.innerHTML = '<img src="'+url+'" class="w-full h-full object-cover">';
+                }
+            };
+        });
 
         function selectMember(m) {
             const form = document.getElementById('memberForm');
@@ -313,29 +323,42 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             document.getElementById('f_c2').value = m.color_id2 || '';
             document.getElementById('f_active').value = m.is_active;
 
-            const preview = document.getElementById('imgPreview');
-            const placeholder = document.getElementById('imgPlaceholder');
-            if (m.image_url) {
-                preview.src = '/assets/img/members/' + m.image_url;
-                preview.classList.remove('hidden');
-                placeholder.classList.add('hidden');
+            const images = m.images || (m.image_url ? [m.image_url] : []);
+            document.querySelectorAll('.image-slot').forEach((slot, i) => {
+                const preview = slot.querySelector('.img-slot-preview');
+                const existingInput = slot.querySelector('.img-existing');
+                const fileInput = slot.querySelector('.img-file');
+                fileInput.value = '';
+                if (images[i]) {
+                    preview.innerHTML = '<img src="'+IMG_BASE+images[i]+IMG_CACHE_BUST+'" class="w-full h-full object-cover" alt="">';
+                    existingInput.value = images[i];
+                } else {
+                    preview.innerHTML = '<span class="text-slate-300 text-xs"><i class="fa-solid fa-plus"></i></span>';
+                    existingInput.value = '';
+                }
+            });
+            const mainPreview = document.getElementById('imgPreviewMain');
+            if (images[0]) {
+                mainPreview.innerHTML = '<img src="'+IMG_BASE+images[0]+IMG_CACHE_BUST+'" class="w-full h-full object-cover rounded-[24px]" alt="">';
             } else {
-                preview.classList.add('hidden');
-                placeholder.classList.remove('hidden');
+                mainPreview.innerHTML = '<i class="fa-solid fa-camera text-2xl"></i>';
             }
         }
 
         document.getElementById('memberForm').onsubmit = async (e) => {
             e.preventDefault();
-            const res = await fetch('api/save_member.php', {
+            const form = e.target;
+            const fd = new FormData(form);
+            fd.set('id', document.getElementById('m_id').value);
+            const res = await fetch('/hinata/api/save_member.php', {
                 method: 'POST',
-                body: new FormData(e.target)
+                body: fd
             }).then(r => r.json());
 
             if (res.status === 'success') {
                 location.reload();
             } else {
-                alert('エラー: ' + res.message);
+                alert('エラー: ' + (res.message || '保存に失敗しました'));
             }
         };
 
@@ -353,7 +376,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             fd.append('twitter_url', document.getElementById(`row_${id}_twitter_url`).value);
             fd.append('member_info', document.getElementById(`row_${id}_member_info`).value);
 
-            const res = await fetch('api/save_member_basic.php', {
+            const res = await fetch('/hinata/api/save_member_basic.php', {
                 method: 'POST',
                 body: fd
             }).then(r => r.json());
@@ -390,7 +413,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 };
             });
 
-            const res = await fetch('api/save_member_basic_bulk.php', {
+            const res = await fetch('/hinata/api/save_member_basic_bulk.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ items })

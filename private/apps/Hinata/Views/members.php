@@ -200,7 +200,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
     <!-- モーダル -->
     <div id="memberModal" class="fixed inset-0 z-[100] hidden overflow-y-auto bg-slate-900/80 backdrop-blur-xl transition-all">
         <div class="relative w-full max-w-5xl mx-auto md:my-10 min-h-full flex items-center">
-            <div class="modal-content bg-white w-full h-full md:h-auto md:max-h-[90vh] md:rounded-[3rem] shadow-2xl relative flex flex-col md:flex-row md:overflow-hidden min-h-screen md:min-h-0">
+            <div class="modal-content bg-white w-full h-full md:h-auto md:max-h-[90vh] md:rounded-xl shadow-2xl relative flex flex-col md:flex-row md:overflow-hidden min-h-screen md:min-h-0">
                 <button onclick="closeModal()" class="fixed md:absolute top-4 right-4 md:top-6 md:right-6 w-12 h-12 rounded-full bg-slate-100/90 text-slate-500 flex items-center justify-center z-[110] hover:bg-white shadow-lg"><i class="fa-solid fa-xmark text-lg"></i></button>
 
                 <div class="w-full md:w-[380px] shrink-0 border-r border-slate-50 flex flex-col bg-white">
@@ -226,8 +226,11 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                             </div>
                         </div>
                     </div>
+                    <div id="modalImgThumbsWrap" class="hidden shrink-0 py-2 px-4 bg-white border-b border-slate-100 flex justify-center gap-2">
+                        <div id="modalImgThumbs" class="flex gap-2 flex-wrap justify-center"></div>
+                    </div>
 
-                    <div class="p-8 space-y-8 overflow-y-auto custom-scroll">
+                    <div class="pt-4 pb-8 px-8 space-y-6 overflow-y-auto custom-scroll">
                         <div id="modalInfoArea" class="hidden bg-sky-50/50 p-5 rounded-xl border border-sky-100/50">
                             <p class="text-[9px] font-black text-sky-400 mb-1 tracking-wider">紹介文</p>
                             <p id="modalInfo" class="text-sm font-medium text-slate-600 leading-relaxed whitespace-pre-wrap"></p>
@@ -255,7 +258,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 <div id="videoContainer" class="flex-1 bg-slate-50 p-6 md:p-12 flex flex-col justify-center pb-32 md:pb-12 overflow-y-auto">
                     <div id="videoArea" class="hidden w-full max-w-3xl mx-auto">
                         <p class="text-[10px] font-black text-slate-400 tracking-wider mb-4 text-center">紹介動画</p>
-                        <div class="aspect-video w-full rounded-[1.5rem] md:rounded-[2.5rem] overflow-hidden bg-black shadow-2xl ring-4 md:ring-8 ring-white">
+                        <div class="aspect-video w-full rounded-lg md:rounded-xl overflow-hidden bg-black shadow-2xl ring-4 md:ring-8 ring-white">
                             <iframe id="modalVideo" width="100%" height="100%" frameborder="0" allowfullscreen></iframe>
                         </div>
                     </div>
@@ -284,6 +287,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         
         // メンバーデータをJavaScript配列として保持
         const membersData = <?= json_encode($members, JSON_UNESCAPED_UNICODE) ?>;
+        const IMG_CACHE_BUST = '?v=<?= time() ?>';
 
         function changeSortOrder() {
             const select = document.getElementById('sortSelect');
@@ -422,7 +426,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             imageContainer.className = 'w-full aspect-square rounded-xl bg-sky-50 mb-4 shadow-inner overflow-hidden flex items-center justify-center';
             if (m.image_url) {
                 const img = document.createElement('img');
-                img.src = `/assets/img/members/${m.image_url}`;
+                img.src = `/assets/img/members/${m.image_url}${IMG_CACHE_BUST}`;
                 img.className = 'portrait-img';
                 imageContainer.appendChild(img);
             } else {
@@ -518,7 +522,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 </td>
                 <td class="px-3 py-2">
                     <div class="w-10 h-10 rounded-xl overflow-hidden bg-slate-100 flex items-center justify-center">
-                        ${m.image_url ? '<img src="/assets/img/members/'+m.image_url+'" class="w-full h-full object-cover">' : '<span class="text-[11px] font-black text-slate-400">'+m.name.substring(0,1)+'</span>'}
+                        ${m.image_url ? '<img src="/assets/img/members/'+m.image_url+IMG_CACHE_BUST+'" class="w-full h-full object-cover">' : '<span class="text-[11px] font-black text-slate-400">'+m.name.substring(0,1)+'</span>'}
                     </div>
                 </td>
                 <td class="px-3 py-2 font-bold text-slate-800 whitespace-nowrap">
@@ -712,7 +716,48 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             document.getElementById('modalPlace').innerText = d.birth_place || '--';
 
             const mImg = document.getElementById('modalImg');
-            if (d.image_url) { mImg.src = '/assets/img/members/' + d.image_url; mImg.classList.remove('hidden'); } else { mImg.classList.add('hidden'); }
+            const mThumbsWrap = document.getElementById('modalImgThumbsWrap');
+            const mThumbs = document.getElementById('modalImgThumbs');
+            const imgs = d.images && d.images.length ? d.images : (d.image_url ? [d.image_url] : []);
+            if (imgs.length > 0) {
+                mImg.src = '/assets/img/members/' + imgs[0] + IMG_CACHE_BUST;
+                mImg.classList.remove('hidden');
+                let selectedIdx = 0;
+                const setMainImg = (idx) => {
+                    mImg.src = '/assets/img/members/' + imgs[idx] + IMG_CACHE_BUST;
+                };
+                const updateThumbBorders = () => {
+                    mThumbs.querySelectorAll('button').forEach((b, i) => {
+                        const sel = i === selectedIdx;
+                        b.classList.toggle('border-sky-500', sel);
+                        b.classList.toggle('ring-2', sel);
+                        b.classList.toggle('ring-sky-200', sel);
+                        b.classList.toggle('border-slate-200', !sel);
+                    });
+                };
+                if (imgs.length >= 2 && imgs.length <= 5) {
+                    mThumbs.innerHTML = imgs.map((url, i) => 
+                        '<button type="button" class="w-14 h-14 rounded-xl overflow-hidden border-2 border-slate-200 shrink-0 hover:border-sky-400 transition-all duration-300" data-idx="'+i+'"><img src="/assets/img/members/'+url+IMG_CACHE_BUST+'" class="w-full h-full object-cover" alt=""></button>'
+                    ).join('');
+                    mThumbsWrap.classList.remove('hidden');
+                    updateThumbBorders();
+                    mThumbs.querySelectorAll('button').forEach((btn, i) => {
+                        btn.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            selectedIdx = i;
+                            setMainImg(selectedIdx);
+                            updateThumbBorders();
+                        });
+                    });
+                } else {
+                    mThumbsWrap.classList.add('hidden');
+                    mThumbs.innerHTML = '';
+                }
+            } else {
+                mImg.classList.add('hidden');
+                mThumbsWrap.classList.add('hidden');
+                mThumbs.innerHTML = '';
+            }
 
             if (d.member_info) { document.getElementById('modalInfo').innerText = d.member_info; document.getElementById('modalInfoArea').classList.remove('hidden'); } else { document.getElementById('modalInfoArea').classList.add('hidden'); }
 

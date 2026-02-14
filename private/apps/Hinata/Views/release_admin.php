@@ -75,10 +75,21 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                                     <td colspan="5" class="text-center text-slate-400 py-8">リリース情報がありません</td>
                                 </tr>
                                 <?php else: ?>
-                                    <?php foreach ($releases as $rel): ?>
+                                    <?php
+                                    $typeBadgeClasses = [
+                                        'single' => 'bg-sky-100 text-sky-700',
+                                        'album' => 'bg-indigo-100 text-indigo-700',
+                                        'digital' => 'bg-emerald-100 text-emerald-700',
+                                        'ep' => 'bg-amber-100 text-amber-700',
+                                        'best' => 'bg-violet-100 text-violet-700',
+                                    ];
+                                    foreach ($releases as $rel):
+                                        $typeKey = $rel['release_type'] ?? 'single';
+                                        $badgeClass = $typeBadgeClasses[$typeKey] ?? 'bg-slate-100 text-slate-600';
+                                    ?>
                                     <tr class="border-b border-slate-100 hover:bg-slate-50 transition">
                                         <td class="p-3 text-sm">
-                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold <?= $cardIconBg ?> <?= $cardIconText ?>"<?= $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>>
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold <?= $badgeClass ?>">
                                                 <?= htmlspecialchars($releaseTypes[$rel['release_type']] ?? $rel['release_type']) ?>
                                             </span>
                                         </td>
