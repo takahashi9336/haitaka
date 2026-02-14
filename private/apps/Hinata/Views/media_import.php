@@ -3,6 +3,8 @@
  * メディア一括登録 View
  * 物理パス: haitaka/private/apps/Hinata/Views/media_import.php
  */
+$appKey = 'hinata';
+require_once __DIR__ . '/../../../components/theme_from_session.php';
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -40,20 +42,20 @@
         .preview-table table { min-width: 800px; }
     </style>
 </head>
-<body class="bg-[#f0f9ff] flex h-screen overflow-hidden text-slate-800">
+<body class="flex h-screen overflow-hidden text-slate-800 <?= $bodyBgClass ?>"<?= $bodyStyle ? ' style="' . htmlspecialchars($bodyStyle) . '"' : '' ?>>
 
     <?php require_once __DIR__ . '/../../../components/sidebar.php'; ?>
 
     <main class="flex-1 flex flex-col min-w-0">
-        <header class="h-16 bg-white/80 backdrop-blur-md border-b border-sky-100 flex items-center justify-between px-6 shrink-0 sticky top-0 z-10">
+        <header class="h-16 bg-white/80 backdrop-blur-md border-b <?= $headerBorder ?> flex items-center justify-between px-6 shrink-0 sticky top-0 z-10">
             <div class="flex items-center gap-3">
                 <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
-                <div class="w-8 h-8 bg-sky-500 rounded-lg flex items-center justify-center text-white shadow-lg shadow-sky-200">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-lg <?= $headerIconBg ?> <?= $headerShadow ?>"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?>>
                     <i class="fa-solid fa-cloud-arrow-up text-sm"></i>
                 </div>
                 <h1 class="font-black text-slate-700 text-xl tracking-tighter">動画一括登録</h1>
             </div>
-            <a href="/hinata/index.php" class="text-xs font-bold text-sky-500 bg-sky-50 px-4 py-2 rounded-full hover:bg-sky-100 transition">
+            <a href="/hinata/index.php" class="text-xs font-bold <?= $cardIconText ?> <?= $cardIconBg ?> px-4 py-2 rounded-full hover:opacity-90 transition"<?= $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>>
                 ポータルへ戻る
             </a>
         </header>
@@ -62,14 +64,14 @@
             <div class="max-w-6xl mx-auto">
                 
                 <!-- 入力セクション -->
-                <section class="bg-white rounded-3xl border border-sky-100 shadow-sm p-6 md:p-8 mb-6">
+                <section class="bg-white rounded-3xl border <?= $cardBorder ?> shadow-sm p-6 md:p-8 mb-6">
                     <div class="mb-6">
                         <h2 class="text-lg font-black text-slate-800 mb-2">データ入力</h2>
                         <p class="text-xs text-slate-500 mb-2">YouTube動画を一括でインポートします。タブ区切り、またはカンマ区切りで入力してください。</p>
                         
-                        <div class="bg-sky-50 border border-sky-200 rounded-lg p-3 mb-3">
-                            <p class="text-xs font-bold text-sky-700 mb-2">📝 入力形式</p>
-                            <code class="text-xs text-sky-900 bg-white px-2 py-1 rounded block font-mono">
+                        <div class="<?= $cardIconBg ?> border <?= $cardBorder ?> rounded-lg p-3 mb-3"<?= $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>>
+                            <p class="text-xs font-bold mb-2 <?= $cardIconText ?>"<?= $cardDecoStyle ? ' style="' . htmlspecialchars($cardDecoStyle) . '"' : '' ?>>📝 入力形式</p>
+                            <code class="text-xs bg-white px-2 py-1 rounded block font-mono <?= $cardIconText ?>"<?= $cardDecoStyle ? ' style="' . htmlspecialchars($cardDecoStyle) . '"' : '' ?>>
                                 URL [TAB] タイトル [TAB] シングル番号 [TAB] 公開日 [TAB] カテゴリ
                             </code>
                             <div class="mt-2 space-y-1 text-xs text-slate-600">
@@ -92,7 +94,7 @@
 
                     <div class="mb-4">
                         <label class="block text-xs font-bold text-slate-600 mb-2">デフォルトカテゴリ</label>
-                        <select id="defaultCategory" class="w-full md:w-64 h-11 border border-sky-100 rounded-xl px-4 text-sm outline-none bg-slate-50 focus:border-sky-300 transition">
+                        <select id="defaultCategory" class="w-full md:w-64 h-11 border <?= $cardBorder ?> rounded-xl px-4 text-sm outline-none bg-slate-50 <?= $isThemeHex ? 'focus:border-[var(--hinata-theme)]' : 'focus:border-' . $themeTailwind . '-300' ?> transition">
                             <?php foreach ($categories as $key => $label): ?>
                                 <option value="<?= htmlspecialchars($key) ?>" <?= $key === 'MV' ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($label) ?>
@@ -108,7 +110,7 @@
                             id="bulkTextarea" 
                             rows="10" 
                             placeholder="例:&#10;https://www.youtube.com/watch?v=xxxxx&#9;キュン&#9;1&#9;2019-03-27&#9;MV&#10;https://www.youtube.com/watch?v=yyyyy&#9;ドレミソラシド&#9;2&#9;2019-07-17&#9;MV&#10;https://www.youtube.com/watch?v=zzzzz&#9;こんなに好きになっちゃっていいの？&#9;3&#9;2019-10-02&#9;MV"
-                            class="w-full border border-sky-100 rounded-xl px-4 py-3 text-sm outline-none bg-slate-50 focus:border-sky-300 transition font-mono"
+                            class="w-full border <?= $cardBorder ?> rounded-xl px-4 py-3 text-sm outline-none bg-slate-50 <?= $isThemeHex ? 'focus:border-[var(--hinata-theme)]' : 'focus:border-' . $themeTailwind . '-300' ?> transition font-mono"
                         ></textarea>
                         <p class="text-xs text-slate-400 mt-1">
                             <i class="fa-solid fa-info-circle"></i> 
@@ -119,7 +121,7 @@
                     <div class="flex gap-3">
                         <button 
                             id="btnPreview" 
-                            class="h-11 px-6 bg-sky-500 text-white font-bold text-sm rounded-full hover:bg-sky-600 transition shadow-lg shadow-sky-200 flex items-center gap-2"
+                            class="h-11 px-6 <?= $btnBgClass ?> text-white font-bold text-sm rounded-full transition shadow-lg flex items-center gap-2"<?= $btnBgStyle ? ' style="' . htmlspecialchars($btnBgStyle) . '"' : '' ?>
                         >
                             <i class="fa-solid fa-magnifying-glass"></i>
                             プレビュー
@@ -134,7 +136,7 @@
                 </section>
 
                 <!-- プレビューセクション -->
-                <section id="previewSection" class="bg-white rounded-3xl border border-sky-100 shadow-sm p-6 md:p-8 hidden">
+                <section id="previewSection" class="bg-white rounded-3xl border <?= $cardBorder ?> shadow-sm p-6 md:p-8 hidden">
                     <div class="mb-6">
                         <div class="flex items-center justify-between mb-3">
                             <div>

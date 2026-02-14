@@ -1,8 +1,9 @@
 <?php
 /**
- * タスク管理 View (日本語版)
- * 物理パス: haitaka/private/apps/TaskManager/Views/index.php
+ * タスク管理 View（テーマ色はセッションの task_manager アプリから取得）
  */
+$appKey = 'task_manager';
+require_once __DIR__ . '/../../../components/theme_from_session.php';
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -13,6 +14,13 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+    <style>
+        :root { --task-theme: <?= htmlspecialchars($themePrimaryHex) ?>; }
+        .tab-btn.active { color: var(--task-theme); border-bottom-color: var(--task-theme); }
+        .task-pull-refresh { color: var(--task-theme); }
+        .task-quick-add-btn { background-color: var(--task-theme); }
+        .task-quick-add-btn:hover { filter: brightness(1.08); }
+    </style>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Noto+Sans+JP:wght@400;500;700&display=swap');
         body { font-family: 'Inter', 'Noto Sans JP', sans-serif; font-size: 13px; }
@@ -31,19 +39,19 @@
         .row-done { opacity: 0.4; background-color: #f8fafc; }
         .row-done .title-text { text-decoration: line-through; }
         .tab-btn { font-size: 12px; font-weight: 600; color: #94a3b8; border-bottom: 2px solid transparent; padding-bottom: 8px; transition: all 0.2s; }
-        .tab-btn.active { color: #4f46e5; border-bottom-color: #4f46e5; font-weight: 800; }
+        .tab-btn.active { font-weight: 800; }
         .gantt-sticky-col { width: 120px; flex-shrink: 0; background: inherit; padding: 0 10px; border-right: 1px solid #e2e8f0; display: flex; align-items: center; font-size: 10px; font-weight: 700; position: sticky; left: 0; z-index: 30; }
     </style>
 </head>
-<body class="bg-slate-50 flex h-screen overflow-hidden text-slate-800">
+<body class="flex h-screen overflow-hidden text-slate-800 <?= $bodyBgClass ?>"<?= $bodyStyle ? ' style="' . htmlspecialchars($bodyStyle) . '"' : '' ?>>
 
 <?php require_once __DIR__ . '/../../../components/sidebar.php'; ?>
 
     <main class="flex-1 flex flex-col min-w-0 relative">
-        <header class="h-16 bg-white/80 backdrop-blur-md border-b border-indigo-100 flex items-center justify-between px-6 shrink-0 sticky top-0 z-10">
+        <header class="h-16 bg-white/80 backdrop-blur-md border-b <?= $headerBorder ?> flex items-center justify-between px-6 shrink-0 sticky top-0 z-10">
             <div class="flex items-center gap-3">
                 <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
-                <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-indigo-200">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-lg <?= $headerIconBg ?> <?= $headerShadow ?>"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?>>
                     <i class="fa-solid fa-list-check text-sm"></i>
                 </div>
                 <h1 class="font-black text-slate-700 text-xl tracking-tighter">タスク管理</h1>
@@ -64,13 +72,13 @@
         <div id="mainScroll" class="flex-1 overflow-y-auto p-3 md:p-6 custom-scroll relative">
             
             <!-- Pull-to-Refresh インジケーター（モバイルのみ） -->
-            <div id="pullToRefresh" class="md:hidden absolute top-0 left-0 right-0 flex flex-col items-center justify-center text-indigo-600 transition-all duration-300 pointer-events-none" style="height: 60px; transform: translateY(-60px); opacity: 0;">
+            <div id="pullToRefresh" class="md:hidden absolute top-0 left-0 right-0 flex flex-col items-center justify-center transition-all duration-300 pointer-events-none task-pull-refresh" style="height: 60px; transform: translateY(-60px); opacity: 0;">
                 <i id="pullIcon" class="fa-solid fa-arrow-down text-2xl mb-1 transition-transform duration-300"></i>
                 <span id="pullText" class="text-xs font-bold">引っ張って更新</span>
             </div>
             
             <!-- モバイル用タスク追加ボタン -->
-            <button id="quickAddToggle" onclick="toggleQuickAdd()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-xl font-black text-sm mb-4 shadow-lg transition-all flex items-center justify-center gap-2">
+            <button id="quickAddToggle" onclick="toggleQuickAdd()" class="w-full text-white px-4 py-3 rounded-xl font-black text-sm mb-4 shadow-lg transition-all flex items-center justify-center gap-2 task-quick-add-btn">
                 <i class="fa-solid fa-plus"></i>
                 <span id="toggleText">タスクを追加</span>
                 <i id="toggleIcon" class="fa-solid fa-chevron-down ml-auto text-xs"></i>

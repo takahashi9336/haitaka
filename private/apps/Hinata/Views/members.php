@@ -3,6 +3,8 @@
  * メンバー帳 View
  * 物理パス: haitaka/private/apps/Hinata/Views/members.php
  */
+$appKey = 'hinata';
+require_once __DIR__ . '/../../../components/theme_from_session.php';
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -13,6 +15,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
+        :root { --hinata-theme: <?= htmlspecialchars($themePrimaryHex) ?>; }
+        .filter-btn.active { background-color: var(--hinata-theme); color: white; border-color: var(--hinata-theme); }
+        .member-card:hover { border-color: var(--hinata-theme); }
+    </style>
+    <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+JP:wght@400;700&display=swap');
         body { font-family: 'Inter', 'Noto Sans JP', sans-serif; }
         .sidebar { transition: width 0.3s; width: 240px; }
@@ -21,9 +28,8 @@
             .sidebar.mobile-open { transform: translateX(0); }
             .sidebar.mobile-open .nav-text, .sidebar.mobile-open .logo-text, .sidebar.mobile-open .user-info { display: inline !important; }
         }
-        .filter-btn.active { background-color: #7cc7e8; color: white; border-color: #7cc7e8; }
         .member-card { transition: all 0.3s ease; }
-        .member-card:hover { transform: translateY(-2px); border-color: #7cc7e8; }
+        .member-card:hover { transform: translateY(-2px); }
         .portrait-img { width: 100%; height: 100%; object-fit: cover; }
         #memberModal { opacity: 0; }
         #memberModal.active { 
@@ -119,23 +125,24 @@
         }
     </style>
 </head>
-<body class="bg-slate-50 flex h-screen overflow-hidden text-slate-800">
+<body class="flex h-screen overflow-hidden text-slate-800 <?= $bodyBgClass ?>"<?= $bodyStyle ? ' style="' . htmlspecialchars($bodyStyle) . '"' : '' ?>>
 
     <?php require_once __DIR__ . '/../../../components/sidebar.php'; ?>
 
-    <main class="flex-1 flex flex-col min-w-0 bg-[#f8fbff]">
-        <header class="h-14 bg-white border-b border-sky-100 flex items-center justify-between px-4 shrink-0 sticky top-0 z-10 shadow-sm">
+    <main class="flex-1 flex flex-col min-w-0">
+        <header class="h-14 bg-white border-b <?= $headerBorder ?> flex items-center justify-between px-4 shrink-0 sticky top-0 z-10 shadow-sm">
             <div class="flex items-center gap-2">
                 <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
                 <a href="/hinata/index.php" class="text-slate-400 p-2"><i class="fa-solid fa-chevron-left text-lg"></i></a>
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md <?= $headerIconBg ?> <?= $headerShadow ?>"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?>><i class="fa-solid fa-users text-sm"></i></div>
                 <h1 class="font-black text-slate-700 text-lg tracking-tight">メンバー帳</h1>
             </div>
             <?php if (($user['role'] ?? '') === 'admin'): ?>
-            <a href="/hinata/member_admin.php" class="text-[10px] font-bold text-sky-500 bg-sky-50 px-3 py-1.5 rounded-full"><i class="fa-solid fa-user-gear mr-1"></i>管理</a>
+            <a href="/hinata/member_admin.php" class="text-[10px] font-bold <?= $cardIconText ?> <?= $cardIconBg ?> px-3 py-1.5 rounded-full hover:opacity-90 transition"<?= $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>><i class="fa-solid fa-user-gear mr-1"></i>管理</a>
             <?php endif; ?>
         </header>
 
-        <div class="bg-white border-b border-sky-50 px-4 py-3 flex flex-wrap gap-3 items-center justify-between shrink-0">
+        <div class="bg-white border-b <?= $cardBorder ?> px-4 py-3 flex flex-wrap gap-3 items-center justify-between shrink-0">
             <div class="flex gap-2 overflow-x-auto no-scrollbar">
                 <button onclick="filterGen('all')" class="filter-btn active px-6 py-1.5 rounded-full border border-slate-100 text-[10px] font-black tracking-wider transition-all">全員</button>
                 <?php foreach([1,2,3,4,5] as $g): ?>

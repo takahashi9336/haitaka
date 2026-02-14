@@ -39,6 +39,9 @@ foreach($groupedNeta as $group) { $netaCount += count($group['items']); }
 // 日向坂ポータルと同じ「次のイベント」情報
 $eventModel = new EventModel();
 $nextEvent = $eventModel->getNextEvent();
+
+$appKey = 'dashboard';
+require_once __DIR__ . '/../private/components/theme_from_session.php';
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -48,6 +51,14 @@ $nextEvent = $eventModel->getNextEvent();
     <title>ダッシュボード - MyPlatform</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root { --dashboard-theme: <?= htmlspecialchars($themePrimaryHex) ?>; }
+        <?php if ($isThemeHex): ?>
+        .quick-memo-save-btn { background-color: var(--dashboard-theme); }
+        .quick-memo-save-btn:hover { filter: brightness(1.08); }
+        .quick-memo-save-btn.saved { background-color: #22c55e !important; }
+        <?php endif; ?>
+    </style>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Noto+Sans+JP:wght@400;500;700&display=swap');
         body { font-family: 'Inter', 'Noto Sans JP', sans-serif; }
@@ -63,15 +74,15 @@ $nextEvent = $eventModel->getNextEvent();
         }
     </style>
 </head>
-<body class="bg-[#f8fafc] flex h-screen overflow-hidden text-slate-800">
+<body class="flex h-screen overflow-hidden text-slate-800 <?= $bodyBgClass ?>"<?= $bodyStyle ? ' style="' . htmlspecialchars($bodyStyle) . '"' : '' ?>>
 
     <?php require_once __DIR__ . '/../private/components/sidebar.php'; ?>
 
     <main class="flex-1 flex flex-col min-w-0 relative">
-        <header class="h-16 bg-white/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-6 shrink-0 sticky top-0 z-10">
+        <header class="h-16 bg-white/80 backdrop-blur-md border-b <?= $headerBorder ?> flex items-center justify-between px-6 shrink-0 sticky top-0 z-10">
             <div class="flex items-center gap-3">
                 <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
-                <div class="w-8 h-8 bg-slate-700 rounded-lg flex items-center justify-center text-white shadow-lg shadow-slate-300">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-lg <?= $headerIconBg ?> <?= $headerShadow ?>"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?>>
                     <i class="fa-solid fa-home text-sm"></i>
                 </div>
                 <h1 class="font-black text-slate-700 text-xl tracking-tighter">ダッシュボード</h1>
@@ -79,7 +90,7 @@ $nextEvent = $eventModel->getNextEvent();
             <div class="flex items-center gap-4">
                 <div class="hidden md:flex flex-col items-end">
                     <span class="text-[10px] font-bold text-slate-400 tracking-wider">ログインユーザー</span>
-                    <span class="text-xs font-black text-slate-700"><?= htmlspecialchars($user['id_name']) ?></span>
+                    <span class="text-xs font-black <?= $cardDeco ?> <?= !$isThemeHex ? "text-{$themeTailwind}-600" : '' ?>"<?= $cardDecoStyle ? ' style="' . htmlspecialchars($cardDecoStyle) . '"' : '' ?>><?= htmlspecialchars($user['id_name']) ?></span>
                 </div>
             </div>
         </header>
@@ -89,20 +100,20 @@ $nextEvent = $eventModel->getNextEvent();
 
                 <!-- クイックメモ (Google Keep風) -->
                 <div class="mb-6">
-                    <div class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+                    <div class="bg-white rounded-xl border <?= $cardBorder ?> shadow-sm overflow-hidden">
                         <div class="p-4">
                             <div class="flex items-center gap-2 mb-3">
-                                <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                                <div class="w-8 h-8 rounded-lg flex items-center justify-center <?= $cardIconBg ?> <?= $cardIconText ?>"<?= $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>>
                                     <i class="fa-solid fa-lightbulb text-sm"></i>
                                 </div>
                                 <h2 class="text-sm font-bold text-slate-800">クイックメモ</h2>
                             </div>
                             <input type="text" id="quickMemoTitle" placeholder="タイトル（任意）"
-                                class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm font-medium mb-2">
+                                class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 <?= $isThemeHex ? 'focus:ring-[var(--dashboard-theme)]' : 'focus:ring-' . $themeTailwind . '-500' ?> focus:border-transparent text-sm font-medium mb-2">
                             <textarea 
                                 id="quickMemoInput" 
                                 placeholder="メモを入力..."
-                                class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none overflow-hidden transition-all text-sm min-h-[2.5rem]"
+                                class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 <?= $isThemeHex ? 'focus:ring-[var(--dashboard-theme)]' : 'focus:ring-' . $themeTailwind . '-500' ?> focus:border-transparent resize-none overflow-hidden transition-all text-sm min-h-[2.5rem]"
                                 rows="1"
                             ></textarea>
                             <div id="quickMemoActions" class="mt-3 flex items-center justify-between opacity-0 transition-opacity duration-200">
@@ -111,7 +122,7 @@ $nextEvent = $eventModel->getNextEvent();
                                         <i class="fa-solid fa-times mr-1"></i> キャンセル
                                     </button>
                                 </div>
-                                <button id="quickMemoSaveBtn" onclick="QuickMemo.save(event)" class="px-4 py-1.5 bg-amber-500 text-white text-xs font-bold rounded-lg hover:bg-amber-600 transition shadow-sm">
+                                <button id="quickMemoSaveBtn" onclick="QuickMemo.save(event)" class="quick-memo-save-btn px-4 py-1.5 <?= !$isThemeHex ? $btnBgClass : '' ?> text-white text-xs font-bold rounded-lg transition shadow-sm">
                                     <i class="fa-solid fa-plus mr-1"></i> 保存
                                 </button>
                             </div>
@@ -121,12 +132,12 @@ $nextEvent = $eventModel->getNextEvent();
 
                 <?php if (!empty($nextEvent) && isset($nextEvent['days_left']) && (int)$nextEvent['days_left'] >= 0): ?>
                 <div class="mb-6">
-                    <a href="/hinata/events.php?event_id=<?= $nextEvent['id'] ?>" class="flex items-center gap-3 bg-white rounded-xl border border-sky-100 shadow-sm px-4 py-3 hover:border-sky-200 hover:shadow-md transition-all cursor-pointer">
-                        <div class="w-8 h-8 rounded-lg bg-sky-500 text-white flex items-center justify-center shadow-md">
+                    <a href="/hinata/events.php?event_id=<?= $nextEvent['id'] ?>" class="flex items-center gap-3 bg-white rounded-xl border <?= $cardBorder ?> shadow-sm px-4 py-3 hover:shadow-md transition-all cursor-pointer <?= $isThemeHex ? 'hover:border-[var(--dashboard-theme)]' : 'hover:border-' . $themeTailwind . '-200' ?>">
+                        <div class="w-8 h-8 rounded-lg text-white flex items-center justify-center shadow-md <?= $headerIconBg ?> <?= $headerShadow ?>"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?>>
                             <i class="fa-solid fa-calendar-day text-sm"></i>
                         </div>
                         <div class="flex-1">
-                            <p class="text-[9px] font-bold text-sky-500 tracking-wider mb-1">日向坂 次のイベント</p>
+                            <p class="text-[9px] font-bold tracking-wider mb-1 <?= $cardDeco ?> <?= !$isThemeHex ? "text-{$themeTailwind}-500" : '' ?>"<?= $cardDecoStyle ? ' style="' . htmlspecialchars($cardDecoStyle) . '"' : '' ?>>日向坂 次のイベント</p>
                             <p class="text-sm font-bold text-slate-800 mb-0.5">
                                 <?= htmlspecialchars($nextEvent['event_name'] ?? '次のイベント') ?>
                             </p>
@@ -147,7 +158,7 @@ $nextEvent = $eventModel->getNextEvent();
                                 ?>
                             </p>
                         </div>
-                        <div class="hidden md:inline-flex items-center justify-center w-8 h-8 rounded-full border border-sky-100 text-sky-500">
+                        <div class="hidden md:inline-flex items-center justify-center w-8 h-8 rounded-full border <?= $cardBorder ?> <?= $cardIconText ?>"<?= $isThemeHex ? ' style="border-color: ' . htmlspecialchars($themePrimary) . '; color: ' . htmlspecialchars($themePrimary) . '"' : '' ?>>
                             <i class="fa-solid fa-chevron-right text-xs"></i>
                         </div>
                     </a>
@@ -176,18 +187,19 @@ $nextEvent = $eventModel->getNextEvent();
                         }
                     }
                     
-                    $cardClass = $isUrgent ? 'bg-gradient-to-r from-red-50 to-orange-50 border-red-200' : 'bg-white border-indigo-100';
-                    $iconBg = $isUrgent ? 'bg-red-500' : 'bg-indigo-600';
-                    $iconShadow = $isUrgent ? 'shadow-red-200' : 'shadow-indigo-200';
-                    $labelColor = $isUrgent ? 'text-red-600' : 'text-indigo-600';
+                    $cardClass = $isUrgent ? 'bg-gradient-to-r from-red-50 to-orange-50 border-red-200' : 'bg-white ' . $cardBorder;
+                    $iconBg = $isUrgent ? 'bg-red-500' : $headerIconBg;
+                    $iconShadow = $isUrgent ? 'shadow-red-200' : $headerShadow;
+                    $labelColor = $isUrgent ? 'text-red-600' : ($cardIconText ? $cardIconText : 'text-indigo-600');
+                    $iconStyle = $isUrgent ? '' : $headerIconStyle;
                 ?>
                 <div class="mb-6">
                     <a href="/task_manager/?task_id=<?= $topTask['id'] ?>" class="flex items-center gap-3 <?= $cardClass ?> rounded-xl border shadow-sm px-4 py-3 <?= $isUrgent ? 'ring-2 ring-red-200 animate-pulse' : '' ?> hover:shadow-md transition-all cursor-pointer">
-                        <div class="w-8 h-8 rounded-lg <?= $iconBg ?> text-white flex items-center justify-center shadow-md <?= $iconShadow ?>">
+                        <div class="w-8 h-8 rounded-lg <?= $iconBg ?> text-white flex items-center justify-center shadow-md <?= $iconShadow ?>"<?= $iconStyle ? ' style="' . htmlspecialchars($iconStyle) . '"' : '' ?>>
                             <i class="fa-solid fa-<?= $isUrgent ? 'triangle-exclamation' : 'exclamation' ?> text-sm"></i>
                         </div>
                         <div class="flex-1">
-                            <p class="text-[9px] font-bold <?= $labelColor ?> tracking-wider mb-1">最優先タスク<?= $isUrgent ? ' 🔥' : '' ?></p>
+                            <p class="text-[9px] font-bold <?= $labelColor ?> tracking-wider mb-1"<?= !$isUrgent && $cardDecoStyle ? ' style="' . htmlspecialchars($cardDecoStyle) . '"' : '' ?>>最優先タスク<?= $isUrgent ? ' 🔥' : '' ?></p>
                             <p class="text-sm font-bold text-slate-800 mb-0.5">
                                 <?= htmlspecialchars($topTask['title']) ?>
                             </p>
@@ -205,7 +217,7 @@ $nextEvent = $eventModel->getNextEvent();
                                 <?php endif; ?>
                             </div>
                         </div>
-                        <div class="hidden md:inline-flex items-center justify-center w-8 h-8 rounded-full border <?= $isUrgent ? 'border-red-200 text-red-600' : 'border-indigo-100 text-indigo-600' ?>">
+                        <div class="hidden md:inline-flex items-center justify-center w-8 h-8 rounded-full border <?= $isUrgent ? 'border-red-200 text-red-600' : ($cardBorder . ' ' . $cardIconText) ?>"<?= !$isUrgent && $isThemeHex ? ' style="border-color: ' . htmlspecialchars($themePrimary) . '; color: ' . htmlspecialchars($themePrimary) . '"' : '' ?>>
                             <i class="fa-solid fa-chevron-right text-xs"></i>
                         </div>
                     </a>
@@ -214,9 +226,9 @@ $nextEvent = $eventModel->getNextEvent();
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <!-- タスク管理 -->
-                    <a href="/task_manager/" class="bg-white p-5 rounded-xl border border-slate-100 shadow-sm flex flex-col justify-between h-44 hover:translate-y-[-2px] transition-all">
+                    <a href="/task_manager/" class="bg-white p-5 rounded-xl border <?= $cardBorder ?> shadow-sm flex flex-col justify-between h-44 hover:translate-y-[-2px] transition-all">
                         <div>
-                            <div class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center mb-3">
+                            <div class="w-10 h-10 rounded-lg flex items-center justify-center mb-3 <?= $cardIconBg ?> <?= $cardIconText ?>"<?= $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>>
                                 <i class="fa-solid fa-list-check text-lg"></i>
                             </div>
                             <h3 class="font-bold text-slate-800 text-base">タスク管理</h3>
@@ -224,14 +236,14 @@ $nextEvent = $eventModel->getNextEvent();
                         </div>
                         <div class="flex items-end justify-between">
                             <span class="text-3xl font-black text-slate-800"><?= $activeTasksCount ?></span>
-                            <span class="text-indigo-600 text-xs font-bold tracking-wider">開く <i class="fa-solid fa-arrow-right ml-1"></i></span>
+                            <span class="text-xs font-bold tracking-wider <?= $cardIconText ?>"<?= $cardDecoStyle ? ' style="' . htmlspecialchars($cardDecoStyle) . '"' : '' ?>>開く <i class="fa-solid fa-arrow-right ml-1"></i></span>
                         </div>
                     </a>
 
                     <!-- 日向坂ポータル -->
-                    <a href="/hinata/" class="bg-white p-5 rounded-xl border border-slate-100 shadow-sm flex flex-col justify-between h-44 hover:translate-y-[-2px] transition-all">
+                    <a href="/hinata/" class="bg-white p-5 rounded-xl border <?= $cardBorder ?> shadow-sm flex flex-col justify-between h-44 hover:translate-y-[-2px] transition-all">
                         <div>
-                            <div class="w-10 h-10 bg-sky-50 text-sky-500 rounded-lg flex items-center justify-center mb-3">
+                            <div class="w-10 h-10 rounded-lg flex items-center justify-center mb-3 <?= $cardIconBg ?> <?= $cardIconText ?>"<?= $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>>
                                 <i class="fa-solid fa-star text-lg"></i>
                             </div>
                             <h3 class="font-bold text-slate-800 text-base">日向坂ポータル</h3>
@@ -239,7 +251,7 @@ $nextEvent = $eventModel->getNextEvent();
                         </div>
                         <div class="flex items-end justify-between">
                             <span class="text-3xl font-black text-slate-800"><?= $netaCount ?></span>
-                            <span class="text-sky-500 text-xs font-bold tracking-wider">移動する <i class="fa-solid fa-arrow-right ml-1"></i></span>
+                            <span class="text-xs font-bold tracking-wider <?= $cardIconText ?>"<?= $cardDecoStyle ? ' style="' . htmlspecialchars($cardDecoStyle) . '"' : '' ?>>移動する <i class="fa-solid fa-arrow-right ml-1"></i></span>
                         </div>
                     </a>
                 </div>
@@ -296,17 +308,15 @@ $nextEvent = $eventModel->getNextEvent();
                         // 成功時は入力欄をクリア
                         this.clearInput();
                         
-                        // 簡易フィードバック
+                        // 簡易フィードバック（テーマの保存ボタンは .quick-memo-save-btn、成功時は .saved で緑表示）
                         if (btn) {
                             const originalText = btn.innerHTML;
                             btn.innerHTML = '<i class="fa-solid fa-check mr-2"></i> 保存しました';
-                            btn.classList.add('bg-green-500');
-                            btn.classList.remove('bg-amber-500', 'hover:bg-amber-600');
+                            btn.classList.add('saved');
                             
                             setTimeout(() => {
                                 btn.innerHTML = originalText;
-                                btn.classList.remove('bg-green-500');
-                                btn.classList.add('bg-amber-500', 'hover:bg-amber-600');
+                                btn.classList.remove('saved');
                             }, 2000);
                         }
                     } else {

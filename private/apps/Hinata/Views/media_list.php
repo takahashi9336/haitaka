@@ -3,6 +3,8 @@
  * 動画一覧 View
  * 物理パス: haitaka/private/apps/Hinata/Views/media_list.php
  */
+$appKey = 'hinata';
+require_once __DIR__ . '/../../../components/theme_from_session.php';
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -157,20 +159,20 @@
         }
     </style>
 </head>
-<body class="bg-[#f0f9ff] flex h-screen overflow-hidden text-slate-800">
+<body class="flex h-screen overflow-hidden text-slate-800 <?= $bodyBgClass ?>"<?= $bodyStyle ? ' style="' . htmlspecialchars($bodyStyle) . '"' : '' ?>>
 
     <?php require_once __DIR__ . '/../../../components/sidebar.php'; ?>
 
     <main class="flex-1 flex flex-col min-w-0">
-        <header class="h-16 bg-white/80 backdrop-blur-md border-b border-sky-100 flex items-center justify-between px-6 shrink-0 sticky top-0 z-10">
+        <header class="h-16 bg-white/80 backdrop-blur-md border-b <?= $headerBorder ?> flex items-center justify-between px-6 shrink-0 sticky top-0 z-10">
             <div class="flex items-center gap-3">
                 <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
-                <div class="w-8 h-8 bg-sky-500 rounded-lg flex items-center justify-center text-white shadow-lg shadow-sky-200">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-lg <?= $headerIconBg ?> <?= $headerShadow ?>"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?>>
                     <i class="fa-solid fa-video text-sm"></i>
                 </div>
                 <h1 class="font-black text-slate-700 text-xl tracking-tighter">動画一覧</h1>
             </div>
-            <a href="/hinata/index.php" class="text-xs font-bold text-sky-500 bg-sky-50 px-4 py-2 rounded-full hover:bg-sky-100 transition">
+            <a href="/hinata/index.php" class="text-xs font-bold <?= $cardIconText ?> <?= $cardIconBg ?> px-4 py-2 rounded-full hover:opacity-90 transition"<?= $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>>
                 ポータルへ戻る
             </a>
         </header>
@@ -178,15 +180,21 @@
         <div class="flex-1 overflow-y-auto p-6 md:p-10" id="mainScrollArea">
             <div class="max-w-5xl mx-auto">
                 
-                <!-- VIDEOセクション風ヘッダー（公式サイトに寄せたレイアウト） -->
+                <!-- 公式チャンネルリンク -->
                 <section class="mb-8">
-                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-                        <h2 class="video-section-title text-xl md:text-2xl">動画</h2>
+                    <div class="flex flex-wrap items-center gap-3 mb-6">
                         <a href="https://www.youtube.com/@46officialyoutubechannel99" target="_blank" rel="noopener noreferrer" class="btn-official-channel shrink-0">
                             <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                                 <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
                             </svg>
                             <span>youtube 公式チャンネル</span>
+                            <i class="fa-solid fa-chevron-right text-[10px] opacity-90"></i>
+                        </a>
+                        <a href="https://www.youtube.com/@hinatazakachannel" target="_blank" rel="noopener noreferrer" class="btn-official-channel shrink-0">
+                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                            </svg>
+                            <span>日向坂ちゃんねる</span>
                             <i class="fa-solid fa-chevron-right text-[10px] opacity-90"></i>
                         </a>
                     </div>

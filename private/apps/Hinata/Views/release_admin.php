@@ -3,6 +3,8 @@
  * リリース管理画面 View（管理者専用）
  * 物理パス: haitaka/private/apps/Hinata/Views/release_admin.php
  */
+$appKey = 'hinata';
+require_once __DIR__ . '/../../../components/theme_from_session.php';
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -23,20 +25,20 @@
         }
     </style>
 </head>
-<body class="bg-[#f0f9ff] flex h-screen overflow-hidden text-slate-800">
+<body class="flex h-screen overflow-hidden text-slate-800 <?= $bodyBgClass ?>"<?= $bodyStyle ? ' style="' . htmlspecialchars($bodyStyle) . '"' : '' ?>>
 
     <?php require_once __DIR__ . '/../../../components/sidebar.php'; ?>
 
     <main class="flex-1 flex flex-col min-w-0">
-        <header class="h-16 bg-white/80 backdrop-blur-md border-b border-sky-100 flex items-center justify-between px-6 shrink-0 sticky top-0 z-10">
+        <header class="h-16 bg-white/80 backdrop-blur-md border-b <?= $headerBorder ?> flex items-center justify-between px-6 shrink-0 sticky top-0 z-10">
             <div class="flex items-center gap-3">
                 <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
-                <div class="w-8 h-8 bg-sky-500 rounded-lg flex items-center justify-center text-white shadow-lg shadow-sky-200">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-lg <?= $headerIconBg ?> <?= $headerShadow ?>"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?>>
                     <i class="fa-solid fa-compact-disc text-sm"></i>
                 </div>
                 <h1 class="font-black text-slate-700 text-xl tracking-tighter">リリース管理</h1>
             </div>
-            <a href="/hinata/index.php" class="text-xs font-bold text-sky-500 bg-sky-50 px-4 py-2 rounded-full hover:bg-sky-100 transition">
+            <a href="/hinata/index.php" class="text-xs font-bold <?= $cardIconText ?> <?= $cardIconBg ?> px-4 py-2 rounded-full hover:opacity-90 transition"<?= $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>>
                 ポータルへ戻る
             </a>
         </header>
@@ -46,14 +48,14 @@
                 
                 <!-- 新規登録ボタン -->
                 <div class="mb-6">
-                    <button id="btnNewRelease" class="h-11 px-6 bg-sky-500 text-white font-bold text-sm rounded-full hover:bg-sky-600 transition shadow-lg shadow-sky-200 flex items-center gap-2">
+                    <button id="btnNewRelease" class="h-11 px-6 <?= $btnBgClass ?> text-white font-bold text-sm rounded-full transition shadow-lg flex items-center gap-2"<?= $btnBgStyle ? ' style="' . htmlspecialchars($btnBgStyle) . '"' : '' ?>>
                         <i class="fa-solid fa-plus"></i>
                         新規リリース登録
                     </button>
                 </div>
 
                 <!-- リリース一覧 -->
-                <section class="bg-white rounded-3xl border border-sky-100 shadow-sm p-6 md:p-8">
+                <section class="bg-white rounded-3xl border <?= $cardBorder ?> shadow-sm p-6 md:p-8">
                     <h2 class="text-lg font-black text-slate-800 mb-4">リリース一覧</h2>
                     
                     <div class="overflow-x-auto">
@@ -76,7 +78,7 @@
                                     <?php foreach ($releases as $rel): ?>
                                     <tr class="border-b border-slate-100 hover:bg-slate-50 transition">
                                         <td class="p-3 text-sm">
-                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-sky-50 text-sky-600">
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold <?= $cardIconBg ?> <?= $cardIconText ?>"<?= $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>>
                                                 <?= htmlspecialchars($releaseTypes[$rel['release_type']] ?? $rel['release_type']) ?>
                                             </span>
                                         </td>
@@ -90,7 +92,7 @@
                                             <?= !empty($rel['release_date']) ? \Core\Utils\DateUtil::format($rel['release_date'], 'Y/m/d') : '-' ?>
                                         </td>
                                         <td class="p-3">
-                                            <button class="btn-edit text-sky-500 hover:text-sky-700 text-xs font-bold mr-3" data-id="<?= $rel['id'] ?>">
+                                            <button class="btn-edit text-xs font-bold mr-3 <?= $cardIconText ?> hover:opacity-80"<?= $cardDecoStyle ? ' style="' . htmlspecialchars($cardDecoStyle) . '"' : '' ?> data-id="<?= $rel['id'] ?>">
                                                 <i class="fa-solid fa-edit"></i> 編集
                                             </button>
                                             <button class="btn-delete text-red-500 hover:text-red-700 text-xs font-bold" data-id="<?= $rel['id'] ?>">
@@ -125,7 +127,7 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-bold text-slate-600 mb-2">リリース種別</label>
-                        <select name="release_type" id="f_release_type" required class="w-full h-11 border border-sky-100 rounded-xl px-4 text-sm outline-none bg-slate-50">
+                        <select name="release_type" id="f_release_type" required class="w-full h-11 border <?= $cardBorder ?> rounded-xl px-4 text-sm outline-none bg-slate-50">
                             <?php foreach ($releaseTypes as $key => $label): ?>
                                 <option value="<?= htmlspecialchars($key) ?>"><?= htmlspecialchars($label) ?></option>
                             <?php endforeach; ?>
@@ -133,32 +135,32 @@
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-600 mb-2">番号</label>
-                        <input type="text" name="release_number" id="f_release_number" placeholder="1st" class="w-full h-11 border border-sky-100 rounded-xl px-4 text-sm outline-none bg-slate-50">
+                        <input type="text" name="release_number" id="f_release_number" placeholder="1st" class="w-full h-11 border <?= $cardBorder ?> rounded-xl px-4 text-sm outline-none bg-slate-50">
                     </div>
                 </div>
 
                 <div>
                     <label class="block text-xs font-bold text-slate-600 mb-2">タイトル <span class="text-red-500">*</span></label>
-                    <input type="text" name="title" id="f_title" required class="w-full h-11 border border-sky-100 rounded-xl px-4 text-sm outline-none bg-slate-50">
+                    <input type="text" name="title" id="f_title" required class="w-full h-11 border <?= $cardBorder ?> rounded-xl px-4 text-sm outline-none bg-slate-50">
                 </div>
 
                 <div>
                     <label class="block text-xs font-bold text-slate-600 mb-2">よみがな</label>
-                    <input type="text" name="title_kana" id="f_title_kana" class="w-full h-11 border border-sky-100 rounded-xl px-4 text-sm outline-none bg-slate-50">
+                    <input type="text" name="title_kana" id="f_title_kana" class="w-full h-11 border <?= $cardBorder ?> rounded-xl px-4 text-sm outline-none bg-slate-50">
                 </div>
 
                 <div>
                     <label class="block text-xs font-bold text-slate-600 mb-2">発売日</label>
-                    <input type="date" name="release_date" id="f_release_date" class="w-full h-11 border border-sky-100 rounded-xl px-4 text-sm outline-none bg-slate-50">
+                    <input type="date" name="release_date" id="f_release_date" class="w-full h-11 border <?= $cardBorder ?> rounded-xl px-4 text-sm outline-none bg-slate-50">
                 </div>
 
                 <div>
                     <label class="block text-xs font-bold text-slate-600 mb-2">説明・備考</label>
-                    <textarea name="description" id="f_description" rows="3" class="w-full border border-sky-100 rounded-xl px-4 py-3 text-sm outline-none bg-slate-50"></textarea>
+                    <textarea name="description" id="f_description" rows="3" class="w-full border <?= $cardBorder ?> rounded-xl px-4 py-3 text-sm outline-none bg-slate-50"></textarea>
                 </div>
 
                 <div class="flex gap-3 pt-4">
-                    <button type="submit" class="flex-1 h-11 bg-sky-500 text-white font-bold text-sm rounded-full hover:bg-sky-600 transition shadow-lg shadow-sky-200">
+                    <button type="submit" class="flex-1 h-11 <?= $btnBgClass ?> text-white font-bold text-sm rounded-full transition shadow-lg"<?= $btnBgStyle ? ' style="' . htmlspecialchars($btnBgStyle) . '"' : '' ?>>
                         保存
                     </button>
                     <button type="button" id="btnCancelModal" class="h-11 px-6 bg-slate-100 text-slate-600 font-bold text-sm rounded-full hover:bg-slate-200 transition">

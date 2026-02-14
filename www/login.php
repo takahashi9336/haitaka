@@ -5,7 +5,8 @@ $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($auth->login($_POST['id_name'], $_POST['password'])) {
-        header('Location: /index.php');
+        $target = $_SESSION['user']['default_route'] ?? '/index.php';
+        header('Location: ' . $target);
         exit;
     } else {
         $error = 'IDまたはパスワードが正しくありません。';

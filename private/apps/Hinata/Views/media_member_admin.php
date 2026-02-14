@@ -3,6 +3,8 @@
  * 動画・メンバー紐付け管理画面 View（管理者専用）
  * 物理パス: haitaka/private/apps/Hinata/Views/media_member_admin.php
  */
+$appKey = 'hinata';
+require_once __DIR__ . '/../../../components/theme_from_session.php';
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -20,8 +22,8 @@
             .sidebar { position: fixed; transform: translateX(-100%); z-index: 100; width: 240px !important; }
             .sidebar.mobile-open { transform: translateX(0); }
         }
-        .video-row:hover { background: #f0f9ff; }
-        .video-row.selected { background: #e0f2fe; border-left: 4px solid #0ea5e9; }
+        .video-row:hover { background: color-mix(in srgb, var(--hinata-theme) 8%, transparent); }
+        .video-row.selected { border-left: 4px solid var(--hinata-theme); background: color-mix(in srgb, var(--hinata-theme) 15%, transparent); }
         /* スマホ: 左右を均等に高さ確保し、メンバー選択エリアが操作できるようにする */
         @media (max-width: 767px) {
             .media-member-wrap { flex-direction: column; }
@@ -48,31 +50,31 @@
                 -webkit-overflow-scrolling: touch;
             }
         }
-    </style>
+        <style>:root { --hinata-theme: <?= htmlspecialchars($themePrimaryHex) ?>; }</style>
 </head>
-<body class="bg-[#f0f9ff] flex h-screen overflow-hidden text-slate-800">
+<body class="flex h-screen overflow-hidden text-slate-800 <?= $bodyBgClass ?>"<?= $bodyStyle ? ' style="' . htmlspecialchars($bodyStyle) . '"' : '' ?>>
 
     <?php require_once __DIR__ . '/../../../components/sidebar.php'; ?>
 
     <main class="flex-1 flex flex-col min-w-0">
-        <header class="h-16 bg-white/80 backdrop-blur-md border-b border-sky-100 flex items-center justify-between px-6 shrink-0 sticky top-0 z-10">
+        <header class="h-16 bg-white/80 backdrop-blur-md border-b <?= $headerBorder ?> flex items-center justify-between px-6 shrink-0 sticky top-0 z-10">
             <div class="flex items-center gap-3">
                 <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
-                <div class="w-8 h-8 bg-sky-500 rounded-lg flex items-center justify-center text-white shadow-lg shadow-sky-200">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-lg <?= $headerIconBg ?> <?= $headerShadow ?>"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?>>
                     <i class="fa-solid fa-link text-sm"></i>
                 </div>
                 <h1 class="font-black text-slate-700 text-xl tracking-tighter">動画・メンバー紐付け管理</h1>
             </div>
-            <a href="/hinata/index.php" class="text-xs font-bold text-sky-500 bg-sky-50 px-4 py-2 rounded-full hover:bg-sky-100 transition">
+            <a href="/hinata/index.php" class="text-xs font-bold <?= $cardIconText ?> <?= $cardIconBg ?> px-4 py-2 rounded-full hover:opacity-90 transition"<?= $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>>
                 ポータルへ戻る
             </a>
         </header>
 
         <div class="media-member-wrap flex-1 flex flex-col md:flex-row min-h-0">
             <!-- 左：動画一覧 -->
-            <section class="video-list-section w-full md:w-96 shrink-0 border-r border-sky-100 bg-white flex flex-col min-h-0">
-                <div class="p-4 border-b border-sky-100 space-y-3">
-                    <input type="text" id="searchVideo" placeholder="動画を検索..." class="w-full h-10 px-4 border border-sky-100 rounded-lg text-sm outline-none focus:ring-2 focus:ring-sky-200">
+            <section class="video-list-section w-full md:w-96 shrink-0 border-r <?= $cardBorder ?> bg-white flex flex-col min-h-0">
+                <div class="p-4 border-b <?= $cardBorder ?> space-y-3">
+                    <input type="text" id="searchVideo" placeholder="動画を検索..." class="w-full h-10 px-4 border <?= $cardBorder ?> rounded-lg text-sm outline-none focus:ring-2 <?= $isThemeHex ? 'focus:ring-[var(--hinata-theme)]' : 'focus:ring-' . $themeTailwind . '-200' ?>">
                     <select id="filterCategory" class="w-full h-10 px-4 border border-sky-100 rounded-lg text-sm outline-none bg-slate-50">
                         <option value="">カテゴリ: すべて</option>
                         <?php foreach ($categories as $key => $label): ?>

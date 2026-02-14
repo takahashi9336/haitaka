@@ -3,6 +3,8 @@
  * イベント一覧 View (日本語版)
  * 物理パス: haitaka/private/apps/Hinata/Views/event_index.php
  */
+$appKey = 'hinata';
+require_once __DIR__ . '/../../../components/theme_from_session.php';
 
 // カテゴリ設定のヘルパー
 $getCatInfo = function($catId) {
@@ -24,6 +26,10 @@ $getCatInfo = function($catId) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
     <style>
+        :root { --hinata-theme: <?= htmlspecialchars($themePrimaryHex) ?>; }
+        .tab-btn.active { background: var(--hinata-theme); color: white; border-color: var(--hinata-theme); }
+    </style>
+    <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+JP:wght@400;700&display=swap');
         body { font-family: 'Inter', 'Noto Sans JP', sans-serif; }
         .sidebar { transition: width 0.3s; width: 240px; }
@@ -32,26 +38,26 @@ $getCatInfo = function($catId) {
             .sidebar.mobile-open { transform: translateX(0); }
             .sidebar.mobile-open .nav-text, .sidebar.mobile-open .logo-text, .sidebar.mobile-open .user-info { display: inline !important; }
         }
-        .tab-btn.active { background: #7cc7e8; color: white; border-color: #7cc7e8; }
         .custom-scroll::-webkit-scrollbar { width: 4px; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
         .date-col { width: 65px; flex-shrink: 0; }
     </style>
 </head>
-<body class="bg-slate-50 flex h-screen overflow-hidden text-slate-800">
+<body class="flex h-screen overflow-hidden text-slate-800 <?= $bodyBgClass ?>"<?= $bodyStyle ? ' style="' . htmlspecialchars($bodyStyle) . '"' : '' ?>>
 
     <?php require_once __DIR__ . '/../../../components/sidebar.php'; ?>
 
-    <main class="flex-1 flex flex-col min-w-0 bg-[#f8fbff]">
-        <header class="h-14 bg-white border-b border-sky-100 flex items-center justify-between px-4 shrink-0 sticky top-0 z-10 shadow-sm">
+    <main class="flex-1 flex flex-col min-w-0">
+        <header class="h-14 bg-white border-b <?= $headerBorder ?> flex items-center justify-between px-4 shrink-0 sticky top-0 z-10 shadow-sm">
             <div class="flex items-center gap-2">
                 <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
                 <a href="/hinata/index.php" class="text-slate-400 p-2"><i class="fa-solid fa-chevron-left text-lg"></i></a>
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md <?= $headerIconBg ?> <?= $headerShadow ?>"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?>><i class="fa-solid fa-calendar-days text-sm"></i></div>
                 <h1 class="font-black text-slate-700 text-lg tracking-tight">イベント</h1>
             </div>
             <div class="flex items-center gap-2">
                 <?php if (($user['role'] ?? '') === 'admin'): ?>
-                <a href="/hinata/event_admin.php" class="text-[10px] font-bold text-sky-500 bg-sky-50 px-3 py-1.5 rounded-full hover:bg-sky-100 transition flex items-center gap-1">
+                <a href="/hinata/event_admin.php" class="text-[10px] font-bold <?= $cardIconText ?> <?= $cardIconBg ?> px-3 py-1.5 rounded-full hover:opacity-90 transition flex items-center gap-1"<?= $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>>
                     <i class="fa-solid fa-calendar-plus"></i>
                     <span>管理</span>
                 </a>
@@ -59,7 +65,7 @@ $getCatInfo = function($catId) {
             </div>
         </header>
 
-        <div class="bg-white border-b border-sky-50 px-4 py-2 flex items-center justify-between shrink-0">
+        <div class="bg-white border-b <?= $cardBorder ?> px-4 py-2 flex items-center justify-between shrink-0">
             <div class="flex p-1 bg-slate-100 rounded-xl">
                 <button onclick="switchTab('list')" id="tab-list" class="tab-btn active px-4 py-1.5 rounded-lg text-[10px] font-black tracking-wider transition-all">リスト</button>
                 <button onclick="switchTab('calendar')" id="tab-calendar" class="tab-btn px-4 py-1.5 rounded-lg text-[10px] font-black tracking-wider transition-all">カレンダー</button>
@@ -70,7 +76,7 @@ $getCatInfo = function($catId) {
         <div class="flex-1 overflow-y-auto custom-scroll">
             <div id="view-list" class="p-4 md:p-8 space-y-3 max-w-4xl mx-auto">
                 <?php if (empty($events)): ?>
-                <div class="text-center py-20 bg-white rounded-[2.5rem] border border-sky-50 shadow-sm">
+                <div class="text-center py-20 bg-white rounded-[2.5rem] border <?= $cardBorder ?> shadow-sm">
                     <i class="fa-solid fa-calendar-xmark text-4xl text-slate-200 mb-4"></i>
                     <p class="text-slate-400 font-bold">予定されているイベントはありません</p>
                 </div>

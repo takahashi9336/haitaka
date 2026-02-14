@@ -1,7 +1,30 @@
 <?php
 /**
  * 管理画面ポータル View
+ * カード色は親画面（管理画面）のテーマ色を継承。セッションの apps から取得するため追加のDBアクセスなし。
  */
+$adminApp = null;
+$apps = $_SESSION['user']['apps'] ?? [];
+if (is_array($apps)) {
+    foreach ($apps as $a) {
+        if (isset($a['app_key']) && $a['app_key'] === 'admin') {
+            $adminApp = $a;
+            break;
+        }
+    }
+}
+$themePrimary = $adminApp['theme_primary'] ?? 'slate';
+$themeLight   = $adminApp['theme_light']   ?? null;
+$isThemeHex   = preg_match('/^#[0-9A-Fa-f]{3,8}$/', $themePrimary);
+$themeTailwind = 'slate';
+if (!$isThemeHex && preg_match('/^([a-z]+)/', $themePrimary, $m)) {
+    $allowed = ['indigo' => 1, 'sky' => 1, 'slate' => 1, 'amber' => 1, 'orange' => 1, 'violet' => 1, 'emerald' => 1];
+    $themeTailwind = isset($allowed[$m[1]]) ? $m[1] : 'slate';
+}
+$cardIconBg   = $isThemeHex ? '' : "bg-{$themeTailwind}-50";
+$cardIconText = $isThemeHex ? '' : "text-{$themeTailwind}-600";
+$cardIconHover = $isThemeHex ? '' : "group-hover:bg-{$themeTailwind}-500 group-hover:text-white";
+$cardDeco    = $isThemeHex ? '' : "text-{$themeTailwind}-500";
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -11,6 +34,20 @@
     <title>管理画面 - MyPlatform</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <?php if ($isThemeHex):
+        $bgHex = (preg_match('/^#[0-9A-Fa-f]{3,8}$/', $themeLight ?? '') ? $themeLight : null);
+        if (!$bgHex && preg_match('/^#([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})$/i', $themePrimary, $hex)) {
+            $r = hexdec($hex[1]); $g = hexdec($hex[2]); $b = hexdec($hex[3]);
+            $bgHex = "rgba($r,$g,$b,0.15)";
+        }
+        $bgHex = $bgHex ?: 'rgba(100,116,139,0.15)';
+    ?>
+    <style>
+        .admin-portal-card .card-icon { background-color: <?= htmlspecialchars($bgHex) ?>; color: <?= htmlspecialchars($themePrimary) ?>; }
+        .admin-portal-card:hover .card-icon { background-color: <?= htmlspecialchars($themePrimary) ?>; color: #fff; }
+        .admin-portal-card .card-deco { color: <?= htmlspecialchars($themePrimary) ?>; }
+    </style>
+    <?php endif; ?>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+JP:wght@400;700&display=swap');
         body { font-family: 'Inter', 'Noto Sans JP', sans-serif; }
@@ -46,14 +83,14 @@
                     <p class="text-slate-500 font-medium">データベースの確認やユーザー管理を行います。</p>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                <div class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
                     <!-- DBビューワ -->
-                    <a href="/db_viewer/" class="app-card group relative bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col items-center justify-center p-4 md:p-8 md:block">
-                        <div class="hidden md:block absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform">
-                            <i class="fa-solid fa-database text-6xl text-emerald-500"></i>
+                    <a href="/db_viewer/" class="app-card admin-portal-card group relative bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col items-center justify-center p-4 md:p-8 md:block aspect-square md:aspect-auto min-h-0">
+                        <div class="hidden md:block absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform card-deco <?= $cardDeco ?>">
+                            <i class="fa-solid fa-database text-6xl"></i>
                         </div>
                         <div class="relative z-10 flex flex-col items-center md:block">
-                            <div class="w-16 h-16 md:w-12 md:h-12 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600 mb-2 md:mb-6 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                            <div class="w-16 h-16 md:w-12 md:h-12 rounded-lg flex items-center justify-center mb-2 md:mb-6 transition-colors card-icon <?= $cardIconBg ?> <?= $cardIconText ?> <?= $cardIconHover ?>">
                                 <i class="fa-solid fa-database text-2xl md:text-base"></i>
                             </div>
                             <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-4 text-center md:text-left">DBビューワ</h3>
@@ -62,16 +99,44 @@
                     </a>
 
                     <!-- ユーザー管理 -->
-                    <a href="/admin/users.php" class="app-card group relative bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col items-center justify-center p-4 md:p-8 md:block">
-                        <div class="hidden md:block absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform">
-                            <i class="fa-solid fa-users-gear text-6xl text-indigo-500"></i>
+                    <a href="/admin/users.php" class="app-card admin-portal-card group relative bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col items-center justify-center p-4 md:p-8 md:block aspect-square md:aspect-auto min-h-0">
+                        <div class="hidden md:block absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform card-deco <?= $cardDeco ?>">
+                            <i class="fa-solid fa-users-gear text-6xl"></i>
                         </div>
                         <div class="relative z-10 flex flex-col items-center md:block">
-                            <div class="w-16 h-16 md:w-12 md:h-12 bg-indigo-50 rounded-lg flex items-center justify-center text-indigo-600 mb-2 md:mb-6 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                            <div class="w-16 h-16 md:w-12 md:h-12 rounded-lg flex items-center justify-center mb-2 md:mb-6 transition-colors card-icon <?= $cardIconBg ?> <?= $cardIconText ?> <?= $cardIconHover ?>">
                                 <i class="fa-solid fa-users-gear text-2xl md:text-base"></i>
                             </div>
                             <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-4 text-center md:text-left">ユーザー管理</h3>
                             <p class="hidden md:block text-sm text-slate-400 leading-relaxed">ユーザーの追加・パスワードリセットを行います。</p>
+                        </div>
+                    </a>
+
+                    <!-- アプリ管理 -->
+                    <a href="/admin/apps.php" class="app-card admin-portal-card group relative bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col items-center justify-center p-4 md:p-8 md:block aspect-square md:aspect-auto min-h-0">
+                        <div class="hidden md:block absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform card-deco <?= $cardDeco ?>">
+                            <i class="fa-solid fa-layer-group text-6xl"></i>
+                        </div>
+                        <div class="relative z-10 flex flex-col items-center md:block">
+                            <div class="w-16 h-16 md:w-12 md:h-12 rounded-lg flex items-center justify-center mb-2 md:mb-6 transition-colors card-icon <?= $cardIconBg ?> <?= $cardIconText ?> <?= $cardIconHover ?>">
+                                <i class="fa-solid fa-layer-group text-2xl md:text-base"></i>
+                            </div>
+                            <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-4 text-center md:text-left">アプリ管理</h3>
+                            <p class="hidden md:block text-sm text-slate-400 leading-relaxed">sys_apps の登録・編集・削除。保存で全セッション破棄。</p>
+                        </div>
+                    </a>
+
+                    <!-- ロール管理 -->
+                    <a href="/admin/roles.php" class="app-card admin-portal-card group relative bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col items-center justify-center p-4 md:p-8 md:block aspect-square md:aspect-auto min-h-0">
+                        <div class="hidden md:block absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform card-deco <?= $cardDeco ?>">
+                            <i class="fa-solid fa-user-tag text-6xl"></i>
+                        </div>
+                        <div class="relative z-10 flex flex-col items-center md:block">
+                            <div class="w-16 h-16 md:w-12 md:h-12 rounded-lg flex items-center justify-center mb-2 md:mb-6 transition-colors card-icon <?= $cardIconBg ?> <?= $cardIconText ?> <?= $cardIconHover ?>">
+                                <i class="fa-solid fa-user-tag text-2xl md:text-base"></i>
+                            </div>
+                            <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-4 text-center md:text-left">ロール管理</h3>
+                            <p class="hidden md:block text-sm text-slate-400 leading-relaxed">sys_roles の登録・編集。制限表示時はアプリ割り当て。保存で全セッション破棄。</p>
                         </div>
                     </a>
                 </div>

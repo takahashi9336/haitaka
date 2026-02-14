@@ -4,6 +4,8 @@
  */
 $uri = $_SERVER['REQUEST_URI'];
 $isDbViewer = (strpos($uri, '/db_viewer') !== false);
+$appKey = 'admin';
+require_once __DIR__ . '/../../../components/theme_from_session.php';
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -13,6 +15,12 @@ $isDbViewer = (strpos($uri, '/db_viewer') !== false);
     <title>DBビューワ - MyPlatform</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root { --admin-theme: <?= htmlspecialchars($themePrimaryHex) ?>; }
+        <?php if ($isThemeHex): ?>
+        .admin-focus:focus { --tw-ring-color: var(--admin-theme); }
+        <?php endif; ?>
+    </style>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Noto+Sans+JP:wght@400;500;700&display=swap');
         body { font-family: 'Inter', 'Noto Sans JP', sans-serif; }
@@ -27,15 +35,15 @@ $isDbViewer = (strpos($uri, '/db_viewer') !== false);
         .db-table th, .db-table td { white-space: nowrap; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
     </style>
 </head>
-<body class="bg-[#f8fafc] flex h-screen overflow-hidden text-slate-800">
+<body class="flex h-screen overflow-hidden text-slate-800 <?= $bodyBgClass ?>"<?= $bodyStyle ? ' style="' . htmlspecialchars($bodyStyle) . '"' : '' ?>>
 
     <?php require_once __DIR__ . '/../../../components/sidebar.php'; ?>
 
     <main class="flex-1 flex flex-col min-w-0 relative">
-        <header class="h-16 bg-white/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-6 shrink-0 sticky top-0 z-10">
+        <header class="h-16 bg-white/80 backdrop-blur-md border-b <?= $headerBorder ?> flex items-center justify-between px-6 shrink-0 sticky top-0 z-10">
             <div class="flex items-center gap-3">
                 <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
-                <div class="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-emerald-200">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-lg <?= $headerIconBg ?> <?= $headerShadow ?>"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?>>
                     <i class="fa-solid fa-database text-sm"></i>
                 </div>
                 <h1 class="font-black text-slate-700 text-xl tracking-tighter">DBビューワ</h1>
@@ -47,7 +55,7 @@ $isDbViewer = (strpos($uri, '/db_viewer') !== false);
             <div class="max-w-6xl mx-auto w-full">
                 <div class="bg-white p-5 md:p-8 rounded-xl border border-slate-100 shadow-sm mb-6">
                     <div class="flex items-center gap-3 mb-4">
-                        <div class="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center shrink-0">
+                        <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 <?= $cardIconBg ?> <?= $cardIconText ?>"<?= $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>>
                             <i class="fa-solid fa-table-list text-sm"></i>
                         </div>
                         <div>
@@ -57,7 +65,7 @@ $isDbViewer = (strpos($uri, '/db_viewer') !== false);
                     </div>
                     <form method="get" action="/db_viewer/" class="flex flex-wrap items-end gap-3">
                         <div class="min-w-[200px]">
-                            <select name="table" onchange="this.form.submit()" class="w-full border border-slate-200 rounded-xl h-12 px-4 text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-100 outline-none transition-all">
+                            <select name="table" onchange="this.form.submit()" class="w-full border border-slate-200 rounded-xl h-12 px-4 text-sm bg-slate-50 focus:bg-white focus:ring-2 <?= $isThemeHex ? 'admin-focus' : 'focus:ring-' . $themeTailwind . '-100' ?> outline-none transition-all">
                                 <option value="">— テーブルを選択 —</option>
                                 <?php foreach ($tables as $t): ?>
                                 <option value="<?= htmlspecialchars($t) ?>" <?= $selectedTable === $t ? 'selected' : '' ?>><?= htmlspecialchars($t) ?></option>
@@ -65,7 +73,6 @@ $isDbViewer = (strpos($uri, '/db_viewer') !== false);
                             </select>
                         </div>
                         <?php if ($selectedTable): ?>
-                        <input type="hidden" name="table" value="<?= htmlspecialchars($selectedTable) ?>">
                         <a href="/db_viewer/" class="text-slate-500 hover:text-slate-700 text-sm font-bold">クリア</a>
                         <?php endif; ?>
                     </form>

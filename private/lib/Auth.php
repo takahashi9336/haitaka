@@ -31,27 +31,47 @@ class Auth {
         // 1. ユーザ基本情報の取得
         $stmt = $db->prepare("SELECT * FROM sys_users WHERE id_name = :name LIMIT 1");
         $stmt->execute(['name' => $idName]);
-        $user = $stmt->fetch();
+        $user = $stmt->fetch(\PDO::FETCH_ASSOC);
 
         if ($user && password_verify($password, $user['password'])) {
             session_regenerate_id(true);
 
-            // 2. 権限・アプリ情報の取得 (設計書に基づきJOIN)
-            // ここでは簡易的に構造化するが、本来は sys_apps 等をJOINして取得する
-            // ※検証用として固定値を混ぜつつ構造を定義
+            $roleKey = $user['role'] ?? '';
+            $roleModel = new RoleModel();
+            $appModel = new AppModel();
+            $roleAppModel = new RoleAppModel();
+
+            $role = $roleModel->getByRoleKey($roleKey);
+            $isAdmin = ($roleKey === 'admin');
+            $sidebarMode = $role ? ($role['sidebar_mode'] ?? 'full') : 'full';
+            $defaultRoute = $role ? ($role['default_route'] ?? '/index.php') : '/index.php';
+            $logoText = $role ? ($role['logo_text'] ?? 'MyPlatform') : 'MyPlatform';
+
+            $flat = $appModel->getAllVisible();
+            $allowedAppIds = null;
+            if ($role && $sidebarMode === 'restricted') {
+                $allowedAppIds = $roleAppModel->getAppIdsByRoleId((int)$role['id']);
+            }
+            $filtered = [];
+            foreach ($flat as $row) {
+                if (!empty($row['admin_only']) && !$isAdmin) {
+                    continue;
+                }
+                if ($allowedAppIds !== null && !in_array((int)$row['id'], $allowedAppIds, true)) {
+                    continue;
+                }
+                $filtered[] = $row;
+            }
+            $appsTree = $appModel->buildTree($filtered, null);
+
             $_SESSION['user'] = [
                 'id' => $user['id'],
                 'id_name' => $user['id_name'],
-                'role' => $user['role'],
-                'apps' => [
-                    'task_manager' => ['read', 'write'],
-                    'focus_note'   => ['read', 'write', 'admin'],
-                    'hinata'       => ['read']
-                ],
-                'permissions' => [
-                    'view_dashboard',
-                    'manage_users'
-                ]
+                'role' => $roleKey,
+                'apps' => $appsTree,
+                'logo_text' => $logoText,
+                'default_route' => $defaultRoute,
+                'sidebar_mode' => $sidebarMode,
             ];
 
             Logger::info("login success id_name={$user['id_name']} user_id={$user['id']}");

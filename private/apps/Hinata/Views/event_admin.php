@@ -3,6 +3,8 @@
  * 日向坂イベント管理 View (カテゴリ欄復活版)
  * 物理パス: haitaka/private/apps/Hinata/Views/event_admin.php
  */
+$appKey = 'hinata';
+require_once __DIR__ . '/../../../components/theme_from_session.php';
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -22,25 +24,29 @@
             .sidebar.mobile-open .nav-text, .sidebar.mobile-open .logo-text, .sidebar.mobile-open .user-info { display: inline !important; }
         }
     </style>
+    <style>:root { --hinata-theme: <?= htmlspecialchars($themePrimaryHex) ?>; }</style>
 </head>
-<body class="bg-slate-50 flex h-screen overflow-hidden text-slate-800">
+<body class="flex h-screen overflow-hidden text-slate-800 <?= $bodyBgClass ?>"<?= $bodyStyle ? ' style="' . htmlspecialchars($bodyStyle) . '"' : '' ?>>
 
     <?php require_once __DIR__ . '/../../../components/sidebar.php'; ?>
 
-    <main class="flex-1 flex flex-col min-w-0 bg-[#f0f9ff] overflow-y-auto">
-        <header class="h-16 bg-white border-b border-sky-100 flex items-center justify-between px-6 shrink-0 sticky top-0 z-10 shadow-sm">
-            <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-xl"></i></button>
-            <h1 class="font-black text-slate-700 tracking-tighter text-xl">イベント管理</h1>
-            <a href="/hinata/" class="text-xs font-bold text-sky-500 bg-sky-50 px-4 py-2 rounded-full hover:bg-sky-100 transition">ポータル</a>
+    <main class="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        <header class="h-16 bg-white border-b <?= $headerBorder ?> flex items-center justify-between px-6 shrink-0 sticky top-0 z-10 shadow-sm">
+            <div class="flex items-center gap-3">
+                <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-xl"></i></button>
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md <?= $headerIconBg ?> <?= $headerShadow ?>"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?>><i class="fa-solid fa-calendar-plus text-sm"></i></div>
+                <h1 class="font-black text-slate-700 tracking-tighter text-xl">イベント管理</h1>
+            </div>
+            <a href="/hinata/" class="text-xs font-bold <?= $cardIconText ?> <?= $cardIconBg ?> px-4 py-2 rounded-full hover:opacity-90 transition"<?= $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>>ポータル</a>
         </header>
 
         <div class="p-4 md:p-12 max-w-5xl mx-auto w-full">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 
                 <div class="lg:col-span-2 space-y-6">
-                    <section class="bg-white p-6 md:p-8 rounded-xl border border-sky-100 shadow-sm">
+                    <section class="bg-white p-6 md:p-8 rounded-xl border <?= $cardBorder ?> shadow-sm">
                         <div class="flex justify-between items-center mb-6">
-                            <h2 class="text-lg font-bold flex items-center gap-2"><i class="fa-solid fa-calendar-plus text-sky-500"></i> イベント登録</h2>
+                            <h2 class="text-lg font-bold flex items-center gap-2 <?= $cardDeco ?>"><i class="fa-solid fa-calendar-plus <?= $cardIconText ?>"<?= $cardDecoStyle ? ' style="' . htmlspecialchars($cardDecoStyle) . '"' : '' ?>></i> イベント登録</h2>
                             <button type="button" id="btnCancel" class="hidden text-xs text-red-400 font-bold">新規に戻る</button>
                         </div>
 
@@ -50,7 +56,7 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-[10px] font-black text-slate-400 mb-1 tracking-wider">イベント名</label>
-                                    <input type="text" name="event_name" id="f_name" required class="w-full h-12 border border-slate-100 rounded-lg px-4 text-sm outline-none focus:ring-2 focus:ring-sky-100">
+                                    <input type="text" name="event_name" id="f_name" required class="w-full h-12 border border-slate-100 rounded-lg px-4 text-sm outline-none focus:ring-2 <?= $isThemeHex ? 'focus:ring-[var(--hinata-theme)]' : 'focus:ring-' . $themeTailwind . '-100' ?>">
                                 </div>
                                 <div>
                                     <label class="block text-[10px] font-black text-slate-400 mb-1 tracking-wider">日付</label>
@@ -78,7 +84,7 @@
                                 </div>
                             </div>
 
-                            <textarea name="event_info" id="f_info" rows="3" class="w-full border rounded-lg p-4 text-sm outline-none focus:ring-2 focus:ring-sky-100" placeholder="詳細メモ"></textarea>
+                            <textarea name="event_info" id="f_info" rows="3" class="w-full border rounded-lg p-4 text-sm outline-none focus:ring-2 <?= $isThemeHex ? 'focus:ring-[var(--hinata-theme)]' : 'focus:ring-' . $themeTailwind . '-100' ?>" placeholder="詳細メモ"></textarea>
                             
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <input type="url" name="event_url" id="f_url" class="w-full h-12 border border-slate-100 rounded-lg px-4 text-sm outline-none" placeholder="特設サイトURL">
@@ -93,7 +99,7 @@
                                 </div>
                                 <div id="memberSelectArea" class="hidden grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto p-4 border border-slate-100 rounded-xl bg-slate-50/50">
                                     <?php foreach ($members as $m): ?>
-                                    <label class="flex items-center gap-2 text-xs font-bold text-slate-600"><input type="checkbox" name="member_ids[]" value="<?= $m['id'] ?>" class="w-4 h-4 rounded text-sky-500"> <?= htmlspecialchars($m['name']) ?></label>
+                                    <label class="flex items-center gap-2 text-xs font-bold text-slate-600"><input type="checkbox" name="member_ids[]" value="<?= $m['id'] ?>" class="w-4 h-4 rounded <?= $cardIconText ?>"<?= $isThemeHex ? ' style="accent-color: var(--hinata-theme)"' : '' ?>> <?= htmlspecialchars($m['name']) ?></label>
                                     <?php endforeach; ?>
                                 </div>
                             </div>
@@ -107,12 +113,12 @@
                 </div>
 
                 <div class="space-y-4">
-                    <section class="bg-white p-6 rounded-xl border border-sky-50 shadow-sm">
+                    <section class="bg-white p-6 rounded-xl border <?= $cardBorder ?> shadow-sm">
                         <h3 class="text-xs font-black text-slate-400 mb-4 tracking-wider">最近の編集</h3>
                         <div class="space-y-2">
                             <?php foreach ($events as $ev): ?>
-                            <div onclick='editEvent(<?= json_encode($ev) ?>)' class="p-3 border border-slate-50 rounded-xl hover:border-sky-200 hover:bg-sky-50/30 transition-all cursor-pointer">
-                                <p class="text-[9px] font-bold text-sky-400"><?= $ev['event_date'] ?></p>
+                            <div onclick='editEvent(<?= json_encode($ev) ?>)' class="p-3 border border-slate-50 rounded-xl transition-all cursor-pointer <?= $isThemeHex ? 'hover:border-[var(--hinata-theme)] hover:bg-[var(--hinata-theme)]/10' : 'hover:border-' . $themeTailwind . '-200 hover:bg-' . $themeTailwind . '-50' ?>">
+                                <p class="text-[9px] font-bold <?= $cardDeco ?>"><?= $ev['event_date'] ?></p>
                                 <p class="text-xs font-black text-slate-700 truncate"><?= htmlspecialchars($ev['event_name']) ?></p>
                             </div>
                             <?php endforeach; ?>

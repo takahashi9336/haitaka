@@ -3,6 +3,8 @@
  * メンバーメンテナンス View (期別選択肢追加版)
  * 物理パス: haitaka/private/apps/Hinata/Views/member_admin.php
  */
+$appKey = 'hinata';
+require_once __DIR__ . '/../../../components/theme_from_session.php';
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -45,18 +47,22 @@
             z-index: 20;
         }
     </style>
+    <?php if ($isThemeHex): ?>
+    <style>#f_image::file-selector-button { background: <?= htmlspecialchars($themeLight ?: $themePrimary) ?>; color: <?= htmlspecialchars($themePrimary) ?>; }</style>
+    <?php endif; ?>
 </head>
-<body class="bg-slate-50 flex h-screen overflow-hidden text-slate-800">
+<body class="flex h-screen overflow-hidden text-slate-800 <?= $bodyBgClass ?>"<?= $bodyStyle ? ' style="' . htmlspecialchars($bodyStyle) . '"' : '' ?>>
 
     <?php require_once __DIR__ . '/../../../components/sidebar.php'; ?>
 
-    <main class="flex-1 flex flex-col min-w-0 bg-[#f0f9ff] overflow-y-auto">
-        <header class="h-14 bg-white border-b border-sky-100 flex items-center justify-between px-4 shrink-0 sticky top-0 z-10 shadow-sm">
+    <main class="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        <header class="h-14 bg-white border-b <?= $headerBorder ?> flex items-center justify-between px-4 shrink-0 sticky top-0 z-10 shadow-sm">
             <div class="flex items-center gap-2">
                 <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md <?= $headerIconBg ?> <?= $headerShadow ?>"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?>><i class="fa-solid fa-user-gear text-sm"></i></div>
                 <h1 class="font-black text-slate-700 text-lg tracking-tight">メンバー管理</h1>
             </div>
-            <a href="/hinata/members.php" class="text-xs font-bold text-sky-500 bg-sky-50 px-4 py-2 rounded-full hover:bg-sky-100 transition">戻る</a>
+            <a href="/hinata/members.php" class="text-xs font-bold <?= $cardIconText ?> <?= $cardIconBg ?> px-4 py-2 rounded-full hover:opacity-90 transition"<?= $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>>戻る</a>
         </header>
 
         <div class="p-4 md:p-8 max-w-6xl mx-auto w-full">
@@ -67,7 +73,7 @@
 
             <div id="detailSection" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div class="lg:col-span-2">
-                    <section id="formArea" class="bg-white p-6 md:p-8 rounded-[2.5rem] border border-sky-100 shadow-sm">
+                    <section id="formArea" class="bg-white p-6 md:p-8 rounded-[2.5rem] border <?= $cardBorder ?> shadow-sm">
                         <div class="mb-6 flex items-center gap-5 border-b border-slate-50 pb-6">
                             <div class="relative group">
                                 <img id="imgPreview" src="" class="image-preview hidden">
@@ -83,8 +89,8 @@
                             <input type="hidden" name="id" id="m_id">
                             
                             <div class="bg-slate-50 p-4 rounded-lg border border-slate-100">
-                                <label class="block text-[10px] font-black text-slate-400 mb-2 ml-1 text-sky-500 tracking-wider">写真アップロード</label>
-                                <input type="file" name="image_file" id="f_image" accept="image/*" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:bg-sky-50 file:text-sky-600 hover:file:bg-sky-100 cursor-pointer">
+                                <label class="block text-[10px] font-black text-slate-400 mb-2 ml-1 <?= $cardIconText ?> tracking-wider"<?= $cardDecoStyle ? ' style="' . htmlspecialchars($cardDecoStyle) . '"' : '' ?>>写真アップロード</label>
+                                <input type="file" name="image_file" id="f_image" accept="image/*" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:cursor-pointer <?= !$isThemeHex ? 'file:bg-' . $themeTailwind . '-50 file:text-' . $themeTailwind . '-600 hover:file:bg-' . $themeTailwind . '-100' : '' ?>">
                             </div>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

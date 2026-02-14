@@ -1,3 +1,7 @@
+<?php
+$appKey = 'note';
+require_once __DIR__ . '/../../../components/theme_from_session.php';
+?>
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -6,6 +10,15 @@
     <title>メモ管理 - MyPlatform</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root { --note-theme: <?= htmlspecialchars($themePrimaryHex) ?>; }
+        .note-theme-btn { background-color: var(--note-theme); }
+        .note-theme-btn:hover { filter: brightness(1.08); }
+        .note-theme-link, .note-theme-text { color: var(--note-theme); }
+        .note-theme-focus:focus { --tw-ring-color: var(--note-theme); }
+        .focus\:border-note-theme:focus { border-color: var(--note-theme); }
+        .hover-note-theme:hover { color: var(--note-theme); }
+    </style>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Noto+Sans+JP:wght@400;500;700&display=swap');
         body { font-family: 'Inter', 'Noto Sans JP', sans-serif; }
@@ -155,15 +168,15 @@
         }
     </style>
 </head>
-<body class="bg-[#f8fafc] flex h-screen overflow-hidden text-slate-800">
+<body class="flex h-screen overflow-hidden text-slate-800 <?= $bodyBgClass ?>"<?= $bodyStyle ? ' style="' . htmlspecialchars($bodyStyle) . '"' : '' ?>>
 
     <?php require_once __DIR__ . '/../../../../private/components/sidebar.php'; ?>
 
     <main class="flex-1 flex flex-col min-w-0 relative">
-        <header class="h-16 bg-white/80 backdrop-blur-md border-b border-amber-100 flex items-center justify-between px-6 shrink-0 sticky top-0 z-10">
+        <header class="h-16 bg-white/80 backdrop-blur-md border-b <?= $headerBorder ?> flex items-center justify-between px-6 shrink-0 sticky top-0 z-10">
             <div class="flex items-center gap-3">
                 <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
-                <div class="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center text-white shadow-lg shadow-amber-200">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-lg <?= $headerIconBg ?> <?= $headerShadow ?>"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?>>
                     <i class="fa-solid fa-lightbulb text-sm"></i>
                 </div>
                 <h1 class="font-black text-slate-700 text-xl tracking-tighter">メモ</h1>
@@ -171,7 +184,7 @@
             <div class="flex items-center gap-4">
                 <div class="hidden md:flex flex-col items-end">
                     <span class="text-[10px] font-bold text-slate-400 tracking-wider">すべてのメモを管理</span>
-                    <a href="/" class="text-xs font-black text-amber-500 hover:text-amber-600 transition">
+                    <a href="/" class="text-xs font-black note-theme-link hover:opacity-80 transition <?= !$isThemeHex ? "text-{$themeTailwind}-500" : '' ?>">
                         <i class="fa-solid fa-arrow-left mr-1"></i> ダッシュボード
                     </a>
                 </div>
@@ -186,15 +199,15 @@
                     <div class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
                         <div class="p-4">
                             <input type="text" id="quickMemoTitle" placeholder="タイトル（任意）"
-                                class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm font-medium mb-2">
+                                class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--note-theme)] focus:border-transparent text-sm font-medium mb-2">
                             <textarea 
                                 id="quickMemoInput" 
                                 placeholder="メモを入力..."
-                                class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none overflow-hidden transition-all text-sm min-h-[2.5rem]"
+                                class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--note-theme)] focus:border-transparent resize-none overflow-hidden transition-all text-sm min-h-[2.5rem]"
                                 rows="1"
                             ></textarea>
                             <div id="quickMemoActions" class="mt-3 flex items-center justify-end opacity-0 transition-opacity duration-200">
-                                <button id="quickMemoSaveBtn" onclick="QuickMemo.save(event)" class="px-4 py-1.5 bg-amber-500 text-white text-xs font-bold rounded-lg hover:bg-amber-600 transition shadow-sm">
+                                <button id="quickMemoSaveBtn" onclick="QuickMemo.save(event)" class="px-4 py-1.5 note-theme-btn text-white text-xs font-bold rounded-lg transition shadow-sm">
                                     <i class="fa-solid fa-plus mr-1"></i> 追加
                                 </button>
                             </div>
@@ -219,7 +232,7 @@
                                 <div class="p-4">
                                     <?php if ($note['is_pinned']): ?>
                                         <div class="flex justify-end mb-1.5">
-                                            <i class="fa-solid fa-thumbtack text-amber-500 text-xs"></i>
+                                            <i class="fa-solid fa-thumbtack note-theme-text text-xs"></i>
                                         </div>
                                     <?php endif; ?>
                                     
@@ -241,7 +254,7 @@
                                     
                                     <div class="note-actions flex items-center justify-between pt-2.5 border-t border-slate-200">
                                         <button onclick="NoteManager.togglePin(<?= $note['id'] ?>)" 
-                                                class="p-2 text-slate-500 hover:text-amber-500 transition rounded-lg hover:bg-slate-50"
+                                                class="p-2 text-slate-500 hover-note-theme transition rounded-lg hover:bg-slate-50"
                                                 title="ピン留め">
                                             <i class="fa-solid fa-thumbtack text-sm"></i>
                                         </button>
@@ -283,7 +296,7 @@
                 
                 <!-- タイトル -->
                 <input type="text" id="detailTitle" placeholder="タイトル" 
-                       class="w-full text-xl font-bold text-slate-800 mb-4 px-3 py-2 border-0 border-b-2 border-transparent focus:border-amber-500 focus:outline-none transition">
+                       class="w-full text-xl font-bold text-slate-800 mb-4 px-3 py-2 border-0 border-b-2 border-transparent focus:border-[var(--note-theme)] focus:outline-none transition">
                 
                 <!-- 内容 -->
                 <textarea id="detailContent" placeholder="メモを入力..." 
@@ -301,7 +314,7 @@
                         <div class="flex items-center gap-2">
                             <button onclick="NoteManager.togglePinFromDetail()" 
                                     id="detailPinBtn"
-                                    class="p-2 text-slate-500 hover:text-amber-500 transition rounded-lg hover:bg-slate-50"
+                                    class="p-2 text-slate-500 hover-note-theme transition rounded-lg hover:bg-slate-50"
                                     title="ピン留め">
                                 <i class="fa-solid fa-thumbtack"></i>
                             </button>
@@ -321,7 +334,7 @@
                         </div>
                         
                         <button onclick="NoteManager.saveDetail()" 
-                                class="px-6 py-2 bg-amber-500 text-white text-sm font-bold rounded-lg hover:bg-amber-600 transition shadow-sm">
+                                class="px-6 py-2 note-theme-btn text-white text-sm font-bold rounded-lg transition shadow-sm">
                             完了
                         </button>
                     </div>
@@ -578,9 +591,9 @@
                 // ピン留めボタンの状態を反映
                 const pinBtn = document.getElementById('detailPinBtn');
                 if (note.is_pinned) {
-                    pinBtn.classList.add('text-amber-500');
+                    pinBtn.classList.add('note-theme-text');
                 } else {
-                    pinBtn.classList.remove('text-amber-500');
+                    pinBtn.classList.remove('note-theme-text');
                 }
                 
                 const modal = document.getElementById('detailModal');

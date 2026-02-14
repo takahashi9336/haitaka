@@ -46,4 +46,13 @@ class SessionManager implements \SessionHandlerInterface {
         $stmt = $this->db->prepare("DELETE FROM sys_sessions WHERE last_activity < DATE_SUB(NOW(), INTERVAL 30 DAY)");
         return $stmt->execute() ? 1 : false;
     }
+
+    /**
+     * 全ユーザーのセッションを破棄（アプリ／ロール変更時のキャッシュ無効化用）
+     */
+    public static function invalidateAllSessions(): bool {
+        $db = Database::connect();
+        $db->exec("DELETE FROM sys_sessions");
+        return true;
+    }
 }
