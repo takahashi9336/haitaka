@@ -38,6 +38,7 @@ class NetaModel extends BaseModel {
                     'member_name' => $row['member_name'],
                     'color1' => $row['color1'] ?: '#7cc7e8',
                     'color2' => $row['color2'] ?: $row['color1'] ?: '#7cc7e8',
+                    'favorite_level' => (int)($row['favorite_level'] ?? 0),
                     'items' => []
                 ];
             }

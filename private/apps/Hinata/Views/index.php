@@ -21,6 +21,21 @@
         .neta-item.done .neta-content { text-decoration: line-through; }
         .show-done-false .neta-item.done { display: none !important; }
         
+        .neta-card { 
+            transition: box-shadow 0.2s, transform 0.2s; 
+            box-shadow: 0 2px 8px -2px rgba(0,0,0,0.1), 0 4px 12px -4px rgba(0,0,0,0.08);
+        }
+        .neta-card:hover, .neta-card:focus-within { 
+            box-shadow: 0 8px 24px -6px rgba(0,0,0,0.18), 0 12px 28px -8px rgba(0,0,0,0.12); 
+        }
+        .neta-card .card-status { opacity: 0; transition: opacity 0.2s; }
+        .neta-card:hover .card-status, .neta-card:focus-within .card-status { opacity: 1; }
+        .fav-badge { font-size: 10px; font-weight: 700; }
+        .neta-cards-columns { column-count: 1; column-gap: 0.75rem; }
+        @media (min-width: 640px) { .neta-cards-columns { column-count: 2; } }
+        @media (min-width: 1024px) { .neta-cards-columns { column-count: 3; } }
+        .neta-cards-columns .neta-card { break-inside: avoid; margin-bottom: 0.75rem; }
+        
         /* サイドバー共通スタイル */
         .sidebar { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s ease; width: 240px; }
         .sidebar.collapsed { width: 64px; }
@@ -48,6 +63,10 @@
                 <h1 class="font-bold text-slate-700 text-sm">推し活ネタ帳</h1>
             </div>
             <div class="flex items-center gap-3">
+                <div class="flex bg-slate-100 rounded-full p-1 text-[10px] font-bold">
+                    <button id="btnViewCard" class="px-3 py-1 rounded-full bg-white shadow text-slate-700" title="カード表示">カード</button>
+                    <button id="btnViewList" class="px-3 py-1 rounded-full text-slate-500" title="一覧表示">一覧</button>
+                </div>
                 <button id="toggleFormBtn" class="md:hidden text-sky-500 text-xs font-bold bg-sky-50 px-3 py-1.5 rounded-full">+ 追加</button>
                 <label class="flex items-center gap-1 cursor-pointer">
                     <span class="text-[10px] font-bold text-slate-400">完了表示</span>
@@ -57,7 +76,7 @@
         </header>
 
         <div id="scrollContainer" class="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
-            <div class="max-w-2xl mx-auto w-full space-y-4">
+            <div class="max-w-4xl mx-auto w-full space-y-4">
                 
                 <!-- 登録・編集フォーム -->
                 <section id="netaFormContainer" class="bg-white border border-sky-100 rounded-xl p-5 shadow-sm form-hidden md:block">
@@ -84,23 +103,72 @@
                     </form>
                 </section>
 
-                <!-- 一覧エリア -->
-                <div class="space-y-3">
-                    <?php if(!empty($groupedNeta)): foreach ($groupedNeta as $mid => $group): ?>
+                <!-- カード表示エリア（デフォルト） -->
+                <div id="cardView" class="space-y-8">
+                    <?php if(!empty($groupedNeta)): foreach ($groupedNeta as $mid => $group): 
+                        $favLevel = (int)($group['favorite_level'] ?? 0);
+                        $favLabel = $favLevel >= 2 ? '推し' : ($favLevel === 1 ? '気になる' : '');
+                        $color1 = htmlspecialchars($group['color1'] ?? '#7cc7e8');
+                        $color2 = htmlspecialchars($group['color2'] ?? $color1);
+                    ?>
+                        <div>
+                            <!-- メンバー帯（名前の下にバー、その下にカード） -->
+                            <div class="mb-3">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <h2 class="text-base font-black text-slate-700"><?= htmlspecialchars($group['member_name']) ?></h2>
+                                    <?php if ($favLabel): ?>
+                                        <span class="fav-badge px-2 py-0.5 rounded-full bg-sky-100 text-sky-600 text-[10px]"><?= $favLabel ?></span>
+                                    <?php endif; ?>
+                                    <span class="text-[10px] font-bold text-slate-400"><?= count($group['items']) ?> 件</span>
+                                </div>
+                                <div class="h-1.5 rounded-full w-full" style="background: linear-gradient(to right, <?= $color1 ?>, <?= $color2 ?>);"></div>
+                            </div>
+                            <!-- カード群（カラムレイアウトで詰めて表示） -->
+                            <div class="neta-cards-columns">
+                                <?php foreach ($group['items'] as $item): ?>
+                                    <div class="neta-card neta-item relative bg-white border-l-4 rounded-xl p-4 cursor-pointer outline-none focus:outline-none focus:ring-2 focus:ring-sky-200 w-full <?= $item['status'] === 'done' ? 'done' : '' ?>" style="border-left-color: <?= $color1 ?>;" tabindex="0" onclick="editNeta(<?= htmlspecialchars(json_encode($item), ENT_QUOTES, 'UTF-8') ?>)">
+                                        <div class="card-status absolute top-2 right-2 flex flex-col items-center gap-0.5" onclick="event.stopPropagation()">
+                                            <label class="cursor-pointer">
+                                                <input type="checkbox" <?= $item['status'] === 'done' ? 'checked' : '' ?> 
+                                                       onchange="toggleStatus(<?= $item['id'] ?>, this.checked)"
+                                                       class="w-4 h-4 rounded border-slate-300 text-sky-500">
+                                            </label>
+                                            <button onclick="event.stopPropagation(); deleteNeta(<?= $item['id'] ?>)" class="text-slate-300 hover:text-red-400 p-1" title="削除">
+                                                <i class="fa-solid fa-trash-can text-xs"></i>
+                                            </button>
+                                        </div>
+                                        <div class="text-sm text-slate-700 leading-relaxed neta-content pr-6">
+                                            <?= nl2br(htmlspecialchars($item['content'])) ?>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    <?php endforeach; else: ?>
+                        <p class="text-center text-slate-400 text-xs py-10 tracking-wider">データがありません</p>
+                    <?php endif; ?>
+                </div>
+
+                <!-- 一覧表示エリア（非表示がデフォルト） -->
+                <div id="listView" class="space-y-3 hidden">
+                    <?php if(!empty($groupedNeta)): foreach ($groupedNeta as $mid => $group): 
+                        $favLevel = (int)($group['favorite_level'] ?? 0);
+                        $favLabel = $favLevel >= 2 ? '推し' : ($favLevel === 1 ? '気になる' : '');
+                    ?>
                         <div class="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm flex">
-                            <!-- グラデーション帯 -->
                             <div class="color-strip" style="background: linear-gradient(to bottom, <?= $group['color1'] ?>, <?= $group['color2'] ?>);"></div>
                             <div class="flex-1">
                                 <div class="flex items-center justify-between px-4 py-4 cursor-pointer hover:bg-slate-50 transition" onclick="toggleAccordion(<?= $mid ?>)">
                                     <div class="flex items-center gap-3">
                                         <span class="font-bold text-slate-700"><?= htmlspecialchars($group['member_name']) ?></span>
+                                        <?php if ($favLabel): ?><span class="fav-badge text-sky-600"><?= $favLabel ?></span><?php endif; ?>
                                         <span class="text-[10px] text-slate-400 font-bold px-2 py-0.5 bg-slate-100 rounded-full"><?= count($group['items']) ?> 件</span>
                                     </div>
                                     <i id="icon-<?= $mid ?>" class="fa-solid fa-chevron-down text-slate-300 text-xs transition-transform duration-300"></i>
                                 </div>
                                 <div id="list-<?= $mid ?>" class="divide-y divide-slate-50 border-t border-slate-50 hidden accordion-content">
                                     <?php foreach ($group['items'] as $item): ?>
-                                        <div class="neta-item p-4 flex items-start gap-3 group <?= $item['status'] === 'done' ? 'done' : '' ?>" onclick="editNeta(<?= htmlspecialchars(json_encode($item)) ?>)">
+                                        <div class="neta-item p-4 flex items-start gap-3 group <?= $item['status'] === 'done' ? 'done' : '' ?>" onclick="editNeta(<?= htmlspecialchars(json_encode($item), ENT_QUOTES, 'UTF-8') ?>)">
                                             <div onclick="event.stopPropagation()">
                                                 <input type="checkbox" <?= $item['status'] === 'done' ? 'checked' : '' ?> 
                                                        onchange="toggleStatus(<?= $item['id'] ?>, this.checked)"
@@ -135,6 +203,36 @@
             restoreAccordions(); // アコーディオンの状態復元
             restoreScroll();     // スクロール位置の復元
         };
+
+        // 表示形式切替（デフォルト: カード）
+        const cardView = document.getElementById('cardView');
+        const listView = document.getElementById('listView');
+        const btnViewCard = document.getElementById('btnViewCard');
+        const btnViewList = document.getElementById('btnViewList');
+        let viewMode = localStorage.getItem('hinata_neta_view') || 'card';
+        
+        function setViewMode(mode) {
+            viewMode = mode;
+            localStorage.setItem('hinata_neta_view', mode);
+            if (mode === 'card') {
+                cardView.classList.remove('hidden');
+                listView.classList.add('hidden');
+                btnViewCard.classList.add('bg-white', 'shadow', 'text-slate-700');
+                btnViewCard.classList.remove('text-slate-500');
+                btnViewList.classList.remove('bg-white', 'shadow', 'text-slate-700');
+                btnViewList.classList.add('text-slate-500');
+            } else {
+                cardView.classList.add('hidden');
+                listView.classList.remove('hidden');
+                btnViewList.classList.add('bg-white', 'shadow', 'text-slate-700');
+                btnViewList.classList.remove('text-slate-500');
+                btnViewCard.classList.remove('bg-white', 'shadow', 'text-slate-700');
+                btnViewCard.classList.add('text-slate-500');
+            }
+        }
+        setViewMode(viewMode);
+        btnViewCard.onclick = () => setViewMode('card');
+        btnViewList.onclick = () => setViewMode('list');
 
         // 完了表示トグル
         document.getElementById('doneToggle').onchange = function() {
