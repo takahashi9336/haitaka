@@ -42,6 +42,12 @@ $nextEvent = $eventModel->getNextEvent();
 
 $appKey = 'dashboard';
 require_once __DIR__ . '/../private/components/theme_from_session.php';
+
+// ダッシュボード内の各ボックスはアプリ別テーマを使用
+$noteTheme = getThemeVarsForApp('note');         // クイックメモ
+$hinataTheme = getThemeVarsForApp('hinata');     // 日向坂 次のイベント、日向坂ポータル遷移ボックス
+$taskTheme = getThemeVarsForApp('task_manager'); // 最優先タスク、タスク管理遷移ボックス
+$adminTheme = getThemeVarsForApp('admin');       // 管理画面への遷移ボックス（管理者のみ）
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -52,9 +58,15 @@ require_once __DIR__ . '/../private/components/theme_from_session.php';
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        :root { --dashboard-theme: <?= htmlspecialchars($themePrimaryHex) ?>; }
-        <?php if ($isThemeHex): ?>
-        .quick-memo-save-btn { background-color: var(--dashboard-theme); }
+        :root {
+            --dashboard-theme: <?= htmlspecialchars($themePrimaryHex) ?>;
+            --note-theme: <?= htmlspecialchars($noteTheme['themePrimaryHex']) ?>;
+            --hinata-box-theme: <?= htmlspecialchars($hinataTheme['themePrimaryHex']) ?>;
+            --task-box-theme: <?= htmlspecialchars($taskTheme['themePrimaryHex']) ?>;
+            --admin-box-theme: <?= htmlspecialchars($adminTheme['themePrimaryHex']) ?>;
+        }
+        <?php if ($noteTheme['isThemeHex']): ?>
+        .quick-memo-save-btn { background-color: var(--note-theme); }
         .quick-memo-save-btn:hover { filter: brightness(1.08); }
         .quick-memo-save-btn.saved { background-color: #22c55e !important; }
         <?php endif; ?>
@@ -98,22 +110,22 @@ require_once __DIR__ . '/../private/components/theme_from_session.php';
         <div class="flex-1 overflow-y-auto p-6 md:p-12">
             <div class="max-w-5xl mx-auto">
 
-                <!-- クイックメモ (Google Keep風) -->
+                <!-- クイックメモ (Google Keep風) - メモ app テーマ -->
                 <div class="mb-6">
-                    <div class="bg-white rounded-xl border <?= $cardBorder ?> shadow-sm overflow-hidden">
+                    <div class="bg-white rounded-xl border <?= $noteTheme['cardBorder'] ?> shadow-sm overflow-hidden">
                         <div class="p-4">
                             <div class="flex items-center gap-2 mb-3">
-                                <div class="w-8 h-8 rounded-lg flex items-center justify-center <?= $cardIconBg ?> <?= $cardIconText ?>"<?= $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>>
+                                <div class="w-8 h-8 rounded-lg flex items-center justify-center <?= $noteTheme['cardIconBg'] ?> <?= $noteTheme['cardIconText'] ?>"<?= $noteTheme['cardIconStyle'] ? ' style="' . htmlspecialchars($noteTheme['cardIconStyle']) . '"' : '' ?>>
                                     <i class="fa-solid fa-lightbulb text-sm"></i>
                                 </div>
                                 <h2 class="text-sm font-bold text-slate-800">クイックメモ</h2>
                             </div>
                             <input type="text" id="quickMemoTitle" placeholder="タイトル（任意）"
-                                class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 <?= $isThemeHex ? 'focus:ring-[var(--dashboard-theme)]' : 'focus:ring-' . $themeTailwind . '-500' ?> focus:border-transparent text-sm font-medium mb-2">
+                                class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 <?= $noteTheme['isThemeHex'] ? 'focus:ring-[var(--note-theme)]' : 'focus:ring-' . $noteTheme['themeTailwind'] . '-500' ?> focus:border-transparent text-sm font-medium mb-2">
                             <textarea 
                                 id="quickMemoInput" 
                                 placeholder="メモを入力..."
-                                class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 <?= $isThemeHex ? 'focus:ring-[var(--dashboard-theme)]' : 'focus:ring-' . $themeTailwind . '-500' ?> focus:border-transparent resize-none overflow-hidden transition-all text-sm min-h-[2.5rem]"
+                                class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 <?= $noteTheme['isThemeHex'] ? 'focus:ring-[var(--note-theme)]' : 'focus:ring-' . $noteTheme['themeTailwind'] . '-500' ?> focus:border-transparent resize-none overflow-hidden transition-all text-sm min-h-[2.5rem]"
                                 rows="1"
                             ></textarea>
                             <div id="quickMemoActions" class="mt-3 flex items-center justify-between opacity-0 transition-opacity duration-200">
@@ -122,7 +134,7 @@ require_once __DIR__ . '/../private/components/theme_from_session.php';
                                         <i class="fa-solid fa-times mr-1"></i> キャンセル
                                     </button>
                                 </div>
-                                <button id="quickMemoSaveBtn" onclick="QuickMemo.save(event)" class="quick-memo-save-btn px-4 py-1.5 <?= !$isThemeHex ? $btnBgClass : '' ?> text-white text-xs font-bold rounded-lg transition shadow-sm">
+                                <button id="quickMemoSaveBtn" onclick="QuickMemo.save(event)" class="quick-memo-save-btn px-4 py-1.5 <?= !$noteTheme['isThemeHex'] ? $noteTheme['btnBgClass'] : '' ?> text-white text-xs font-bold rounded-lg transition shadow-sm">
                                     <i class="fa-solid fa-plus mr-1"></i> 保存
                                 </button>
                             </div>
@@ -132,12 +144,12 @@ require_once __DIR__ . '/../private/components/theme_from_session.php';
 
                 <?php if (!empty($nextEvent) && isset($nextEvent['days_left']) && (int)$nextEvent['days_left'] >= 0): ?>
                 <div class="mb-6">
-                    <a href="/hinata/events.php?event_id=<?= $nextEvent['id'] ?>" class="flex items-center gap-3 bg-white rounded-xl border <?= $cardBorder ?> shadow-sm px-4 py-3 hover:shadow-md transition-all cursor-pointer <?= $isThemeHex ? 'hover:border-[var(--dashboard-theme)]' : 'hover:border-' . $themeTailwind . '-200' ?>">
-                        <div class="w-8 h-8 rounded-lg text-white flex items-center justify-center shadow-md <?= $headerIconBg ?> <?= $headerShadow ?>"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?>>
+                    <a href="/hinata/events.php?event_id=<?= $nextEvent['id'] ?>" class="flex items-center gap-3 bg-white rounded-xl border <?= $hinataTheme['cardBorder'] ?> shadow-sm px-4 py-3 hover:shadow-md transition-all cursor-pointer <?= $hinataTheme['isThemeHex'] ? 'hover:border-[var(--hinata-box-theme)]' : 'hover:border-' . $hinataTheme['themeTailwind'] . '-200' ?>">
+                        <div class="w-8 h-8 rounded-lg text-white flex items-center justify-center shadow-md <?= $hinataTheme['headerIconBg'] ?> <?= $hinataTheme['headerShadow'] ?>"<?= $hinataTheme['headerIconStyle'] ? ' style="' . htmlspecialchars($hinataTheme['headerIconStyle']) . '"' : '' ?>>
                             <i class="fa-solid fa-calendar-day text-sm"></i>
                         </div>
                         <div class="flex-1">
-                            <p class="text-[9px] font-bold tracking-wider mb-1 <?= $cardDeco ?> <?= !$isThemeHex ? "text-{$themeTailwind}-500" : '' ?>"<?= $cardDecoStyle ? ' style="' . htmlspecialchars($cardDecoStyle) . '"' : '' ?>>日向坂 次のイベント</p>
+                            <p class="text-[9px] font-bold tracking-wider mb-1 <?= $hinataTheme['cardDeco'] ?> <?= !$hinataTheme['isThemeHex'] ? "text-{$hinataTheme['themeTailwind']}-500" : '' ?>"<?= $hinataTheme['cardDecoStyle'] ? ' style="' . htmlspecialchars($hinataTheme['cardDecoStyle']) . '"' : '' ?>>日向坂 次のイベント</p>
                             <p class="text-sm font-bold text-slate-800 mb-0.5">
                                 <?= htmlspecialchars($nextEvent['event_name'] ?? '次のイベント') ?>
                             </p>
@@ -158,7 +170,7 @@ require_once __DIR__ . '/../private/components/theme_from_session.php';
                                 ?>
                             </p>
                         </div>
-                        <div class="hidden md:inline-flex items-center justify-center w-8 h-8 rounded-full border <?= $cardBorder ?> <?= $cardIconText ?>"<?= $isThemeHex ? ' style="border-color: ' . htmlspecialchars($themePrimary) . '; color: ' . htmlspecialchars($themePrimary) . '"' : '' ?>>
+                        <div class="hidden md:inline-flex items-center justify-center w-8 h-8 rounded-full border <?= $hinataTheme['cardBorder'] ?> <?= $hinataTheme['cardIconText'] ?>"<?= $hinataTheme['isThemeHex'] ? ' style="border-color: ' . htmlspecialchars($hinataTheme['themePrimary']) . '; color: ' . htmlspecialchars($hinataTheme['themePrimary']) . '"' : '' ?>>
                             <i class="fa-solid fa-chevron-right text-xs"></i>
                         </div>
                     </a>
@@ -187,11 +199,11 @@ require_once __DIR__ . '/../private/components/theme_from_session.php';
                         }
                     }
                     
-                    $cardClass = $isUrgent ? 'bg-gradient-to-r from-red-50 to-orange-50 border-red-200' : 'bg-white ' . $cardBorder;
-                    $iconBg = $isUrgent ? 'bg-red-500' : $headerIconBg;
-                    $iconShadow = $isUrgent ? 'shadow-red-200' : $headerShadow;
-                    $labelColor = $isUrgent ? 'text-red-600' : ($cardIconText ? $cardIconText : 'text-indigo-600');
-                    $iconStyle = $isUrgent ? '' : $headerIconStyle;
+                    $cardClass = $isUrgent ? 'bg-gradient-to-r from-red-50 to-orange-50 border-red-200' : 'bg-white ' . $taskTheme['cardBorder'];
+                    $iconBg = $isUrgent ? 'bg-red-500' : $taskTheme['headerIconBg'];
+                    $iconShadow = $isUrgent ? 'shadow-red-200' : $taskTheme['headerShadow'];
+                    $labelColor = $isUrgent ? 'text-red-600' : ($taskTheme['cardIconText'] ?: 'text-indigo-600');
+                    $iconStyle = $isUrgent ? '' : $taskTheme['headerIconStyle'];
                 ?>
                 <div class="mb-6">
                     <a href="/task_manager/?task_id=<?= $topTask['id'] ?>" class="flex items-center gap-3 <?= $cardClass ?> rounded-xl border shadow-sm px-4 py-3 <?= $isUrgent ? 'ring-2 ring-red-200 animate-pulse' : '' ?> hover:shadow-md transition-all cursor-pointer">
@@ -199,7 +211,7 @@ require_once __DIR__ . '/../private/components/theme_from_session.php';
                             <i class="fa-solid fa-<?= $isUrgent ? 'triangle-exclamation' : 'exclamation' ?> text-sm"></i>
                         </div>
                         <div class="flex-1">
-                            <p class="text-[9px] font-bold <?= $labelColor ?> tracking-wider mb-1"<?= !$isUrgent && $cardDecoStyle ? ' style="' . htmlspecialchars($cardDecoStyle) . '"' : '' ?>>最優先タスク<?= $isUrgent ? ' 🔥' : '' ?></p>
+                            <p class="text-[9px] font-bold <?= $labelColor ?> tracking-wider mb-1"<?= !$isUrgent && $taskTheme['cardDecoStyle'] ? ' style="' . htmlspecialchars($taskTheme['cardDecoStyle']) . '"' : '' ?>>最優先タスク<?= $isUrgent ? ' 🔥' : '' ?></p>
                             <p class="text-sm font-bold text-slate-800 mb-0.5">
                                 <?= htmlspecialchars($topTask['title']) ?>
                             </p>
@@ -217,7 +229,7 @@ require_once __DIR__ . '/../private/components/theme_from_session.php';
                                 <?php endif; ?>
                             </div>
                         </div>
-                        <div class="hidden md:inline-flex items-center justify-center w-8 h-8 rounded-full border <?= $isUrgent ? 'border-red-200 text-red-600' : ($cardBorder . ' ' . $cardIconText) ?>"<?= !$isUrgent && $isThemeHex ? ' style="border-color: ' . htmlspecialchars($themePrimary) . '; color: ' . htmlspecialchars($themePrimary) . '"' : '' ?>>
+                        <div class="hidden md:inline-flex items-center justify-center w-8 h-8 rounded-full border <?= $isUrgent ? 'border-red-200 text-red-600' : ($taskTheme['cardBorder'] . ' ' . $taskTheme['cardIconText']) ?>"<?= !$isUrgent && $taskTheme['isThemeHex'] ? ' style="border-color: ' . htmlspecialchars($taskTheme['themePrimary']) . '; color: ' . htmlspecialchars($taskTheme['themePrimary']) . '"' : '' ?>>
                             <i class="fa-solid fa-chevron-right text-xs"></i>
                         </div>
                     </a>
@@ -225,10 +237,10 @@ require_once __DIR__ . '/../private/components/theme_from_session.php';
                 <?php endif; ?>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <!-- タスク管理 -->
-                    <a href="/task_manager/" class="bg-white p-5 rounded-xl border <?= $cardBorder ?> shadow-sm flex flex-col justify-between h-44 hover:translate-y-[-2px] transition-all">
+                    <!-- タスク管理 - タスク管理 app テーマ -->
+                    <a href="/task_manager/" class="bg-white p-5 rounded-xl border <?= $taskTheme['cardBorder'] ?> shadow-sm flex flex-col justify-between h-44 hover:translate-y-[-2px] transition-all">
                         <div>
-                            <div class="w-10 h-10 rounded-lg flex items-center justify-center mb-3 <?= $cardIconBg ?> <?= $cardIconText ?>"<?= $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>>
+                            <div class="w-10 h-10 rounded-lg flex items-center justify-center mb-3 <?= $taskTheme['cardIconBg'] ?> <?= $taskTheme['cardIconText'] ?>"<?= $taskTheme['cardIconStyle'] ? ' style="' . htmlspecialchars($taskTheme['cardIconStyle']) . '"' : '' ?>>
                                 <i class="fa-solid fa-list-check text-lg"></i>
                             </div>
                             <h3 class="font-bold text-slate-800 text-base">タスク管理</h3>
@@ -236,14 +248,14 @@ require_once __DIR__ . '/../private/components/theme_from_session.php';
                         </div>
                         <div class="flex items-end justify-between">
                             <span class="text-3xl font-black text-slate-800"><?= $activeTasksCount ?></span>
-                            <span class="text-xs font-bold tracking-wider <?= $cardIconText ?>"<?= $cardDecoStyle ? ' style="' . htmlspecialchars($cardDecoStyle) . '"' : '' ?>>開く <i class="fa-solid fa-arrow-right ml-1"></i></span>
+                            <span class="text-xs font-bold tracking-wider <?= $taskTheme['cardIconText'] ?>"<?= $taskTheme['cardDecoStyle'] ? ' style="' . htmlspecialchars($taskTheme['cardDecoStyle']) . '"' : '' ?>>開く <i class="fa-solid fa-arrow-right ml-1"></i></span>
                         </div>
                     </a>
 
-                    <!-- 日向坂ポータル -->
-                    <a href="/hinata/" class="bg-white p-5 rounded-xl border <?= $cardBorder ?> shadow-sm flex flex-col justify-between h-44 hover:translate-y-[-2px] transition-all">
+                    <!-- 日向坂ポータル - 日向坂ポータル app テーマ -->
+                    <a href="/hinata/" class="bg-white p-5 rounded-xl border <?= $hinataTheme['cardBorder'] ?> shadow-sm flex flex-col justify-between h-44 hover:translate-y-[-2px] transition-all">
                         <div>
-                            <div class="w-10 h-10 rounded-lg flex items-center justify-center mb-3 <?= $cardIconBg ?> <?= $cardIconText ?>"<?= $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>>
+                            <div class="w-10 h-10 rounded-lg flex items-center justify-center mb-3 <?= $hinataTheme['cardIconBg'] ?> <?= $hinataTheme['cardIconText'] ?>"<?= $hinataTheme['cardIconStyle'] ? ' style="' . htmlspecialchars($hinataTheme['cardIconStyle']) . '"' : '' ?>>
                                 <i class="fa-solid fa-star text-lg"></i>
                             </div>
                             <h3 class="font-bold text-slate-800 text-base">日向坂ポータル</h3>
@@ -251,9 +263,26 @@ require_once __DIR__ . '/../private/components/theme_from_session.php';
                         </div>
                         <div class="flex items-end justify-between">
                             <span class="text-3xl font-black text-slate-800"><?= $netaCount ?></span>
-                            <span class="text-xs font-bold tracking-wider <?= $cardIconText ?>"<?= $cardDecoStyle ? ' style="' . htmlspecialchars($cardDecoStyle) . '"' : '' ?>>移動する <i class="fa-solid fa-arrow-right ml-1"></i></span>
+                            <span class="text-xs font-bold tracking-wider <?= $hinataTheme['cardIconText'] ?>"<?= $hinataTheme['cardDecoStyle'] ? ' style="' . htmlspecialchars($hinataTheme['cardDecoStyle']) . '"' : '' ?>>移動する <i class="fa-solid fa-arrow-right ml-1"></i></span>
                         </div>
                     </a>
+
+                    <?php if (($user['role'] ?? '') === 'admin'): ?>
+                    <!-- 管理画面 - 管理画面 app テーマ（管理者のみ） -->
+                    <a href="/admin/" class="bg-white p-5 rounded-xl border <?= $adminTheme['cardBorder'] ?> shadow-sm flex flex-col justify-between h-44 hover:translate-y-[-2px] transition-all">
+                        <div>
+                            <div class="w-10 h-10 rounded-lg flex items-center justify-center mb-3 <?= $adminTheme['cardIconBg'] ?> <?= $adminTheme['cardIconText'] ?>"<?= $adminTheme['cardIconStyle'] ? ' style="' . htmlspecialchars($adminTheme['cardIconStyle']) . '"' : '' ?>>
+                                <i class="fa-solid fa-shield-halved text-lg"></i>
+                            </div>
+                            <h3 class="font-bold text-slate-800 text-base">管理画面</h3>
+                            <p class="text-slate-400 text-xs font-medium mt-1">ユーザー・アプリ・ロール管理</p>
+                        </div>
+                        <div class="flex items-end justify-between">
+                            <span class="text-3xl font-black text-slate-800"><i class="fa-solid fa-gear text-2xl text-slate-400"></i></span>
+                            <span class="text-xs font-bold tracking-wider <?= $adminTheme['cardIconText'] ?>"<?= $adminTheme['cardDecoStyle'] ? ' style="' . htmlspecialchars($adminTheme['cardDecoStyle']) . '"' : '' ?>>開く <i class="fa-solid fa-arrow-right ml-1"></i></span>
+                        </div>
+                    </a>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

@@ -12,13 +12,14 @@ class TaskModel extends BaseModel {
     ];
 
     public function getActiveTasks(): array {
-        // カテゴリ名を結合して取得するようにSQLを強化
+        // カテゴリ名を結合して取得。完了済み（status='done'）は除外
         $sql = "SELECT t.*, c.name as category_name, c.color as category_color 
                 FROM {$this->table} t
                 LEFT JOIN tm_categories c ON t.category_id = c.id
                 WHERE t.user_id = :uid 
+                AND t.status != 'done'
                 AND (t.start_date >= DATE_SUB(NOW(), INTERVAL 1 YEAR) OR t.start_date IS NULL)
-                ORDER BY t.status ASC, t.due_date ASC, t.priority DESC";
+                ORDER BY t.due_date ASC, t.priority DESC";
         
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute(['uid' => $this->userId]);
