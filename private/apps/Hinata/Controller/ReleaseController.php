@@ -4,6 +4,7 @@ namespace App\Hinata\Controller;
 
 use App\Hinata\Model\ReleaseModel;
 use App\Hinata\Model\ReleaseEditionModel;
+use App\Hinata\Model\ReleaseMemberImageModel;
 use App\Hinata\Model\SongModel;
 use App\Hinata\Model\SongMemberModel;
 use App\Hinata\Model\MemberModel;
@@ -38,6 +39,97 @@ class ReleaseController {
 
         $user = $_SESSION['user'];
         require_once __DIR__ . '/../Views/release_admin.php';
+    }
+
+    /**
+     * リリース詳細（公開）：収録曲一覧を表示
+     */
+    public function show(): void {
+        $auth = new Auth();
+        $auth->requireLogin();
+
+        $releaseId = (int)($_GET['id'] ?? 0);
+        if ($releaseId === 0) {
+            header('Location: /hinata/songs.php');
+            exit;
+        }
+
+        $releaseModel = new ReleaseModel();
+        $release = $releaseModel->getReleaseWithSongs($releaseId);
+        if (!$release) {
+            header('Location: /hinata/songs.php');
+            exit;
+        }
+
+        $releaseTypes = ReleaseModel::RELEASE_TYPES;
+        $trackTypesDisplay = SongModel::TRACK_TYPES_DISPLAY;
+        $user = $_SESSION['user'];
+        require_once __DIR__ . '/../Views/release_show.php';
+    }
+
+    /**
+     * リリース別アーティスト写真の登録画面（管理者専用）
+     */
+    public function artistPhotos(): void {
+        $auth = new Auth();
+        $auth->requireAdmin();
+
+        $releaseId = (int)($_GET['release_id'] ?? 0);
+        if ($releaseId === 0) {
+            header('Location: /hinata/release_admin.php');
+            exit;
+        }
+
+        $releaseModel = new ReleaseModel();
+        $release = $releaseModel->getReleaseWithSongs($releaseId);
+        if (!$release) {
+            header('Location: /hinata/release_admin.php');
+            exit;
+        }
+
+        $memberModel = new MemberModel();
+        $releaseMemberImageModel = new ReleaseMemberImageModel();
+        $members = $memberModel->getAllWithColors();
+        $imageMap = $releaseMemberImageModel->getMapByReleaseId($releaseId);
+        $releaseTypes = ReleaseModel::RELEASE_TYPES;
+        $user = $_SESSION['user'];
+        $appKey = 'hinata';
+        require_once __DIR__ . '/../Views/release_artist_photos.php';
+    }
+
+    /**
+     * リリース別アーティスト写真の保存API（管理者専用）
+     * POST: { release_id, members: [{ member_id, image_url }, ...] }
+     */
+    public function saveReleaseMemberImages(): void {
+        header('Content-Type: application/json');
+        $auth = new Auth();
+        $auth->requireAdmin();
+
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $releaseId = (int)($input['release_id'] ?? 0);
+            if ($releaseId === 0) {
+                throw new \Exception('release_id が必要です');
+            }
+            $members = $input['members'] ?? [];
+            $rows = [];
+            foreach ($members as $row) {
+                $memberId = (int)($row['member_id'] ?? 0);
+                $imageUrl = trim((string)($row['image_url'] ?? ''));
+                if ($memberId <= 0) {
+                    continue;
+                }
+                $rows[] = ['member_id' => $memberId, 'image_url' => $imageUrl];
+            }
+            // 空の image_url は「登録しない」扱い（フォーメーションではメンバー既定画像を使用）
+            $rows = array_filter($rows, fn($r) => $r['image_url'] !== '');
+            $releaseMemberImageModel = new ReleaseMemberImageModel();
+            $releaseMemberImageModel->saveForRelease($releaseId, array_values($rows));
+            echo json_encode(['status' => 'success', 'message' => 'アーティスト写真を保存しました']);
+        } catch (\Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
     }
 
     /**

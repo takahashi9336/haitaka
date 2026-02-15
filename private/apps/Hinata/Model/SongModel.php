@@ -13,7 +13,8 @@ class SongModel extends BaseModel {
     protected array $fields = [
         'id', 'release_id', 'media_meta_id', 'title', 'title_kana',
         'track_type', 'track_number',
-        'lyricist', 'composer', 'duration', 'memo', 'created_at'
+        'lyricist', 'composer', 'arranger', 'mv_director', 'choreographer',
+        'duration', 'memo', 'created_at'
     ];
 
     /**
@@ -31,15 +32,15 @@ class SongModel extends BaseModel {
             return null;
         }
 
-        // 参加メンバーを取得
-        $sql = "SELECT sm.*, m.name, m.image_url, 
+        // 参加メンバーを取得（期別一覧表示用に generation を含む）
+        $sql = "SELECT sm.*, m.name, m.image_url, m.generation,
                        c1.color_code as color1, c2.color_code as color2
                 FROM hn_song_members sm
                 JOIN hn_members m ON sm.member_id = m.id
                 LEFT JOIN hn_colors c1 ON m.color_id1 = c1.id
                 LEFT JOIN hn_colors c2 ON m.color_id2 = c2.id
                 WHERE sm.song_id = :sid
-                ORDER BY sm.row_number ASC, sm.position ASC";
+                ORDER BY sm.`row_number` ASC, sm.`position` ASC";
         
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute(['sid' => $songId]);
@@ -57,7 +58,7 @@ class SongModel extends BaseModel {
                     r.release_date,
                     s.title as song_title,
                     sm.is_center,
-                    sm.position,
+                    sm.`position`,
                     ma.media_key,
                     ma.thumbnail_url
                 FROM hn_song_members sm
@@ -86,8 +87,8 @@ class SongModel extends BaseModel {
      */
     public function getFormation(int $songId): array {
         $sql = "SELECT 
-                    sm.row_number,
-                    sm.position,
+                    sm.`row_number`,
+                    sm.`position`,
                     sm.is_center,
                     m.id as member_id,
                     m.name,
@@ -99,7 +100,7 @@ class SongModel extends BaseModel {
                 LEFT JOIN hn_colors c1 ON m.color_id1 = c1.id
                 LEFT JOIN hn_colors c2 ON m.color_id2 = c2.id
                 WHERE sm.song_id = :sid
-                ORDER BY sm.row_number ASC, sm.position ASC";
+                ORDER BY sm.`row_number` ASC, sm.`position` ASC";
         
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute(['sid' => $songId]);
@@ -131,6 +132,23 @@ class SongModel extends BaseModel {
     }
 
     /**
+     * リリースの表題曲（track_type='title'）のセンター名一覧を取得
+     * @return array メンバー名の配列（いない場合は空）
+     */
+    public function getTitleTrackCenterNames(int $releaseId): array {
+        $sql = "SELECT m.name
+                FROM hn_songs s
+                JOIN hn_song_members sm ON sm.song_id = s.id AND sm.is_center = 1
+                JOIN hn_members m ON sm.member_id = m.id
+                WHERE s.release_id = :rid AND s.track_type = 'title'
+                ORDER BY sm.`position` ASC
+                LIMIT 10";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(['rid' => $releaseId]);
+        return array_column($stmt->fetchAll(), 'name');
+    }
+
+    /**
      * センターメンバーを取得
      * 
      * @param int $songId 楽曲ID
@@ -141,12 +159,12 @@ class SongModel extends BaseModel {
                     m.id,
                     m.name,
                     m.image_url,
-                    sm.position
+                    sm.`position`
                 FROM hn_song_members sm
                 JOIN hn_members m ON sm.member_id = m.id
                 WHERE sm.song_id = :sid
                   AND sm.is_center = 1
-                ORDER BY sm.position ASC";
+                ORDER BY sm.`position` ASC";
         
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute(['sid' => $songId]);
@@ -154,7 +172,68 @@ class SongModel extends BaseModel {
     }
 
     /**
-     * 楽曲種別の定数
+     * media_meta_id から YouTube 埋め込みURLを取得（無ければ null）
+     */
+    public function getYoutubeEmbedUrlByMediaMetaId(?int $mediaMetaId): ?string {
+        if ($mediaMetaId === null || $mediaMetaId === 0) {
+            return null;
+        }
+        $sql = "SELECT ma.media_key FROM hn_media_metadata hmeta
+                JOIN com_media_assets ma ON hmeta.asset_id = ma.id
+                WHERE hmeta.id = :mid AND ma.platform = 'youtube' LIMIT 1";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(['mid' => $mediaMetaId]);
+        $row = $stmt->fetch();
+        if ($row && !empty($row['media_key'])) {
+            return 'https://www.youtube.com/embed/' . $row['media_key'];
+        }
+        return null;
+    }
+
+    /**
+     * 全曲一覧用：リリース情報付きで全楽曲を取得（発売日降順・トラック順）
+     * @param int|null $releaseId 指定時はそのリリースのみ
+     * @return array
+     */
+    public function getAllSongsWithRelease(?int $releaseId = null): array {
+        $sql = "SELECT s.id, s.release_id, s.title, s.title_kana, s.track_type, s.track_number,
+                       r.title as release_title, r.release_type, r.release_date, r.release_number
+                FROM hn_songs s
+                JOIN hn_releases r ON s.release_id = r.id";
+        $params = [];
+        if ($releaseId !== null) {
+            $sql .= " WHERE s.release_id = :rid";
+            $params['rid'] = $releaseId;
+        }
+        $sql .= " ORDER BY r.release_date IS NULL, r.release_date DESC, s.track_number ASC, s.id ASC";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * 指定リリースの楽曲一覧を取得（参加メンバー名を「、」区切りで付与）
+     * @return array 各要素に member_names が付く
+     */
+    public function getSongsWithMembersByRelease(int $releaseId): array {
+        $sql = "SELECT s.id, s.release_id, s.title, s.title_kana, s.track_type, s.track_number,
+                       r.title as release_title, r.release_type, r.release_date, r.release_number,
+                       GROUP_CONCAT(m.name ORDER BY sm.`row_number` ASC, sm.`position` ASC SEPARATOR '、') AS member_names
+                FROM hn_songs s
+                JOIN hn_releases r ON s.release_id = r.id
+                LEFT JOIN hn_song_members sm ON sm.song_id = s.id
+                LEFT JOIN hn_members m ON m.id = sm.member_id
+                WHERE s.release_id = :rid
+                GROUP BY s.id, s.release_id, s.title, s.title_kana, s.track_type, s.track_number,
+                         r.title, r.release_type, r.release_date, r.release_number
+                ORDER BY s.track_number ASC, s.id ASC";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(['rid' => $releaseId]);
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * 楽曲種別の定数（管理画面等で使用）
      */
     public const TRACK_TYPES = [
         'title' => '表題曲',
@@ -165,5 +244,29 @@ class SongModel extends BaseModel {
         'unit' => 'ユニット曲',
         'solo' => 'ソロ曲',
         'other' => 'その他',
+    ];
+
+    /** DB enum に合わせた表示用ラベル（楽曲ページ表示用） */
+    public const TRACK_TYPES_DISPLAY = [
+        'title'   => '表題曲',
+        'read'    => '読み曲',
+        'sub'     => 'カップリング',
+        'type_a'  => 'TYPE-A',
+        'type_b'  => 'TYPE-B',
+        'type_c'  => 'TYPE-C',
+        'type_d'  => 'TYPE-D',
+        'normal'  => '通常',
+        'other'   => 'その他',
+    ];
+
+    /** フォーメーション種別の表示用ラベル */
+    public const FORMATION_TYPES_DISPLAY = [
+        'all'      => '全員',
+        'kibetsu'  => '期別',
+        'senbatsu' => '選抜',
+        'solo'     => 'ソロ',
+        'under'    => 'アンダー',
+        'unit'     => 'ユニット',
+        'other'    => 'その他',
     ];
 }

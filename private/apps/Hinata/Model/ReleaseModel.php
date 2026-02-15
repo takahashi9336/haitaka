@@ -21,24 +21,41 @@ class ReleaseModel extends BaseModel {
     protected bool $isUserIsolated = false;
 
     /**
-     * リリース一覧をカテゴリ単位・リリース順（発売日昇順）で取得
+     * リリース一覧を取得（デフォルト：リリース日降順。シングル・アルバムは区別しない）
      */
     public function getAllReleases(): array {
         $sql = "SELECT " . implode(', ', $this->fields) . " 
                 FROM {$this->table} 
-                ORDER BY 
-                    CASE release_type 
-                        WHEN 'single' THEN 1 
-                        WHEN 'album' THEN 2 
-                        WHEN 'digital' THEN 3 
-                        WHEN 'ep' THEN 4 
-                        WHEN 'best' THEN 5 
-                        ELSE 6 
-                    END,
-                    release_date IS NULL,
-                    release_date ASC,
-                    id ASC";
+                ORDER BY release_date IS NULL, release_date DESC, id DESC";
         return $this->pdo->query($sql)->fetchAll();
+    }
+
+    /**
+     * 一覧用：リリース一覧に版別情報・収録曲数を付与して取得（リリース日降順）
+     * @return array 各要素に editions[], song_count が付く
+     */
+    public function getAllReleasesWithSummary(): array {
+        $releases = $this->getAllReleases();
+        if (empty($releases)) {
+            return [];
+        }
+        $releaseIds = array_column($releases, 'id');
+        $editionModel = new ReleaseEditionModel();
+        $editionsByRelease = $editionModel->getEditionsByReleaseIds($releaseIds);
+
+        $countSql = "SELECT release_id, COUNT(*) as cnt FROM hn_songs WHERE release_id IN (" . implode(',', array_map('intval', $releaseIds)) . ") GROUP BY release_id";
+        $counts = [];
+        foreach ($this->pdo->query($countSql)->fetchAll() as $row) {
+            $counts[(int)$row['release_id']] = (int)$row['cnt'];
+        }
+
+        foreach ($releases as &$r) {
+            $rid = (int)$r['id'];
+            $r['editions'] = $editionsByRelease[$rid] ?? [];
+            $r['song_count'] = $counts[$rid] ?? 0;
+        }
+        unset($r);
+        return $releases;
     }
 
     /**

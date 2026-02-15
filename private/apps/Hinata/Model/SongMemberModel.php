@@ -21,6 +21,21 @@ class SongMemberModel extends BaseModel {
     protected bool $isUserIsolated = false;
 
     /**
+     * 楽曲の参加メンバー一覧をメンバー名付きで取得（編集画面用）
+     */
+    public function getBySongIdWithNames(int $songId): array {
+        $sql = "SELECT sm.id, sm.song_id, sm.member_id, sm.is_center, sm.`row_number`, sm.`position`, sm.part_description,
+                       m.name, m.image_url
+                FROM {$this->table} sm
+                JOIN hn_members m ON m.id = sm.member_id
+                WHERE sm.song_id = :sid
+                ORDER BY sm.`row_number` ASC, sm.`position` ASC, sm.id ASC";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(['sid' => $songId]);
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
+    /**
      * 楽曲に参加メンバーを一括登録
      *
      * @param int $songId 楽曲ID
@@ -37,7 +52,7 @@ class SongMemberModel extends BaseModel {
         }
 
         $stmt = $this->pdo->prepare("
-            INSERT INTO {$this->table} (song_id, member_id, is_center, row_number, position, part_description)
+            INSERT INTO {$this->table} (song_id, member_id, is_center, `row_number`, `position`, part_description)
             VALUES (:song_id, :member_id, :is_center, :row_number, :position, :part_description)
         ");
 
