@@ -117,6 +117,32 @@ class Auth {
         return ($_SESSION['user']['role'] ?? '') === 'admin';
     }
 
+    /**
+     * 日向坂ポータルの管理権限（admin / hinata_admin）を持っているかどうか
+     * - システム全体管理者: admin
+     * - 日向坂ポータル専用管理者: hinata_admin
+     */
+    public function isHinataAdmin(): bool {
+        $role = $_SESSION['user']['role'] ?? '';
+        return $role === 'admin' || $role === 'hinata_admin';
+    }
+
+    /**
+     * 日向坂ポータル管理者必須。
+     * - 未ログインなら /login.php へ
+     * - admin / hinata_admin 以外なら指定URLへリダイレクト
+     */
+    public function requireHinataAdmin(string $redirectUrl = '/index.php'): void {
+        if (!$this->check()) {
+            header('Location: /login.php');
+            exit;
+        }
+        if (!$this->isHinataAdmin()) {
+            header('Location: ' . $redirectUrl);
+            exit;
+        }
+    }
+
     public function logout(): void {
         $idName = $_SESSION['user']['id_name'] ?? '';
         Logger::info("logout id_name=$idName");

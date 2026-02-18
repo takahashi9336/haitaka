@@ -16,7 +16,7 @@ if (!$auth->check()) {
     echo json_encode(['status' => 'error', 'message' => '認証が必要です']);
     exit;
 }
-if (($_SESSION['user']['role'] ?? '') !== 'admin') {
+if (!in_array(($_SESSION['user']['role'] ?? ''), ['admin', 'hinata_admin'], true)) {
     http_response_code(403);
     echo json_encode(['status' => 'error', 'message' => '権限がありません']);
     exit;

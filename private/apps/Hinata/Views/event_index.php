@@ -57,7 +57,7 @@ $getCatInfo = function($catId) {
                 <h1 class="font-black text-slate-700 text-lg tracking-tight">イベント</h1>
             </div>
             <div class="flex items-center gap-2">
-                <?php if (($user['role'] ?? '') === 'admin'): ?>
+                <?php if (in_array(($user['role'] ?? ''), ['admin', 'hinata_admin'], true)): ?>
                 <a href="/hinata/event_admin.php" class="text-[10px] font-bold <?= $cardIconText ?> <?= $cardIconBg ?> px-3 py-1.5 rounded-full hover:opacity-90 transition flex items-center gap-1"<?= $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>>
                     <i class="fa-solid fa-calendar-plus"></i>
                     <span>管理</span>

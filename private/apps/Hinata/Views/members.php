@@ -46,7 +46,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md <?= $headerIconBg ?> <?= $headerShadow ?>"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?>><i class="fa-solid fa-users text-sm"></i></div>
                 <h1 class="font-black text-slate-700 text-lg tracking-tight">メンバー帳</h1>
             </div>
-            <?php if (($user['role'] ?? '') === 'admin'): ?>
+            <?php if (in_array(($user['role'] ?? ''), ['admin', 'hinata_admin'], true)): ?>
             <a href="/hinata/member_admin.php" class="text-[10px] font-bold <?= $cardIconText ?> <?= $cardIconBg ?> px-3 py-1.5 rounded-full hover:opacity-90 transition"<?= $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>><i class="fa-solid fa-user-gear mr-1"></i>管理</a>
             <?php endif; ?>
         </header>
@@ -111,7 +111,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
     <script src="/assets/js/core.js"></script>
     <script src="/assets/js/hinata-member-modal.js"></script>
     <script>
-        const IS_ADMIN = <?= (($user['role'] ?? '') === 'admin') ? 'true' : 'false' ?>;
+        const IS_ADMIN = <?= in_array(($user['role'] ?? ''), ['admin', 'hinata_admin'], true) ? 'true' : 'false' ?>;
         HinataMemberModal.init({ detailApiUrl: '/hinata/members.php', imgCacheBust: '<?= time() ?>', isAdmin: IS_ADMIN });
         document.getElementById('mobileMenuBtn').onclick = () => document.getElementById('sidebar').classList.add('mobile-open');
 

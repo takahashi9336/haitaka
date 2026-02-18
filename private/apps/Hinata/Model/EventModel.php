@@ -10,7 +10,10 @@ use Core\BaseModel;
  */
 class EventModel extends BaseModel {
     protected string $table = 'hn_events';
-    protected array $fields = ['id', 'event_name', 'event_date', 'category', 'event_place', 'event_info', 'event_url'];
+    protected array $fields = [
+        'id', 'event_name', 'event_date', 'category', 'event_place', 'event_info', 'event_url',
+        'updated_at', 'update_user'
+    ];
 
     /**
      * イベントは全ユーザー共通データのため、隔離を無効化する

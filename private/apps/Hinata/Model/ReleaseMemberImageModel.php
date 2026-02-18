@@ -11,7 +11,8 @@ use Core\BaseModel;
 class ReleaseMemberImageModel extends BaseModel {
     protected string $table = 'hn_release_member_images';
     protected array $fields = [
-        'id', 'release_id', 'member_id', 'image_url', 'sort_order', 'created_at'
+        'id', 'release_id', 'member_id', 'image_url', 'sort_order', 'created_at',
+        'updated_at', 'update_user'
     ];
 
     protected bool $isUserIsolated = false;
@@ -58,8 +59,8 @@ class ReleaseMemberImageModel extends BaseModel {
         }
 
         $stmt = $this->pdo->prepare("
-            INSERT INTO {$this->table} (release_id, member_id, image_url, sort_order)
-            VALUES (:release_id, :member_id, :image_url, :sort_order)
+            INSERT INTO {$this->table} (release_id, member_id, image_url, sort_order, update_user)
+            VALUES (:release_id, :member_id, :image_url, :sort_order, :update_user)
         ");
         $sortOrder = 0;
         foreach ($rows as $row) {
@@ -73,6 +74,7 @@ class ReleaseMemberImageModel extends BaseModel {
                 'member_id' => $memberId,
                 'image_url' => $imageUrl !== '' ? $imageUrl : '',
                 'sort_order' => $sortOrder++,
+                'update_user' => $_SESSION['user']['id_name'] ?? '',
             ]);
         }
     }

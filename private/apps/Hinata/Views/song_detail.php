@@ -95,7 +95,7 @@ if ($mainVideo !== null && !empty($mainVideo['media_key']) && ($mainVideo['platf
                 <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md <?= $headerIconBg ?> <?= $headerShadow ?>"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?>><i class="fa-solid fa-music text-sm"></i></div>
                 <h1 class="font-black text-slate-700 text-lg tracking-tight truncate max-w-[180px]"><?= htmlspecialchars($song['title']) ?></h1>
             </div>
-            <?php if (($user['role'] ?? '') === 'admin'): ?>
+            <?php if (in_array(($user['role'] ?? ''), ['admin', 'hinata_admin'], true)): ?>
             <a href="/hinata/song_member_edit.php?song_id=<?= (int)$song['id'] ?>" class="text-[10px] font-bold <?= $cardIconText ?> <?= $cardIconBg ?> px-3 py-1.5 rounded-full hover:opacity-90 transition"<?= $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>><i class="fa-solid fa-users-cog mr-1"></i>参加メンバー編集</a>
             <?php endif; ?>
         </header>
@@ -270,7 +270,7 @@ if ($mainVideo !== null && !empty($mainVideo['media_key']) && ($mainVideo['platf
         HinataMemberModal.init({
             detailApiUrl: '/hinata/members.php',
             imgCacheBust: '<?= time() ?>',
-            isAdmin: <?= (($user['role'] ?? '') === 'admin') ? 'true' : 'false' ?>
+            isAdmin: <?= in_array(($user['role'] ?? ''), ['admin', 'hinata_admin'], true) ? 'true' : 'false' ?>
         });
 
         document.getElementById('mobileMenuBtn')?.addEventListener('click', () => {

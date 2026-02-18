@@ -221,7 +221,8 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             const params = new URLSearchParams({
                 q: searchVideo.value,
                 category: filterCategory.value,
-                limit: 200
+                limit: 200,
+                link_type: 'member'
             });
             if (filterUnlinkedOnly && filterUnlinkedOnly.checked) {
                 params.set('unlinked_only', '1');

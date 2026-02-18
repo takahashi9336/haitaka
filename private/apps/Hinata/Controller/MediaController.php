@@ -5,6 +5,7 @@ namespace App\Hinata\Controller;
 use Core\Auth;
 use Core\Database;
 use Core\MediaAssetModel;
+use Core\Logger;
 
 /**
  * メディア管理コントローラ
@@ -147,7 +148,8 @@ class MediaController {
      */
     public function import(): void {
         $auth = new Auth();
-        $auth->requireAdmin();
+        // 日向坂ポータル管理者（admin / hinata_admin）のみ
+        $auth->requireHinataAdmin('/hinata/');
 
         $categories = self::CATEGORIES;
         $user = $_SESSION['user'];
@@ -159,7 +161,8 @@ class MediaController {
      */
     public function mediaMemberAdmin(): void {
         $auth = new Auth();
-        $auth->requireAdmin();
+        // 日向坂ポータル管理者（admin / hinata_admin）のみ
+        $auth->requireHinataAdmin('/hinata/');
         $memberModel = new \App\Hinata\Model\MemberModel();
         $categories = self::CATEGORIES;
         $members = $memberModel->getAllWithColors();
@@ -172,7 +175,8 @@ class MediaController {
      */
     public function mediaSongAdmin(): void {
         $auth = new Auth();
-        $auth->requireAdmin();
+        // 日向坂ポータル管理者（admin / hinata_admin）のみ
+        $auth->requireHinataAdmin('/hinata/');
         $releaseModel = new \App\Hinata\Model\ReleaseModel();
         $categories = self::CATEGORIES;
         $releases = $releaseModel->getAllReleases();
@@ -196,13 +200,14 @@ class MediaController {
         header('Content-Type: application/json');
         try {
             $auth = new Auth();
-            if (!$auth->check() || !$auth->isAdmin()) {
+            if (!$auth->check() || !$auth->isHinataAdmin()) {
                 echo json_encode(['status' => 'error', 'message' => '権限がありません']);
                 return;
             }
             $q = trim($_GET['q'] ?? '');
             $category = $_GET['category'] ?? '';
             $unlinkedOnly = !empty($_GET['unlinked_only']);
+            $linkType = $_GET['link_type'] ?? 'song';
             $limit = min((int)($_GET['limit'] ?? 100), 200);
             $pdo = Database::connect();
             $where = [];
@@ -217,7 +222,11 @@ class MediaController {
                 $params['q2'] = '%' . $q . '%';
             }
             if ($unlinkedOnly) {
-                $where[] = 'NOT EXISTS (SELECT 1 FROM hn_song_media_links l WHERE l.media_meta_id = hmeta.id)';
+                if ($linkType === 'member') {
+                    $where[] = 'NOT EXISTS (SELECT 1 FROM hn_media_members hmm WHERE hmm.media_meta_id = hmeta.id)';
+                } else {
+                    $where[] = 'NOT EXISTS (SELECT 1 FROM hn_song_media_links l WHERE l.media_meta_id = hmeta.id)';
+                }
             }
             $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
             $sql = "SELECT 
@@ -276,7 +285,7 @@ class MediaController {
         header('Content-Type: application/json');
         try {
             $auth = new Auth();
-            if (!$auth->check() || !$auth->isAdmin()) {
+            if (!$auth->check() || !$auth->isHinataAdmin()) {
                 echo json_encode(['status' => 'error', 'message' => '権限がありません']);
                 return;
             }
@@ -308,7 +317,7 @@ class MediaController {
         header('Content-Type: application/json');
         try {
             $auth = new Auth();
-            if (!$auth->check() || !$auth->isAdmin()) {
+            if (!$auth->check() || !$auth->isHinataAdmin()) {
                 echo json_encode(['status' => 'error', 'message' => '権限がありません']);
                 return;
             }
@@ -331,11 +340,12 @@ class MediaController {
             $pdo->beginTransaction();
             $stmt = $pdo->prepare('DELETE FROM hn_media_members WHERE media_meta_id = ?');
             $stmt->execute([$metaId]);
-            $stmt = $pdo->prepare('INSERT INTO hn_media_members (media_meta_id, member_id) VALUES (?, ?)');
+            $stmt = $pdo->prepare('INSERT INTO hn_media_members (media_meta_id, member_id, update_user) VALUES (?, ?, ?)');
             foreach ($memberIds as $mid) {
-                $stmt->execute([$metaId, $mid]);
+                $stmt->execute([$metaId, $mid, $_SESSION['user']['id_name'] ?? '']);
             }
             $pdo->commit();
+            Logger::info("hn_media_members save meta_id={$metaId} count=" . count($memberIds) . " by=" . ($_SESSION['user']['id_name'] ?? 'guest'));
             echo json_encode(['status' => 'success', 'saved' => count($memberIds)]);
         } catch (\Exception $e) {
             $pdo = Database::connect();
@@ -354,7 +364,7 @@ class MediaController {
         header('Content-Type: application/json');
         try {
             $auth = new Auth();
-            if (!$auth->check() || !$auth->isAdmin()) {
+            if (!$auth->check() || !$auth->isHinataAdmin()) {
                 echo json_encode(['status' => 'error', 'message' => '権限がありません']);
                 return;
             }
@@ -389,7 +399,7 @@ class MediaController {
         header('Content-Type: application/json');
         try {
             $auth = new Auth();
-            if (!$auth->check() || !$auth->isAdmin()) {
+            if (!$auth->check() || !$auth->isHinataAdmin()) {
                 echo json_encode(['status' => 'error', 'message' => '権限がありません']);
                 return;
             }
@@ -410,10 +420,11 @@ class MediaController {
             $stmt = $pdo->prepare('DELETE FROM hn_song_media_links WHERE media_meta_id = ?');
             $stmt->execute([$metaId]);
             if ($songId !== null) {
-                $stmt = $pdo->prepare('INSERT INTO hn_song_media_links (song_id, media_meta_id) VALUES (?, ?)');
-                $stmt->execute([$songId, $metaId]);
+                $stmt = $pdo->prepare('INSERT INTO hn_song_media_links (song_id, media_meta_id, update_user) VALUES (?, ?, ?)');
+                $stmt->execute([$songId, $metaId, $_SESSION['user']['id_name'] ?? '']);
             }
             $pdo->commit();
+            Logger::info("hn_song_media_links save meta_id={$metaId} song_id=" . ($songId ?? 'null') . " by=" . ($_SESSION['user']['id_name'] ?? 'guest'));
             echo json_encode(['status' => 'success']);
         } catch (\Exception $e) {
             $pdo = Database::connect();
@@ -573,6 +584,7 @@ class MediaController {
             }
 
             $pdo->commit();
+            Logger::info("media bulkSave saved={$saved} skipped={$skipped} by=" . ($_SESSION['user']['id_name'] ?? 'guest'));
 
             echo json_encode([
                 'status' => 'success',

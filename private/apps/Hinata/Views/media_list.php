@@ -36,10 +36,14 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
 
         .video-thumbnail {
             position: relative;
-            padding-bottom: 56.25%; /* 16:9 */
+            padding-bottom: 56.25%; /* 16:9（標準） */
             background: #f1f5f9;
             overflow: hidden;
             border-radius: 2px;
+        }
+        /* 小さめカード用：高さを少し低くする */
+        .video-thumbnail-sm {
+            padding-bottom: 42%; /* やや横長・低め */
         }
         .video-thumbnail img {
             position: absolute;
@@ -137,16 +141,6 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         }
         #videoModal.modal-closing .video-modal-content {
             animation: modalShrinkToPoint 0.3s cubic-bezier(0.55, 0.09, 0.68, 0.53) forwards;
-        }
-        .video-desc {
-            font-size: 0.7rem;
-            line-height: 1.3;
-            max-height: 3.6em;
-            overflow: hidden;
-            white-space: pre-wrap;
-        }
-        .video-desc.expanded {
-            max-height: none;
         }
         @keyframes modalExpandFromPoint {
             0% {
@@ -262,14 +256,24 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                             </select>
                         </div>
 
-                        <!-- 表示形式切替 -->
+                        <!-- 表示形式・サイズ切替 -->
                         <div class="flex items-center gap-2 ml-auto">
-                            <button id="btnViewGrid" class="h-9 px-3 bg-sky-500 text-white rounded-lg text-xs font-bold transition">
-                                <i class="fa-solid fa-th"></i> ブロック
-                            </button>
-                            <button id="btnViewList" class="h-9 px-3 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold transition">
-                                <i class="fa-solid fa-list"></i> 一覧
-                            </button>
+                            <div class="flex items-center gap-1 mr-2">
+                                <button id="btnViewGrid" class="h-9 px-3 bg-sky-500 text-white rounded-lg text-xs font-bold transition">
+                                    <i class="fa-solid fa-th"></i> ブロック
+                                </button>
+                                <button id="btnViewList" class="h-9 px-3 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold transition">
+                                    <i class="fa-solid fa-list"></i> 一覧
+                                </button>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <button id="btnCardSizeNormal" class="h-9 px-2 bg-sky-500 text-white rounded-lg text-[11px] font-bold transition min-w-[52px]">
+                                    標準
+                                </button>
+                                <button id="btnCardSizeSmall" class="h-9 px-2 bg-slate-100 text-slate-600 rounded-lg text-[11px] font-bold transition min-w-[52px]">
+                                    小さめ
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -293,13 +297,13 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
 
     <!-- 動画再生モーダル -->
     <div id="videoModal" class="fixed inset-0 z-[100] hidden overflow-y-auto bg-slate-900/80 backdrop-blur-xl transition-all">
-        <div class="relative w-full max-w-4xl mx-auto md:my-10 min-h-full flex items-center p-4">
+        <div class="relative w-full max-w-6xl mx-auto md:my-10 min-h-full flex items-center p-4">
             <div class="video-modal-content bg-white w-full rounded-[2rem] md:rounded-[3rem] shadow-2xl overflow-hidden relative">
                 <button onclick="closeVideoModal()" class="absolute top-4 right-4 w-12 h-12 rounded-full bg-slate-100/90 text-slate-500 flex items-center justify-center z-10 hover:bg-white shadow-lg transition">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
                 <div class="p-6 md:p-8 pt-16">
-                    <div id="videoModalEmbed" class="aspect-video w-full rounded-xl overflow-hidden bg-black shadow-xl">
+                    <div id="videoModalEmbed" class="aspect-video w-full rounded-2xl overflow-hidden bg-black shadow-xl">
                         <iframe id="videoModalIframe" width="100%" height="100%" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
                     </div>
                     <div id="videoModalExternal" class="hidden aspect-video w-full rounded-xl bg-slate-100 flex flex-col items-center justify-center gap-4 p-8">
@@ -313,6 +317,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                         <span id="videoModalCategory" class="category-badge bg-sky-100 text-sky-700"></span>
                         <h2 id="videoModalTitle" class="text-lg font-bold text-slate-800 mt-2"></h2>
                         <p id="videoModalDate" class="text-xs text-slate-400 mt-1"></p>
+                        <p id="videoModalDescription" class="mt-3 text-xs text-slate-600 whitespace-pre-wrap max-h-40 overflow-y-auto hidden"></p>
                     </div>
                 </div>
             </div>
@@ -330,11 +335,15 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         const filterSort = document.getElementById('filterSort');
         const btnViewGrid = document.getElementById('btnViewGrid');
         const btnViewList = document.getElementById('btnViewList');
+        const btnCardSizeNormal = document.getElementById('btnCardSizeNormal');
+        const btnCardSizeSmall = document.getElementById('btnCardSizeSmall');
 
         let offset = 0;
         let isLoading = false;
         let hasMore = true;
         let currentView = 'grid'; // 'grid' or 'list'
+        let currentCardSize = 'normal'; // 'normal' or 'small'
+        let renderedCategoryHeaders = new Set(); // メンバー/期別絞り込み時のカテゴリ帯用
 
         // 初回ロード
         loadVideos();
@@ -354,6 +363,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         function onFilterChange() {
             offset = 0;
             hasMore = true;
+            renderedCategoryHeaders.clear();
             videoContainer.innerHTML = '';
             scrollTrigger.innerHTML = '<div class="h-20"></div>';
             loadVideos();
@@ -363,11 +373,26 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         filterGeneration.addEventListener('change', onFilterChange);
         filterSort.addEventListener('change', onFilterChange);
 
+        function updateVideoContainerLayout() {
+            if (currentView === 'grid') {
+                // ブロック表示：カードサイズに応じて列数・余白を変更
+                if (currentCardSize === 'small') {
+                    videoContainer.className = 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4';
+                } else {
+                    videoContainer.className = 'grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8';
+                }
+            } else {
+                // 一覧表示は1列固定
+                videoContainer.className = 'flex flex-col gap-1.5';
+            }
+        }
+
         // 表示形式切替（再読み込みで新しい形式で表示）
         function switchView(view) {
             currentView = view;
             offset = 0;
             hasMore = true;
+            renderedCategoryHeaders.clear();
             videoContainer.innerHTML = '';
             scrollTrigger.innerHTML = '<div class="h-20"></div>';
             if (view === 'grid') {
@@ -375,18 +400,41 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 btnViewGrid.classList.add('bg-sky-500', 'text-white');
                 btnViewList.classList.remove('bg-sky-500', 'text-white');
                 btnViewList.classList.add('bg-slate-100', 'text-slate-600');
-                videoContainer.className = 'grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8';
             } else {
                 btnViewList.classList.remove('bg-slate-100', 'text-slate-600');
                 btnViewList.classList.add('bg-sky-500', 'text-white');
                 btnViewGrid.classList.remove('bg-sky-500', 'text-white');
                 btnViewGrid.classList.add('bg-slate-100', 'text-slate-600');
-                videoContainer.className = 'flex flex-col gap-1.5';
             }
+            updateVideoContainerLayout();
             loadVideos();
         }
         btnViewGrid.addEventListener('click', () => switchView('grid'));
         btnViewList.addEventListener('click', () => switchView('list'));
+
+        function switchCardSize(size) {
+            currentCardSize = size;
+            offset = 0;
+            hasMore = true;
+            renderedCategoryHeaders.clear();
+            videoContainer.innerHTML = '';
+            scrollTrigger.innerHTML = '<div class="h-20"></div>';
+            if (size === 'normal') {
+                btnCardSizeNormal.classList.remove('bg-slate-100', 'text-slate-600');
+                btnCardSizeNormal.classList.add('bg-sky-500', 'text-white');
+                btnCardSizeSmall.classList.remove('bg-sky-500', 'text-white');
+                btnCardSizeSmall.classList.add('bg-slate-100', 'text-slate-600');
+            } else {
+                btnCardSizeSmall.classList.remove('bg-slate-100', 'text-slate-600');
+                btnCardSizeSmall.classList.add('bg-sky-500', 'text-white');
+                btnCardSizeNormal.classList.remove('bg-sky-500', 'text-white');
+                btnCardSizeNormal.classList.add('bg-slate-100', 'text-slate-600');
+            }
+            updateVideoContainerLayout();
+            loadVideos();
+        }
+        btnCardSizeNormal.addEventListener('click', () => switchCardSize('normal'));
+        btnCardSizeSmall.addEventListener('click', () => switchCardSize('small'));
 
         // 動画読み込み
         async function loadVideos() {
@@ -409,13 +457,45 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 const result = await response.json();
 
                 if (result.status === 'success') {
-                    result.data.forEach(video => {
-                        if (currentView === 'grid') {
-                            videoContainer.innerHTML += renderVideoCard(video);
-                        } else {
-                            videoContainer.innerHTML += renderVideoRow(video);
-                        }
-                    });
+                    const useCategoryBands = (filterMember.value !== '' || filterGeneration.value !== '');
+                    if (useCategoryBands) {
+                        // カテゴリごとにグルーピングして帯＋動画を描画
+                        const groups = {};
+                        result.data.forEach(video => {
+                            const key = video.category || 'その他';
+                            if (!groups[key]) groups[key] = [];
+                            groups[key].push(video);
+                        });
+                        Object.keys(groups).forEach(category => {
+                            const videos = groups[category];
+                            // まだ帯を出していないカテゴリのみヘッダーを追加
+                            if (!renderedCategoryHeaders.has(category)) {
+                                renderedCategoryHeaders.add(category);
+                                const headerHtml = `
+                                    <div class="col-span-full mt-6 mb-3 pb-2 border-b-2 border-sky-200">
+                                        <h2 class="text-lg font-black text-sky-600">${category}</h2>
+                                    </div>
+                                `;
+                                videoContainer.innerHTML += headerHtml;
+                            }
+                            videos.forEach(video => {
+                                if (currentView === 'grid') {
+                                    videoContainer.innerHTML += renderVideoCard(video);
+                                } else {
+                                    videoContainer.innerHTML += renderVideoRow(video);
+                                }
+                            });
+                        });
+                    } else {
+                        // 通常はフラットに追加
+                        result.data.forEach(video => {
+                            if (currentView === 'grid') {
+                                videoContainer.innerHTML += renderVideoCard(video);
+                            } else {
+                                videoContainer.innerHTML += renderVideoRow(video);
+                            }
+                        });
+                    }
 
                     offset += result.data.length;
                     hasMore = result.has_more;
@@ -443,18 +523,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             return '/assets/images/no-image.jpg';
         }
 
-        function toggleDesc(ev) {
-            ev.stopPropagation();
-            const btn = ev.currentTarget;
-            const container = btn.closest('.video-desc-container');
-            if (!container) return;
-            const p = container.querySelector('.video-desc');
-            if (!p) return;
-            const expanded = p.classList.toggle('expanded');
-            btn.textContent = expanded ? '閉じる' : '...もっと見る';
-        }
-
-        // ブロック形式のカード生成
+        // ブロック形式のカード生成（サイズは currentCardSize で切替）
         function renderVideoCard(video) {
             const categoryColors = {
                 'CM': 'bg-slate-100 text-slate-700',
@@ -470,7 +539,6 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             };
             const categoryColor = categoryColors[video.category] || 'bg-slate-100 text-slate-600';
             const primaryDate = video.upload_date || video.release_date || '';
-            const hasDesc = video.description && video.description.trim() !== '';
             const dataVideo = JSON.stringify({
                 platform: video.platform,
                 media_key: video.media_key,
@@ -485,22 +553,28 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
 
             const dateStr = primaryDate ? new Date(primaryDate).toLocaleDateString('ja-JP') : '';
             const thumbUrl = getThumbnailUrl(video);
+            const isSmall = currentCardSize === 'small';
+            const outerClass = isSmall
+                ? 'video-card bg-white rounded border border-slate-100 overflow-hidden text-[11px]'
+                : 'video-card bg-white rounded-sm border border-slate-100 overflow-hidden';
+            const bodyClass = isSmall ? 'pt-2 pb-1 px-2' : 'pt-3 pb-1';
+            const titleClass = isSmall
+                ? 'text-[11px] text-slate-700 leading-snug line-clamp-2'
+                : 'text-sm text-slate-700 leading-snug line-clamp-2';
+            const dateClass = isSmall
+                ? 'text-[10px] text-slate-400 mt-0.5'
+                : 'text-xs text-slate-400 mt-1';
             return `
-                <div class="video-card bg-white rounded-sm border border-slate-100 overflow-hidden" data-video="${dataVideo}" onclick="openVideoModal(this, event)">
-                    <div class="video-thumbnail rounded-t-sm">
+                <div class="${outerClass}" data-video="${dataVideo}" onclick="openVideoModal(this, event)">
+                    <div class="video-thumbnail ${isSmall ? 'video-thumbnail-sm' : 'rounded-t-sm'}">
                         <img src="${thumbUrl}" alt="${escapeHtml(video.title)}" onerror="this.src='/assets/images/no-image.jpg'">
                         <div class="play-icon">
                             <i class="fa-solid fa-play text-white text-2xl ml-1"></i>
                         </div>
                     </div>
-                    <div class="pt-3 pb-1">
-                        <h3 class="text-sm text-slate-700 leading-snug line-clamp-2">${escapeHtml(video.title)}</h3>
-                        ${dateStr ? `<p class="text-xs text-slate-400 mt-1">${dateStr}</p>` : ''}
-                        ${hasDesc ? `
-                        <div class="mt-1 text-[11px] text-slate-500 video-desc-container">
-                            <p class="video-desc">${escapeHtml(video.description || '')}</p>
-                            <button type="button" class="text-[10px] text-sky-600 font-bold mt-0.5 hover:underline" onclick="toggleDesc(event)">...もっと見る</button>
-                        </div>` : ''}
+                    <div class="${bodyClass}">
+                        <h3 class="${titleClass}">${escapeHtml(video.title)}</h3>
+                        ${dateStr ? `<p class="${dateClass}">${dateStr}</p>` : ''}
                     </div>
                 </div>
             `;
@@ -522,7 +596,6 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             };
             const categoryColor = categoryColors[video.category] || 'bg-slate-100 text-slate-600';
             const primaryDate = video.upload_date || video.release_date || '';
-            const hasDesc = video.description && video.description.trim() !== '';
             const dataVideo = JSON.stringify({
                 platform: video.platform,
                 media_key: video.media_key,
@@ -548,11 +621,6 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                         <span class="category-badge ${categoryColor} shrink-0">${video.category}</span>
                         <div class="flex-1 min-w-0">
                             <h3 class="text-sm font-bold text-slate-800 truncate">${escapeHtml(video.title)}</h3>
-                            ${hasDesc ? `
-                            <div class="mt-0.5 text-[11px] text-slate-500 video-desc-container">
-                                <p class="video-desc">${escapeHtml(video.description || '')}</p>
-                                <button type="button" class="text-[10px] text-sky-600 font-bold mt-0.5 hover:underline" onclick="toggleDesc(event)">...もっと見る</button>
-                            </div>` : ''}
                         </div>
                         <span class="text-xs text-slate-400 shrink-0">${dateStr}</span>
                     </div>
@@ -649,6 +717,15 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             document.getElementById('videoModalDate').textContent = primaryDate
                 ? new Date(primaryDate).toLocaleDateString('ja-JP')
                 : (video.created_at ? '登録日: ' + new Date(video.created_at).toLocaleDateString('ja-JP') : '');
+            const descEl = document.getElementById('videoModalDescription');
+            const desc = (video.description || '').trim();
+            if (desc) {
+                descEl.textContent = desc;
+                descEl.classList.remove('hidden');
+            } else {
+                descEl.textContent = '';
+                descEl.classList.add('hidden');
+            }
 
             modal.classList.remove('modal-closing');
             modal.classList.add('active', 'modal-opening');

@@ -15,7 +15,7 @@ if (!$auth->check()) {
     exit;
 }
 
-if (($_SESSION['user']['role'] ?? '') !== 'admin') {
+if (!in_array(($_SESSION['user']['role'] ?? ''), ['admin', 'hinata_admin'], true)) {
     header('Content-Type: application/json', true, 403);
     echo json_encode(['status' => 'error', 'message' => '権限がありません']);
     exit;

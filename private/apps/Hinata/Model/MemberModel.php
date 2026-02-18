@@ -15,7 +15,8 @@ class MemberModel extends BaseModel {
     protected array $fields = [
         'id', 'name', 'kana', 'generation', 'birth_date', 'blood_type', 
         'height', 'birth_place', 'color_id1', 'color_id2', 'is_active', 
-        'image_url', 'blog_url', 'insta_url', 'pv_movie_id', 'twitter_url', 'member_info'
+        'image_url', 'blog_url', 'insta_url', 'pv_movie_id', 'twitter_url', 'member_info',
+        'updated_at', 'update_user'
     ];
 
     /**
@@ -177,10 +178,10 @@ class MemberModel extends BaseModel {
         $this->pdo->prepare("DELETE FROM hn_member_images WHERE member_id = ?")->execute([$memberId]);
         $imageUrls = array_slice(array_values($imageUrls), 0, 5);
         if (empty($imageUrls)) return true;
-        $stmt = $this->pdo->prepare("INSERT INTO hn_member_images (member_id, image_url, sort_order) VALUES (?, ?, ?)");
+        $stmt = $this->pdo->prepare("INSERT INTO hn_member_images (member_id, image_url, sort_order, update_user) VALUES (?, ?, ?, ?)");
         foreach ($imageUrls as $i => $url) {
             if ($url !== '' && $url !== null) {
-                $stmt->execute([$memberId, $url, $i]);
+                $stmt->execute([$memberId, $url, $i, $_SESSION['user']['id_name'] ?? '']);
             }
         }
         return true;

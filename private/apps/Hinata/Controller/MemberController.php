@@ -6,6 +6,7 @@ use App\Hinata\Model\MemberModel;
 use Core\Auth;
 use Core\Database;
 use Core\MediaAssetModel;
+use Core\Logger;
 
 /**
  * メンバーメンテナンス コントローラ (DB完全同期 & 画像アップロード対応)
@@ -29,7 +30,8 @@ class MemberController {
 
     public function admin(): void {
         $auth = new Auth();
-        $auth->requireAdmin('/hinata/');
+        // 日向坂ポータル管理者（admin / hinata_admin）のみ
+        $auth->requireHinataAdmin('/hinata/');
         
         $model = new MemberModel();
         $members = $model->getAllWithColors();
@@ -136,10 +138,10 @@ class MemberController {
                         if ($metaId) {
                             // hn_media_members の紐付けを INSERT IGNORE で作成
                             $stmt = $pdo->prepare("
-                                INSERT IGNORE INTO hn_media_members (media_meta_id, member_id)
-                                VALUES (?, ?)
+                                INSERT IGNORE INTO hn_media_members (media_meta_id, member_id, update_user)
+                                VALUES (?, ?, ?)
                             ");
-                            $stmt->execute([$metaId, (int)$id]);
+                            $stmt->execute([$metaId, (int)$id, $_SESSION['user']['id_name'] ?? '']);
                         }
                     }
                 }
@@ -163,11 +165,13 @@ class MemberController {
                 'image_url'    => $imageUrl,
                 // 旧構成カラムは後方互換のため残すが、新メディア構成では未使用
                 'pv_movie_id'  => $pvMovieId,
-                'is_active'    => (int)$_POST['is_active']
+                'is_active'    => (int)$_POST['is_active'],
+                'update_user'  => $_SESSION['user']['id_name'] ?? '',
             ];
 
             $model->update((int)$id, $data);
             $pdo->commit();
+            Logger::info("hn_members update id={$id} by=" . ($_SESSION['user']['id_name'] ?? 'guest'));
             echo json_encode(['status' => 'success']);
         } catch (\Exception $e) {
             $pdo = Database::connect();
@@ -204,9 +208,11 @@ class MemberController {
                 'twitter_url' => $_POST['twitter_url'] ?? $currentMember['twitter_url'],
                 'member_info' => $_POST['member_info'] ?? $currentMember['member_info'],
                 'is_active'   => isset($_POST['is_active']) ? (int)$_POST['is_active'] : $currentMember['is_active'],
+                'update_user' => $_SESSION['user']['id_name'] ?? '',
             ];
 
             $model->update((int)$id, $data);
+            Logger::info("hn_members update_basic id={$id} by=" . ($_SESSION['user']['id_name'] ?? 'guest'));
             echo json_encode(['status' => 'success']);
         } catch (\Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -245,10 +251,12 @@ class MemberController {
                     'twitter_url' => $row['twitter_url'] ?? $currentMember['twitter_url'],
                     'member_info' => $row['member_info'] ?? $currentMember['member_info'],
                     'is_active'   => isset($row['is_active']) ? (int)$row['is_active'] : $currentMember['is_active'],
+                    'update_user' => $_SESSION['user']['id_name'] ?? '',
                 ];
 
                 $model->update((int)$row['id'], $data);
             }
+            Logger::info("hn_members update_basic_bulk count=" . count($input['items']) . " by=" . ($_SESSION['user']['id_name'] ?? 'guest'));
             echo json_encode(['status' => 'success']);
         } catch (\Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);

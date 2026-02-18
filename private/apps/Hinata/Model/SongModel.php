@@ -14,7 +14,7 @@ class SongModel extends BaseModel {
         'id', 'release_id', 'media_meta_id', 'title', 'title_kana',
         'track_type', 'track_number',
         'lyricist', 'composer', 'arranger', 'mv_director', 'choreographer',
-        'duration', 'memo', 'created_at'
+        'duration', 'memo', 'created_at', 'updated_at', 'update_user'
     ];
 
     /**

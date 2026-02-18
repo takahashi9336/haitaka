@@ -170,7 +170,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                         </div>
                     </a>
 
-                    <?php if (($_SESSION['user']['role'] ?? '') === 'admin'): ?>
+                    <?php if (in_array(($_SESSION['user']['role'] ?? ''), ['admin', 'hinata_admin'], true)): ?>
                     <!-- リリース管理（管理者のみ） -->
                     <a href="/hinata/release_admin.php" class="app-card hinata-portal-card group relative bg-white rounded-xl border <?= $cardBorder ?> shadow-sm overflow-hidden flex flex-col items-center justify-center p-4 md:p-8 md:block">
                         <div class="hidden md:block absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform card-deco <?= $cardDeco ?>">

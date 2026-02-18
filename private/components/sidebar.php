@@ -13,6 +13,8 @@ $user = $_SESSION['user'] ?? ['id_name' => 'ゲスト', 'role' => ''];
 $initial = mb_substr($user['id_name'] ?? '?', 0, 1);
 $logoText = $user['logo_text'] ?? 'MyPlatform';
 $isAdmin = ($user['role'] ?? '') === 'admin';
+// 日向坂ポータル内の管理系リンク表示用（admin / hinata_admin）
+$isHinataAdmin = in_array($user['role'] ?? '', ['admin', 'hinata_admin'], true);
 
 $sessionApps = $user['apps'] ?? null;
 // 新しい形式（ツリー: 各要素に app_key / name がある）のみセッションメニューを使用。古い形式（app_key=>権限配列）はフォールバック
@@ -167,7 +169,7 @@ $inactiveClass = "text-slate-500 hover:bg-slate-50 transition";
                     <a href="/hinata/events.php" class="block py-1.5 text-[11px] font-bold <?= strpos($uri, 'events.php') !== false ? 'text-sky-500' : 'text-slate-400' ?> hover:text-sky-500 transition">イベント</a>
                     <a href="/hinata/talk.php" class="block py-1.5 text-[11px] font-bold <?= strpos($uri, 'talk.php') !== false ? 'text-sky-500' : 'text-slate-400' ?> hover:text-sky-500 transition">ミーグリネタ帳</a>
                     <a href="/hinata/media_list.php" class="block py-1.5 text-[11px] font-bold <?= strpos($uri, 'media_list.php') !== false ? 'text-sky-500' : 'text-slate-400' ?> hover:text-sky-500 transition">動画一覧</a>
-                    <?php if ($isAdmin): ?>
+                    <?php if ($isHinataAdmin): ?>
                     <a href="/hinata/media_import.php" class="block py-1.5 text-[11px] font-bold <?= strpos($uri, 'media_import.php') !== false ? 'text-sky-500' : 'text-slate-400' ?> hover:text-sky-500 transition">動画一括登録</a>
                     <a href="/hinata/media_member_admin.php" class="block py-1.5 text-[11px] font-bold <?= strpos($uri, 'media_member_admin.php') !== false ? 'text-sky-500' : 'text-slate-400' ?> hover:text-sky-500 transition">動画・メンバー紐付け</a>
                     <a href="/hinata/media_song_admin.php" class="block py-1.5 text-[11px] font-bold <?= strpos($uri, 'media_song_admin.php') !== false ? 'text-sky-500' : 'text-slate-400' ?> hover:text-sky-500 transition">動画・楽曲紐付け</a>
@@ -191,7 +193,15 @@ $inactiveClass = "text-slate-500 hover:bg-slate-50 transition";
             </div>
             <div class="user-info text-sm truncate">
                 <p class="font-bold text-slate-900 leading-none"><?= htmlspecialchars($user['id_name']) ?></p>
-                <p class="text-[10px] text-slate-400 mt-1 font-bold tracking-wider"><?= $user['role'] === 'admin' ? '管理者' : '一般ユーザー' ?></p>
+                <p class="text-[10px] text-slate-400 mt-1 font-bold tracking-wider">
+                    <?php if (($user['role'] ?? '') === 'admin'): ?>
+                        管理者
+                    <?php elseif (($user['role'] ?? '') === 'hinata_admin'): ?>
+                        日向坂管理者
+                    <?php else: ?>
+                        一般ユーザー
+                    <?php endif; ?>
+                </p>
             </div>
             <div class="ml-auto flex items-center">
                 <a href="/users_settings/" class="text-slate-400 hover:text-indigo-600 p-2" title="設定"><i class="fa-solid fa-gear"></i></a>

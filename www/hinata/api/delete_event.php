@@ -9,7 +9,10 @@ use Core\Auth;
 use App\Hinata\Controller\EventController;
 
 $auth = new Auth();
-if (!$auth->check() || ($_SESSION['user']['role'] ?? '') !== 'admin') {
+if (
+    !$auth->check()
+    || !in_array(($_SESSION['user']['role'] ?? ''), ['admin', 'hinata_admin'], true)
+) {
     header('Content-Type: application/json', true, 403);
     echo json_encode(['status' => 'error', 'message' => 'Forbidden']);
     exit;

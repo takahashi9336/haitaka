@@ -205,7 +205,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         }
 
         async function loadVideos() {
-            const params = new URLSearchParams({ q: searchVideo.value, category: filterCategory.value, limit: 200 });
+            const params = new URLSearchParams({ q: searchVideo.value, category: filterCategory.value, limit: 200, link_type: 'song' });
             if (filterUnlinkedOnly && filterUnlinkedOnly.checked) params.set('unlinked_only', '1');
             const res = await fetch('/hinata/api/list_media_for_link.php?' + params);
             const json = await res.json();

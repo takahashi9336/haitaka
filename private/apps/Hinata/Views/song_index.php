@@ -48,7 +48,7 @@ $editionShort = ['type_a' => 'TYPE-A', 'type_b' => 'TYPE-B', 'type_c' => 'TYPE-C
                 <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md <?= $headerIconBg ?> <?= $headerShadow ?>"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?>><i class="fa-solid fa-music text-sm"></i></div>
                 <h1 class="font-black text-slate-700 text-lg tracking-tight">楽曲</h1>
             </div>
-            <?php if (($user['role'] ?? '') === 'admin'): ?>
+            <?php if (in_array(($user['role'] ?? ''), ['admin', 'hinata_admin'], true)): ?>
             <a href="/hinata/release_admin.php" class="text-[10px] font-bold <?= $cardIconText ?> <?= $cardIconBg ?> px-3 py-1.5 rounded-full hover:opacity-90 transition"<?= $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>><i class="fa-solid fa-gear mr-1"></i>リリース管理</a>
             <?php endif; ?>
         </header>

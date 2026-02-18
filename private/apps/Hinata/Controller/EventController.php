@@ -6,6 +6,7 @@ use App\Hinata\Model\EventModel;
 use App\Hinata\Model\MemberModel;
 use Core\Auth;
 use Core\Database;
+use Core\Logger;
 use Core\MediaAssetModel;
 
 /**
@@ -31,7 +32,8 @@ class EventController {
 
     public function admin(): void {
         $auth = new Auth();
-        $auth->requireAdmin();
+        // 日向坂ポータル内の管理者（admin / hinata_admin）のみ許可
+        $auth->requireHinataAdmin('/hinata/');
 
         $memberModel = new MemberModel();
         $eventModel = new EventModel();
@@ -66,9 +68,13 @@ class EventController {
 
             if (!empty($input['id'])) {
                 $eventId = (int)$input['id'];
-                $eventModel->update($eventId, $eventData);
+                $eventModel->update($eventId, $eventData + [
+                    'update_user' => $_SESSION['user']['id_name'] ?? '',
+                ]);
             } else {
-                $eventModel->create($eventData);
+                $eventModel->create($eventData + [
+                    'update_user' => $_SESSION['user']['id_name'] ?? '',
+                ]);
                 $eventId = (int)$pdo->lastInsertId();
             }
 
@@ -106,6 +112,7 @@ class EventController {
             }
 
             $pdo->commit();
+            Logger::info("hn_events save id={$eventId} by=" . ($_SESSION['user']['id_name'] ?? 'guest'));
             echo json_encode(['status' => 'success']);
         } catch (\Exception $e) {
             if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
@@ -118,7 +125,9 @@ class EventController {
         try {
             $input = json_decode(file_get_contents('php://input'), true);
             if (empty($input['id'])) throw new \Exception('ID missing');
-            (new EventModel())->delete((int)$input['id']);
+            $id = (int)$input['id'];
+            (new EventModel())->delete($id);
+            Logger::info("hn_events delete id={$id} by=" . ($_SESSION['user']['id_name'] ?? 'guest'));
             echo json_encode(['status' => 'success']);
         } catch (\Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);

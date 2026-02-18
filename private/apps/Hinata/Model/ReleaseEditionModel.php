@@ -11,7 +11,8 @@ use Core\BaseModel;
 class ReleaseEditionModel extends BaseModel {
     protected string $table = 'hn_release_editions';
     protected array $fields = [
-        'id', 'release_id', 'edition', 'jacket_image_url', 'sort_order', 'created_at'
+        'id', 'release_id', 'edition', 'jacket_image_url', 'sort_order', 'created_at',
+        'updated_at', 'update_user'
     ];
 
     protected bool $isUserIsolated = false;
@@ -81,7 +82,7 @@ class ReleaseEditionModel extends BaseModel {
             return;
         }
 
-        $sql = "INSERT INTO {$this->table} (release_id, edition, jacket_image_url, sort_order) VALUES (:release_id, :edition, :jacket_image_url, :sort_order)";
+        $sql = "INSERT INTO {$this->table} (release_id, edition, jacket_image_url, sort_order, update_user) VALUES (:release_id, :edition, :jacket_image_url, :sort_order, :update_user)";
         $stmt = $this->pdo->prepare($sql);
         $order = 0;
         foreach ($editions as $row) {
@@ -94,6 +95,7 @@ class ReleaseEditionModel extends BaseModel {
                 'edition' => $edition,
                 'jacket_image_url' => !empty($row['jacket_image_url']) ? trim($row['jacket_image_url']) : null,
                 'sort_order' => (int)($row['sort_order'] ?? $order++),
+                'update_user' => $_SESSION['user']['id_name'] ?? '',
             ]);
         }
     }

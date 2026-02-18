@@ -6,7 +6,8 @@
 if (!isset($user)) {
     $user = $_SESSION['user'] ?? [];
 }
-$isAdmin = (($user['role'] ?? '') === 'admin');
+// 日向坂ポータル内での編集ボタン表示用（admin / hinata_admin）
+$isAdmin = in_array(($user['role'] ?? ''), ['admin', 'hinata_admin'], true);
 ?>
 <style>
     #memberModal { opacity: 0; }

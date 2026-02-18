@@ -12,7 +12,7 @@ class ReleaseModel extends BaseModel {
     protected string $table = 'hn_releases';
     protected array $fields = [
         'id', 'release_type', 'release_number', 'title', 'title_kana',
-        'release_date', 'description', 'created_at'
+        'release_date', 'description', 'created_at', 'updated_at', 'update_user'
     ];
 
     /**

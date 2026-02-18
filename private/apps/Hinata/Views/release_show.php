@@ -79,7 +79,7 @@ if (!$mainJacket && !empty($release['editions'])) {
                     <div class="px-5 py-3 border-b <?= $cardBorder ?> flex items-center justify-between flex-wrap gap-2">
                         <h3 class="text-[10px] font-black text-slate-400 tracking-wider">収録曲（<?= count($release['songs'] ?? []) ?> 曲）</h3>
                         <div class="flex items-center gap-2">
-                            <?php if (($user['role'] ?? '') === 'admin'): ?>
+                            <?php if (in_array(($user['role'] ?? ''), ['admin', 'hinata_admin'], true)): ?>
                             <a href="/hinata/release_artist_photos.php?release_id=<?= (int)$release['id'] ?>" class="text-[10px] font-bold <?= $cardIconText ?> hover:opacity-80 transition">アーティスト写真</a>
                             <?php endif; ?>
                             <a href="/hinata/songs.php?tab=songs&release_id=<?= (int)$release['id'] ?>" class="text-[10px] font-bold <?= $cardIconText ?>"<?= isset($cardIconStyle) && $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>>全曲一覧で見る</a>

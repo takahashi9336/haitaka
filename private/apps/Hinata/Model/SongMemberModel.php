@@ -12,7 +12,7 @@ class SongMemberModel extends BaseModel {
     protected string $table = 'hn_song_members';
     protected array $fields = [
         'id', 'song_id', 'member_id', 'is_center', 'row_number', 'position',
-        'part_description'
+        'part_description', 'updated_at', 'update_user'
     ];
 
     /**
@@ -52,8 +52,8 @@ class SongMemberModel extends BaseModel {
         }
 
         $stmt = $this->pdo->prepare("
-            INSERT INTO {$this->table} (song_id, member_id, is_center, `row_number`, `position`, part_description)
-            VALUES (:song_id, :member_id, :is_center, :row_number, :position, :part_description)
+            INSERT INTO {$this->table} (song_id, member_id, is_center, `row_number`, `position`, part_description, update_user)
+            VALUES (:song_id, :member_id, :is_center, :row_number, :position, :part_description, :update_user)
         ");
 
         foreach ($members as $member) {
@@ -64,6 +64,7 @@ class SongMemberModel extends BaseModel {
                 'row_number' => $member['row_number'] ?? null,
                 'position' => $member['position'] ?? null,
                 'part_description' => $member['part_description'] ?? null,
+                'update_user' => $_SESSION['user']['id_name'] ?? '',
             ]);
         }
 

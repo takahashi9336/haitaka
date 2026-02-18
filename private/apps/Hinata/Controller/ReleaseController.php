@@ -10,6 +10,7 @@ use App\Hinata\Model\SongMemberModel;
 use App\Hinata\Model\MemberModel;
 use Core\Auth;
 use Core\Database;
+use Core\Logger;
 
 /**
  * リリース・楽曲管理コントローラ
@@ -22,7 +23,8 @@ class ReleaseController {
      */
     public function admin(): void {
         $auth = new Auth();
-        $auth->requireAdmin();
+        // 日向坂ポータル管理者（admin / hinata_admin）のみ
+        $auth->requireHinataAdmin('/hinata/');
 
         $releaseModel = new ReleaseModel();
         $editionModel = new ReleaseEditionModel();
@@ -72,7 +74,8 @@ class ReleaseController {
      */
     public function artistPhotos(): void {
         $auth = new Auth();
-        $auth->requireAdmin();
+        // 日向坂ポータル管理者（admin / hinata_admin）のみ
+        $auth->requireHinataAdmin('/hinata/');
 
         $releaseId = (int)($_GET['release_id'] ?? 0);
         if ($releaseId === 0) {
@@ -104,7 +107,8 @@ class ReleaseController {
     public function saveReleaseMemberImages(): void {
         header('Content-Type: application/json');
         $auth = new Auth();
-        $auth->requireAdmin();
+        // 日向坂ポータル管理者（admin / hinata_admin）のみ
+        $auth->requireHinataAdmin('/hinata/');
 
         try {
             $input = json_decode(file_get_contents('php://input'), true);
@@ -126,6 +130,7 @@ class ReleaseController {
             $rows = array_filter($rows, fn($r) => $r['image_url'] !== '');
             $releaseMemberImageModel = new ReleaseMemberImageModel();
             $releaseMemberImageModel->saveForRelease($releaseId, array_values($rows));
+            Logger::info("hn_release_member_images save release_id={$releaseId} count=" . count($rows) . " by=" . ($_SESSION['user']['id_name'] ?? 'guest'));
             echo json_encode(['status' => 'success', 'message' => 'アーティスト写真を保存しました']);
         } catch (\Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -167,10 +172,14 @@ class ReleaseController {
             if (!empty($input['id'])) {
                 // 更新
                 $releaseId = (int)$input['id'];
-                $releaseModel->update($releaseId, $releaseData);
+                $releaseModel->update($releaseId, $releaseData + [
+                    'update_user' => $_SESSION['user']['id_name'] ?? '',
+                ]);
             } else {
                 // 新規作成
-                $releaseModel->create($releaseData);
+                $releaseModel->create($releaseData + [
+                    'update_user' => $_SESSION['user']['id_name'] ?? '',
+                ]);
                 $releaseId = (int)$pdo->lastInsertId();
             }
 
@@ -240,7 +249,9 @@ class ReleaseController {
             }
 
             $releaseModel = new ReleaseModel();
-            $releaseModel->delete((int)$input['id']);
+            $releaseId = (int)$input['id'];
+            $releaseModel->delete($releaseId);
+            Logger::info("hn_releases delete id={$releaseId} by=" . ($_SESSION['user']['id_name'] ?? 'guest'));
 
             echo json_encode(['status' => 'success', 'message' => '削除しました']);
         } catch (\Exception $e) {

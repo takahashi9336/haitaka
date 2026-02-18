@@ -9,6 +9,7 @@ use App\Hinata\Model\ReleaseMemberImageModel;
 use App\Hinata\Model\SongMemberModel;
 use App\Hinata\Model\MemberModel;
 use Core\Auth;
+use Core\Logger;
 
 /**
  * 楽曲ページ用コントローラ（公開：リリース一覧・全曲一覧・楽曲個別紹介）
@@ -151,7 +152,8 @@ class SongController {
      */
     public function memberEdit(): void {
         $auth = new Auth();
-        $auth->requireAdmin();
+        // 日向坂ポータル管理者（admin / hinata_admin）のみ
+        $auth->requireHinataAdmin('/hinata/');
 
         $songId = (int)($_GET['song_id'] ?? 0);
         if ($songId === 0) {
@@ -202,7 +204,12 @@ class SongController {
     public function saveMembers(): void {
         header('Content-Type: application/json');
         $auth = new Auth();
-        $auth->requireAdmin();
+        // 日向坂ポータル管理者（admin / hinata_admin）のみJSON APIを許可
+        if (!$auth->check() || !$auth->isHinataAdmin()) {
+            http_response_code(403);
+            echo json_encode(['status' => 'error', 'message' => '権限がありません']);
+            return;
+        }
 
         try {
             $input = json_decode(file_get_contents('php://input'), true);
@@ -236,6 +243,7 @@ class SongController {
             $songMemberModel = new SongMemberModel();
             $songMemberModel->bulkInsertMembers($songId, $members);
 
+            Logger::info("hn_song_members bulkSave song_id={$songId} count=" . count($members) . " by=" . ($_SESSION['user']['id_name'] ?? 'guest'));
             echo json_encode(['status' => 'success']);
         } catch (\Exception $e) {
             http_response_code(400);
