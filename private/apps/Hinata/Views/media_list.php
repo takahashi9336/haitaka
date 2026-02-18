@@ -138,6 +138,16 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         #videoModal.modal-closing .video-modal-content {
             animation: modalShrinkToPoint 0.3s cubic-bezier(0.55, 0.09, 0.68, 0.53) forwards;
         }
+        .video-desc {
+            font-size: 0.7rem;
+            line-height: 1.3;
+            max-height: 3.6em;
+            overflow: hidden;
+            white-space: pre-wrap;
+        }
+        .video-desc.expanded {
+            max-height: none;
+        }
         @keyframes modalExpandFromPoint {
             0% {
                 transform: translate(var(--modal-translate-x, 0), var(--modal-translate-y, 0)) scale(0.3);
@@ -246,8 +256,8 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                         <div class="flex items-center gap-2">
                             <label class="text-xs font-bold text-slate-600">並び順:</label>
                             <select id="filterSort" class="h-9 border border-sky-100 rounded-lg px-3 text-xs outline-none bg-slate-50">
-                                <option value="newest">新しい順</option>
-                                <option value="oldest">古い順</option>
+                                <option value="newest" selected>アップロード日が新しい順</option>
+                                <option value="oldest">アップロード日が古い順</option>
                                 <option value="title">タイトル順</option>
                             </select>
                         </div>
@@ -424,18 +434,43 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             }
         }
 
+        // 表示用サムネイルURL（DBの thumbnail_url が空でも YouTube は media_key から生成可能）
+        function getThumbnailUrl(video) {
+            if (video.thumbnail_url) return video.thumbnail_url;
+            if (video.platform === 'youtube' && video.media_key) {
+                return `https://img.youtube.com/vi/${video.media_key}/mqdefault.jpg`;
+            }
+            return '/assets/images/no-image.jpg';
+        }
+
+        function toggleDesc(ev) {
+            ev.stopPropagation();
+            const btn = ev.currentTarget;
+            const container = btn.closest('.video-desc-container');
+            if (!container) return;
+            const p = container.querySelector('.video-desc');
+            if (!p) return;
+            const expanded = p.classList.toggle('expanded');
+            btn.textContent = expanded ? '閉じる' : '...もっと見る';
+        }
+
         // ブロック形式のカード生成
         function renderVideoCard(video) {
             const categoryColors = {
-                'MV': 'bg-pink-100 text-pink-700',
+                'CM': 'bg-slate-100 text-slate-700',
+                'Hinareha': 'bg-amber-100 text-amber-700',
                 'Live': 'bg-purple-100 text-purple-700',
-                'Variety': 'bg-yellow-100 text-yellow-700',
+                'MV': 'bg-pink-100 text-pink-700',
+                'SelfIntro': 'bg-cyan-100 text-cyan-700',
                 'SoloPV': 'bg-blue-100 text-blue-700',
-                'Unit': 'bg-indigo-100 text-indigo-700',
-                'Event': 'bg-green-100 text-green-700',
-                'Documentary': 'bg-orange-100 text-orange-700',
+                'Special': 'bg-orange-100 text-orange-700',
+                'Teaser': 'bg-emerald-100 text-emerald-700',
+                'Trailer': 'bg-rose-100 text-rose-700',
+                'Variety': 'bg-yellow-100 text-yellow-700',
             };
             const categoryColor = categoryColors[video.category] || 'bg-slate-100 text-slate-600';
+            const primaryDate = video.upload_date || video.release_date || '';
+            const hasDesc = video.description && video.description.trim() !== '';
             const dataVideo = JSON.stringify({
                 platform: video.platform,
                 media_key: video.media_key,
@@ -443,15 +478,17 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 title: video.title,
                 category: video.category,
                 thumbnail_url: video.thumbnail_url || '',
-                release_date: video.release_date || '',
+                description: video.description || '',
+                release_date: primaryDate,
                 created_at: video.created_at || ''
             }).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 
-            const dateStr = video.release_date ? new Date(video.release_date).toLocaleDateString('ja-JP') : '';
+            const dateStr = primaryDate ? new Date(primaryDate).toLocaleDateString('ja-JP') : '';
+            const thumbUrl = getThumbnailUrl(video);
             return `
                 <div class="video-card bg-white rounded-sm border border-slate-100 overflow-hidden" data-video="${dataVideo}" onclick="openVideoModal(this, event)">
                     <div class="video-thumbnail rounded-t-sm">
-                        <img src="${video.thumbnail_url || '/assets/images/no-image.jpg'}" alt="${escapeHtml(video.title)}">
+                        <img src="${thumbUrl}" alt="${escapeHtml(video.title)}" onerror="this.src='/assets/images/no-image.jpg'">
                         <div class="play-icon">
                             <i class="fa-solid fa-play text-white text-2xl ml-1"></i>
                         </div>
@@ -459,6 +496,11 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                     <div class="pt-3 pb-1">
                         <h3 class="text-sm text-slate-700 leading-snug line-clamp-2">${escapeHtml(video.title)}</h3>
                         ${dateStr ? `<p class="text-xs text-slate-400 mt-1">${dateStr}</p>` : ''}
+                        ${hasDesc ? `
+                        <div class="mt-1 text-[11px] text-slate-500 video-desc-container">
+                            <p class="video-desc">${escapeHtml(video.description || '')}</p>
+                            <button type="button" class="text-[10px] text-sky-600 font-bold mt-0.5 hover:underline" onclick="toggleDesc(event)">...もっと見る</button>
+                        </div>` : ''}
                     </div>
                 </div>
             `;
@@ -467,15 +509,20 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         // 一覧形式の行生成
         function renderVideoRow(video) {
             const categoryColors = {
-                'MV': 'bg-pink-100 text-pink-700',
+                'CM': 'bg-slate-100 text-slate-700',
+                'Hinareha': 'bg-amber-100 text-amber-700',
                 'Live': 'bg-purple-100 text-purple-700',
-                'Variety': 'bg-yellow-100 text-yellow-700',
+                'MV': 'bg-pink-100 text-pink-700',
+                'SelfIntro': 'bg-cyan-100 text-cyan-700',
                 'SoloPV': 'bg-blue-100 text-blue-700',
-                'Unit': 'bg-indigo-100 text-indigo-700',
-                'Event': 'bg-green-100 text-green-700',
-                'Documentary': 'bg-orange-100 text-orange-700',
+                'Special': 'bg-orange-100 text-orange-700',
+                'Teaser': 'bg-emerald-100 text-emerald-700',
+                'Trailer': 'bg-rose-100 text-rose-700',
+                'Variety': 'bg-yellow-100 text-yellow-700',
             };
             const categoryColor = categoryColors[video.category] || 'bg-slate-100 text-slate-600';
+            const primaryDate = video.upload_date || video.release_date || '';
+            const hasDesc = video.description && video.description.trim() !== '';
             const dataVideo = JSON.stringify({
                 platform: video.platform,
                 media_key: video.media_key,
@@ -483,21 +530,30 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 title: video.title,
                 category: video.category,
                 thumbnail_url: video.thumbnail_url || '',
-                release_date: video.release_date || '',
+                description: video.description || '',
+                release_date: primaryDate,
                 created_at: video.created_at || ''
             }).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 
-            const dateStr = video.release_date
-                ? new Date(video.release_date).toLocaleDateString('ja-JP')
+            const dateStr = primaryDate
+                ? new Date(primaryDate).toLocaleDateString('ja-JP')
                 : (video.created_at ? '登録日: ' + new Date(video.created_at).toLocaleDateString('ja-JP') : '');
+            const thumbUrl = getThumbnailUrl(video);
             return `
                 <div class="video-card bg-white rounded-lg border border-sky-100 shadow-sm px-3 py-2 flex items-center gap-3 hover:bg-sky-50/50 transition cursor-pointer" data-video="${dataVideo}" onclick="openVideoModal(this, event)">
                     <div class="w-16 shrink-0 aspect-video rounded overflow-hidden bg-slate-100 flex-shrink-0 relative">
-                        <img src="${video.thumbnail_url || '/assets/images/no-image.jpg'}" alt="" class="w-full h-full object-cover">
+                        <img src="${thumbUrl}" alt="" class="w-full h-full object-cover" onerror="this.src='/assets/images/no-image.jpg'">
                     </div>
                     <div class="flex-1 min-w-0 flex items-center gap-4">
                         <span class="category-badge ${categoryColor} shrink-0">${video.category}</span>
-                        <h3 class="text-sm font-bold text-slate-800 truncate flex-1">${escapeHtml(video.title)}</h3>
+                        <div class="flex-1 min-w-0">
+                            <h3 class="text-sm font-bold text-slate-800 truncate">${escapeHtml(video.title)}</h3>
+                            ${hasDesc ? `
+                            <div class="mt-0.5 text-[11px] text-slate-500 video-desc-container">
+                                <p class="video-desc">${escapeHtml(video.description || '')}</p>
+                                <button type="button" class="text-[10px] text-sky-600 font-bold mt-0.5 hover:underline" onclick="toggleDesc(event)">...もっと見る</button>
+                            </div>` : ''}
+                        </div>
                         <span class="text-xs text-slate-400 shrink-0">${dateStr}</span>
                     </div>
                 </div>
@@ -574,20 +630,24 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             }
 
             const categoryColors = {
-                'MV': 'bg-pink-100 text-pink-700',
+                'CM': 'bg-slate-100 text-slate-700',
+                'Hinareha': 'bg-amber-100 text-amber-700',
                 'Live': 'bg-purple-100 text-purple-700',
-                'Variety': 'bg-yellow-100 text-yellow-700',
+                'MV': 'bg-pink-100 text-pink-700',
+                'SelfIntro': 'bg-cyan-100 text-cyan-700',
                 'SoloPV': 'bg-blue-100 text-blue-700',
-                'Unit': 'bg-indigo-100 text-indigo-700',
-                'Event': 'bg-green-100 text-green-700',
-                'Documentary': 'bg-orange-100 text-orange-700',
+                'Special': 'bg-orange-100 text-orange-700',
+                'Teaser': 'bg-emerald-100 text-emerald-700',
+                'Trailer': 'bg-rose-100 text-rose-700',
+                'Variety': 'bg-yellow-100 text-yellow-700',
             };
             const categoryEl = document.getElementById('videoModalCategory');
             categoryEl.textContent = video.category || '';
             categoryEl.className = 'category-badge ' + (categoryColors[video.category] || 'bg-slate-100 text-slate-600');
             document.getElementById('videoModalTitle').textContent = video.title || '';
-            document.getElementById('videoModalDate').textContent = video.release_date
-                ? new Date(video.release_date).toLocaleDateString('ja-JP')
+            const primaryDate = video.release_date || video.created_at || '';
+            document.getElementById('videoModalDate').textContent = primaryDate
+                ? new Date(primaryDate).toLocaleDateString('ja-JP')
                 : (video.created_at ? '登録日: ' + new Date(video.created_at).toLocaleDateString('ja-JP') : '');
 
             modal.classList.remove('modal-closing');

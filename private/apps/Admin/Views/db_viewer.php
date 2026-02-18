@@ -129,17 +129,31 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                     <!-- タブコンテンツ：データ -->
                     <div id="tab_data" class="db-tab-content active">
                         <?php if (!empty($columns)): ?>
-                        <div class="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                        <?php
+                        $limitOption = $limitOption ?? '100';
+                        $baseUrl = '?table=' . rawurlencode($selectedTable) . '&limit=' . rawurlencode($limitOption);
+                        $totalPages = $rowsPerPage > 0 ? max(1, (int)ceil(($totalCount ?? 0) / $rowsPerPage)) : 1;
+                        ?>
+                        <div class="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-4">
                             <h3 class="font-bold text-slate-800"><?= htmlspecialchars($selectedTable) ?> <span class="text-slate-400 font-normal text-sm">（<?= $totalCount ?? 0 ?> 件）</span></h3>
-                            <?php $totalPages = max(1, (int)ceil(($totalCount ?? 0) / $rowsPerPage)); ?>
+                            <div class="flex flex-wrap items-center gap-3">
+                                <span class="text-xs text-slate-500 font-bold">表示件数</span>
+                                <select onchange="location.href='?table=<?= rawurlencode($selectedTable) ?>&limit='+this.value+'&page=1'" class="border border-slate-200 rounded-lg h-8 px-3 text-xs font-bold bg-slate-50 focus:ring-2 focus:ring-slate-200 outline-none">
+                                    <option value="50"   <?= $limitOption === '50'   ? 'selected' : '' ?>>50</option>
+                                    <option value="100"  <?= $limitOption === '100'  ? 'selected' : '' ?>>100</option>
+                                    <option value="250"  <?= $limitOption === '250'  ? 'selected' : '' ?>>250</option>
+                                    <option value="500"  <?= $limitOption === '500'  ? 'selected' : '' ?>>500</option>
+                                    <option value="all"  <?= $limitOption === 'all'  ? 'selected' : '' ?>>すべて</option>
+                                </select>
+                            </div>
                             <?php if ($totalPages > 1): ?>
                             <nav class="flex items-center gap-2">
                                 <?php if ($page > 1): ?>
-                                <a href="?table=<?= rawurlencode($selectedTable) ?>&page=<?= $page - 1 ?>" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition">前へ</a>
+                                <a href="<?= $baseUrl ?>&page=<?= $page - 1 ?>" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition">前へ</a>
                                 <?php endif; ?>
                                 <span class="text-xs text-slate-500 font-bold"><?= $page ?> / <?= $totalPages ?></span>
                                 <?php if ($page < $totalPages): ?>
-                                <a href="?table=<?= rawurlencode($selectedTable) ?>&page=<?= $page + 1 ?>" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition">次へ</a>
+                                <a href="<?= $baseUrl ?>&page=<?= $page + 1 ?>" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition">次へ</a>
                                 <?php endif; ?>
                             </nav>
                             <?php endif; ?>

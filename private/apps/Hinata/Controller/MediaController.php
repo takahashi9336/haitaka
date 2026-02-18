@@ -13,16 +13,19 @@ use Core\MediaAssetModel;
 class MediaController {
     
     /**
-     * カテゴリ定義
+     * カテゴリ定義（hn_media_metadata.category のバリエーション）
      */
     private const CATEGORIES = [
-        'MV' => 'ミュージックビデオ',
-        'Live' => 'ライブ映像',
-        'Variety' => 'バラエティ',
-        'SoloPV' => '個人PV',
-        'Unit' => 'ユニット曲',
-        'Documentary' => 'ドキュメンタリー',
-        'Event' => 'イベント',
+        'CM' => 'CM',
+        'Hinareha' => 'Hinareha',
+        'Live' => 'Live',
+        'MV' => 'MV',
+        'SelfIntro' => 'SelfIntro',
+        'SoloPV' => 'SoloPV',
+        'Special' => 'Special',
+        'Teaser' => 'Teaser',
+        'Trailer' => 'Trailer',
+        'Variety' => 'Variety',
     ];
 
     /**
@@ -81,14 +84,15 @@ class MediaController {
             
             $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
             
-            // ORDER BY 条件（hn_media_metadata に created_at がないため ma.created_at を使用）
+            // ORDER BY: アップロード日（upload_date）を優先、NULL の場合は登録日（created_at）で補完
             $orderBy = match($sort) {
-                'oldest' => 'ma.created_at ASC',
+                'oldest' => 'COALESCE(ma.upload_date, ma.created_at) ASC',
                 'title' => 'ma.title ASC',
-                default => 'ma.created_at DESC',  // newest
+                default => 'COALESCE(ma.upload_date, ma.created_at) DESC',  // newest（デフォルト）
             };
 
             // メイン取得（limit+1件取得して has_more を判定）
+            // 日付系は将来的に com_media_assets.upload_date を主体に扱う想定
             $sql = "SELECT 
                         hmeta.id as meta_id,
                         hmeta.category,
@@ -99,6 +103,8 @@ class MediaController {
                         ma.sub_key,
                         ma.title,
                         ma.thumbnail_url,
+                        ma.description,
+                        ma.upload_date,
                         ma.created_at
                     FROM hn_media_metadata hmeta
                     JOIN com_media_assets ma ON hmeta.asset_id = ma.id
@@ -122,6 +128,9 @@ class MediaController {
             if ($hasMore) {
                 array_pop($results);  // 余分な1件を削除
             }
+
+            // thumbnail_url が空のとき、プラットフォームから表示用URLを補完（DBは無理に設定しなくてよい）
+            $this->fillThumbnailUrlFromPlatform($results);
 
             echo json_encode([
                 'status' => 'success',
@@ -159,6 +168,27 @@ class MediaController {
     }
 
     /**
+     * 動画・楽曲紐付け管理画面（管理者専用）
+     */
+    public function mediaSongAdmin(): void {
+        $auth = new Auth();
+        $auth->requireAdmin();
+        $releaseModel = new \App\Hinata\Model\ReleaseModel();
+        $categories = self::CATEGORIES;
+        $releases = $releaseModel->getAllReleases();
+        $releasesWithSongs = [];
+        foreach ($releases as $r) {
+            $full = $releaseModel->getReleaseWithSongs((int)$r['id']);
+            if ($full) {
+                $releasesWithSongs[] = $full;
+            }
+        }
+        $trackTypesDisplay = \App\Hinata\Model\SongModel::TRACK_TYPES_DISPLAY;
+        $user = $_SESSION['user'];
+        require_once __DIR__ . '/../Views/media_song_admin.php';
+    }
+
+    /**
      * 紐付け管理用：動画一覧取得API
      * GET: ?q=&category=&limit=100
      */
@@ -172,6 +202,7 @@ class MediaController {
             }
             $q = trim($_GET['q'] ?? '');
             $category = $_GET['category'] ?? '';
+            $unlinkedOnly = !empty($_GET['unlinked_only']);
             $limit = min((int)($_GET['limit'] ?? 100), 200);
             $pdo = Database::connect();
             $where = [];
@@ -185,13 +216,27 @@ class MediaController {
                 $params['q'] = '%' . $q . '%';
                 $params['q2'] = '%' . $q . '%';
             }
+            if ($unlinkedOnly) {
+                $where[] = 'NOT EXISTS (SELECT 1 FROM hn_song_media_links l WHERE l.media_meta_id = hmeta.id)';
+            }
             $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
-            $sql = "SELECT hmeta.id as meta_id, hmeta.category, hmeta.release_date,
-                           ma.id as asset_id, ma.platform, ma.media_key, ma.title, ma.thumbnail_url
+            $sql = "SELECT 
+                        hmeta.id as meta_id, 
+                        hmeta.category, 
+                        hmeta.release_date,
+                        ma.id as asset_id, 
+                        ma.platform, 
+                        ma.media_key, 
+                        ma.title, 
+                        ma.thumbnail_url,
+                        ma.description,
+                        ma.upload_date
                     FROM hn_media_metadata hmeta
                     JOIN com_media_assets ma ON hmeta.asset_id = ma.id
                     {$whereClause}
-                    ORDER BY ma.title ASC
+                    ORDER BY 
+                        COALESCE(ma.upload_date, ma.created_at) DESC,
+                        ma.title ASC
                     LIMIT :limit";
             $stmt = $pdo->prepare($sql);
             $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
@@ -199,10 +244,28 @@ class MediaController {
                 $stmt->bindValue(":$k", $v);
             }
             $stmt->execute();
-            echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
+            $data = $stmt->fetchAll();
+            $this->fillThumbnailUrlFromPlatform($data);
+            echo json_encode(['status' => 'success', 'data' => $data]);
         } catch (\Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
         }
+    }
+
+    /**
+     * thumbnail_url が空の行について、platform + media_key から表示用URLを補完する。
+     * DBの thumbnail_url は任意（無理に設定しなくてよい）。YouTube は media_key から常に生成可能。
+     */
+    private function fillThumbnailUrlFromPlatform(array &$rows): void {
+        foreach ($rows as &$row) {
+            if (!empty($row['thumbnail_url'])) {
+                continue;
+            }
+            if (($row['platform'] ?? '') === 'youtube' && !empty($row['media_key'])) {
+                $row['thumbnail_url'] = 'https://img.youtube.com/vi/' . $row['media_key'] . '/mqdefault.jpg';
+            }
+        }
+        unset($row);
     }
 
     /**
@@ -274,6 +337,84 @@ class MediaController {
             }
             $pdo->commit();
             echo json_encode(['status' => 'success', 'saved' => count($memberIds)]);
+        } catch (\Exception $e) {
+            $pdo = Database::connect();
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * 動画・楽曲紐付け用：指定動画に紐づく楽曲を1件取得
+     * GET: ?meta_id=123
+     */
+    public function getMediaLinkedSong(): void {
+        header('Content-Type: application/json');
+        try {
+            $auth = new Auth();
+            if (!$auth->check() || !$auth->isAdmin()) {
+                echo json_encode(['status' => 'error', 'message' => '権限がありません']);
+                return;
+            }
+            $metaId = (int)($_GET['meta_id'] ?? 0);
+            if (!$metaId) {
+                echo json_encode(['status' => 'error', 'message' => 'meta_id required']);
+                return;
+            }
+            $pdo = Database::connect();
+            $stmt = $pdo->prepare("
+                SELECT s.id, s.release_id, s.title, s.track_type, s.track_number,
+                       r.title as release_title, r.release_number
+                FROM hn_song_media_links l
+                JOIN hn_songs s ON s.id = l.song_id
+                JOIN hn_releases r ON s.release_id = r.id
+                WHERE l.media_meta_id = :meta_id
+                LIMIT 1
+            ");
+            $stmt->execute(['meta_id' => $metaId]);
+            $song = $stmt->fetch(\PDO::FETCH_ASSOC);
+            echo json_encode(['status' => 'success', 'data' => $song ?: null]);
+        } catch (\Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * 動画・楽曲紐付け保存API
+     * POST: { meta_id: int, song_id: int|null }  song_id=null で紐付け解除
+     */
+    public function saveMediaSongLink(): void {
+        header('Content-Type: application/json');
+        try {
+            $auth = new Auth();
+            if (!$auth->check() || !$auth->isAdmin()) {
+                echo json_encode(['status' => 'error', 'message' => '権限がありません']);
+                return;
+            }
+            $input = json_decode(file_get_contents('php://input'), true) ?: [];
+            $metaId = (int)($input['meta_id'] ?? 0);
+            $songId = isset($input['song_id']) ? (int)$input['song_id'] : null;
+            if ($songId !== null && $songId <= 0) {
+                $songId = null;
+            }
+
+            if (!$metaId) {
+                echo json_encode(['status' => 'error', 'message' => 'meta_id required']);
+                return;
+            }
+
+            $pdo = Database::connect();
+            $pdo->beginTransaction();
+            $stmt = $pdo->prepare('DELETE FROM hn_song_media_links WHERE media_meta_id = ?');
+            $stmt->execute([$metaId]);
+            if ($songId !== null) {
+                $stmt = $pdo->prepare('INSERT INTO hn_song_media_links (song_id, media_meta_id) VALUES (?, ?)');
+                $stmt->execute([$songId, $metaId]);
+            }
+            $pdo->commit();
+            echo json_encode(['status' => 'success']);
         } catch (\Exception $e) {
             $pdo = Database::connect();
             if ($pdo->inTransaction()) {
@@ -373,7 +514,8 @@ class MediaController {
                     $parsed['media_key'],
                     $parsed['sub_key'],
                     $item['title'] ?? '',
-                    null // サムネイルURLは自動生成
+                    null, // サムネイルURLは自動生成
+                    $uploadDate
                 );
 
                 if (!$assetId) {
@@ -383,12 +525,12 @@ class MediaController {
 
                 // Metadata 登録
                 $category = $item['category'] ?? 'MV';
-                $releaseDate = !empty($item['release_date']) ? $item['release_date'] : null;
+                // CSV上の「公開日」は動画のアップロード日時として扱う
+                $uploadDate = !empty($item['release_date']) ? $item['release_date'] : null;
                 
                 $metaId = $mediaModel->findOrCreateMetadata(
                     $assetId,
-                    $category,
-                    $releaseDate
+                    $category
                 );
 
                 if (!$metaId) {

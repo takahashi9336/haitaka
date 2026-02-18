@@ -7,8 +7,9 @@ use Core\Database;
 use Core\Utils\StringUtil;
 
 class DbViewerController {
-    private const MAX_ROWS = 500;
-    private const ROWS_PER_PAGE = 100;
+    /** 一覧表示数の選択肢（数値＝件数、'all'＝すべて） */
+    private const LIMIT_OPTIONS = [50, 100, 250, 500, 'all'];
+    private const LIMIT_ALL_MAX = 10000; // 「すべて」の上限（負荷対策）
 
     public function index(): void {
         $auth = new Auth();
@@ -22,6 +23,12 @@ class DbViewerController {
         $totalCount = null;
         $page = max(1, (int)($_GET['page'] ?? 1));
 
+        $limitParam = $_GET['limit'] ?? '100';
+        if (!in_array($limitParam, array_map('strval', self::LIMIT_OPTIONS), true) && $limitParam !== 'all') {
+            $limitParam = '100';
+        }
+        $rowsPerPage = $limitParam === 'all' ? self::LIMIT_ALL_MAX : (int)$limitParam;
+
         $tableStructure = [];
         $createSql = null;
 
@@ -30,12 +37,12 @@ class DbViewerController {
             $tableStructure = $this->getTableStructure($pdo, $selectedTable);
             $createSql = $this->getCreateTable($pdo, $selectedTable);
             $totalCount = $this->getCount($pdo, $selectedTable);
-            $offset = ($page - 1) * self::ROWS_PER_PAGE;
-            $rows = $this->getRows($pdo, $selectedTable, $offset, self::ROWS_PER_PAGE);
+            $offset = ($page - 1) * $rowsPerPage;
+            $rows = $this->getRows($pdo, $selectedTable, $offset, $rowsPerPage);
         }
 
         $user = $_SESSION['user'];
-        $rowsPerPage = self::ROWS_PER_PAGE;
+        $limitOption = $limitParam;
         require_once __DIR__ . '/../Views/db_viewer.php';
     }
 

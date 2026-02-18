@@ -13,7 +13,8 @@ class MediaAssetModel extends BaseModel {
     protected string $table = 'com_media_assets';
     protected array $fields = [
         'id', 'platform', 'media_key', 'sub_key',
-        'title', 'thumbnail_url', 'created_at'
+        'title', 'thumbnail_url', 'description',
+        'upload_date', 'created_at'
     ];
 
     /**
@@ -47,7 +48,14 @@ class MediaAssetModel extends BaseModel {
     /**
      * platform + media_key (+sub_key) で com_media_assets を取得 or 作成し、asset_id を返す
      */
-    public function findOrCreateAsset(string $platform, string $mediaKey, ?string $subKey, string $title, ?string $thumbnailUrl = null): ?int {
+    public function findOrCreateAsset(
+        string $platform,
+        string $mediaKey,
+        ?string $subKey,
+        string $title,
+        ?string $thumbnailUrl = null,
+        ?string $uploadDate = null
+    ): ?int {
         $platform = strtolower($platform);
 
         $sql = "SELECT id FROM com_media_assets WHERE platform = :platform AND media_key = :media_key";
@@ -60,17 +68,14 @@ class MediaAssetModel extends BaseModel {
             return (int)$assetId;
         }
 
-        // サムネイルが未指定の場合、YouTubeのみデフォルトを補完
-        if ($thumbnailUrl === null && $platform === 'youtube') {
-            $thumbnailUrl = "https://img.youtube.com/vi/{$mediaKey}/mqdefault.jpg";
-        }
-
+        // thumbnail_url は任意。YouTube は media_key から表示時に生成するため、DBには無理に保存しない。
         $this->create([
             'platform'      => $platform,
             'media_key'     => $mediaKey,
             'sub_key'       => $subKey,
             'title'         => $title,
             'thumbnail_url' => $thumbnailUrl,
+            'upload_date'   => $uploadDate ?: date('Y-m-d H:i:s'),
             'created_at'    => date('Y-m-d H:i:s'),
         ]);
 
@@ -84,7 +89,7 @@ class MediaAssetModel extends BaseModel {
      * ※ asset_id は UNIQUE KEY のため、1動画に1メタデータが原則
      * カテゴリは後から更新可能
      */
-    public function findOrCreateMetadata(int $assetId, string $category, ?string $releaseDate = null): ?int {
+    public function findOrCreateMetadata(int $assetId, string $category): ?int {
         $sql = "SELECT id FROM hn_media_metadata WHERE asset_id = :asset_id";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute(['asset_id' => $assetId]);
@@ -95,15 +100,14 @@ class MediaAssetModel extends BaseModel {
             return (int)$metaId;
         }
 
-        // 新規作成
+        // 新規作成（release_date は今後利用しないため登録しない）
         $stmt = $this->pdo->prepare("
-            INSERT INTO hn_media_metadata (asset_id, category, release_date)
-            VALUES (:asset_id, :category, :release_date)
+            INSERT INTO hn_media_metadata (asset_id, category)
+            VALUES (:asset_id, :category)
         ");
         $stmt->execute([
-            'asset_id'     => $assetId,
-            'category'     => $category,
-            'release_date' => $releaseDate,
+            'asset_id' => $assetId,
+            'category' => $category,
         ]);
 
         $newId = $this->lastInsertId();

@@ -112,9 +112,23 @@ class SongController {
             }
         }
 
-        $mvEmbedUrl = $songModel->getYoutubeEmbedUrlByMediaMetaId(
-            isset($song['media_meta_id']) ? (int)$song['media_meta_id'] : null
-        );
+        // 楽曲に紐づく動画一覧（カテゴリ別表示・MV優先）
+        $mediaLinks = $songModel->getMediaLinksBySongId($songId);
+        $videosByCategory = [];
+        foreach ($mediaLinks as $v) {
+            $cat = $v['category'] ?? '';
+            if (!isset($videosByCategory[$cat])) {
+                $videosByCategory[$cat] = [];
+            }
+            $videosByCategory[$cat][] = $v;
+        }
+        // MV を最優先、その後カテゴリ名順
+        $categoryOrder = array_keys($videosByCategory);
+        usort($categoryOrder, function ($a, $b) {
+            if ($a === 'MV' && $b !== 'MV') return -1;
+            if ($b === 'MV' && $a !== 'MV') return 1;
+            return strcmp((string)$a, (string)$b);
+        });
 
         $releaseTypes = ReleaseModel::RELEASE_TYPES;
         $trackTypesDisplay = SongModel::TRACK_TYPES_DISPLAY;
@@ -159,6 +173,21 @@ class SongController {
         $release = $releaseModel->find((int)$song['release_id']);
         $members = $songMemberModel->getBySongIdWithNames($songId);
         $allMembers = $memberModel->getAllWithColors();
+
+        // フォーメーション編集画面では、アー写は hn_release_member_images.image_url のみを使用し、
+        // 登録がないメンバーは人アイコン表示（image_url は null）とする。
+        $releaseMemberImageMap = [];
+        if (!empty($song['release_id'])) {
+            $releaseMemberImageModel = new ReleaseMemberImageModel();
+            $releaseMemberImageMap = $releaseMemberImageModel->getMapByReleaseId((int)$song['release_id']);
+        }
+        foreach ($allMembers as &$m) {
+            $mid = (int)($m['id'] ?? 0);
+            $m['image_url'] = ($mid > 0 && isset($releaseMemberImageMap[$mid]) && $releaseMemberImageMap[$mid] !== '')
+                ? $releaseMemberImageMap[$mid]
+                : null;
+        }
+        unset($m);
 
         $releaseTypes = ReleaseModel::RELEASE_TYPES;
         $rowNames = SongMemberModel::ROW_NAMES;

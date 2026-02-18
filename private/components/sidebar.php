@@ -170,6 +170,7 @@ $inactiveClass = "text-slate-500 hover:bg-slate-50 transition";
                     <?php if ($isAdmin): ?>
                     <a href="/hinata/media_import.php" class="block py-1.5 text-[11px] font-bold <?= strpos($uri, 'media_import.php') !== false ? 'text-sky-500' : 'text-slate-400' ?> hover:text-sky-500 transition">動画一括登録</a>
                     <a href="/hinata/media_member_admin.php" class="block py-1.5 text-[11px] font-bold <?= strpos($uri, 'media_member_admin.php') !== false ? 'text-sky-500' : 'text-slate-400' ?> hover:text-sky-500 transition">動画・メンバー紐付け</a>
+                    <a href="/hinata/media_song_admin.php" class="block py-1.5 text-[11px] font-bold <?= strpos($uri, 'media_song_admin.php') !== false ? 'text-sky-500' : 'text-slate-400' ?> hover:text-sky-500 transition">動画・楽曲紐付け</a>
                     <?php endif; ?>
                 </div>
                 <?php endif; ?>

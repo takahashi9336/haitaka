@@ -62,7 +62,7 @@ $editionShort = ['type_a' => 'TYPE-A', 'type_b' => 'TYPE-B', 'type_c' => 'TYPE-C
 
         <div class="flex-1 overflow-y-auto custom-scroll">
             <?php if ($tab === 'releases'): ?>
-            <div class="p-4 md:p-8 max-w-4xl mx-auto">
+            <div class="p-4 md:p-8 max-w-6xl mx-auto">
                 <?php if (empty($releases)): ?>
                 <div class="text-center py-20 bg-white rounded-2xl border <?= $cardBorder ?> shadow-sm">
                     <i class="fa-solid fa-compact-disc text-4xl text-slate-200 mb-4"></i>

@@ -23,8 +23,29 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             .sidebar { position: fixed; transform: translateX(-100%); z-index: 100; width: 240px !important; }
             .sidebar.mobile-open { transform: translateX(0); }
         }
-        .video-row:hover { background: color-mix(in srgb, var(--hinata-theme) 8%, transparent); }
-        .video-row.selected { border-left: 4px solid var(--hinata-theme); background: color-mix(in srgb, var(--hinata-theme) 15%, transparent); }
+        .video-row {
+            transition: background-color 0.15s ease-out, border-color 0.15s ease-out;
+        }
+        .video-row:hover {
+            background: #f1f5f9; /* slate-100 相当 */
+        }
+        .video-row.selected {
+            border-left: 4px solid var(--hinata-theme);
+            background: #e0f2fe; /* sky-100 相当で明確にハイライト */
+        }
+        #selectedDescriptionContainer {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .selected-desc {
+            max-height: 3.6em;
+            overflow: hidden;
+            white-space: pre-wrap;
+            line-height: 1.4;
+        }
+        .selected-desc.expanded {
+            max-height: none;
+        }
         /* スマホ: 左右を均等に高さ確保し、メンバー選択エリアが操作できるようにする */
         @media (max-width: 767px) {
             .media-member-wrap { flex-direction: column; }
@@ -51,11 +72,36 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 -webkit-overflow-scrolling: touch;
             }
         }
+        /* トースト（上部表示） */
+        #toast {
+            position: fixed;
+            top: 1rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(-120%);
+            z-index: 9999;
+            padding: 0.75rem 1.5rem;
+            background: #0f766e;
+            color: white;
+            font-size: 0.875rem;
+            font-weight: 700;
+            border-radius: 9999px;
+            box-shadow: 0 4px 14px rgba(15, 118, 110, 0.4);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease-out;
+            pointer-events: none;
+            opacity: 0;
+        }
+        #toast.visible {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
         <style>:root { --hinata-theme: <?= htmlspecialchars($themePrimaryHex) ?>; }</style>
 </head>
 <body class="flex h-screen overflow-hidden text-slate-800 <?= $bodyBgClass ?>"<?= $bodyStyle ? ' style="' . htmlspecialchars($bodyStyle) . '"' : '' ?>>
 
     <?php require_once __DIR__ . '/../../../components/sidebar.php'; ?>
+
+    <!-- トースト（保存しました等） -->
+    <div id="toast" role="status" aria-live="polite"></div>
 
     <main class="flex-1 flex flex-col min-w-0">
         <header class="h-16 bg-white/80 backdrop-blur-md border-b <?= $headerBorder ?> flex items-center justify-between px-6 shrink-0 sticky top-0 z-10">
@@ -82,6 +128,10 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                             <option value="<?= htmlspecialchars($key) ?>"><?= htmlspecialchars($label) ?></option>
                         <?php endforeach; ?>
                     </select>
+                    <label class="flex items-center gap-2 cursor-pointer text-sm font-bold text-slate-600 hover:text-slate-800">
+                        <input type="checkbox" id="filterUnlinkedOnly" class="rounded border-sky-200 text-sky-500 focus:ring-sky-300">
+                        <span>未紐づけの動画のみ</span>
+                    </label>
                     <button id="btnSearch" class="w-full h-10 bg-sky-500 text-white rounded-lg text-sm font-bold hover:bg-sky-600 transition">
                         <i class="fa-solid fa-search mr-2"></i>検索
                     </button>
@@ -109,6 +159,10 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                                 <span id="selectedCategory" class="inline-block px-2 py-0.5 rounded text-xs font-bold bg-sky-100 text-sky-700 mb-1"></span>
                                 <h2 id="selectedTitle" class="text-lg font-bold text-slate-800 truncate"></h2>
                                 <p id="selectedDate" class="text-xs text-slate-400 mt-1"></p>
+                                <div id="selectedDescriptionContainer" class="mt-2 text-xs text-slate-500 hidden">
+                                    <p id="selectedDescription" class="selected-desc"></p>
+                                    <button type="button" id="btnToggleSelectedDesc" class="mt-0.5 text-[10px] text-sky-600 font-bold hover:underline">...もっと見る</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -147,13 +201,13 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         const searchVideo = document.getElementById('searchVideo');
         const filterCategory = document.getElementById('filterCategory');
         const btnSearch = document.getElementById('btnSearch');
+        const filterUnlinkedOnly = document.getElementById('filterUnlinkedOnly');
         const memberCheckboxList = document.getElementById('memberCheckboxList');
         const btnSave = document.getElementById('btnSave');
 
         let selectedMetaId = null;
         let showGraduates = true;
         let checkedMemberIds = new Set();
-        const categoryLabels = <?= json_encode($categories) ?>;
         const allMembers = <?= json_encode(array_map(fn($m) => [
             'id' => (int)$m['id'],
             'name' => $m['name'],
@@ -167,8 +221,11 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             const params = new URLSearchParams({
                 q: searchVideo.value,
                 category: filterCategory.value,
-                limit: 100
+                limit: 200
             });
+            if (filterUnlinkedOnly && filterUnlinkedOnly.checked) {
+                params.set('unlinked_only', '1');
+            }
             const res = await fetch(`/hinata/api/list_media_for_link.php?${params}`);
             const json = await res.json();
             if (json.status !== 'success') {
@@ -181,10 +238,11 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             }
             videoList.innerHTML = json.data.map(v => {
                 const dataStr = JSON.stringify(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+                const thumbUrl = getThumbnailUrl(v);
                 return `
                 <div class="video-row cursor-pointer px-3 py-2 rounded-lg flex items-center gap-3 border-b border-slate-50 transition" data-meta-id="${v.meta_id}" data-video="${dataStr}">
                     <div class="w-12 shrink-0 aspect-video rounded overflow-hidden bg-slate-100">
-                        <img src="${v.thumbnail_url || ''}" alt="" class="w-full h-full object-cover" onerror="this.src=''">
+                        <img src="${thumbUrl}" alt="" class="w-full h-full object-cover" onerror="this.src=''">
                     </div>
                     <div class="flex-1 min-w-0">
                         <span class="text-xs font-bold text-sky-600">${v.category || ''}</span>
@@ -204,16 +262,38 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             return div.innerHTML;
         }
 
+        // 表示用サムネイルURL（DBが空でも YouTube は media_key から生成）
+        function getThumbnailUrl(v) {
+            if (v.thumbnail_url) return v.thumbnail_url;
+            if (v.platform === 'youtube' && v.media_key) {
+                return 'https://img.youtube.com/vi/' + v.media_key + '/mqdefault.jpg';
+            }
+            return '';
+        }
+
         async function selectVideo(rowEl) {
             document.querySelectorAll('.video-row').forEach(r => r.classList.remove('selected'));
             rowEl.classList.add('selected');
             const dataStr = rowEl.getAttribute('data-video');
             const video = JSON.parse(dataStr ? dataStr.replace(/&quot;/g, '"').replace(/&amp;/g, '&') : '{}');
             selectedMetaId = video.meta_id;
-            document.getElementById('selectedThumbImg').src = video.thumbnail_url || '';
-            document.getElementById('selectedCategory').textContent = categoryLabels[video.category] || video.category || '';
+            document.getElementById('selectedThumbImg').src = getThumbnailUrl(video) || '';
+            document.getElementById('selectedCategory').textContent = video.category || '';
             document.getElementById('selectedTitle').textContent = video.title || '';
-            document.getElementById('selectedDate').textContent = video.release_date ? new Date(video.release_date).toLocaleDateString('ja-JP') : '';
+            const primaryDate = video.upload_date || video.release_date || '';
+            document.getElementById('selectedDate').textContent = primaryDate ? new Date(primaryDate).toLocaleDateString('ja-JP') : '';
+            const descContainer = document.getElementById('selectedDescriptionContainer');
+            const descEl = document.getElementById('selectedDescription');
+            const toggleBtn = document.getElementById('btnToggleSelectedDesc');
+            if (video.description && video.description.trim() !== '') {
+                descEl.textContent = video.description;
+                descEl.classList.remove('expanded');
+                toggleBtn.textContent = '...もっと見る';
+                descContainer.classList.remove('hidden');
+            } else {
+                descContainer.classList.add('hidden');
+                descEl.textContent = '';
+            }
             noSelection.classList.add('hidden');
             selectionPanel.classList.remove('hidden');
             await loadLinkedMembers();
@@ -336,6 +416,22 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             return Array.from(checkedMemberIds);
         }
 
+        document.getElementById('btnToggleSelectedDesc').addEventListener('click', function (e) {
+            const descEl = document.getElementById('selectedDescription');
+            const expanded = descEl.classList.toggle('expanded');
+            this.textContent = expanded ? '閉じる' : '...もっと見る';
+        });
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('visible');
+            clearTimeout(showToast._tid);
+            showToast._tid = setTimeout(() => {
+                toast.classList.remove('visible');
+            }, 2500);
+        }
+
         btnSave.onclick = async () => {
             if (!selectedMetaId) return;
             btnSave.disabled = true;
@@ -348,7 +444,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 });
                 const json = await res.json();
                 if (json.status === 'success') {
-                    alert('保存しました');
+                    showToast('保存しました。');
                 } else {
                     alert('エラー: ' + (json.message || ''));
                 }
@@ -362,6 +458,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         btnSearch.onclick = loadVideos;
         searchVideo.onkeydown = (e) => { if (e.key === 'Enter') loadVideos(); };
         filterCategory.onchange = loadVideos;
+        if (filterUnlinkedOnly) filterUnlinkedOnly.addEventListener('change', loadVideos);
 
         document.getElementById('mobileMenuBtn').onclick = () => {
             document.getElementById('sidebar').classList.add('mobile-open');

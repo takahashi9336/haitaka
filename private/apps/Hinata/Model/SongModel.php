@@ -191,6 +191,33 @@ class SongModel extends BaseModel {
     }
 
     /**
+     * 楽曲に紐づく動画一覧を取得（カテゴリ別・MV優先ソート用）
+     */
+    public function getMediaLinksBySongId(int $songId): array {
+        $sql = "SELECT 
+                    hmeta.id as media_meta_id,
+                    hmeta.category,
+                    ma.platform,
+                    ma.media_key,
+                    ma.thumbnail_url,
+                    ma.title,
+                    ma.description,
+                    ma.upload_date,
+                    ma.created_at
+                FROM hn_song_media_links l
+                JOIN hn_media_metadata hmeta ON hmeta.id = l.media_meta_id
+                JOIN com_media_assets ma ON ma.id = hmeta.asset_id
+                WHERE l.song_id = :sid
+                ORDER BY 
+                    CASE WHEN hmeta.category = 'MV' THEN 0 ELSE 1 END,
+                    hmeta.category,
+                    COALESCE(ma.upload_date, ma.created_at) DESC";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(['sid' => $songId]);
+        return $stmt->fetchAll();
+    }
+
+    /**
      * 全曲一覧用：リリース情報付きで全楽曲を取得（発売日降順・トラック順）
      * @param int|null $releaseId 指定時はそのリリースのみ
      * @return array
