@@ -115,9 +115,9 @@ class MediaAssetModel extends BaseModel {
     }
 
     /**
-     * メタデータIDでカテゴリを更新
+     * メタデータIDでカテゴリを更新（null の場合は未設定に）
      */
-    public function updateMetadataCategory(int $metaId, string $category): bool {
+    public function updateMetadataCategory(int $metaId, ?string $category): bool {
         $stmt = $this->pdo->prepare("
             UPDATE hn_media_metadata 
             SET category = :category 

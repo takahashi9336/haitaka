@@ -30,6 +30,28 @@ class MediaController {
     ];
 
     /**
+     * カテゴリ一覧取得（DB優先、無ければ定数フォールバック）
+     * 戻り値: ['name' => 'name', ...] 形式
+     */
+    private function getMediaCategories(): array {
+        try {
+            $pdo = Database::connect();
+            $stmt = $pdo->query("SELECT name FROM hn_media_categories ORDER BY sort_order ASC, name ASC");
+            $rows = $stmt ? $stmt->fetchAll(\PDO::FETCH_COLUMN) : [];
+            if (!empty($rows)) {
+                $assoc = [];
+                foreach ($rows as $name) {
+                    $assoc[$name] = $name;
+                }
+                return $assoc;
+            }
+        } catch (\Throwable $e) {
+            // テーブル未作成等は定数にフォールバック
+        }
+        return self::CATEGORIES;
+    }
+
+    /**
      * 動画一覧画面の表示
      */
     public function list(): void {
@@ -37,7 +59,7 @@ class MediaController {
         $auth->requireLogin();
 
         $memberModel = new \App\Hinata\Model\MemberModel();
-        $categories = self::CATEGORIES;
+        $categories = $this->getMediaCategories();
         $members = $memberModel->getAllWithColors();
         $user = $_SESSION['user'];
         require_once __DIR__ . '/../Views/media_list.php';
@@ -151,7 +173,7 @@ class MediaController {
         // 日向坂ポータル管理者（admin / hinata_admin）のみ
         $auth->requireHinataAdmin('/hinata/');
 
-        $categories = self::CATEGORIES;
+        $categories = $this->getMediaCategories();
         $user = $_SESSION['user'];
         require_once __DIR__ . '/../Views/media_import.php';
     }
@@ -164,10 +186,174 @@ class MediaController {
         // 日向坂ポータル管理者（admin / hinata_admin）のみ
         $auth->requireHinataAdmin('/hinata/');
         $memberModel = new \App\Hinata\Model\MemberModel();
-        $categories = self::CATEGORIES;
+        $categories = $this->getMediaCategories();
         $members = $memberModel->getAllWithColors();
         $user = $_SESSION['user'];
         require_once __DIR__ . '/../Views/media_member_admin.php';
+    }
+
+    /**
+     * 動画設定管理画面（カテゴリ変更など）（管理者専用）
+     */
+    public function mediaSettingsAdmin(): void {
+        $auth = new Auth();
+        $auth->requireHinataAdmin('/hinata/');
+        $categories = $this->getMediaCategories();
+        $user = $_SESSION['user'];
+        require_once __DIR__ . '/../Views/media_settings_admin.php';
+    }
+
+    /**
+     * 動画メタデータ更新API（カテゴリ変更など）
+     * POST: { meta_id: int, category: string }
+     */
+    public function updateMetadata(): void {
+        header('Content-Type: application/json');
+        try {
+            $auth = new Auth();
+            if (!$auth->check() || !$auth->isHinataAdmin()) {
+                echo json_encode(['status' => 'error', 'message' => '権限がありません']);
+                return;
+            }
+            $input = json_decode(file_get_contents('php://input'), true) ?: [];
+            $metaId = (int)($input['meta_id'] ?? 0);
+            $category = trim($input['category'] ?? '');
+            if (!$metaId) {
+                echo json_encode(['status' => 'error', 'message' => 'meta_id required']);
+                return;
+            }
+            $allowed = $this->getMediaCategories();
+            if (!array_key_exists($category, $allowed) && $category !== '') {
+                echo json_encode(['status' => 'error', 'message' => '無効なカテゴリです']);
+                return;
+            }
+            $mediaModel = new MediaAssetModel();
+            $ok = $mediaModel->updateMetadataCategory($metaId, $category === '' ? null : $category);
+            if (!$ok) {
+                echo json_encode(['status' => 'error', 'message' => '更新に失敗しました']);
+                return;
+            }
+            Logger::info("hn_media_metadata update meta_id={$metaId} category={$category} by=" . ($_SESSION['user']['id_name'] ?? 'guest'));
+            echo json_encode(['status' => 'success', 'category' => $category ?: null]);
+        } catch (\Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * カテゴリ一覧取得API
+     * GET
+     */
+    public function listMediaCategories(): void {
+        header('Content-Type: application/json');
+        try {
+            $auth = new Auth();
+            if (!$auth->check()) {
+                echo json_encode(['status' => 'error', 'message' => '権限がありません']);
+                return;
+            }
+            $categories = $this->getMediaCategories();
+            $list = array_keys($categories);
+            echo json_encode(['status' => 'success', 'data' => $list]);
+        } catch (\Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * カテゴリ新規作成API
+     * POST: { name: string }
+     */
+    public function createMediaCategory(): void {
+        header('Content-Type: application/json');
+        try {
+            $auth = new Auth();
+            if (!$auth->check() || !$auth->isHinataAdmin()) {
+                echo json_encode(['status' => 'error', 'message' => '権限がありません']);
+                return;
+            }
+            $input = json_decode(file_get_contents('php://input'), true) ?: [];
+            $name = trim($input['name'] ?? '');
+            if ($name === '') {
+                echo json_encode(['status' => 'error', 'message' => 'カテゴリ名を入力してください']);
+                return;
+            }
+            if (strlen($name) > 64) {
+                echo json_encode(['status' => 'error', 'message' => 'カテゴリ名は64文字以内で入力してください']);
+                return;
+            }
+            $pdo = Database::connect();
+            $maxOrder = $pdo->query("SELECT COALESCE(MAX(sort_order), 0) FROM hn_media_categories")->fetchColumn();
+            $stmt = $pdo->prepare("INSERT INTO hn_media_categories (name, sort_order) VALUES (:name, :sort_order)");
+            $stmt->execute(['name' => $name, 'sort_order' => (int)$maxOrder + 1]);
+            Logger::info("hn_media_categories create name={$name} by=" . ($_SESSION['user']['id_name'] ?? 'guest'));
+            echo json_encode(['status' => 'success', 'name' => $name]);
+        } catch (\PDOException $e) {
+            if ($e->getCode() == 23000) {
+                echo json_encode(['status' => 'error', 'message' => '同じ名前のカテゴリが既に存在します']);
+            } else {
+                echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            }
+        } catch (\Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * カテゴリ名称変更API
+     * POST: { old_name: string, new_name: string }
+     */
+    public function renameMediaCategory(): void {
+        header('Content-Type: application/json');
+        try {
+            $auth = new Auth();
+            if (!$auth->check() || !$auth->isHinataAdmin()) {
+                echo json_encode(['status' => 'error', 'message' => '権限がありません']);
+                return;
+            }
+            $input = json_decode(file_get_contents('php://input'), true) ?: [];
+            $oldName = trim($input['old_name'] ?? '');
+            $newName = trim($input['new_name'] ?? '');
+            if ($oldName === '' || $newName === '') {
+                echo json_encode(['status' => 'error', 'message' => '旧名称と新名称を入力してください']);
+                return;
+            }
+            if ($oldName === $newName) {
+                echo json_encode(['status' => 'success', 'name' => $newName]);
+                return;
+            }
+            if (strlen($newName) > 64) {
+                echo json_encode(['status' => 'error', 'message' => 'カテゴリ名は64文字以内で入力してください']);
+                return;
+            }
+            $pdo = Database::connect();
+            $pdo->beginTransaction();
+            try {
+                $stmt = $pdo->prepare("UPDATE hn_media_categories SET name = :new_name WHERE name = :old_name");
+                $stmt->execute(['old_name' => $oldName, 'new_name' => $newName]);
+                if ($stmt->rowCount() === 0) {
+                    $pdo->rollBack();
+                    echo json_encode(['status' => 'error', 'message' => '指定されたカテゴリが見つかりません']);
+                    return;
+                }
+                $stmt = $pdo->prepare("UPDATE hn_media_metadata SET category = :new_name WHERE category = :old_name");
+                $stmt->execute(['old_name' => $oldName, 'new_name' => $newName]);
+                $pdo->commit();
+                Logger::info("hn_media_categories rename {$oldName}->{$newName} by=" . ($_SESSION['user']['id_name'] ?? 'guest'));
+                echo json_encode(['status' => 'success', 'name' => $newName]);
+            } catch (\Exception $e) {
+                $pdo->rollBack();
+                throw $e;
+            }
+        } catch (\PDOException $e) {
+            if ($e->getCode() == 23000) {
+                echo json_encode(['status' => 'error', 'message' => '同じ名前のカテゴリが既に存在します']);
+            } else {
+                echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            }
+        } catch (\Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
     }
 
     /**
@@ -178,7 +364,7 @@ class MediaController {
         // 日向坂ポータル管理者（admin / hinata_admin）のみ
         $auth->requireHinataAdmin('/hinata/');
         $releaseModel = new \App\Hinata\Model\ReleaseModel();
-        $categories = self::CATEGORIES;
+        $categories = $this->getMediaCategories();
         $releases = $releaseModel->getAllReleases();
         $releasesWithSongs = [];
         foreach ($releases as $r) {
@@ -212,7 +398,9 @@ class MediaController {
             $pdo = Database::connect();
             $where = [];
             $params = [];
-            if (!empty($category)) {
+            if ($category === '__unset__') {
+                $where[] = '(hmeta.category IS NULL OR hmeta.category = \'\')';
+            } elseif ($category !== '') {
                 $where[] = 'hmeta.category = :category';
                 $params['category'] = $category;
             }
@@ -453,7 +641,8 @@ class MediaController {
             }
 
             // カテゴリ検証
-            if (!isset(self::CATEGORIES[$defaultCategory])) {
+            $allowed = $this->getMediaCategories();
+            if (!isset($allowed[$defaultCategory])) {
                 throw new \Exception('無効なカテゴリです');
             }
 

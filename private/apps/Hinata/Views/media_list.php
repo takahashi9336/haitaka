@@ -41,9 +41,9 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             overflow: hidden;
             border-radius: 2px;
         }
-        /* 小さめカード用：高さを少し低くする */
+        /* 小さめカード用：16:9を維持（上下が切れないように） */
         .video-thumbnail-sm {
-            padding-bottom: 42%; /* やや横長・低め */
+            padding-bottom: 56.25%; /* 16:9 */
         }
         .video-thumbnail img {
             position: absolute;
@@ -168,7 +168,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
 
     <?php require_once __DIR__ . '/../../../components/sidebar.php'; ?>
 
-    <main class="flex-1 flex flex-col min-w-0">
+    <main class="flex-1 flex flex-col min-w-0 min-h-0">
         <header class="h-16 bg-white/80 backdrop-blur-md border-b <?= $headerBorder ?> flex items-center justify-between px-6 shrink-0 sticky top-0 z-10">
             <div class="flex items-center gap-3">
                 <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
@@ -182,31 +182,32 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             </a>
         </header>
 
-        <div class="flex-1 overflow-y-auto p-6 md:p-10" id="mainScrollArea">
-            <div class="max-w-5xl mx-auto">
-                
-                <!-- 公式チャンネルリンク -->
-                <section class="mb-8">
-                    <div class="flex flex-wrap items-center gap-3 mb-6">
-                        <a href="https://www.youtube.com/@46officialyoutubechannel99" target="_blank" rel="noopener noreferrer" class="btn-official-channel shrink-0">
-                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                            </svg>
-                            <span>youtube 公式チャンネル</span>
-                            <i class="fa-solid fa-chevron-right text-[10px] opacity-90"></i>
-                        </a>
-                        <a href="https://www.youtube.com/@hinatazakachannel" target="_blank" rel="noopener noreferrer" class="btn-official-channel shrink-0">
-                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                            </svg>
-                            <span>日向坂ちゃんねる</span>
-                            <i class="fa-solid fa-chevron-right text-[10px] opacity-90"></i>
-                        </a>
-                    </div>
-                </section>
+        <div class="flex-1 flex flex-col min-h-0">
+            <!-- 固定エリア：公式チャンネル + フィルター・ソート -->
+            <div class="shrink-0 p-6 md:p-10 pb-0 md:pb-4">
+                <div class="max-w-5xl mx-auto">
+                    <!-- 公式チャンネルリンク -->
+                    <section class="mb-6">
+                        <div class="flex flex-wrap items-center gap-3">
+                            <a href="https://www.youtube.com/@46officialyoutubechannel99" target="_blank" rel="noopener noreferrer" class="btn-official-channel shrink-0">
+                                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                                </svg>
+                                <span>youtube 公式チャンネル</span>
+                                <i class="fa-solid fa-chevron-right text-[10px] opacity-90"></i>
+                            </a>
+                            <a href="https://www.youtube.com/@hinatazakachannel" target="_blank" rel="noopener noreferrer" class="btn-official-channel shrink-0">
+                                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                                </svg>
+                                <span>日向坂ちゃんねる</span>
+                                <i class="fa-solid fa-chevron-right text-[10px] opacity-90"></i>
+                            </a>
+                        </div>
+                    </section>
 
-                <!-- フィルター・表示切替 -->
-                <section class="bg-white rounded-2xl border border-sky-100 shadow-sm p-4 mb-6">
+                    <!-- フィルター・表示切替（固定） -->
+                    <section class="bg-white rounded-2xl border border-sky-100 shadow-sm p-4">
                     <div class="flex flex-wrap items-center gap-4">
                         <!-- カテゴリフィルター -->
                         <div class="flex items-center gap-2">
@@ -276,21 +277,26 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                             </div>
                         </div>
                     </div>
-                </section>
-
-                <!-- 動画コンテナ（公式VIDEO風：2列・余白多め） -->
-                <div id="videoContainer" class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-                    <!-- JavaScript で動的生成 -->
+                    </section>
                 </div>
+            </div>
 
-                <!-- ローディングスピナー -->
-                <div id="loadingSpinner" class="justify-center items-center py-8">
-                    <i class="fa-solid fa-spinner fa-spin text-3xl text-sky-500"></i>
+            <!-- スクロールエリア：動画のみ -->
+            <div class="flex-1 min-h-0 overflow-y-auto p-6 md:p-10 pt-4 md:pt-6" id="mainScrollArea">
+                <div class="max-w-5xl mx-auto">
+                    <!-- 動画コンテナ（公式VIDEO風：2列・余白多め） -->
+                    <div id="videoContainer" class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+                        <!-- JavaScript で動的生成 -->
+                    </div>
+
+                    <!-- ローディングスピナー -->
+                    <div id="loadingSpinner" class="justify-center items-center py-8">
+                        <i class="fa-solid fa-spinner fa-spin text-3xl text-sky-500"></i>
+                    </div>
+
+                    <!-- 最下部マーカー -->
+                    <div id="scrollTrigger" class="h-20"></div>
                 </div>
-
-                <!-- 最下部マーカー -->
-                <div id="scrollTrigger" class="h-20"></div>
-
             </div>
         </div>
     </main>
@@ -344,6 +350,8 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         let currentView = 'grid'; // 'grid' or 'list'
         let currentCardSize = 'normal'; // 'normal' or 'small'
         let renderedCategoryHeaders = new Set(); // メンバー/期別絞り込み時のカテゴリ帯用
+        // カテゴリ表示順（その他は常に最後）
+        const CATEGORY_ORDER = ['CM', 'Hinareha', 'Live', 'MV', 'SelfIntro', 'SoloPV', 'Special', 'Teaser', 'Trailer', 'Variety', 'その他'];
 
         // 初回ロード
         loadVideos();
@@ -459,32 +467,74 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 if (result.status === 'success') {
                     const useCategoryBands = (filterMember.value !== '' || filterGeneration.value !== '');
                     if (useCategoryBands) {
-                        // カテゴリごとにグルーピングして帯＋動画を描画
+                        // カテゴリごとにグルーピング（表示順でソート）
                         const groups = {};
                         result.data.forEach(video => {
                             const key = video.category || 'その他';
                             if (!groups[key]) groups[key] = [];
                             groups[key].push(video);
                         });
-                        Object.keys(groups).forEach(category => {
+                        const sortedCategories = Object.keys(groups).sort((a, b) => {
+                            const ia = CATEGORY_ORDER.indexOf(a);
+                            const ib = CATEGORY_ORDER.indexOf(b);
+                            const ai = ia >= 0 ? ia : CATEGORY_ORDER.length;
+                            const bi = ib >= 0 ? ib : CATEGORY_ORDER.length;
+                            return ai - bi;
+                        });
+                        sortedCategories.forEach(category => {
                             const videos = groups[category];
-                            // まだ帯を出していないカテゴリのみヘッダーを追加
+                            const catId = 'cat-' + category.replace(/\s/g, '_');
+                            let headerEl = videoContainer.querySelector('#' + catId);
+                            // 新規セクション：ヘッダーを先に追加
                             if (!renderedCategoryHeaders.has(category)) {
                                 renderedCategoryHeaders.add(category);
                                 const headerHtml = `
-                                    <div class="col-span-full mt-6 mb-3 pb-2 border-b-2 border-sky-200">
-                                        <h2 class="text-lg font-black text-sky-600">${category}</h2>
+                                    <div id="${catId}" class="col-span-full mt-6 mb-3 pb-2 border-b-2 border-sky-200 category-section-header">
+                                        <h2 class="text-lg font-black text-sky-600">${escapeHtml(category)}</h2>
                                     </div>
                                 `;
-                                videoContainer.innerHTML += headerHtml;
-                            }
-                            videos.forEach(video => {
-                                if (currentView === 'grid') {
-                                    videoContainer.innerHTML += renderVideoCard(video);
-                                } else {
-                                    videoContainer.innerHTML += renderVideoRow(video);
+                                // 挿入位置：次に来るべきカテゴリのヘッダーより前、無ければ末尾
+                                const nextCatIdx = CATEGORY_ORDER.indexOf(category) + 1;
+                                let insertBeforeEl = null;
+                                for (let i = nextCatIdx; i < CATEGORY_ORDER.length; i++) {
+                                    const nid = 'cat-' + CATEGORY_ORDER[i].replace(/\s/g, '_');
+                                    const nextH = videoContainer.querySelector('#' + nid);
+                                    if (nextH) { insertBeforeEl = nextH; break; }
                                 }
+                                if (!insertBeforeEl) insertBeforeEl = null; // 末尾に追加
+                                const wrap = document.createElement('div');
+                                wrap.innerHTML = headerHtml;
+                                if (insertBeforeEl && insertBeforeEl.parentNode === videoContainer) {
+                                    videoContainer.insertBefore(wrap.firstElementChild, insertBeforeEl);
+                                } else {
+                                    videoContainer.appendChild(wrap.firstElementChild);
+                                }
+                                headerEl = videoContainer.querySelector('#' + catId);
+                            }
+                            // 動画をこのセクション内の末尾（次のセクションヘッダー直前）に挿入
+                            let insertAnchor = null; // null = 末尾に追加
+                            if (headerEl) {
+                                let n = headerEl.nextElementSibling;
+                                while (n) {
+                                    if (n.classList && n.classList.contains('category-section-header')) {
+                                        insertAnchor = n; // 次のセクションヘッダー直前に挿入
+                                        break;
+                                    }
+                                    n = n.nextElementSibling;
+                                }
+                            }
+                            const frag = document.createDocumentFragment();
+                            videos.forEach(video => {
+                                const div = document.createElement('div');
+                                div.innerHTML = currentView === 'grid' ? renderVideoCard(video) : renderVideoRow(video);
+                                const el = div.firstElementChild || div.firstChild;
+                                if (el) frag.appendChild(el);
                             });
+                            if (insertAnchor && insertAnchor.parentNode === videoContainer) {
+                                videoContainer.insertBefore(frag, insertAnchor);
+                            } else {
+                                videoContainer.appendChild(frag);
+                            }
                         });
                     } else {
                         // 通常はフラットに追加

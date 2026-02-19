@@ -213,6 +213,20 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                         </div>
                     </a>
 
+                    <!-- 動画設定管理（管理者のみ） -->
+                    <a href="/hinata/media_settings_admin.php" class="app-card hinata-portal-card group relative bg-white rounded-xl border <?= $cardBorder ?> shadow-sm overflow-hidden flex flex-col items-center justify-center p-4 md:p-8 md:block">
+                        <div class="hidden md:block absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform card-deco <?= $cardDeco ?>">
+                            <i class="fa-solid fa-sliders text-6xl"></i>
+                        </div>
+                        <div class="relative z-10 flex flex-col items-center md:block">
+                            <div class="w-16 h-16 md:w-12 md:h-12 rounded-lg flex items-center justify-center mb-2 md:mb-6 transition-colors card-icon <?= $cardIconBg ?> <?= $cardIconText ?> <?= $cardIconHover ?>">
+                                <i class="fa-solid fa-sliders text-2xl md:text-base"></i>
+                            </div>
+                            <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-4 text-center md:text-left">動画設定</h3>
+                            <p class="hidden md:block text-sm text-slate-400 leading-relaxed">動画のカテゴリなどを変更します。</p>
+                        </div>
+                    </a>
+
                     <!-- 動画一括登録（管理者のみ） -->
                     <a href="/hinata/media_import.php" class="app-card hinata-portal-card group relative bg-white rounded-xl border <?= $cardBorder ?> shadow-sm overflow-hidden flex flex-col items-center justify-center p-4 md:p-8 md:block">
                         <div class="hidden md:block absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform card-deco <?= $cardDeco ?>">
