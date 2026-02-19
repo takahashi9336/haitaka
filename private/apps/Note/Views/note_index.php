@@ -34,16 +34,24 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             .sidebar.mobile-open .nav-text, .sidebar.mobile-open .logo-text, .sidebar.mobile-open .user-info { display: inline !important; }
         }
 
-        /* Google Keep風のMasonry風レイアウト（カード高さはコンテンツに応じて可変） */
+        /* ミーグリネタ帳風：メモ単位で高さ可変のカラムレイアウト */
         .notes-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-            gap: 0.75rem;
-            align-items: start;
+            column-count: 1;
+            column-gap: 0.75rem;
+        }
+        @media (min-width: 640px) {
+            .notes-grid { column-count: 2; }
+        }
+        @media (min-width: 1024px) {
+            .notes-grid { column-count: 3; }
+        }
+        @media (min-width: 1280px) {
+            .notes-grid { column-count: 4; }
         }
 
         .note-card {
             break-inside: avoid;
+            margin-bottom: 0.75rem;
             transition: all 0.2s ease;
         }
 
