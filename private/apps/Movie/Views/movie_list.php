@@ -83,7 +83,11 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                 </div>
                 <h1 class="font-black text-slate-700 text-xl tracking-tighter">映画リスト</h1>
             </div>
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2 sm:gap-3">
+                <a href="/movie/bulk_edit.php?tab=<?= htmlspecialchars($tab) ?>" class="flex items-center gap-2 px-3 py-2 border border-slate-200 text-slate-500 text-sm font-bold rounded-lg hover:bg-slate-50 transition" title="一括編集">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                    <span class="hidden sm:inline">一括編集</span>
+                </a>
                 <a href="/movie/import.php?status=<?= htmlspecialchars($tab) ?>" class="flex items-center gap-2 px-3 py-2 border border-slate-200 text-slate-500 text-sm font-bold rounded-lg hover:bg-slate-50 transition" title="一括登録">
                     <i class="fa-solid fa-file-import"></i>
                     <span class="hidden sm:inline">一括登録</span>
@@ -434,21 +438,58 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                     const res = await fetch(`/movie/api/search.php?q=${encodeURIComponent(query)}`);
                     const json = await res.json();
 
+                    const manualHtml = this.renderManualAdd(query);
+
                     if (json.status !== 'success') {
-                        container.innerHTML = `<div class="text-center py-8 text-red-500 text-sm">${json.message}</div>`;
+                        container.innerHTML = `<div class="text-center py-8 text-red-500 text-sm">${json.message}</div>` + manualHtml;
                         return;
                     }
 
                     const movies = json.data.results || [];
                     if (movies.length === 0) {
-                        container.innerHTML = '<div class="text-center py-8 text-slate-400 text-sm">該当する映画が見つかりませんでした</div>';
+                        container.innerHTML = '<div class="text-center py-6 text-slate-400 text-sm">TMDBで見つかりませんでした</div>' + manualHtml;
                         return;
                     }
 
-                    container.innerHTML = movies.map(m => this.renderResult(m)).join('');
+                    container.innerHTML = movies.map(m => this.renderResult(m)).join('') + manualHtml;
                 } catch (e) {
                     console.error(e);
                     container.innerHTML = '<div class="text-center py-8 text-red-500 text-sm">検索中にエラーが発生しました</div>';
+                }
+            },
+            renderManualAdd(query) {
+                const escaped = this.escapeHtml(query);
+                return `
+                <div class="border-t border-dashed border-slate-200 p-4 bg-slate-50/50">
+                    <p class="text-[11px] text-slate-400 mb-2"><i class="fa-solid fa-pen mr-1"></i>TMDBに無い場合、タイトルだけで追加できます</p>
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-bold text-slate-700 flex-1 truncate">「${escaped}」</span>
+                        <button onclick="SearchModal.addManual('watchlist')" class="text-xs font-bold text-white px-3 py-1.5 rounded-lg mv-theme-btn transition whitespace-nowrap">
+                            <i class="fa-solid fa-bookmark mr-1"></i>見たいに追加
+                        </button>
+                        <button onclick="SearchModal.addManual('watched')" class="text-xs font-bold text-slate-500 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition whitespace-nowrap">
+                            <i class="fa-solid fa-check mr-1"></i>見たに追加
+                        </button>
+                    </div>
+                </div>`;
+            },
+            async addManual(status) {
+                const query = document.getElementById('searchInput').value.trim();
+                if (!query) return;
+                try {
+                    const result = await App.post('/movie/api/add_manual.php', { title: query, status: status });
+                    if (result.status === 'success') {
+                        App.toast(result.message);
+                        this.close();
+                        if (status === currentTab) {
+                            location.reload();
+                        }
+                    } else {
+                        App.toast(result.message || '追加に失敗しました');
+                    }
+                } catch (e) {
+                    console.error(e);
+                    App.toast('エラーが発生しました');
                 }
             },
             renderResult(m) {
@@ -603,21 +644,64 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                     const res = await fetch(`/movie/api/search.php?q=${encodeURIComponent(query)}`);
                     const json = await res.json();
 
+                    const manualAddHtml = this.renderManualAdd(query);
+
                     if (json.status !== 'success') {
-                        container.innerHTML = `<div class="text-center py-6 text-red-500 text-sm">${json.message}</div>`;
+                        container.innerHTML = `<div class="text-center py-6 text-red-500 text-sm">${json.message}</div>` + manualAddHtml;
                         return;
                     }
 
                     const movies = json.data.results || [];
                     if (movies.length === 0) {
-                        container.innerHTML = '<div class="text-center py-6 text-slate-400 text-sm">見つかりませんでした</div>';
+                        container.innerHTML = '<div class="text-center py-4 text-slate-400 text-sm">TMDBで見つかりませんでした</div>' + manualAddHtml;
                         return;
                     }
 
-                    container.innerHTML = movies.slice(0, 10).map(m => this.renderResult(m)).join('');
+                    container.innerHTML = movies.slice(0, 10).map(m => this.renderResult(m)).join('') + manualAddHtml;
                 } catch (e) {
                     console.error(e);
                     container.innerHTML = '<div class="text-center py-6 text-red-500 text-sm">エラーが発生しました</div>';
+                }
+            },
+
+            renderManualAdd(query) {
+                const escaped = SearchModal.escapeHtml(query);
+                return `
+                <div class="border-t border-dashed border-slate-200 px-4 py-3 bg-slate-50/50 rounded-b-xl">
+                    <p class="text-[11px] text-slate-400 mb-2"><i class="fa-solid fa-pen mr-1"></i>TMDBに無い場合、タイトルだけで追加できます</p>
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-bold text-slate-700 flex-1 truncate">「${escaped}」</span>
+                        <button onclick="InlineSearch.addManual('watchlist')" class="text-[11px] font-bold text-white px-2.5 py-1.5 rounded-lg mv-theme-btn transition whitespace-nowrap">
+                            <i class="fa-solid fa-bookmark mr-0.5"></i>見たいに追加
+                        </button>
+                        <button onclick="InlineSearch.addManual('watched')" class="text-[11px] font-bold text-slate-500 border border-slate-200 px-2.5 py-1.5 rounded-lg hover:bg-slate-50 transition whitespace-nowrap">
+                            <i class="fa-solid fa-check mr-0.5"></i>見たに追加
+                        </button>
+                    </div>
+                </div>`;
+            },
+
+            async addManual(status) {
+                const query = document.getElementById('inlineSearchInput').value.trim();
+                if (!query) return;
+
+                try {
+                    const result = await App.post('/movie/api/add_manual.php', { title: query, status: status });
+                    if (result.status === 'success') {
+                        App.toast(result.message);
+                        if (status === currentTab) {
+                            location.reload();
+                            return;
+                        }
+                        this.closeResults();
+                        document.getElementById('inlineSearchInput').value = '';
+                        this.updateTabCount(status, 1);
+                    } else {
+                        App.toast(result.message || '追加に失敗しました');
+                    }
+                } catch (e) {
+                    console.error(e);
+                    App.toast('エラーが発生しました');
                 }
             },
 

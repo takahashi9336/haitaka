@@ -129,7 +129,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                                 検索結果プレビュー
                             </h2>
                             <div class="flex items-center gap-3 text-xs">
-                                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-400 inline-block"></span>TMDB発要E<span id="countFound" class="font-bold">0</span></span>
+                                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-400 inline-block"></span>TMDB発見 <span id="countFound" class="font-bold">0</span></span>
                                 <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400 inline-block"></span>仮登録 <span id="countPlaceholder" class="font-bold">0</span></span>
                                 <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-slate-400 inline-block"></span>登録済<span id="countExisting" class="font-bold">0</span></span>
                             </div>
@@ -140,19 +140,19 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
 
                     <div class="flex items-center justify-between">
                         <button onclick="BulkImport.reset()" class="px-4 py-2.5 border border-slate-200 text-slate-500 text-sm font-bold rounded-lg hover:bg-slate-50 transition">
-                            <i class="fa-solid fa-arrow-rotate-left mr-1"></i>めEｊ直い                        </button>
+                            <i class="fa-solid fa-arrow-rotate-left mr-1"></i>やり直す</button>
                         <button onclick="BulkImport.registerAll()" id="registerBtn" class="px-6 py-2.5 mv-theme-btn text-white text-sm font-bold rounded-lg shadow-sm transition">
                             <i class="fa-solid fa-check mr-1.5"></i>チェック済みを一括登録
                         </button>
                     </div>
                 </div>
 
-                <!-- STEP 4: 完亁E-->
+                <!-- STEP 4: 完了 -->
                 <div id="step4" class="bg-white rounded-xl border border-slate-100 shadow-sm p-8 text-center hidden">
                     <div class="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
                         <i class="fa-solid fa-check text-3xl text-green-500"></i>
                     </div>
-                    <h2 class="text-xl font-bold text-slate-800 mb-2" id="doneTitle">登録完亁E</h2>
+                    <h2 class="text-xl font-bold text-slate-800 mb-2" id="doneTitle">登録完了</h2>
                     <p class="text-sm text-slate-500 mb-6" id="doneMessage"></p>
                     <div class="flex items-center justify-center gap-3">
                         <a href="/movie/" class="px-5 py-2.5 mv-theme-btn text-white text-sm font-bold rounded-lg shadow-sm transition">
@@ -244,7 +244,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                     }
 
                     this.results.push(result);
-                    // TMDB API レート制限対筁E 40req/10s なので ~250ms間隔
+                    // TMDB API レート制限対策: 40req/10s なので ~250ms間隔
                     if (tmdbConfigured && i < titles.length - 1) {
                         await new Promise(r => setTimeout(r, 280));
                     }
@@ -283,7 +283,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 let statusBadge, poster, info;
 
                 if (r.matchType === 'found' && m) {
-                    statusBadge = '<span class="flex items-center gap-1 text-[11px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full"><i class="fa-solid fa-circle-check"></i> TMDB発要E</span>';
+                    statusBadge = '<span class="flex items-center gap-1 text-[11px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full"><i class="fa-solid fa-circle-check"></i> TMDB発見</span>';
                     poster = m.poster_path
                         ? `<img src="https://image.tmdb.org/t/p/w92${m.poster_path}" class="w-12 h-[72px] object-cover rounded-lg shrink-0" loading="lazy">`
                         : `<div class="w-12 h-[72px] poster-placeholder rounded-lg flex items-center justify-center shrink-0"><i class="fa-solid fa-film text-slate-400 text-sm"></i></div>`;
@@ -308,7 +308,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 }
 
                 const altBtn = (r.alternatives && r.alternatives.length > 1 && !isExisting)
-                    ? `<button onclick="AltModal.open(${idx})" class="text-[11px] text-slate-400 hover:text-slate-600 transition" title="候補を表示"><i class="fa-solid fa-arrows-rotate mr-0.5"></i>候裁E/button>`
+                    ? `<button onclick="AltModal.open(${idx})" class="text-[11px] text-slate-400 hover:text-slate-600 transition" title="候補を表示"><i class="fa-solid fa-arrows-rotate mr-0.5"></i>候補</button>`
                     : '';
 
                 return `
@@ -476,7 +476,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                         </div>
                         <div class="flex-1">
                             <div class="font-bold text-sm text-amber-700">仮登録にする</div>
-                            <div class="text-[11px] text-amber-500">TMDB情報なしで。{BulkImport.esc(r.inputTitle)}」として登録</div>
+                            <div class="text-[11px] text-amber-500">TMDB情報なしで「${BulkImport.esc(r.inputTitle)}」として登録</div>
                         </div>
                         ${isPlaceholder ? '<i class="fa-solid fa-check text-amber-500 shrink-0"></i>' : ''}
                     </div>`;

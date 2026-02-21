@@ -485,4 +485,152 @@ class MovieController {
             ], JSON_UNESCAPED_UNICODE);
         }
     }
+
+    /**
+     * タイトルのみで映画追加 API
+     */
+    public function addManual(): void {
+        header('Content-Type: application/json');
+
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new \Exception('Invalid JSON');
+            }
+
+            $title = trim($input['title'] ?? '');
+            $movieStatus = $input['status'] ?? 'watchlist';
+
+            if (empty($title)) {
+                throw new \Exception('タイトルを入力してください');
+            }
+            if (!in_array($movieStatus, ['watchlist', 'watched'])) {
+                $movieStatus = 'watchlist';
+            }
+
+            $movieModel = new MovieModel();
+            $movie = $movieModel->findPlaceholderByTitle($title);
+            if (!$movie) {
+                $movie = $movieModel->createPlaceholder($title);
+            }
+
+            $userMovieModel = new UserMovieModel();
+            $existingEntry = $userMovieModel->findByMovieId((int)$movie['id']);
+            if ($existingEntry) {
+                throw new \Exception('この映画は既にリストに登録されています');
+            }
+
+            $userMovieModel->addMovie((int)$movie['id'], $movieStatus);
+
+            echo json_encode([
+                'status' => 'success',
+                'message' => "「{$title}」を追加しました",
+            ], JSON_UNESCAPED_UNICODE);
+
+        } catch (\Exception $e) {
+            echo json_encode([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    /**
+     * 一括編集画面
+     */
+    public function bulkEdit(): void {
+        $auth = new Auth();
+        $auth->requireLogin();
+
+        $user = $_SESSION['user'];
+        $tab = $_GET['tab'] ?? 'watchlist';
+        $sort = $_GET['sort'] ?? 'created_at';
+        $order = $_GET['order'] ?? 'DESC';
+
+        try {
+            $userMovieModel = new UserMovieModel();
+            $watchlistCount = $userMovieModel->countByStatus('watchlist');
+            $watchedCount = $userMovieModel->countByStatus('watched');
+            $movies = $userMovieModel->getListByStatus($tab, $sort, $order);
+        } catch (\Exception $e) {
+            error_log('Bulk edit error: ' . $e->getMessage());
+            $watchlistCount = 0;
+            $watchedCount = 0;
+            $movies = [];
+        }
+
+        require_once __DIR__ . '/../Views/movie_bulk_edit.php';
+    }
+
+    /**
+     * 一括更新 API
+     */
+    public function bulkUpdate(): void {
+        header('Content-Type: application/json');
+
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new \Exception('Invalid JSON');
+            }
+
+            $userMovieModel = new UserMovieModel();
+            $updates = $input['updates'] ?? [];
+            $deletes = $input['deletes'] ?? [];
+            $updatedCount = 0;
+            $deletedCount = 0;
+
+            foreach ($deletes as $id) {
+                if ($userMovieModel->delete((int)$id)) {
+                    $deletedCount++;
+                }
+            }
+
+            foreach ($updates as $item) {
+                $id = (int)($item['id'] ?? 0);
+                if ($id <= 0) continue;
+
+                $status = $item['status'] ?? null;
+                $rating = isset($item['rating']) && $item['rating'] !== '' ? (int)$item['rating'] : null;
+                $watchedDate = $item['watched_date'] ?? null;
+                $memo = $item['memo'] ?? null;
+
+                $data = [];
+                if ($status && in_array($status, ['watchlist', 'watched'])) {
+                    $data['status'] = $status;
+                }
+                if (array_key_exists('rating', $item)) {
+                    $data['rating'] = $rating;
+                }
+                if (array_key_exists('watched_date', $item)) {
+                    $data['watched_date'] = !empty($watchedDate) ? $watchedDate : null;
+                }
+                if (array_key_exists('memo', $item)) {
+                    $data['memo'] = !empty($memo) ? $memo : null;
+                }
+
+                if (!empty($data)) {
+                    $userMovieModel->update($id, $data);
+                    $updatedCount++;
+                }
+            }
+
+            $msg = '';
+            if ($updatedCount > 0) $msg .= "{$updatedCount}件を更新";
+            if ($deletedCount > 0) $msg .= ($msg ? '、' : '') . "{$deletedCount}件を削除";
+            if (empty($msg)) $msg = '変更はありません';
+            $msg .= 'しました';
+
+            echo json_encode([
+                'status' => 'success',
+                'message' => $msg,
+            ], JSON_UNESCAPED_UNICODE);
+
+        } catch (\Exception $e) {
+            echo json_encode([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], JSON_UNESCAPED_UNICODE);
+        }
+    }
 }
