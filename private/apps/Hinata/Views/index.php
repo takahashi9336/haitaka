@@ -203,7 +203,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         </div>
     </main>
 
-    <script src="/assets/js/core.js"></script>
+    <script src="/assets/js/core.js?v=2"></script>
     <script>
         const STORAGE_KEY = 'hinata_opened_accordions';
 

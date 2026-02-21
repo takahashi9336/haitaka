@@ -258,7 +258,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         </div>
     </main>
 
-    <script src="/assets/js/core.js"></script>
+    <script src="/assets/js/core.js?v=2"></script>
     <script>
         const MEMBER_MAP = <?= json_encode(array_column($members, null, 'id'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         const IMG_CACHE_BUST = '?v=<?= time() ?>';

@@ -190,7 +190,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         </div>
     </div>
 
-    <script src="/assets/js/core.js"></script>
+    <script src="/assets/js/core.js?v=2"></script>
     <script>
         document.getElementById('mobileMenuBtn').onclick = () => document.getElementById('sidebar').classList.add('mobile-open');
 

@@ -159,7 +159,7 @@ $cardDeco    = $isThemeHex ? '' : "text-{$themeTailwind}-500";
         </div>
     </main>
 
-    <script src="/assets/js/core.js"></script>
+    <script src="/assets/js/core.js?v=2"></script>
     <script>
         document.getElementById('mobileMenuBtn').onclick = () => document.getElementById('sidebar').classList.add('mobile-open');
     </script>

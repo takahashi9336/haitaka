@@ -67,6 +67,58 @@ const App = {
         return Math.ceil(diff / (1000 * 60 * 60 * 24));
     },
 
+    /**
+     * スクロール位置の保存・復元（サイト全体共通）
+     *
+     * 使い方: スクロール対象の要素に data-scroll-persist="キー名" を付与するだけ。
+     *   <div class="flex-1 overflow-y-auto" data-scroll-persist="movie-list">
+     */
+    initScrollPersist() {
+        const containers = document.querySelectorAll('[data-scroll-persist]');
+        if (containers.length === 0) return;
+
+        const pageKey = location.pathname + location.search;
+
+        containers.forEach(el => {
+            const key = `scroll:${el.dataset.scrollPersist}:${pageKey}`;
+            const saved = sessionStorage.getItem(key);
+            if (saved !== null) {
+                requestAnimationFrame(() => {
+                    el.scrollTop = parseInt(saved, 10);
+                });
+            }
+
+            el.addEventListener('scroll', () => {
+                clearTimeout(el._scrollSaveTimer);
+                el._scrollSaveTimer = setTimeout(() => {
+                    sessionStorage.setItem(key, el.scrollTop);
+                }, 150);
+            }, { passive: true });
+        });
+    },
+
+    /**
+     * 現在のURL検索パラメータを取得（他ページへのリンクに付与用）
+     * 使い方: App.buildBackUrl('/movie/', ['tab', 'sort', 'order', 'view'])
+     */
+    buildBackUrl(basePath, paramKeys) {
+        const current = new URLSearchParams(sessionStorage.getItem('app:lastListParams:' + basePath) || '');
+        const params = new URLSearchParams();
+        paramKeys.forEach(k => {
+            const v = current.get(k);
+            if (v) params.set(k, v);
+        });
+        const qs = params.toString();
+        return qs ? basePath + '?' + qs : basePath;
+    },
+
+    /**
+     * 現在ページのURLパラメータを保存（一覧→詳細遷移前に呼ぶ）
+     */
+    saveListParams(basePath) {
+        sessionStorage.setItem('app:lastListParams:' + basePath, location.search);
+    },
+
     initSidebar() {
         const sidebar = document.getElementById('sidebar');
         const toggleBtn = document.getElementById('sidebarToggle'); // PC用最小化ボタン
@@ -128,4 +180,5 @@ const App = {
 
 document.addEventListener('DOMContentLoaded', () => {
     App.initSidebar();
+    App.initScrollPersist();
 });

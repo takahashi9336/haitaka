@@ -234,7 +234,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         </div>
     </main>
 
-    <script src="/assets/js/core.js"></script>
+    <script src="/assets/js/core.js?v=2"></script>
     <script>
         document.getElementById('mobileMenuBtn') && (document.getElementById('mobileMenuBtn').onclick = function() {
             document.getElementById('sidebar').classList.add('mobile-open');

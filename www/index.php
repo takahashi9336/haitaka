@@ -288,7 +288,7 @@ $adminTheme = getThemeVarsForApp('admin');       // 管理画面への遷移ボ�
             </div>
         </div>
     </main>
-    <script src="/assets/js/core.js"></script>
+    <script src="/assets/js/core.js?v=2"></script>
     <script>
         function autoResizeTextarea(ta) {
             ta.style.height = 'auto';

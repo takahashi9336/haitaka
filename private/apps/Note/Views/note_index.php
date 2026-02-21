@@ -366,7 +366,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         </div>
     </div>
 
-    <script src="/assets/js/core.js"></script>
+    <script src="/assets/js/core.js?v=2"></script>
     <script>
         // テキストエリアの高さを内容に合わせて自動伸長
         function autoResizeTextarea(ta) {

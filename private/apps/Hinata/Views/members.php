@@ -108,7 +108,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
 
     <?php require_once __DIR__ . '/partials/member_modal.php'; ?>
 
-    <script src="/assets/js/core.js"></script>
+    <script src="/assets/js/core.js?v=2"></script>
     <script src="/assets/js/hinata-member-modal.js"></script>
     <script>
         const IS_ADMIN = <?= in_array(($user['role'] ?? ''), ['admin', 'hinata_admin'], true) ? 'true' : 'false' ?>;

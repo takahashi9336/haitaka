@@ -169,7 +169,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         <?php endforeach; ?>
     </datalist>
 
-    <script src="/assets/js/core.js"></script>
+    <script src="/assets/js/core.js?v=2"></script>
     <script>
         const $ = (id) => document.getElementById(id);
         const rawTasks = <?php echo json_encode($tasks); ?>;
