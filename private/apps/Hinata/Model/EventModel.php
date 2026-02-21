@@ -43,6 +43,32 @@ class EventModel extends BaseModel {
         return $this->pdo->query($sql)->fetch() ?: null;
     }
     
+    /**
+     * 指定日付のMG/RMGイベントを検索（カテゴリ 2 or 3）
+     */
+    public function findMgEventsByDate(string $date): array {
+        $sql = "SELECT id, event_name, event_date, category
+                FROM {$this->table}
+                WHERE event_date = :d AND category IN (2, 3)
+                ORDER BY id ASC";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(['d' => $date]);
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * MG/RMGイベント一覧（インポート時のマッチング用、今後3ヶ月分）
+     */
+    public function getMgEventsForMatching(): array {
+        $sql = "SELECT id, event_name, event_date, category
+                FROM {$this->table}
+                WHERE category IN (2, 3)
+                  AND event_date >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
+                  AND event_date <= DATE_ADD(NOW(), INTERVAL 6 MONTH)
+                ORDER BY event_date ASC";
+        return $this->pdo->query($sql)->fetchAll();
+    }
+
     public function getAllUpcomingEvents(): array {
         // 過去3ヶ月から未来1年のイベントを取得
         $sql = "SELECT * FROM {$this->table} 

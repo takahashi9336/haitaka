@@ -3,6 +3,7 @@
 namespace App\Hinata\Controller;
 
 use App\Hinata\Model\EventModel;
+use App\Hinata\Model\MeetGreetModel;
 use App\Hinata\Model\MemberModel;
 use Core\Auth;
 use Core\Database;
@@ -20,11 +21,26 @@ class EventController {
         $auth->requireLogin();
 
         $eventModel = new EventModel();
+        $mgModel = new MeetGreetModel();
         
         // 開始は先月から、終了は無制限(2099年)に設定
         $start = date('Y-m-01', strtotime('-1 month'));
         $end = '2099-12-31'; 
         $events = $eventModel->getEventsForCalendar($start, $end);
+
+        // MG/RMGイベントにユーザーのスロット情報を紐付け
+        $eventSlots = [];
+        foreach ($events as $e) {
+            if (in_array((int)$e['category'], [2, 3], true)) {
+                $slots = $mgModel->getSlotsByEventId((int)$e['id']);
+                if (empty($slots)) {
+                    $slots = $mgModel->getSlotsByDate($e['event_date']);
+                }
+                if (!empty($slots)) {
+                    $eventSlots[$e['id']] = $slots;
+                }
+            }
+        }
 
         $user = $_SESSION['user'];
         require_once __DIR__ . '/../Views/event_index.php';

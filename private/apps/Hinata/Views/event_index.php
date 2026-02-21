@@ -42,6 +42,8 @@ $getCatInfo = function($catId) {
         .custom-scroll::-webkit-scrollbar { width: 4px; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
         .date-col { width: 65px; flex-shrink: 0; }
+        .modal-backdrop { background: rgba(0,0,0,0.4); backdrop-filter: blur(2px); }
+        .fc-event { cursor: pointer !important; }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden text-slate-800 <?= $bodyBgClass ?>"<?= $bodyStyle ? ' style="' . htmlspecialchars($bodyStyle) . '"' : '' ?>>
@@ -115,6 +117,37 @@ $getCatInfo = function($catId) {
                         </div>
 
                         <div id="detail-<?= $e['id'] ?>" class="hidden border-t border-slate-50 bg-slate-50/30 p-4 space-y-4">
+                            <?php if (!empty($eventSlots[$e['id']])): ?>
+                                <div class="bg-white rounded-xl border border-emerald-100 shadow-sm overflow-hidden">
+                                    <div class="px-4 py-2 bg-emerald-50 flex items-center gap-2">
+                                        <i class="fa-solid fa-ticket text-emerald-500 text-xs"></i>
+                                        <span class="text-[10px] font-bold text-emerald-700 tracking-wider">自分のミーグリ予定</span>
+                                        <a href="/hinata/meetgreet.php" class="ml-auto text-[10px] font-bold text-emerald-500 hover:text-emerald-700 transition">
+                                            詳細 <i class="fa-solid fa-arrow-right text-[8px]"></i>
+                                        </a>
+                                    </div>
+                                    <div class="divide-y divide-slate-50">
+                                        <?php foreach ($eventSlots[$e['id']] as $slot): ?>
+                                        <div class="px-4 py-2 flex items-center gap-4 text-xs">
+                                            <div class="w-20 shrink-0">
+                                                <span class="font-bold text-slate-700"><?= htmlspecialchars($slot['slot_name']) ?></span>
+                                                <?php if ($slot['start_time'] && $slot['end_time']): ?>
+                                                    <div class="text-[10px] text-slate-400"><?= substr($slot['start_time'], 0, 5) ?>～<?= substr($slot['end_time'], 0, 5) ?></div>
+                                                <?php endif; ?>
+                                            </div>
+                                            <div class="flex-1 min-w-0">
+                                                <?php $slotColor = $slot['color1'] ?? '#94a3b8'; ?>
+                                                <span class="font-bold" style="color: <?= htmlspecialchars($slotColor) ?>;"><?= htmlspecialchars($slot['member_name'] ?? $slot['member_name_raw'] ?? '不明') ?></span>
+                                            </div>
+                                            <div class="shrink-0 font-bold text-slate-600"><?= (int)$slot['ticket_count'] ?><span class="text-[10px] text-slate-400">枚</span></div>
+                                            <?php if (!empty($slot['report'])): ?>
+                                                <i class="fa-solid fa-pen-to-square text-emerald-400 text-[10px] shrink-0" title="レポあり"></i>
+                                            <?php endif; ?>
+                                        </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
                             <?php if (!empty($e['event_info'])): ?>
                                 <div class="text-xs text-slate-600 bg-white p-4 rounded-xl border border-slate-100 shadow-sm whitespace-pre-wrap"><?= htmlspecialchars($e['event_info']) ?></div>
                             <?php endif; ?>
@@ -141,6 +174,32 @@ $getCatInfo = function($catId) {
             </div>
         </div>
     </main>
+
+    <!-- イベント詳細モーダル（カレンダー表示時） -->
+    <div id="eventModal" class="fixed inset-0 z-50 hidden">
+        <div class="modal-backdrop absolute inset-0" onclick="closeEventModal()"></div>
+        <div class="relative z-10 flex items-center justify-center min-h-full p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
+                <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-100 shrink-0">
+                    <div id="modalCatStrip" class="w-1.5 h-10 rounded-full shrink-0"></div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-0.5">
+                            <span id="modalCatName" class="text-[9px] font-black text-slate-400 tracking-wider"></span>
+                            <span id="modalDate" class="text-[10px] font-bold text-slate-400"></span>
+                        </div>
+                        <h2 id="modalTitle" class="font-black text-slate-800 text-base truncate"></h2>
+                    </div>
+                    <button onclick="closeEventModal()" class="text-slate-400 hover:text-slate-600 p-1 shrink-0"><i class="fa-solid fa-xmark text-lg"></i></button>
+                </div>
+                <div id="modalBody" class="flex-1 overflow-y-auto px-6 py-4 space-y-4 custom-scroll"></div>
+                <div class="px-6 py-3 border-t border-slate-100 shrink-0 flex justify-end">
+                    <button onclick="viewInList()" class="text-[10px] font-bold text-slate-500 bg-slate-100 px-4 py-2 rounded-lg hover:bg-slate-200 transition flex items-center gap-1">
+                        <i class="fa-solid fa-list"></i> リストで見る
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="/assets/js/core.js?v=2"></script>
     <script>
@@ -177,13 +236,117 @@ $getCatInfo = function($catId) {
             }
         }
 
+        const catColors = { 1: '#3b82f6', 2: '#10b981', 3: '#f59e0b' };
+        const catNames = { 1: 'ライブ', 2: 'ミーグリ', 3: 'リアルミーグリ' };
+        const dowNames = ['日','月','火','水','木','金','土'];
+
+        const rawEvents = <?= json_encode($events, JSON_UNESCAPED_UNICODE) ?>;
+        const eventSlotsData = <?= json_encode($eventSlots ?? [], JSON_UNESCAPED_UNICODE) ?>;
+
+        const eventsById = {};
+        rawEvents.forEach(e => { eventsById[e.id] = e; });
+
+        let currentModalEventId = null;
+
+        function openEventModal(eventId) {
+            const e = eventsById[eventId];
+            if (!e) return;
+            currentModalEventId = eventId;
+
+            const color = catColors[e.category] || '#64748b';
+            const catName = catNames[e.category] || 'その他';
+            const dt = new Date(e.event_date + 'T00:00:00');
+            const dateStr = `${dt.getFullYear()}/${dt.getMonth()+1}/${dt.getDate()}（${dowNames[dt.getDay()]}）`;
+
+            document.getElementById('modalCatStrip').style.backgroundColor = color;
+            document.getElementById('modalCatName').textContent = catName;
+            document.getElementById('modalDate').textContent = dateStr;
+            document.getElementById('modalTitle').textContent = e.event_name;
+
+            let bodyHtml = '';
+
+            if (e.event_place) {
+                bodyHtml += `<div class="flex items-center gap-2 text-xs text-slate-500"><i class="fa-solid fa-location-dot text-sky-300"></i>${_esc(e.event_place)}</div>`;
+            }
+
+            // ミーグリ予定
+            const slots = eventSlotsData[eventId];
+            if (slots && slots.length > 0) {
+                bodyHtml += `<div class="bg-white rounded-xl border border-emerald-100 shadow-sm overflow-hidden">`;
+                bodyHtml += `<div class="px-4 py-2 bg-emerald-50 flex items-center gap-2">`;
+                bodyHtml += `<i class="fa-solid fa-ticket text-emerald-500 text-xs"></i>`;
+                bodyHtml += `<span class="text-[10px] font-bold text-emerald-700 tracking-wider">自分のミーグリ予定</span>`;
+                bodyHtml += `<a href="/hinata/meetgreet.php" class="ml-auto text-[10px] font-bold text-emerald-500 hover:text-emerald-700 transition">詳細 <i class="fa-solid fa-arrow-right text-[8px]"></i></a>`;
+                bodyHtml += `</div><div class="divide-y divide-slate-50">`;
+                for (const s of slots) {
+                    const memberName = s.member_name || s.member_name_raw || '不明';
+                    const memberColor = s.color1 || '#94a3b8';
+                    const timeStr = (s.start_time && s.end_time) ? s.start_time.substring(0,5) + '～' + s.end_time.substring(0,5) : '';
+                    bodyHtml += `<div class="px-4 py-2 flex items-center gap-4 text-xs">`;
+                    bodyHtml += `<div class="w-20 shrink-0"><span class="font-bold text-slate-700">${_esc(s.slot_name)}</span>`;
+                    if (timeStr) bodyHtml += `<div class="text-[10px] text-slate-400">${timeStr}</div>`;
+                    bodyHtml += `</div>`;
+                    bodyHtml += `<div class="flex-1 min-w-0"><span class="font-bold" style="color:${memberColor}">${_esc(memberName)}</span></div>`;
+                    bodyHtml += `<div class="shrink-0 font-bold text-slate-600">${parseInt(s.ticket_count)}<span class="text-[10px] text-slate-400">枚</span></div>`;
+                    if (s.report) bodyHtml += `<i class="fa-solid fa-pen-to-square text-emerald-400 text-[10px] shrink-0" title="レポあり"></i>`;
+                    bodyHtml += `</div>`;
+                }
+                bodyHtml += `</div></div>`;
+            }
+
+            if (e.event_info) {
+                bodyHtml += `<div class="text-xs text-slate-600 bg-slate-50 p-4 rounded-xl border border-slate-100 whitespace-pre-wrap">${_esc(e.event_info)}</div>`;
+            }
+
+            if (e.event_url) {
+                bodyHtml += `<a href="${_esc(e.event_url)}" target="_blank" class="text-[10px] font-bold text-sky-600 bg-sky-50 px-4 py-2 rounded-full border border-sky-100 hover:bg-sky-100 transition inline-flex items-center gap-2"><i class="fa-solid fa-arrow-up-right-from-square"></i> 特設サイトを開く</a>`;
+            }
+
+            if (e.video_key) {
+                bodyHtml += `<div class="aspect-video w-full rounded-lg overflow-hidden bg-black shadow-lg"><iframe width="100%" height="100%" src="https://www.youtube.com/embed/${_esc(e.video_key)}?rel=0" frameborder="0" allowfullscreen></iframe></div>`;
+            }
+
+            if (!bodyHtml) {
+                bodyHtml = '<p class="text-xs text-slate-400 text-center py-4">詳細情報はありません</p>';
+            }
+
+            document.getElementById('modalBody').innerHTML = bodyHtml;
+            document.getElementById('eventModal').classList.remove('hidden');
+        }
+
+        function closeEventModal() {
+            document.getElementById('eventModal').classList.add('hidden');
+            currentModalEventId = null;
+        }
+
+        function viewInList() {
+            const eid = currentModalEventId;
+            closeEventModal();
+            switchTab('list');
+            if (eid) {
+                setTimeout(() => {
+                    const card = document.getElementById('event-card-' + eid);
+                    if (card) {
+                        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        const detail = document.getElementById('detail-' + eid);
+                        if (detail && detail.classList.contains('hidden')) toggleDetail(eid);
+                    }
+                }, 100);
+            }
+        }
+
+        function _esc(str) {
+            if (!str) return '';
+            const d = document.createElement('div');
+            d.textContent = str;
+            return d.innerHTML;
+        }
+
         let calendar = null;
         document.addEventListener('DOMContentLoaded', function() {
             const calendarEl = document.getElementById('calendar');
-            const rawEvents = <?= json_encode($events) ?>;
             const formattedEvents = rawEvents.map(e => {
-                const colors = { 1: '#3b82f6', 2: '#10b981', 3: '#f59e0b' };
-                return { id: e.id, title: e.event_name, start: e.event_date, color: colors[e.category] || '#64748b' };
+                return { id: e.id, title: e.event_name, start: e.event_date, color: catColors[e.category] || '#64748b' };
             });
             calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
@@ -193,14 +356,8 @@ $getCatInfo = function($catId) {
                 height: 'auto',
                 aspectRatio: 1.35,
                 eventClick: function(info) {
-                    switchTab('list');
-                    setTimeout(() => {
-                        const card = document.getElementById('detail-' + info.event.id);
-                        if (card) {
-                            card.parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            if (card.classList.contains('hidden')) toggleDetail(info.event.id);
-                        }
-                    }, 100);
+                    info.jsEvent.preventDefault();
+                    openEventModal(info.event.id);
                 }
             });
             calendar.render();
@@ -218,7 +375,6 @@ $getCatInfo = function($catId) {
                             toggleDetail(parseInt(eventId));
                         }
                     }
-                    // URLパラメータをクリア
                     window.history.replaceState({}, '', '/hinata/events.php');
                 }, 500);
             }
