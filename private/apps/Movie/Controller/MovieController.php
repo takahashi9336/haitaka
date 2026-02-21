@@ -14,6 +14,205 @@ use Core\Auth;
 class MovieController {
 
     /**
+     * ダッシュボード画面
+     */
+    public function dashboard(): void {
+        $auth = new Auth();
+        $auth->requireLogin();
+
+        $user = $_SESSION['user'];
+
+        try {
+            $userMovieModel = new UserMovieModel();
+            $watchlistCount = $userMovieModel->countByStatus('watchlist');
+            $watchedCount = $userMovieModel->countByStatus('watched');
+            $thisMonthCount = $userMovieModel->getThisMonthWatchedCount();
+            $totalRuntime = $userMovieModel->getTotalWatchedRuntime();
+            $monthlyWatchCounts = $userMovieModel->getMonthlyWatchCounts(12);
+            $genreDistribution = $userMovieModel->getGenreDistribution();
+            $ratingDistribution = $userMovieModel->getRatingDistribution();
+
+            $avgRating = 0;
+            $ratedCount = array_sum($ratingDistribution);
+            if ($ratedCount > 0) {
+                $sum = 0;
+                foreach ($ratingDistribution as $score => $cnt) {
+                    $sum += $score * $cnt;
+                }
+                $avgRating = round($sum / $ratedCount, 1);
+            }
+        } catch (\Exception $e) {
+            error_log('Movie dashboard error: ' . $e->getMessage());
+            $watchlistCount = $watchedCount = $thisMonthCount = $totalRuntime = $avgRating = $ratedCount = 0;
+            $monthlyWatchCounts = [];
+            $genreDistribution = $ratingDistribution = [];
+        }
+
+        $tmdb = new TmdbApiClient();
+        $tmdbConfigured = $tmdb->isConfigured();
+
+        require_once __DIR__ . '/../Views/movie_dashboard.php';
+    }
+
+    /**
+     * ガチャAPI（ランダム1件返却）
+     */
+    public function gachaApi(): void {
+        header('Content-Type: application/json');
+        try {
+            $userMovieModel = new UserMovieModel();
+            $movie = $userMovieModel->getRandomWatchlistItem();
+            if (!$movie) {
+                echo json_encode(['status' => 'empty', 'message' => '見たいリストが空です'], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+            echo json_encode(['status' => 'success', 'data' => $movie], JSON_UNESCAPED_UNICODE);
+        } catch (\Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    private const REC_CACHE_TTL = 21600; // 6時間
+
+    private function getRecCachePath(string $type, int $userId): string {
+        $dir = __DIR__ . '/../../../cache/rec';
+        if (!is_dir($dir)) @mkdir($dir, 0755, true);
+        if ($type === 'trending') {
+            return $dir . '/trending.json';
+        }
+        return $dir . "/{$type}_{$userId}.json";
+    }
+
+    private function readRecCache(string $path): ?array {
+        if (!file_exists($path)) return null;
+        $mtime = filemtime($path);
+        if (time() - $mtime > self::REC_CACHE_TTL) {
+            @unlink($path);
+            return null;
+        }
+        $data = @file_get_contents($path);
+        if ($data === false) return null;
+        $decoded = json_decode($data, true);
+        return is_array($decoded) ? $decoded : null;
+    }
+
+    private function writeRecCache(string $path, array $data): void {
+        @file_put_contents($path, json_encode($data, JSON_UNESCAPED_UNICODE), LOCK_EX);
+    }
+
+    /**
+     * おすすめ映画API（6時間キャッシュ付き）
+     */
+    public function recommendationsApi(): void {
+        header('Content-Type: application/json');
+        try {
+            $type = $_GET['type'] ?? '';
+            if (!in_array($type, ['personal', 'genre', 'trending'])) {
+                echo json_encode(['status' => 'error', 'message' => '不正なtypeパラメータ'], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+
+            $userMovieModel = new UserMovieModel();
+            $tmdb = new TmdbApiClient();
+
+            if (!$tmdb->isConfigured()) {
+                echo json_encode(['status' => 'error', 'message' => 'TMDB未設定'], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+
+            $userId = (int)($_SESSION['user']['id'] ?? 0);
+            $cachePath = $this->getRecCachePath($type, $userId);
+            $cached = $this->readRecCache($cachePath);
+
+            if ($cached !== null) {
+                $this->applyRegisteredFlags($cached, $userMovieModel);
+                echo json_encode($cached, JSON_UNESCAPED_UNICODE);
+                return;
+            }
+
+            $result = $this->fetchRecommendations($type, $userMovieModel, $tmdb);
+            if ($result !== null) {
+                $this->writeRecCache($cachePath, $result);
+            }
+
+            echo json_encode($result ?? ['status' => 'empty'], JSON_UNESCAPED_UNICODE);
+        } catch (\Exception $e) {
+            error_log('Recommendations API error: ' . $e->getMessage());
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    private function applyRegisteredFlags(array &$response, UserMovieModel $userMovieModel): void {
+        $existingSet = array_flip($userMovieModel->getAllTmdbIds());
+        if (isset($response['data'])) {
+            foreach ($response['data'] as &$m) {
+                $m['_registered'] = isset($existingSet[$m['id']]);
+            }
+        }
+    }
+
+    private function fetchRecommendations(string $type, UserMovieModel $userMovieModel, TmdbApiClient $tmdb): ?array {
+        $existingSet = array_flip($userMovieModel->getAllTmdbIds());
+        $movies = [];
+
+        switch ($type) {
+            case 'personal':
+                $topIds = $userMovieModel->getTopRatedTmdbIds(5);
+                if (empty($topIds)) return ['status' => 'empty', 'message' => '高評価の映画がありません'];
+
+                $seen = [];
+                foreach ($topIds as $tmdbId) {
+                    $result = $tmdb->getRecommendations((int)$tmdbId);
+                    if (!$result || empty($result['results'])) continue;
+                    foreach ($result['results'] as $m) {
+                        $id = $m['id'];
+                        if (isset($seen[$id])) continue;
+                        $seen[$id] = true;
+                        $m['_registered'] = isset($existingSet[$id]);
+                        $movies[] = $m;
+                    }
+                }
+                usort($movies, fn($a, $b) => ($b['vote_average'] ?? 0) <=> ($a['vote_average'] ?? 0));
+                $movies = array_filter($movies, fn($m) => !$m['_registered']);
+                $movies = array_slice(array_values($movies), 0, 20);
+                return ['status' => 'success', 'data' => $movies];
+
+            case 'genre':
+                $genreNames = $userMovieModel->getTopGenreNames(3);
+                if (empty($genreNames)) return ['status' => 'empty', 'message' => 'ジャンルデータがありません'];
+
+                $genreIds = [];
+                foreach ($genreNames as $name) {
+                    $gid = TmdbApiClient::genreNameToId($name);
+                    if ($gid) $genreIds[] = $gid;
+                }
+                if (empty($genreIds)) return ['status' => 'empty', 'message' => 'ジャンルマッピングなし'];
+
+                $result = $tmdb->discoverByGenres($genreIds);
+                if ($result && !empty($result['results'])) {
+                    foreach ($result['results'] as $m) {
+                        $m['_registered'] = isset($existingSet[$m['id']]);
+                        if (!$m['_registered']) $movies[] = $m;
+                    }
+                }
+                $movies = array_slice($movies, 0, 20);
+                return ['status' => 'success', 'genres' => $genreNames, 'data' => $movies];
+
+            case 'trending':
+                $result = $tmdb->getTrending('week');
+                if ($result && !empty($result['results'])) {
+                    foreach ($result['results'] as $m) {
+                        $m['_registered'] = isset($existingSet[$m['id']]);
+                        $movies[] = $m;
+                    }
+                }
+                $movies = array_slice($movies, 0, 20);
+                return ['status' => 'success', 'data' => $movies];
+        }
+        return null;
+    }
+
+    /**
      * 映画一覧画面
      */
     public function index(): void {
@@ -24,12 +223,13 @@ class MovieController {
         $tab = $_GET['tab'] ?? 'watchlist';
         $sort = $_GET['sort'] ?? 'created_at';
         $order = $_GET['order'] ?? 'DESC';
+        $filter = $_GET['filter'] ?? '';
 
         try {
             $userMovieModel = new UserMovieModel();
             $watchlistCount = $userMovieModel->countByStatus('watchlist');
             $watchedCount = $userMovieModel->countByStatus('watched');
-            $movies = $userMovieModel->getListByStatus($tab, $sort, $order);
+            $movies = $userMovieModel->getListByStatus($tab, $sort, $order, $filter);
         } catch (\Exception $e) {
             error_log('Movie list error: ' . $e->getMessage());
             $watchlistCount = 0;
@@ -54,7 +254,7 @@ class MovieController {
         $id = (int)($_GET['id'] ?? 0);
 
         if ($id <= 0) {
-            header('Location: /movie/');
+            header('Location: /movie/list.php');
             exit;
         }
 
@@ -63,15 +263,15 @@ class MovieController {
             $movie = $userMovieModel->getDetailWithMovie($id);
 
             if (!$movie) {
-                header('Location: /movie/');
+                header('Location: /movie/list.php');
                 exit;
             }
 
             $tmdb = new TmdbApiClient();
+            $movieModel = new MovieModel();
             if ($tmdb->isConfigured() && !empty($movie['tmdb_id'])) {
                 $tmdbDetail = $tmdb->getMovieDetail((int)$movie['tmdb_id']);
                 if ($tmdbDetail && !empty($tmdbDetail['runtime'])) {
-                    $movieModel = new MovieModel();
                     $movieModel->updateFromTmdb((int)$movie['movie_id'], $tmdbDetail);
                     $movie['runtime'] = $tmdbDetail['runtime'];
                     $movie['overview'] = $tmdbDetail['overview'] ?? $movie['overview'];
@@ -82,11 +282,17 @@ class MovieController {
                         );
                     }
                     $movie['credits'] = $tmdbDetail['credits'] ?? null;
+
+                    $wpAll = $tmdbDetail['watch/providers']['results'] ?? [];
+                    $wpJP = $wpAll['JP'] ?? null;
+                    $movieModel->updateWatchProviders((int)$movie['movie_id'], $wpJP);
+                    $movie['watch_providers'] = $wpJP ? json_encode($wpJP, JSON_UNESCAPED_UNICODE) : null;
+                    $movie['watch_providers_updated_at'] = date('Y-m-d H:i:s');
                 }
             }
         } catch (\Exception $e) {
             error_log('Movie detail error: ' . $e->getMessage());
-            header('Location: /movie/');
+            header('Location: /movie/list.php');
             exit;
         }
 
@@ -525,6 +731,48 @@ class MovieController {
             echo json_encode([
                 'status' => 'success',
                 'message' => "「{$title}」を追加しました",
+            ], JSON_UNESCAPED_UNICODE);
+
+        } catch (\Exception $e) {
+            echo json_encode([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    /**
+     * タグ更新 API
+     */
+    public function updateTags(): void {
+        header('Content-Type: application/json');
+
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new \Exception('Invalid JSON');
+            }
+
+            $id = (int)($input['id'] ?? 0);
+            if ($id <= 0) {
+                throw new \Exception('IDが指定されていません');
+            }
+
+            $tags = $input['tags'] ?? [];
+            if (!is_array($tags)) {
+                $tags = [];
+            }
+            $tags = array_values(array_unique(array_filter(array_map('trim', $tags))));
+
+            $userMovieModel = new UserMovieModel();
+            $result = $userMovieModel->update($id, [
+                'tags' => !empty($tags) ? json_encode($tags, JSON_UNESCAPED_UNICODE) : null,
+            ]);
+
+            echo json_encode([
+                'status' => 'success',
+                'message' => 'タグを更新しました',
+                'data' => ['tags' => $tags],
             ], JSON_UNESCAPED_UNICODE);
 
         } catch (\Exception $e) {

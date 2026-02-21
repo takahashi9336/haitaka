@@ -16,6 +16,7 @@ class MovieModel extends BaseModel {
         'id', 'tmdb_id', 'title', 'original_title', 'overview',
         'poster_path', 'backdrop_path', 'release_date',
         'vote_average', 'vote_count', 'genres', 'runtime',
+        'watch_providers', 'watch_providers_updated_at',
         'created_at', 'updated_at'
     ];
 
@@ -155,6 +156,18 @@ class MovieModel extends BaseModel {
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute();
         return $stmt->fetchAll();
+    }
+
+    /**
+     * 配信サービス情報を保存
+     */
+    public function updateWatchProviders(int $id, ?array $providersJP): bool {
+        $sql = "UPDATE {$this->table} SET watch_providers = :wp, watch_providers_updated_at = NOW() WHERE id = :id";
+        $stmt = $this->pdo->prepare($sql);
+        return $stmt->execute([
+            'wp' => $providersJP ? json_encode($providersJP, JSON_UNESCAPED_UNICODE) : null,
+            'id' => $id,
+        ]);
     }
 
     /**

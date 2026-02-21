@@ -50,7 +50,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         <header class="h-16 bg-white/80 backdrop-blur-md border-b <?= $headerBorder ?> flex items-center justify-between px-6 shrink-0 z-10">
             <div class="flex items-center gap-3">
                 <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
-                <a href="/movie/?tab=<?= htmlspecialchars($tab) ?>" class="flex items-center gap-2 text-slate-500 hover:text-slate-700 transition">
+                <a href="/movie/list.php?tab=<?= htmlspecialchars($tab) ?>" class="flex items-center gap-2 text-slate-500 hover:text-slate-700 transition">
                     <i class="fa-solid fa-arrow-left"></i>
                     <span class="text-sm font-bold">映画リスト</span>
                 </a>
@@ -173,6 +173,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                     <?php endforeach; ?>
                 </tbody>
             </table>
+            <div class="px-6"><?php require __DIR__ . '/_tmdb_attribution.php'; ?></div>
             <?php endif; ?>
         </div>
 

@@ -53,8 +53,10 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
         .star-rating .star { cursor: pointer; transition: color 0.15s; }
         .star-rating .star:hover, .star-rating .star.filled { color: #f59e0b; }
 
-        .movie-card .card-watched-btn { opacity: 0; transition: opacity 0.2s; }
-        .movie-card:hover .card-watched-btn { opacity: 1; }
+        .movie-card .card-watched-btn { opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+        @media (hover: hover) and (pointer: fine) {
+            .movie-card:hover .card-watched-btn { opacity: 1; pointer-events: auto; }
+        }
 
         .list-row { transition: background-color 0.15s; }
         .list-row:hover { background-color: #f8fafc; }
@@ -67,6 +69,11 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
         .inline-results { box-shadow: 0 12px 36px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04); }
         .inline-result-row { transition: background-color 0.12s; }
         .inline-result-row:hover { background-color: #f8fafc; }
+
+        .filter-chip { transition: all 0.15s ease; cursor: pointer; }
+        .filter-chip.active { background-color: var(--mv-theme); color: #fff; border-color: var(--mv-theme); }
+        .filter-chip:not(.active):hover { border-color: var(--mv-theme); color: var(--mv-theme); }
+        .tag-chip-card { font-size: 10px; padding: 1px 6px; border-radius: 9999px; }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden text-slate-800 <?= $bodyBgClass ?>"<?= $bodyStyle ? ' style="' . htmlspecialchars($bodyStyle) . '"' : '' ?>>
@@ -78,10 +85,10 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
         <header class="h-16 bg-white/80 backdrop-blur-md border-b <?= $headerBorder ?> flex items-center justify-between px-6 shrink-0 z-10">
             <div class="flex items-center gap-3">
                 <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
-                <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-lg <?= $headerIconBg ?> <?= $headerShadow ?>"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?>>
+                <a href="/movie/" class="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-lg <?= $headerIconBg ?> <?= $headerShadow ?> hover:brightness-110 transition"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?> title="映画ダッシュボード">
                     <i class="fa-solid fa-film text-sm"></i>
-                </div>
-                <h1 class="font-black text-slate-700 text-xl tracking-tighter">映画リスト</h1>
+                </a>
+                <h1 class="font-black text-slate-700 text-xl tracking-tighter">見たい / 見た</h1>
             </div>
             <div class="flex items-center gap-2 sm:gap-3">
                 <a href="/movie/bulk_edit.php?tab=<?= htmlspecialchars($tab) ?>" class="flex items-center gap-2 px-3 py-2 border border-slate-200 text-slate-500 text-sm font-bold rounded-lg hover:bg-slate-50 transition" title="一括編集">
@@ -94,8 +101,8 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                 </a>
                 <?php if ($tmdbConfigured): ?>
                 <button onclick="SearchModal.open()" class="flex items-center gap-2 px-4 py-2 mv-theme-btn text-white text-sm font-bold rounded-lg shadow-sm transition">
-                    <i class="fa-solid fa-magnifying-glass"></i>
-                    <span class="hidden sm:inline">映画を検索</span>
+                    <i class="fa-solid fa-plus"></i>
+                    <span class="hidden sm:inline">映画を追加</span>
                 </button>
                 <?php else: ?>
                 <div class="text-xs text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg">
@@ -141,6 +148,22 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
             </div>
         </div>
 
+        <?php if (!empty($filter)): ?>
+        <div class="bg-blue-50 border-b border-blue-100 px-6 md:px-12 py-2 shrink-0">
+            <div class="max-w-7xl mx-auto flex items-center gap-3">
+                <i class="fa-solid fa-filter text-blue-400 text-xs"></i>
+                <span class="text-xs font-bold text-blue-600">
+                    <?php if ($filter === 'this_month'): ?>
+                    <?= date('Y年n月') ?>の鑑賞映画を表示中（<?= count($movies) ?>本）
+                    <?php endif; ?>
+                </span>
+                <a href="?tab=<?= htmlspecialchars($tab) ?>" class="ml-auto text-xs text-blue-500 hover:text-blue-700 font-bold transition">
+                    <i class="fa-solid fa-xmark mr-0.5"></i>フィルタ解除
+                </a>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <!-- インライン検索バー -->
         <?php if ($tmdbConfigured): ?>
         <div class="bg-white/90 backdrop-blur-sm border-b border-slate-200 shrink-0 z-[8] relative" id="inlineSearchArea">
@@ -181,6 +204,33 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
         <div class="flex-1 overflow-y-auto" data-scroll-persist="movie-list">
             <div class="max-w-7xl mx-auto px-6 md:px-12 py-6">
 
+                <?php
+                $allGenres = [];
+                $allTags = [];
+                if (!empty($movies)) {
+                    foreach ($movies as $mv) {
+                        if (!empty($mv['genres'])) {
+                            $g = json_decode($mv['genres'], true);
+                            if (is_array($g)) {
+                                foreach ($g as $gn) {
+                                    if (is_string($gn) && !in_array($gn, $allGenres)) $allGenres[] = $gn;
+                                }
+                            }
+                        }
+                        if (!empty($mv['tags'])) {
+                            $t = json_decode($mv['tags'], true);
+                            if (is_array($t)) {
+                                foreach ($t as $tn) {
+                                    if (is_string($tn) && !in_array($tn, $allTags)) $allTags[] = $tn;
+                                }
+                            }
+                        }
+                    }
+                    sort($allGenres);
+                    sort($allTags);
+                }
+                ?>
+
                 <!-- 映画一覧 -->
                 <?php if (empty($movies)): ?>
                 <div class="text-center py-20">
@@ -190,21 +240,66 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                     <h3 class="text-xl font-bold text-slate-800 mb-2">
                         <?= $tab === 'watchlist' ? 'まだ見たい映画がありません' : 'まだ見た映画がありません' ?>
                     </h3>
-                    <p class="text-sm text-slate-400 mb-6">映画を検索してリストに追加しましょう</p>
+                    <p class="text-sm text-slate-400 mb-6">映画を追加してリストを作りましょう</p>
                     <?php if ($tmdbConfigured): ?>
                     <button onclick="SearchModal.open()" class="px-6 py-2.5 mv-theme-btn text-white text-sm font-bold rounded-lg shadow-sm transition">
-                        <i class="fa-solid fa-magnifying-glass mr-2"></i>映画を検索
+                        <i class="fa-solid fa-plus mr-2"></i>映画を追加
                     </button>
                     <?php endif; ?>
                 </div>
                 <?php else: ?>
 
+                <!-- リスト内フィルター -->
+                <div class="mb-4" id="listFilterArea">
+                    <div class="flex items-center gap-2">
+                        <div class="flex-1 relative">
+                            <i class="fa-solid fa-filter absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-sm"></i>
+                            <input type="text" id="listFilterInput" placeholder="リスト内をタイトルで絞り込み..."
+                                   class="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--mv-theme)] focus:border-transparent"
+                                   oninput="ListFilter.apply()" autocomplete="off">
+                        </div>
+                        <button onclick="ListFilter.clearAll()" class="text-xs text-slate-400 hover:text-slate-600 transition px-2 py-2 hidden whitespace-nowrap" id="listFilterClearBtn">
+                            <i class="fa-solid fa-xmark mr-0.5"></i>クリア
+                        </button>
+                    </div>
+                    <?php if (!empty($allGenres) || !empty($allTags)): ?>
+                    <div class="flex flex-wrap gap-1.5 mt-2" id="listFilterChips">
+                        <?php foreach ($allTags as $tag): ?>
+                        <button class="filter-chip tag-chip text-[11px] px-2.5 py-1 rounded-full border border-amber-300 text-amber-600 bg-amber-50/50"
+                                onclick="ListFilter.toggleChip(this, 'tag')"
+                                data-value="<?= htmlspecialchars($tag) ?>">
+                            <i class="fa-solid fa-tag text-[9px] mr-0.5"></i><?= htmlspecialchars($tag) ?>
+                        </button>
+                        <?php endforeach; ?>
+                        <?php foreach ($allGenres as $genre): ?>
+                        <button class="filter-chip genre-chip text-[11px] px-2.5 py-1 rounded-full border border-slate-200 text-slate-500"
+                                onclick="ListFilter.toggleChip(this, 'genre')"
+                                data-value="<?= htmlspecialchars($genre) ?>">
+                            <?= htmlspecialchars($genre) ?>
+                        </button>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php endif; ?>
+                    <div class="hidden text-center py-8 text-slate-400 text-sm" id="listFilterNoResults">
+                        <i class="fa-solid fa-search text-2xl mb-2 block"></i>
+                        該当する映画が見つかりません
+                    </div>
+                </div>
+
                 <!-- ④ グリッド表示 -->
                 <div id="viewGrid" class="<?= $viewMode === 'grid' ? '' : 'hidden' ?>">
                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                        <?php foreach ($movies as $mv): ?>
+                        <?php foreach ($movies as $mv):
+                            $mvGenres = [];
+                            if (!empty($mv['genres'])) { $gd = json_decode($mv['genres'], true); if (is_array($gd)) $mvGenres = array_filter($gd, 'is_string'); }
+                            $mvTags = [];
+                            if (!empty($mv['tags'])) { $td = json_decode($mv['tags'], true); if (is_array($td)) $mvTags = array_filter($td, 'is_string'); }
+                        ?>
                         <div class="movie-card bg-white rounded-xl overflow-hidden shadow-sm border border-slate-100 cursor-pointer relative"
-                             onclick="goDetail(<?= $mv['id'] ?>)">
+                             onclick="goDetail(<?= $mv['id'] ?>)"
+                             data-title="<?= htmlspecialchars(mb_strtolower($mv['title'])) ?>"
+                             data-genres="<?= htmlspecialchars(implode(',', $mvGenres)) ?>"
+                             data-tags="<?= htmlspecialchars(implode(',', $mvTags)) ?>">
                             <div class="aspect-[2/3] relative overflow-hidden">
                                 <?php if (!empty($mv['poster_path'])): ?>
                                 <img src="https://image.tmdb.org/t/p/w342<?= htmlspecialchars($mv['poster_path']) ?>"
@@ -229,7 +324,6 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                                 </div>
                                 <?php endif; ?>
 
-                                <!-- ⑤ 見たいタブ 「見た」ボタン -->
                                 <?php if ($tab === 'watchlist'): ?>
                                 <button onclick="event.stopPropagation(); WatchedModal.open(<?= $mv['id'] ?>)"
                                         class="card-watched-btn absolute top-2 right-2 bg-white/90 hover:bg-green-500 hover:text-white text-green-600 text-xs font-bold px-2.5 py-1.5 rounded-lg shadow-lg transition backdrop-blur-sm"
@@ -240,8 +334,34 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                             </div>
                             <div class="p-3">
                                 <h3 class="text-sm font-bold text-slate-800 line-clamp-2 leading-snug mb-1"><?= htmlspecialchars($mv['title']) ?></h3>
-                                <?php if (!empty($mv['release_date'])): ?>
-                                <p class="text-[11px] text-slate-400"><?= date('Y年', strtotime($mv['release_date'])) ?></p>
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <?php if (!empty($mv['release_date'])): ?>
+                                    <span class="text-[11px] text-slate-400"><?= date('Y年', strtotime($mv['release_date'])) ?></span>
+                                    <?php endif; ?>
+                                    <?php
+                                        $cardWp = !empty($mv['watch_providers']) ? json_decode($mv['watch_providers'], true) : null;
+                                        $cardProviders = $cardWp['flatrate'] ?? [];
+                                        if (!empty($cardProviders)):
+                                    ?>
+                                    <span class="text-slate-200">|</span>
+                                    <?php foreach (array_slice($cardProviders, 0, 3) as $cp): ?>
+                                    <?php if (!empty($cp['logo_path'])): ?>
+                                    <img src="https://image.tmdb.org/t/p/w45<?= htmlspecialchars($cp['logo_path']) ?>"
+                                         class="w-4 h-4 rounded-sm" title="<?= htmlspecialchars($cp['provider_name']) ?>" loading="lazy">
+                                    <?php endif; endforeach; ?>
+                                    <?php if (count($cardProviders) > 3): ?>
+                                    <span class="text-[9px] text-slate-400">+<?= count($cardProviders) - 3 ?></span>
+                                    <?php endif; endif; ?>
+                                </div>
+                                <?php if (!empty($mvTags)): ?>
+                                <div class="flex flex-wrap gap-1 mt-1.5">
+                                    <?php foreach (array_slice($mvTags, 0, 3) as $t): ?>
+                                    <span class="tag-chip-card bg-amber-50 text-amber-600 border border-amber-200"><i class="fa-solid fa-tag text-[7px] mr-0.5"></i><?= htmlspecialchars($t) ?></span>
+                                    <?php endforeach; ?>
+                                    <?php if (count($mvTags) > 3): ?>
+                                    <span class="tag-chip-card text-slate-400">+<?= count($mvTags) - 3 ?></span>
+                                    <?php endif; ?>
+                                </div>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -252,10 +372,17 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                 <!-- ④ リスト表示 -->
                 <div id="viewList" class="<?= $viewMode === 'list' ? '' : 'hidden' ?>">
                     <div class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden divide-y divide-slate-100">
-                        <?php foreach ($movies as $mv): ?>
+                        <?php foreach ($movies as $mv):
+                            $mvGenresL = [];
+                            if (!empty($mv['genres'])) { $gd2 = json_decode($mv['genres'], true); if (is_array($gd2)) $mvGenresL = array_filter($gd2, 'is_string'); }
+                            $mvTagsL = [];
+                            if (!empty($mv['tags'])) { $td2 = json_decode($mv['tags'], true); if (is_array($td2)) $mvTagsL = array_filter($td2, 'is_string'); }
+                        ?>
                         <div class="list-row flex items-center gap-4 px-4 py-3 cursor-pointer"
-                             onclick="goDetail(<?= $mv['id'] ?>)">
-                            <!-- ポスター（小）-->
+                             onclick="goDetail(<?= $mv['id'] ?>)"
+                             data-title="<?= htmlspecialchars(mb_strtolower($mv['title'])) ?>"
+                             data-genres="<?= htmlspecialchars(implode(',', $mvGenresL)) ?>"
+                             data-tags="<?= htmlspecialchars(implode(',', $mvTagsL)) ?>">
                             <?php if (!empty($mv['poster_path'])): ?>
                             <img src="https://image.tmdb.org/t/p/w92<?= htmlspecialchars($mv['poster_path']) ?>"
                                  alt="<?= htmlspecialchars($mv['title']) ?>"
@@ -267,9 +394,20 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                             </div>
                             <?php endif; ?>
 
-                            <!-- 情報 -->
                             <div class="flex-1 min-w-0">
-                                <h3 class="text-sm font-bold text-slate-800 line-clamp-1"><?= htmlspecialchars($mv['title']) ?></h3>
+                                <div class="flex items-center gap-2">
+                                    <h3 class="text-sm font-bold text-slate-800 line-clamp-1"><?= htmlspecialchars($mv['title']) ?></h3>
+                                    <?php if (!empty($mvTagsL)): ?>
+                                    <div class="flex items-center gap-1 shrink-0 hidden sm:flex">
+                                        <?php foreach (array_slice($mvTagsL, 0, 2) as $t): ?>
+                                        <span class="tag-chip-card bg-amber-50 text-amber-600 border border-amber-200"><i class="fa-solid fa-tag text-[7px] mr-0.5"></i><?= htmlspecialchars($t) ?></span>
+                                        <?php endforeach; ?>
+                                        <?php if (count($mvTagsL) > 2): ?>
+                                        <span class="tag-chip-card text-slate-400">+<?= count($mvTagsL) - 2 ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php endif; ?>
+                                </div>
                                 <div class="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
                                     <?php if (!empty($mv['release_date'])): ?>
                                     <span><?= date('Y年', strtotime($mv['release_date'])) ?></span>
@@ -283,10 +421,23 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                                     <span class="text-slate-300">|</span>
                                     <span class="truncate"><?= htmlspecialchars(implode(', ', array_slice(array_filter($g, 'is_string'), 0, 3))) ?></span>
                                     <?php endif; endif; ?>
+                                    <?php
+                                        $listWp = !empty($mv['watch_providers']) ? json_decode($mv['watch_providers'], true) : null;
+                                        $listProviders = $listWp['flatrate'] ?? [];
+                                        if (!empty($listProviders)):
+                                    ?>
+                                    <span class="text-slate-300">|</span>
+                                    <?php foreach (array_slice($listProviders, 0, 4) as $lp): ?>
+                                    <?php if (!empty($lp['logo_path'])): ?>
+                                    <img src="https://image.tmdb.org/t/p/w45<?= htmlspecialchars($lp['logo_path']) ?>"
+                                         class="w-4 h-4 rounded-sm inline-block" title="<?= htmlspecialchars($lp['provider_name']) ?>" loading="lazy">
+                                    <?php endif; endforeach; ?>
+                                    <?php if (count($listProviders) > 4): ?>
+                                    <span class="text-[9px]">+<?= count($listProviders) - 4 ?></span>
+                                    <?php endif; endif; ?>
                                 </div>
                             </div>
 
-                            <!-- 評価・アクション -->
                             <div class="shrink-0 flex items-center gap-3">
                                 <?php if ($tab === 'watched' && $mv['rating']): ?>
                                 <div class="text-amber-400 text-sm font-bold flex items-center gap-1">
@@ -297,7 +448,6 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                                 <span class="text-[11px] text-slate-400 hidden sm:inline"><?= date('Y/m/d', strtotime($mv['watched_date'])) ?></span>
                                 <?php endif; ?>
 
-                                <!-- ⑤ 見たいタブ 「見た」ボタン -->
                                 <?php if ($tab === 'watchlist'): ?>
                                 <button onclick="event.stopPropagation(); WatchedModal.open(<?= $mv['id'] ?>)"
                                         class="text-xs font-bold text-green-600 bg-green-50 hover:bg-green-500 hover:text-white px-3 py-1.5 rounded-lg transition"
@@ -305,6 +455,14 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                                     <i class="fa-solid fa-check mr-1"></i>見た
                                 </button>
                                 <?php endif; ?>
+
+                                <a href="https://www.google.com/search?q=<?= urlencode($mv['title'] . ' 映画') ?>"
+                                   target="_blank" rel="noopener"
+                                   onclick="event.stopPropagation()"
+                                   class="w-7 h-7 rounded-md flex items-center justify-center hover:bg-blue-50 transition opacity-40 hover:opacity-100"
+                                   title="Googleで検索">
+                                    <svg viewBox="0 0 24 24" class="w-3.5 h-3.5"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                                </a>
 
                                 <i class="fa-solid fa-chevron-right text-slate-300 text-xs"></i>
                             </div>
@@ -314,6 +472,8 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                 </div>
 
                 <?php endif; ?>
+
+                <?php require_once __DIR__ . '/_tmdb_attribution.php'; ?>
             </div>
         </div>
     </main>
@@ -340,7 +500,7 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
             <div id="searchResults" class="flex-1 overflow-y-auto p-4">
                 <div class="text-center py-12 text-slate-400">
                     <i class="fa-solid fa-magnifying-glass text-3xl mb-3"></i>
-                    <p class="text-sm">TMDBから映画を検索できまい</p>
+                    <p class="text-sm">TMDBから映画を検索して追加できます</p>
                 </div>
             </div>
         </div>
@@ -395,7 +555,8 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
         const currentTab = '<?= htmlspecialchars($tab) ?>';
 
         function goDetail(id) {
-            App.saveListParams('/movie/');
+            App.saveListParams('/movie/list.php');
+            sessionStorage.setItem('mv_back_to', 'list');
             location.href = '/movie/detail.php?id=' + id;
         }
 
@@ -417,7 +578,69 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                 btn.classList.toggle('active', isActive);
                 btn.classList.toggle('text-slate-400', !isActive);
             });
+            ListFilter.apply();
         }
+
+        const ListFilter = {
+            activeGenres: new Set(),
+            activeTags: new Set(),
+
+            apply() {
+                const input = document.getElementById('listFilterInput');
+                if (!input) return;
+                const query = input.value.toLowerCase().trim();
+                const hasFilter = query || this.activeGenres.size > 0 || this.activeTags.size > 0;
+                const clearBtn = document.getElementById('listFilterClearBtn');
+                if (clearBtn) clearBtn.classList.toggle('hidden', !hasFilter);
+
+                let visibleCount = 0;
+                document.querySelectorAll('.movie-card, .list-row').forEach(el => {
+                    if (!el.dataset.title && el.dataset.title !== '') return;
+                    const title = el.dataset.title || '';
+                    const genres = (el.dataset.genres || '').split(',').filter(Boolean);
+                    const tags = (el.dataset.tags || '').split(',').filter(Boolean);
+
+                    let show = true;
+                    if (query && !title.includes(query)) show = false;
+                    if (show && this.activeGenres.size > 0) {
+                        if (![...this.activeGenres].some(g => genres.includes(g))) show = false;
+                    }
+                    if (show && this.activeTags.size > 0) {
+                        if (![...this.activeTags].some(t => tags.includes(t))) show = false;
+                    }
+
+                    el.style.display = show ? '' : 'none';
+                    if (show) visibleCount++;
+                });
+
+                const noResults = document.getElementById('listFilterNoResults');
+                if (noResults) {
+                    const totalCards = document.querySelectorAll('.movie-card').length + document.querySelectorAll('.list-row').length;
+                    noResults.classList.toggle('hidden', visibleCount > 0 || totalCards === 0);
+                }
+            },
+
+            toggleChip(btn, type) {
+                const value = btn.dataset.value;
+                const set = type === 'tag' ? this.activeTags : this.activeGenres;
+                if (set.has(value)) {
+                    set.delete(value);
+                    btn.classList.remove('active');
+                } else {
+                    set.add(value);
+                    btn.classList.add('active');
+                }
+                this.apply();
+            },
+
+            clearAll() {
+                document.getElementById('listFilterInput').value = '';
+                this.activeGenres.clear();
+                this.activeTags.clear();
+                document.querySelectorAll('.filter-chip.active').forEach(c => c.classList.remove('active'));
+                this.apply();
+            }
+        };
 
         const SearchModal = {
             open() {

@@ -76,9 +76,9 @@ if (!empty($movie['credits'])) {
         <header class="h-16 bg-white/80 backdrop-blur-md border-b <?= $headerBorder ?> flex items-center justify-between px-6 shrink-0 sticky top-0 z-10">
             <div class="flex items-center gap-3">
                 <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
-                <a id="backToList" href="/movie/" class="flex items-center gap-2 text-slate-500 hover:text-slate-700 transition">
+                <a id="backLink" href="/movie/list.php" class="flex items-center gap-2 text-slate-500 hover:text-slate-700 transition">
                     <i class="fa-solid fa-arrow-left"></i>
-                    <span class="text-sm font-bold">映画リスト</span>
+                    <span id="backLinkText" class="text-sm font-bold">映画リスト</span>
                 </a>
             </div>
             <div class="flex items-center gap-2">
@@ -176,6 +176,13 @@ if (!empty($movie['credits'])) {
                                 <i class="fa-solid fa-clock"></i> 仮登録
                             </div>
                             <?php endif; ?>
+
+                            <a href="https://www.google.com/search?q=<?= urlencode($movie['title'] . ' 映画') ?>"
+                               target="_blank" rel="noopener"
+                               class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 rounded-lg text-sm font-bold transition"
+                               title="Googleで検索">
+                                <svg viewBox="0 0 24 24" class="w-3.5 h-3.5"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>検索
+                            </a>
                         </div>
                         </div>
                     </div>
@@ -234,6 +241,83 @@ if (!empty($movie['credits'])) {
                 </div>
                 <?php endif; ?>
 
+                <!-- 配信サービス -->
+                <?php
+                    $wpData = null;
+                    $wpUpdated = null;
+                    if (!empty($movie['watch_providers'])) {
+                        $wpData = json_decode($movie['watch_providers'], true);
+                        $wpUpdated = $movie['watch_providers_updated_at'] ?? null;
+                    }
+                ?>
+                <?php if ($wpData && (!empty($wpData['flatrate']) || !empty($wpData['rent']) || !empty($wpData['buy']))): ?>
+                <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-6 mb-6">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="text-sm font-bold text-slate-500"><i class="fa-solid fa-tv mr-1.5"></i>配信サービス</h2>
+                        <?php if ($wpUpdated): ?>
+                        <span class="text-[10px] text-slate-400"><?= date('Y年n月j日', strtotime($wpUpdated)) ?> 時点</span>
+                        <?php endif; ?>
+                    </div>
+
+                    <?php if (!empty($wpData['flatrate'])): ?>
+                    <div class="mb-3">
+                        <p class="text-[11px] font-bold text-slate-400 mb-2">見放題</p>
+                        <div class="flex flex-wrap gap-2">
+                            <?php foreach ($wpData['flatrate'] as $p): ?>
+                            <div class="flex items-center gap-1.5 bg-slate-50 rounded-lg px-2.5 py-1.5" title="<?= htmlspecialchars($p['provider_name']) ?>">
+                                <?php if (!empty($p['logo_path'])): ?>
+                                <img src="https://image.tmdb.org/t/p/w45<?= htmlspecialchars($p['logo_path']) ?>" class="w-5 h-5 rounded" loading="lazy">
+                                <?php endif; ?>
+                                <span class="text-xs font-bold text-slate-700"><?= htmlspecialchars($p['provider_name']) ?></span>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
+                    <?php if (!empty($wpData['rent'])): ?>
+                    <div class="mb-3">
+                        <p class="text-[11px] font-bold text-slate-400 mb-2">レンタル</p>
+                        <div class="flex flex-wrap gap-2">
+                            <?php foreach ($wpData['rent'] as $p): ?>
+                            <div class="flex items-center gap-1.5 bg-slate-50 rounded-lg px-2.5 py-1.5" title="<?= htmlspecialchars($p['provider_name']) ?>">
+                                <?php if (!empty($p['logo_path'])): ?>
+                                <img src="https://image.tmdb.org/t/p/w45<?= htmlspecialchars($p['logo_path']) ?>" class="w-5 h-5 rounded" loading="lazy">
+                                <?php endif; ?>
+                                <span class="text-xs font-bold text-slate-700"><?= htmlspecialchars($p['provider_name']) ?></span>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
+                    <?php if (!empty($wpData['buy'])): ?>
+                    <div class="mb-3">
+                        <p class="text-[11px] font-bold text-slate-400 mb-2">購入</p>
+                        <div class="flex flex-wrap gap-2">
+                            <?php foreach ($wpData['buy'] as $p): ?>
+                            <div class="flex items-center gap-1.5 bg-slate-50 rounded-lg px-2.5 py-1.5" title="<?= htmlspecialchars($p['provider_name']) ?>">
+                                <?php if (!empty($p['logo_path'])): ?>
+                                <img src="https://image.tmdb.org/t/p/w45<?= htmlspecialchars($p['logo_path']) ?>" class="w-5 h-5 rounded" loading="lazy">
+                                <?php endif; ?>
+                                <span class="text-xs font-bold text-slate-700"><?= htmlspecialchars($p['provider_name']) ?></span>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
+                    <?php if (!empty($wpData['link'])): ?>
+                    <a href="<?= htmlspecialchars($wpData['link']) ?>" target="_blank" rel="noopener noreferrer"
+                       class="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-slate-600 transition mt-1">
+                        <i class="fa-solid fa-up-right-from-square"></i> TMDBで配信情報を見る
+                    </a>
+                    <?php endif; ?>
+
+                    <p class="text-[10px] text-slate-400 mt-2">配信情報提供: <a href="https://www.justwatch.com/" target="_blank" rel="noopener noreferrer" class="underline hover:text-slate-600">JustWatch</a></p>
+                </div>
+                <?php endif; ?>
+
                 <!-- 個人レビュー -->
                 <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-6 mb-6">
                     <h2 class="text-sm font-bold text-slate-500 mb-4"><i class="fa-solid fa-pen mr-1.5"></i>マイレビュー</h2>
@@ -271,11 +355,46 @@ if (!empty($movie['credits'])) {
                     <?php endif; ?>
                 </div>
 
+                <!-- タグ -->
+                <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-6 mb-6">
+                    <h2 class="text-sm font-bold text-slate-500 mb-3"><i class="fa-solid fa-tags mr-1.5"></i>タグ</h2>
+                    <div class="flex flex-wrap gap-1.5 mb-3" id="tagContainer">
+                        <?php
+                        $movieTags = [];
+                        if (!empty($movie['tags'])) {
+                            $decoded = json_decode($movie['tags'], true);
+                            if (is_array($decoded)) $movieTags = $decoded;
+                        }
+                        ?>
+                        <?php foreach ($movieTags as $tag): ?>
+                        <span class="inline-flex items-center gap-1 text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-full">
+                            <i class="fa-solid fa-tag text-[9px]"></i><?= htmlspecialchars($tag) ?>
+                            <button onclick="TagEditor.remove('<?= htmlspecialchars(addslashes($tag)) ?>')" class="text-amber-400 hover:text-red-500 transition ml-0.5">&times;</button>
+                        </span>
+                        <?php endforeach; ?>
+                        <?php if (empty($movieTags)): ?>
+                        <span class="text-xs text-slate-400" id="tagEmpty">タグなし</span>
+                        <?php endif; ?>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="flex-1 relative">
+                            <input type="text" id="tagInput" placeholder="タグを入力してEnter..."
+                                   class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--mv-theme)] focus:border-transparent"
+                                   onkeydown="if(event.key==='Enter'){event.preventDefault(); TagEditor.add();}" autocomplete="off">
+                        </div>
+                        <button onclick="TagEditor.add()" class="px-3 py-2 mv-theme-btn text-white text-sm font-bold rounded-lg transition">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+
                 <!-- メタ情報 -->
-                <div class="text-xs text-slate-400 pb-8">
+                <div class="text-xs text-slate-400 pb-4">
                     <p>リスト追加: <?= $movie['created_at'] ?> / 更新: <?= $movie['updated_at'] ?></p>
                     <p class="mt-0.5">TMDB ID: <?= $movie['tmdb_id'] ?></p>
                 </div>
+
+                <?php require_once __DIR__ . '/_tmdb_attribution.php'; ?>
             </div>
         </div>
     </main>
@@ -310,6 +429,16 @@ if (!empty($movie['credits'])) {
                 <button onclick="WatchedModal.save()" class="flex-1 px-4 py-2.5 mv-theme-btn text-white text-sm font-bold rounded-lg transition">登録</button>
             </div>
         </div>
+    </div>
+
+    <!-- 画像プレビューモーダル -->
+    <div id="posterPreview" class="fixed inset-0 bg-black/80 z-[70] flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-200" onclick="event.stopPropagation(); PosterPreview.close()">
+        <button class="absolute top-4 right-4 text-white/70 hover:text-white transition text-2xl" onclick="PosterPreview.close()">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+        <img id="posterPreviewImg" src="" alt=""
+             class="max-w-[90vw] max-h-[85vh] rounded-xl shadow-2xl object-contain transition-transform duration-200 scale-95"
+             onclick="event.stopPropagation()">
     </div>
 
     <script src="/assets/js/core.js?v=2"></script>
@@ -369,7 +498,8 @@ if (!empty($movie['credits'])) {
                 const result = await App.post('/movie/api/remove.php', { id: movieEntryId });
                 if (result.status === 'success') {
                     App.toast('削除しました');
-                    location.href = '/movie/';
+                    const backTo = sessionStorage.getItem('mv_back_to');
+                    location.href = backTo === 'dashboard' ? '/movie/' : '/movie/list.php';
                 } else {
                     App.toast(result.message || '削除に失敗しました');
                 }
@@ -438,7 +568,7 @@ if (!empty($movie['credits'])) {
 
                     container.innerHTML = json.data.results.slice(0, 8).map(m => {
                         const poster = m.poster_path
-                            ? `<img src="https://image.tmdb.org/t/p/w92${m.poster_path}" class="w-12 h-[72px] object-cover rounded-lg shrink-0" loading="lazy">`
+                            ? `<img src="https://image.tmdb.org/t/p/w92${m.poster_path}" class="w-12 h-[72px] object-cover rounded-lg shrink-0 cursor-pointer hover:brightness-90 transition" loading="lazy" onclick="event.stopPropagation(); PosterPreview.open('${m.poster_path}')">`
                             : `<div class="w-12 h-[72px] bg-slate-200 rounded-lg flex items-center justify-center shrink-0"><i class="fa-solid fa-film text-slate-400 text-sm"></i></div>`;
                         const year = m.release_date ? m.release_date.substring(0, 4) : '';
                         const rating = m.vote_average ? `<i class="fa-solid fa-star text-amber-400 text-[9px]"></i> ${m.vote_average.toFixed(1)}` : '';
@@ -483,16 +613,106 @@ if (!empty($movie['credits'])) {
             }
         };
 
+        const TagEditor = {
+            tags: <?= json_encode($movieTags, JSON_UNESCAPED_UNICODE) ?>,
+
+            renderTags() {
+                const container = document.getElementById('tagContainer');
+                if (this.tags.length === 0) {
+                    container.innerHTML = '<span class="text-xs text-slate-400" id="tagEmpty">タグなし</span>';
+                    return;
+                }
+                container.innerHTML = this.tags.map(tag => {
+                    const escaped = this.esc(tag);
+                    const escapedJs = tag.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                    return `<span class="inline-flex items-center gap-1 text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-full">
+                        <i class="fa-solid fa-tag text-[9px]"></i>${escaped}
+                        <button onclick="TagEditor.remove('${escapedJs}')" class="text-amber-400 hover:text-red-500 transition ml-0.5">&times;</button>
+                    </span>`;
+                }).join('');
+            },
+
+            async add() {
+                const input = document.getElementById('tagInput');
+                const tag = input.value.trim();
+                if (!tag) return;
+                if (this.tags.includes(tag)) {
+                    App.toast('このタグは既に追加されています');
+                    return;
+                }
+                this.tags.push(tag);
+                input.value = '';
+                this.renderTags();
+                await this.save();
+            },
+
+            async remove(tag) {
+                this.tags = this.tags.filter(t => t !== tag);
+                this.renderTags();
+                await this.save();
+            },
+
+            async save() {
+                try {
+                    const result = await App.post('/movie/api/update_tags.php', {
+                        id: movieEntryId,
+                        tags: this.tags,
+                    });
+                    if (result.status !== 'success') {
+                        App.toast(result.message || 'タグの保存に失敗しました');
+                    }
+                } catch (e) {
+                    console.error(e);
+                    App.toast('タグの保存に失敗しました');
+                }
+            },
+
+            esc(str) {
+                const d = document.createElement('div');
+                d.textContent = str;
+                return d.innerHTML;
+            }
+        };
+
+        const PosterPreview = {
+            open(posterPath) {
+                const img = document.getElementById('posterPreviewImg');
+                img.src = 'https://image.tmdb.org/t/p/w500' + posterPath;
+                const el = document.getElementById('posterPreview');
+                el.classList.remove('pointer-events-none', 'opacity-0');
+                el.classList.add('pointer-events-auto', 'opacity-100');
+                img.classList.remove('scale-95');
+                img.classList.add('scale-100');
+            },
+            close() {
+                const el = document.getElementById('posterPreview');
+                const img = document.getElementById('posterPreviewImg');
+                el.classList.add('opacity-0');
+                el.classList.remove('opacity-100');
+                img.classList.add('scale-95');
+                img.classList.remove('scale-100');
+                setTimeout(() => {
+                    el.classList.add('pointer-events-none');
+                    el.classList.remove('pointer-events-auto');
+                    img.src = '';
+                }, 200);
+            }
+        };
+
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') WatchedModal.close();
+            if (e.key === 'Escape') { PosterPreview.close(); WatchedModal.close(); }
         });
 
-        // 戻るリンクにリストの状態パラメータを復元
         (() => {
-            const saved = sessionStorage.getItem('app:lastListParams:/movie/');
-            if (saved) {
-                const backLink = document.getElementById('backToList');
-                if (backLink) backLink.href = '/movie/' + saved;
+            const backTo = sessionStorage.getItem('mv_back_to');
+            const link = document.getElementById('backLink');
+            const text = document.getElementById('backLinkText');
+            if (backTo === 'dashboard') {
+                if (link) link.href = '/movie/';
+                if (text) text.textContent = '映画';
+            } else {
+                const saved = sessionStorage.getItem('app:lastListParams:/movie/list.php');
+                if (saved && link) link.href = '/movie/list.php' + saved;
             }
         })();
     </script>

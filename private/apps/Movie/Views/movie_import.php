@@ -50,7 +50,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         <header class="h-16 bg-white/80 backdrop-blur-md border-b <?= $headerBorder ?> flex items-center justify-between px-6 shrink-0 sticky top-0 z-10">
             <div class="flex items-center gap-3">
                 <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
-                <a href="/movie/" class="flex items-center gap-2 text-slate-500 hover:text-slate-700 transition">
+                <a href="/movie/list.php" class="flex items-center gap-2 text-slate-500 hover:text-slate-700 transition">
                     <i class="fa-solid fa-arrow-left"></i>
                     <span class="text-sm font-bold">映画リスト</span>
                 </a>
@@ -155,7 +155,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                     <h2 class="text-xl font-bold text-slate-800 mb-2" id="doneTitle">登録完了</h2>
                     <p class="text-sm text-slate-500 mb-6" id="doneMessage"></p>
                     <div class="flex items-center justify-center gap-3">
-                        <a href="/movie/" class="px-5 py-2.5 mv-theme-btn text-white text-sm font-bold rounded-lg shadow-sm transition">
+                        <a href="/movie/list.php" class="px-5 py-2.5 mv-theme-btn text-white text-sm font-bold rounded-lg shadow-sm transition">
                             <i class="fa-solid fa-list mr-1"></i>映画リストへ
                         </a>
                         <button onclick="BulkImport.reset()" class="px-5 py-2.5 border border-slate-200 text-slate-500 text-sm font-bold rounded-lg hover:bg-slate-50 transition">
@@ -164,6 +164,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                     </div>
                 </div>
 
+                <?php require_once __DIR__ . '/_tmdb_attribution.php'; ?>
             </div>
         </div>
     </main>
