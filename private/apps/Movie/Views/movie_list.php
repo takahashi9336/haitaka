@@ -111,6 +111,31 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
             </div>
         </header>
 
+        <!-- インライン検索バー -->
+        <?php if ($tmdbConfigured): ?>
+        <div class="bg-white/90 backdrop-blur-sm border-b border-slate-200 shrink-0 z-[8] relative" id="inlineSearchArea">
+            <div class="max-w-7xl mx-auto px-6 md:px-12 py-2.5 md:py-3">
+                <div class="relative" id="inlineSearchWrapper">
+                    <div class="flex items-center gap-2">
+                        <div class="flex-1 relative">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                            <input type="text" id="inlineSearchInput"
+                                   placeholder="映画タイトルで検索して追加..."
+                                   class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--mv-theme)] focus:border-transparent"
+                                   onkeydown="if(event.key==='Enter') MovieSearch.search()"
+                                   autocomplete="off">
+                        </div>
+                        <button onclick="MovieSearch.search()" class="px-4 py-2 mv-theme-btn text-white text-sm font-bold rounded-lg transition shrink-0">
+                            検索
+                        </button>
+                    </div>
+                    <div id="inlineSearchResults" class="hidden absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-xl border border-slate-100 max-h-[60vh] overflow-y-auto z-50">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <!-- タブバー（固定）-->
         <div class="bg-white/90 backdrop-blur-sm border-b border-slate-200 px-6 md:px-12 py-2 shrink-0 z-[5]">
             <div class="max-w-7xl mx-auto flex items-center gap-6">
@@ -164,42 +189,6 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
         </div>
         <?php endif; ?>
 
-        <!-- インライン検索バー -->
-        <?php if ($tmdbConfigured): ?>
-        <div class="bg-white/90 backdrop-blur-sm border-b border-slate-200 shrink-0 z-[8] relative" id="inlineSearchArea">
-            <!-- モバイル: トグルボタン -->
-            <button onclick="InlineSearch.toggle()" id="inlineSearchToggle"
-                    class="md:hidden w-full flex items-center gap-2 px-6 py-2.5 text-sm text-slate-400 hover:text-slate-600 transition">
-                <i class="fa-solid fa-magnifying-glass text-xs"></i>
-                <span>映画を検索して追加...</span>
-                <i class="fa-solid fa-chevron-down text-[10px] ml-auto transition-transform duration-300" id="inlineSearchChevron"></i>
-            </button>
-            <!-- 検索入力 (PC: 常時表示, モバイル: 折りたたみ) -->
-            <div id="inlineSearchContent" class="hidden md:block inline-search-panel md:!max-h-none md:!opacity-100">
-                <div class="max-w-7xl mx-auto px-6 md:px-12 py-2.5 md:py-3">
-                    <div class="relative" id="inlineSearchWrapper">
-                        <div class="flex items-center gap-2">
-                            <div class="flex-1 relative">
-                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-                                <input type="text" id="inlineSearchInput"
-                                       placeholder="映画タイトルで検索して追加..."
-                                       class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--mv-theme)] focus:border-transparent"
-                                       onkeydown="if(event.key==='Enter') InlineSearch.search()"
-                                       autocomplete="off">
-                            </div>
-                            <button onclick="InlineSearch.search()" class="px-4 py-2 mv-theme-btn text-white text-sm font-bold rounded-lg transition shrink-0">
-                                検索
-                            </button>
-                        </div>
-                        <!-- 検索結果ドロップダウン -->
-                        <div id="inlineSearchResults" class="hidden absolute left-0 right-0 top-full mt-1 bg-white rounded-xl inline-results max-h-[60vh] overflow-y-auto z-50">
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <?php endif; ?>
-
         <!-- コンテンツ（スクロール領域）-->
         <div class="flex-1 overflow-y-auto" data-scroll-persist="movie-list">
             <div class="max-w-7xl mx-auto px-6 md:px-12 py-6">
@@ -207,6 +196,7 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                 <?php
                 $allGenres = [];
                 $allTags = [];
+                $allProviders = [];
                 if (!empty($movies)) {
                     foreach ($movies as $mv) {
                         if (!empty($mv['genres'])) {
@@ -225,9 +215,19 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                                 }
                             }
                         }
+                        if (!empty($mv['watch_providers'])) {
+                            $wp = json_decode($mv['watch_providers'], true);
+                            if (is_array($wp) && !empty($wp['flatrate'])) {
+                                foreach ($wp['flatrate'] as $p) {
+                                    $pn = $p['provider_name'] ?? '';
+                                    if ($pn && !in_array($pn, $allProviders)) $allProviders[] = $pn;
+                                }
+                            }
+                        }
                     }
                     sort($allGenres);
                     sort($allTags);
+                    sort($allProviders);
                 }
                 ?>
 
@@ -262,8 +262,15 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                             <i class="fa-solid fa-xmark mr-0.5"></i>クリア
                         </button>
                     </div>
-                    <?php if (!empty($allGenres) || !empty($allTags)): ?>
+                    <?php if (!empty($allGenres) || !empty($allTags) || !empty($allProviders)): ?>
                     <div class="flex flex-wrap gap-1.5 mt-2" id="listFilterChips">
+                        <?php foreach ($allProviders as $prov): ?>
+                        <button class="filter-chip provider-chip text-[11px] px-2.5 py-1 rounded-full border border-violet-300 text-violet-600 bg-violet-50/50"
+                                onclick="ListFilter.toggleChip(this, 'provider')"
+                                data-value="<?= htmlspecialchars($prov) ?>">
+                            <i class="fa-solid fa-tv text-[9px] mr-0.5"></i><?= htmlspecialchars($prov) ?>
+                        </button>
+                        <?php endforeach; ?>
                         <?php foreach ($allTags as $tag): ?>
                         <button class="filter-chip tag-chip text-[11px] px-2.5 py-1 rounded-full border border-amber-300 text-amber-600 bg-amber-50/50"
                                 onclick="ListFilter.toggleChip(this, 'tag')"
@@ -294,12 +301,15 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                             if (!empty($mv['genres'])) { $gd = json_decode($mv['genres'], true); if (is_array($gd)) $mvGenres = array_filter($gd, 'is_string'); }
                             $mvTags = [];
                             if (!empty($mv['tags'])) { $td = json_decode($mv['tags'], true); if (is_array($td)) $mvTags = array_filter($td, 'is_string'); }
+                            $mvProviders = [];
+                            if (!empty($mv['watch_providers'])) { $wpd = json_decode($mv['watch_providers'], true); if (is_array($wpd) && !empty($wpd['flatrate'])) { foreach ($wpd['flatrate'] as $_p) { if (!empty($_p['provider_name'])) $mvProviders[] = $_p['provider_name']; } } }
                         ?>
                         <div class="movie-card bg-white rounded-xl overflow-hidden shadow-sm border border-slate-100 cursor-pointer relative"
                              onclick="goDetail(<?= $mv['id'] ?>)"
                              data-title="<?= htmlspecialchars(mb_strtolower($mv['title'])) ?>"
                              data-genres="<?= htmlspecialchars(implode(',', $mvGenres)) ?>"
-                             data-tags="<?= htmlspecialchars(implode(',', $mvTags)) ?>">
+                             data-tags="<?= htmlspecialchars(implode(',', $mvTags)) ?>"
+                             data-providers="<?= htmlspecialchars(implode(',', $mvProviders)) ?>">
                             <div class="aspect-[2/3] relative overflow-hidden">
                                 <?php if (!empty($mv['poster_path'])): ?>
                                 <img src="https://image.tmdb.org/t/p/w342<?= htmlspecialchars($mv['poster_path']) ?>"
@@ -377,12 +387,15 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                             if (!empty($mv['genres'])) { $gd2 = json_decode($mv['genres'], true); if (is_array($gd2)) $mvGenresL = array_filter($gd2, 'is_string'); }
                             $mvTagsL = [];
                             if (!empty($mv['tags'])) { $td2 = json_decode($mv['tags'], true); if (is_array($td2)) $mvTagsL = array_filter($td2, 'is_string'); }
+                            $mvProvidersL = [];
+                            if (!empty($mv['watch_providers'])) { $wpd2 = json_decode($mv['watch_providers'], true); if (is_array($wpd2) && !empty($wpd2['flatrate'])) { foreach ($wpd2['flatrate'] as $_p2) { if (!empty($_p2['provider_name'])) $mvProvidersL[] = $_p2['provider_name']; } } }
                         ?>
                         <div class="list-row flex items-center gap-4 px-4 py-3 cursor-pointer"
                              onclick="goDetail(<?= $mv['id'] ?>)"
                              data-title="<?= htmlspecialchars(mb_strtolower($mv['title'])) ?>"
                              data-genres="<?= htmlspecialchars(implode(',', $mvGenresL)) ?>"
-                             data-tags="<?= htmlspecialchars(implode(',', $mvTagsL)) ?>">
+                             data-tags="<?= htmlspecialchars(implode(',', $mvTagsL)) ?>"
+                             data-providers="<?= htmlspecialchars(implode(',', $mvProvidersL)) ?>">
                             <?php if (!empty($mv['poster_path'])): ?>
                             <img src="https://image.tmdb.org/t/p/w92<?= htmlspecialchars($mv['poster_path']) ?>"
                                  alt="<?= htmlspecialchars($mv['title']) ?>"
@@ -540,17 +553,8 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
         </div>
     </div>
 
-    <!-- 画像プレビューモーダル -->
-    <div id="posterPreview" class="fixed inset-0 bg-black/80 z-[70] flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-200" onclick="event.stopPropagation(); PosterPreview.close()">
-        <button class="absolute top-4 right-4 text-white/70 hover:text-white transition text-2xl" onclick="PosterPreview.close()">
-            <i class="fa-solid fa-xmark"></i>
-        </button>
-        <img id="posterPreviewImg" src="" alt=""
-             class="max-w-[90vw] max-h-[85vh] rounded-xl shadow-2xl object-contain transition-transform duration-200 scale-95"
-             onclick="event.stopPropagation()">
-    </div>
-
     <script src="/assets/js/core.js?v=2"></script>
+    <?php require_once __DIR__ . '/_movie_search_shared.php'; ?>
     <script>
         const currentTab = '<?= htmlspecialchars($tab) ?>';
 
@@ -584,12 +588,13 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
         const ListFilter = {
             activeGenres: new Set(),
             activeTags: new Set(),
+            activeProviders: new Set(),
 
             apply() {
                 const input = document.getElementById('listFilterInput');
                 if (!input) return;
                 const query = input.value.toLowerCase().trim();
-                const hasFilter = query || this.activeGenres.size > 0 || this.activeTags.size > 0;
+                const hasFilter = query || this.activeGenres.size > 0 || this.activeTags.size > 0 || this.activeProviders.size > 0;
                 const clearBtn = document.getElementById('listFilterClearBtn');
                 if (clearBtn) clearBtn.classList.toggle('hidden', !hasFilter);
 
@@ -599,6 +604,7 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                     const title = el.dataset.title || '';
                     const genres = (el.dataset.genres || '').split(',').filter(Boolean);
                     const tags = (el.dataset.tags || '').split(',').filter(Boolean);
+                    const providers = (el.dataset.providers || '').split(',').filter(Boolean);
 
                     let show = true;
                     if (query && !title.includes(query)) show = false;
@@ -607,6 +613,9 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                     }
                     if (show && this.activeTags.size > 0) {
                         if (![...this.activeTags].some(t => tags.includes(t))) show = false;
+                    }
+                    if (show && this.activeProviders.size > 0) {
+                        if (![...this.activeProviders].some(p => providers.includes(p))) show = false;
                     }
 
                     el.style.display = show ? '' : 'none';
@@ -622,7 +631,7 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
 
             toggleChip(btn, type) {
                 const value = btn.dataset.value;
-                const set = type === 'tag' ? this.activeTags : this.activeGenres;
+                const set = type === 'tag' ? this.activeTags : type === 'provider' ? this.activeProviders : this.activeGenres;
                 if (set.has(value)) {
                     set.delete(value);
                     btn.classList.remove('active');
@@ -637,6 +646,7 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                 document.getElementById('listFilterInput').value = '';
                 this.activeGenres.clear();
                 this.activeTags.clear();
+                this.activeProviders.clear();
                 document.querySelectorAll('.filter-chip.active').forEach(c => c.classList.remove('active'));
                 this.apply();
             }
@@ -835,222 +845,33 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
             }
         };
 
-        const InlineSearch = {
-            isOpen: false,
-
-            toggle() {
-                this.isOpen = !this.isOpen;
-                const content = document.getElementById('inlineSearchContent');
-                const chevron = document.getElementById('inlineSearchChevron');
-                if (this.isOpen) {
-                    content.classList.remove('hidden');
-                    requestAnimationFrame(() => content.classList.add('open'));
-                    chevron.style.transform = 'rotate(180deg)';
-                    setTimeout(() => document.getElementById('inlineSearchInput').focus(), 150);
-                } else {
-                    content.classList.remove('open');
-                    chevron.style.transform = '';
-                    this.closeResults();
-                    setTimeout(() => content.classList.add('hidden'), 300);
-                }
-            },
-
-            async search() {
-                const query = document.getElementById('inlineSearchInput').value.trim();
-                if (!query) return;
-
-                const container = document.getElementById('inlineSearchResults');
-                container.classList.remove('hidden');
-                container.innerHTML = '<div class="text-center py-6"><i class="fa-solid fa-spinner fa-spin text-xl text-slate-300"></i></div>';
-
-                try {
-                    const res = await fetch(`/movie/api/search.php?q=${encodeURIComponent(query)}`);
-                    const json = await res.json();
-
-                    const manualAddHtml = this.renderManualAdd(query);
-
-                    if (json.status !== 'success') {
-                        container.innerHTML = `<div class="text-center py-6 text-red-500 text-sm">${json.message}</div>` + manualAddHtml;
-                        return;
-                    }
-
-                    const movies = json.data.results || [];
-                    if (movies.length === 0) {
-                        container.innerHTML = '<div class="text-center py-4 text-slate-400 text-sm">TMDBで見つかりませんでした</div>' + manualAddHtml;
-                        return;
-                    }
-
-                    container.innerHTML = movies.slice(0, 10).map(m => this.renderResult(m)).join('') + manualAddHtml;
-                } catch (e) {
-                    console.error(e);
-                    container.innerHTML = '<div class="text-center py-6 text-red-500 text-sm">エラーが発生しました</div>';
-                }
-            },
-
-            renderManualAdd(query) {
-                const escaped = SearchModal.escapeHtml(query);
-                return `
-                <div class="border-t border-dashed border-slate-200 px-4 py-3 bg-slate-50/50 rounded-b-xl">
-                    <p class="text-[11px] text-slate-400 mb-2"><i class="fa-solid fa-pen mr-1"></i>TMDBに無い場合、タイトルだけで追加できます</p>
-                    <div class="flex items-center gap-2">
-                        <span class="text-sm font-bold text-slate-700 flex-1 truncate">「${escaped}」</span>
-                        <button onclick="InlineSearch.addManual('watchlist')" class="text-[11px] font-bold text-white px-2.5 py-1.5 rounded-lg mv-theme-btn transition whitespace-nowrap">
-                            <i class="fa-solid fa-bookmark mr-0.5"></i>見たいに追加
-                        </button>
-                        <button onclick="InlineSearch.addManual('watched')" class="text-[11px] font-bold text-slate-500 border border-slate-200 px-2.5 py-1.5 rounded-lg hover:bg-slate-50 transition whitespace-nowrap">
-                            <i class="fa-solid fa-check mr-0.5"></i>見たに追加
-                        </button>
-                    </div>
-                </div>`;
-            },
-
-            async addManual(status) {
-                const query = document.getElementById('inlineSearchInput').value.trim();
-                if (!query) return;
-
-                try {
-                    const result = await App.post('/movie/api/add_manual.php', { title: query, status: status });
-                    if (result.status === 'success') {
-                        App.toast(result.message);
-                        if (status === currentTab) {
-                            location.reload();
-                            return;
-                        }
-                        this.closeResults();
-                        document.getElementById('inlineSearchInput').value = '';
-                        this.updateTabCount(status, 1);
-                    } else {
-                        App.toast(result.message || '追加に失敗しました');
-                    }
-                } catch (e) {
-                    console.error(e);
-                    App.toast('エラーが発生しました');
-                }
-            },
-
-            renderResult(m) {
-                const poster = m.poster_path
-                    ? `<img src="https://image.tmdb.org/t/p/w92${m.poster_path}" class="w-10 h-[60px] object-cover rounded-lg shrink-0 cursor-pointer hover:brightness-90 transition" loading="lazy" onclick="event.stopPropagation(); PosterPreview.open('${m.poster_path}')">`
-                    : `<div class="w-10 h-[60px] poster-placeholder rounded-lg flex items-center justify-center shrink-0"><i class="fa-solid fa-film text-slate-400 text-xs"></i></div>`;
-                const year = m.release_date ? m.release_date.substring(0, 4) + '年' : '';
-                const rating = m.vote_average ? `<i class="fa-solid fa-star text-amber-400 text-[9px]"></i> ${m.vote_average.toFixed(1)}` : '';
-
-                let actionHtml = '';
-                if (m.user_status === 'watchlist') {
-                    actionHtml = '<span class="text-[11px] font-bold text-blue-500 bg-blue-50 px-2 py-1 rounded-lg whitespace-nowrap"><i class="fa-solid fa-bookmark mr-0.5"></i>見たい済</span>';
-                } else if (m.user_status === 'watched') {
-                    actionHtml = '<span class="text-[11px] font-bold text-green-500 bg-green-50 px-2 py-1 rounded-lg whitespace-nowrap"><i class="fa-solid fa-check mr-0.5"></i>見た済</span>';
-                } else {
-                    actionHtml = `
-                        <button onclick="event.stopPropagation(); InlineSearch.addMovie(${m.id}, 'watchlist', this)" class="text-[11px] font-bold text-white px-2.5 py-1.5 rounded-lg mv-theme-btn transition whitespace-nowrap">
-                            <i class="fa-solid fa-bookmark mr-0.5"></i>見たい
-                        </button>
-                        <button onclick="event.stopPropagation(); InlineSearch.addMovie(${m.id}, 'watched', this)" class="text-[11px] font-bold text-slate-500 border border-slate-200 px-2.5 py-1.5 rounded-lg hover:bg-slate-50 transition whitespace-nowrap">
-                            <i class="fa-solid fa-check mr-0.5"></i>見た
-                        </button>`;
-                }
-
-                return `
-                <div class="inline-result-row flex items-center gap-3 px-4 py-2.5 border-b border-slate-100 last:border-b-0" data-tmdb-id="${m.id}">
-                    ${poster}
-                    <div class="flex-1 min-w-0">
-                        <h4 class="text-sm font-bold text-slate-800 line-clamp-1">${SearchModal.escapeHtml(m.title)}</h4>
-                        <div class="flex items-center gap-2 text-[11px] text-slate-400">${year} ${rating}</div>
-                    </div>
-                    <div class="shrink-0 flex items-center gap-1.5">${actionHtml}</div>
-                </div>`;
-            },
-
-            async addMovie(tmdbId, status, btn) {
-                try {
-                    btn.disabled = true;
-                    const origHtml = btn.innerHTML;
-                    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
-
-                    const result = await App.post('/movie/api/add.php', {
-                        tmdb_id: tmdbId,
-                        status: status,
-                    });
-
-                    if (result.status === 'success') {
-                        App.toast(result.message);
-                        if (status === currentTab) {
-                            location.reload();
-                            return;
-                        }
-                        const row = btn.closest('[data-tmdb-id]');
-                        const actionDiv = row.querySelector('.shrink-0.flex');
-                        if (status === 'watchlist') {
-                            actionDiv.innerHTML = '<span class="text-[11px] font-bold text-blue-500 bg-blue-50 px-2 py-1 rounded-lg whitespace-nowrap"><i class="fa-solid fa-bookmark mr-0.5"></i>見たい済</span>';
-                        } else {
-                            actionDiv.innerHTML = '<span class="text-[11px] font-bold text-green-500 bg-green-50 px-2 py-1 rounded-lg whitespace-nowrap"><i class="fa-solid fa-check mr-0.5"></i>見た済</span>';
-                        }
-                        InlineSearch.updateTabCount(status, 1);
-                    } else {
-                        App.toast(result.message || '追加に失敗しました');
-                        btn.disabled = false;
-                        btn.innerHTML = origHtml;
-                    }
-                } catch (e) {
-                    console.error(e);
-                    btn.disabled = false;
-                }
-            },
-
-            updateTabCount(status, delta) {
-                const tabs = document.querySelectorAll('.tab-btn');
-                const idx = status === 'watchlist' ? 0 : 1;
-                const badge = tabs[idx]?.querySelector('.rounded-full');
-                if (badge) {
-                    const current = parseInt(badge.textContent) || 0;
-                    badge.textContent = current + delta;
-                }
-            },
-
-            closeResults() {
-                const el = document.getElementById('inlineSearchResults');
-                if (el) el.classList.add('hidden');
+        function updateTabCount(status, delta) {
+            const tabs = document.querySelectorAll('.tab-btn');
+            const idx = status === 'watchlist' ? 0 : 1;
+            const badge = tabs[idx]?.querySelector('.rounded-full');
+            if (badge) {
+                const current = parseInt(badge.textContent) || 0;
+                badge.textContent = current + delta;
             }
-        };
+        }
 
-        const PosterPreview = {
-            open(posterPath) {
-                const img = document.getElementById('posterPreviewImg');
-                img.src = 'https://image.tmdb.org/t/p/w500' + posterPath;
-                const el = document.getElementById('posterPreview');
-                el.classList.remove('pointer-events-none', 'opacity-0');
-                el.classList.add('pointer-events-auto', 'opacity-100');
-                img.classList.remove('scale-95');
-                img.classList.add('scale-100');
-            },
-            close() {
-                const el = document.getElementById('posterPreview');
-                const img = document.getElementById('posterPreviewImg');
-                el.classList.add('opacity-0');
-                el.classList.remove('opacity-100');
-                img.classList.add('scale-95');
-                img.classList.remove('scale-100');
-                setTimeout(() => {
-                    el.classList.add('pointer-events-none');
-                    el.classList.remove('pointer-events-auto');
-                    img.src = '';
-                }, 200);
-            }
-        };
-
-        document.addEventListener('click', (e) => {
-            const wrapper = document.getElementById('inlineSearchWrapper');
-            if (wrapper && !wrapper.contains(e.target)) {
-                InlineSearch.closeResults();
+        MovieSearch.init({
+            inputId: 'inlineSearchInput',
+            resultsId: 'inlineSearchResults',
+            wrapperId: 'inlineSearchWrapper',
+            onAdded(status, tmdbId) {
+                if (status === currentTab) { location.reload(); return; }
+                updateTabCount(status, 1);
             }
         });
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 PosterPreview.close();
+                MoviePreview.close();
                 SearchModal.close();
                 WatchedModal.close();
-                InlineSearch.closeResults();
+                MovieSearch.closeResults();
             }
         });
     </script>

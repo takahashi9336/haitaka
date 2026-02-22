@@ -446,6 +446,50 @@ class MovieController {
     }
 
     /**
+     * TMDB映画詳細（配信情報含む）API
+     */
+    public function tmdbDetailApi(): void {
+        header('Content-Type: application/json');
+        try {
+            $tmdbId = (int)($_GET['tmdb_id'] ?? 0);
+            if ($tmdbId <= 0) throw new \Exception('tmdb_id is required');
+
+            $tmdb = new TmdbApiClient();
+            if (!$tmdb->isConfigured()) throw new \Exception('TMDB API not configured');
+
+            $detail = $tmdb->getMovieDetail($tmdbId);
+            if (!$detail) throw new \Exception('TMDB API error');
+
+            $jp = $detail['watch/providers']['results']['JP'] ?? null;
+            $providers = null;
+            if ($jp) {
+                $providers = [
+                    'flatrate' => $jp['flatrate'] ?? [],
+                    'rent'     => $jp['rent'] ?? [],
+                    'buy'      => $jp['buy'] ?? [],
+                    'link'     => $jp['link'] ?? null,
+                ];
+            }
+
+            $userMovieModel = new UserMovieModel();
+            $userEntry = $userMovieModel->findByTmdbId($tmdbId);
+
+            echo json_encode([
+                'status' => 'success',
+                'data' => [
+                    'runtime'    => $detail['runtime'] ?? null,
+                    'tagline'    => $detail['tagline'] ?? null,
+                    'providers'  => $providers,
+                    'user_status'   => $userEntry ? $userEntry['status'] : null,
+                    'user_movie_id' => $userEntry ? $userEntry['id'] : null,
+                ],
+            ], JSON_UNESCAPED_UNICODE);
+        } catch (\Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    /**
      * 映画をリストに追加 API
      */
     public function add(): void {

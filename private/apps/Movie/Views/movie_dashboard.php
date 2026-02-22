@@ -165,6 +165,34 @@ $totalMins = $totalRuntime % 60;
                     </div>
                 </div>
 
+                <!-- TMDB検索ボックス -->
+                <?php if ($tmdbConfigured): ?>
+                <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-5 mb-8">
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="w-8 h-8 rounded-lg flex items-center justify-center bg-indigo-50 text-indigo-500">
+                            <i class="fa-solid fa-magnifying-glass text-sm"></i>
+                        </div>
+                        <h2 class="text-sm font-bold text-slate-500">映画を探す</h2>
+                    </div>
+                    <div class="relative" id="dashSearchWrapper">
+                        <div class="flex items-center gap-2">
+                            <div class="flex-1 relative">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                                <input type="text" id="dashSearchInput"
+                                       placeholder="タイトルで検索..."
+                                       class="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--mv-theme)] focus:border-transparent"
+                                       onkeydown="if(event.key==='Enter') MovieSearch.search()"
+                                       autocomplete="off">
+                            </div>
+                            <button onclick="MovieSearch.search()" class="px-4 py-2.5 mv-theme-btn text-white text-sm font-bold rounded-xl transition shrink-0">
+                                検索
+                            </button>
+                        </div>
+                        <div id="dashSearchResults" class="hidden absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-xl border border-slate-100 max-h-[60vh] overflow-y-auto z-50"></div>
+                    </div>
+                </div>
+                <?php endif; ?>
+
                 <!-- ② ガチャ -->
                 <div class="mb-8">
                     <div class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 md:p-8 shadow-xl relative overflow-hidden">
@@ -385,6 +413,7 @@ $totalMins = $totalRuntime % 60;
     </main>
 
     <script src="/assets/js/core.js?v=2"></script>
+    <?php require_once __DIR__ . '/_movie_search_shared.php'; ?>
     <script>
         const themeColor = '<?= htmlspecialchars($themePrimaryHex) ?>';
 
@@ -759,7 +788,11 @@ $totalMins = $totalRuntime % 60;
                 return d.innerHTML;
             },
 
+            movieData: {},
+
             renderCard(m) {
+                this.movieData[m.id] = m;
+                MoviePreview.storeMovie(m);
                 const year = m.release_date ? m.release_date.substring(0, 4) : '';
                 const rating = m.vote_average ? Number(m.vote_average).toFixed(1) : '';
                 const poster = m.poster_path
@@ -772,16 +805,12 @@ $totalMins = $totalRuntime % 60;
                         <button onclick="event.stopPropagation(); Rec.addToList(${m.id}, 'watchlist', this)" class="w-6 h-6 bg-white/90 hover:bg-amber-400 hover:text-white text-slate-500 rounded-full flex items-center justify-center text-[10px] shadow transition backdrop-blur-sm" title="見たいリストに追加"><i class="fa-solid fa-bookmark"></i></button>
                         <button onclick="event.stopPropagation(); Rec.addToList(${m.id}, 'watched', this)" class="w-6 h-6 bg-white/90 hover:bg-green-500 hover:text-white text-slate-500 rounded-full flex items-center justify-center text-[10px] shadow transition backdrop-blur-sm" title="見たリストに追加"><i class="fa-solid fa-eye"></i></button>
                     </div>`;
-                const googleUrl = 'https://www.google.com/search?q=' + encodeURIComponent((m.title || '') + ' 映画');
 
-                return `<div class="rec-card cursor-pointer" onclick="window.open('${googleUrl}', '_blank')">
+                return `<div class="rec-card cursor-pointer" onclick="MoviePreview.open(Rec.movieData[${m.id}])">
                     <div class="aspect-[2/3] relative overflow-hidden rounded-xl shadow-sm mb-2 group">
                         ${poster}
                         ${actionBtns}
                         ${rating ? `<div class="absolute bottom-1.5 left-1.5 bg-black/70 text-white text-[10px] font-bold px-1.5 py-0.5 rounded"><i class="fa-solid fa-star text-amber-400 mr-0.5"></i>${rating}</div>` : ''}
-                        <div class="absolute bottom-1.5 right-1.5 w-5 h-5 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition bg-white/80 backdrop-blur-sm shadow-sm">
-                            <svg viewBox="0 0 24 24" class="w-3 h-3"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-                        </div>
                     </div>
                     <h3 class="text-xs font-bold text-slate-700 line-clamp-2 leading-snug mb-0.5">${this.esc(m.title)}</h3>
                     <p class="text-[10px] text-slate-400">${year}</p>
@@ -886,6 +915,13 @@ $totalMins = $totalRuntime % 60;
         };
 
         Rec.init();
+
+        MovieSearch.init({
+            inputId: 'dashSearchInput',
+            resultsId: 'dashSearchResults',
+            wrapperId: 'dashSearchWrapper',
+        });
+
     </script>
 </body>
 </html>
