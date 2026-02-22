@@ -12,7 +12,7 @@ namespace Core;
 class MediaAssetModel extends BaseModel {
     protected string $table = 'com_media_assets';
     protected array $fields = [
-        'id', 'platform', 'media_key', 'sub_key',
+        'id', 'platform', 'media_key', 'sub_key', 'media_type',
         'title', 'thumbnail_url', 'description',
         'upload_date', 'created_at'
     ];
@@ -40,7 +40,33 @@ class MediaAssetModel extends BaseModel {
             ];
         }
 
-        // TODO: TikTok / Instagram は今後の拡張で対応
+        // TikTok: https://www.tiktok.com/@username/video/1234567890
+        //         https://vm.tiktok.com/XXXXXXXX/
+        if (preg_match('%tiktok\.com/@([^/]+)/video/(\d+)%i', $url, $match)) {
+            return [
+                'platform'  => 'tiktok',
+                'media_key' => $match[2],
+                'sub_key'   => '@' . $match[1],
+            ];
+        }
+        if (preg_match('%(?:vm|vt)\.tiktok\.com/([A-Za-z0-9_-]+)%i', $url, $match)) {
+            return [
+                'platform'  => 'tiktok',
+                'media_key' => $match[1],
+                'sub_key'   => null,
+            ];
+        }
+
+        // Instagram: https://www.instagram.com/reel/XXXXXXXXXXX/
+        //            https://www.instagram.com/p/XXXXXXXXXXX/
+        //            https://www.instagram.com/username/reel/XXXXXXXXXXX/
+        if (preg_match('%instagram\.com/(?:[A-Za-z0-9_.]+/)?(?:reel|p|reels)/([A-Za-z0-9_-]+)%i', $url, $match)) {
+            return [
+                'platform'  => 'instagram',
+                'media_key' => $match[1],
+                'sub_key'   => null,
+            ];
+        }
 
         return null;
     }
@@ -54,7 +80,9 @@ class MediaAssetModel extends BaseModel {
         ?string $subKey,
         string $title,
         ?string $thumbnailUrl = null,
-        ?string $uploadDate = null
+        ?string $uploadDate = null,
+        ?string $description = null,
+        ?string $mediaType = null
     ): ?int {
         $platform = strtolower($platform);
 
@@ -65,19 +93,53 @@ class MediaAssetModel extends BaseModel {
         $assetId = $stmt->fetchColumn();
 
         if ($assetId) {
+            $updates = [];
+            $updateParams = ['id' => $assetId];
+            if ($title !== '') {
+                $updates[] = 'title = :title';
+                $updateParams['title'] = $title;
+            }
+            if ($thumbnailUrl !== null && $thumbnailUrl !== '') {
+                $updates[] = 'thumbnail_url = :thumbnail_url';
+                $updateParams['thumbnail_url'] = $thumbnailUrl;
+            }
+            if ($description !== null && $description !== '') {
+                $updates[] = 'description = :description';
+                $updateParams['description'] = $description;
+            }
+            if ($uploadDate !== null) {
+                $updates[] = 'upload_date = :upload_date';
+                $updateParams['upload_date'] = $uploadDate;
+            }
+            if ($mediaType !== null) {
+                $updates[] = 'media_type = :media_type';
+                $updateParams['media_type'] = $mediaType;
+            }
+            if ($subKey !== null) {
+                $updates[] = 'sub_key = :sub_key';
+                $updateParams['sub_key'] = $subKey;
+            }
+            if (!empty($updates)) {
+                $sql = "UPDATE com_media_assets SET " . implode(', ', $updates) . " WHERE id = :id";
+                $this->pdo->prepare($sql)->execute($updateParams);
+            }
             return (int)$assetId;
         }
 
-        // thumbnail_url は任意。YouTube は media_key から表示時に生成するため、DBには無理に保存しない。
-        $this->create([
+        $data = [
             'platform'      => $platform,
             'media_key'     => $mediaKey,
             'sub_key'       => $subKey,
             'title'         => $title,
             'thumbnail_url' => $thumbnailUrl,
+            'description'   => $description,
             'upload_date'   => $uploadDate ?: date('Y-m-d H:i:s'),
             'created_at'    => date('Y-m-d H:i:s'),
-        ]);
+        ];
+        if ($mediaType) {
+            $data['media_type'] = $mediaType;
+        }
+        $this->create($data);
 
         $newId = $this->lastInsertId();
         return $newId ? (int)$newId : null;
@@ -89,7 +151,7 @@ class MediaAssetModel extends BaseModel {
      * ※ asset_id は UNIQUE KEY のため、1動画に1メタデータが原則
      * カテゴリは後から更新可能
      */
-    public function findOrCreateMetadata(int $assetId, string $category): ?int {
+    public function findOrCreateMetadata(int $assetId, ?string $category): ?int {
         $sql = "SELECT id FROM hn_media_metadata WHERE asset_id = :asset_id";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute(['asset_id' => $assetId]);
@@ -124,6 +186,18 @@ class MediaAssetModel extends BaseModel {
             WHERE id = :id
         ");
         return $stmt->execute(['id' => $metaId, 'category' => $category]);
+    }
+
+    /**
+     * asset_id で com_media_assets.upload_date を更新
+     */
+    public function updateAssetUploadDate(int $assetId, ?string $uploadDate): bool {
+        $stmt = $this->pdo->prepare("
+            UPDATE com_media_assets
+            SET upload_date = :upload_date
+            WHERE id = :id
+        ");
+        return $stmt->execute(['id' => $assetId, 'upload_date' => $uploadDate]);
     }
 }
 

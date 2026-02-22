@@ -152,8 +152,11 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 <div id="selectionPanel" class="hidden flex-1 flex flex-col overflow-hidden">
                     <div class="p-4 md:p-6 bg-white border-b border-sky-100 shrink-0">
                         <div class="flex gap-4 items-start">
-                            <div id="selectedThumb" class="w-24 md:w-32 shrink-0 aspect-video rounded-lg overflow-hidden bg-slate-200">
+                            <div id="selectedThumb" class="w-24 md:w-32 shrink-0 aspect-video rounded-lg overflow-hidden bg-slate-200 cursor-pointer group relative" onclick="playSelectedVideo(event)">
                                 <img id="selectedThumbImg" src="" alt="" class="w-full h-full object-cover">
+                                <div class="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                                    <i class="fa-solid fa-play text-white text-xl"></i>
+                                </div>
                             </div>
                             <div class="flex-1 min-w-0">
                                 <span id="selectedCategory" class="inline-block px-2 py-0.5 rounded text-xs font-bold bg-sky-100 text-sky-700 mb-1"></span>
@@ -183,7 +186,10 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                         <div id="memberCheckboxList" class="space-y-6 mb-6">
                             <!-- 期生別グルーピングで JavaScript で動的生成 -->
                         </div>
-                        <div>
+                        <div class="flex items-center gap-3">
+                            <button id="btnAutoDetect" class="h-10 px-5 bg-amber-500 text-white rounded-full text-sm font-bold hover:bg-amber-600 transition shadow-lg shadow-amber-200">
+                                <i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i>本文から自動検出
+                            </button>
                             <button id="btnSave" class="h-10 px-6 bg-sky-500 text-white rounded-full text-sm font-bold hover:bg-sky-600 transition shadow-lg shadow-sky-200">
                                 <i class="fa-solid fa-check mr-2"></i>保存
                             </button>
@@ -193,6 +199,8 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             </section>
         </div>
     </main>
+
+    <?php include __DIR__ . '/../../../components/video_modal.php'; ?>
 
     <script>
         const videoList = document.getElementById('videoList');
@@ -206,6 +214,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         const btnSave = document.getElementById('btnSave');
 
         let selectedMetaId = null;
+        let selectedVideoData = null;
         let showGraduates = true;
         let checkedMemberIds = new Set();
         const allMembers = <?= json_encode(array_map(fn($m) => [
@@ -216,7 +225,11 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             'is_active' => (int)($m['is_active'] ?? 1)
         ], $members)) ?>;
 
-        // 検索
+        function playSelectedVideo(ev) {
+            if (!selectedVideoData) return;
+            openVideoModalWithData(selectedVideoData, ev);
+        }
+
         async function loadVideos() {
             const params = new URLSearchParams({
                 q: searchVideo.value,
@@ -278,6 +291,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             const dataStr = rowEl.getAttribute('data-video');
             const video = JSON.parse(dataStr ? dataStr.replace(/&quot;/g, '"').replace(/&amp;/g, '&') : '{}');
             selectedMetaId = video.meta_id;
+            selectedVideoData = video;
             document.getElementById('selectedThumbImg').src = getThumbnailUrl(video) || '';
             document.getElementById('selectedCategory').textContent = video.category || '';
             document.getElementById('selectedTitle').textContent = video.title || '';
@@ -432,6 +446,35 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 toast.classList.remove('visible');
             }, 2500);
         }
+
+        document.getElementById('btnAutoDetect').onclick = () => {
+            if (!selectedVideoData) { showToast('動画を選択してください'); return; }
+            const text = (selectedVideoData.title || '') + ' ' + (selectedVideoData.description || '');
+            if (text.trim() === '') { showToast('タイトル・本文が空です'); return; }
+
+            let detected = 0;
+            allMembers.forEach(m => {
+                const name = m.name || '';
+                if (!name) return;
+                if (text.includes(name)) {
+                    if (!checkedMemberIds.has(m.id)) detected++;
+                    checkedMemberIds.add(m.id);
+                    return;
+                }
+                const parts = name.split(/\s+/);
+                if (parts.length === 2 && parts[1].length >= 2 && text.includes(parts[1])) {
+                    if (!checkedMemberIds.has(m.id)) detected++;
+                    checkedMemberIds.add(m.id);
+                }
+            });
+
+            renderMemberCheckboxes();
+            if (detected > 0) {
+                showToast(`${detected}人のメンバーを検出しました`);
+            } else {
+                showToast('該当するメンバーが見つかりませんでした');
+            }
+        };
 
         btnSave.onclick = async () => {
             if (!selectedMetaId) return;

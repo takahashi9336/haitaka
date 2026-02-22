@@ -130,10 +130,33 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                                     <?php endforeach; ?>
                                 </select>
                             </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-2">アップロード日</label>
+                                <input type="date" id="editUploadDate" class="w-full max-w-xs h-10 px-4 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-sky-200 bg-white">
+                            </div>
                         </div>
                         <div class="mt-6">
+                            <label class="block text-xs font-bold text-slate-600 mb-2">サムネイル画像</label>
+                            <div class="flex items-center gap-4">
+                                <div id="thumbPreviewWrap" class="w-32 aspect-video rounded-lg overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
+                                    <img id="thumbPreview" src="" alt="" class="w-full h-full object-cover hidden">
+                                    <div id="thumbPlaceholder" class="w-full h-full flex items-center justify-center text-slate-400 text-[10px]">No Image</div>
+                                </div>
+                                <div class="flex flex-col gap-2">
+                                    <label class="inline-flex items-center gap-2 h-9 px-4 bg-purple-500 text-white rounded-lg text-xs font-bold hover:bg-purple-600 transition cursor-pointer">
+                                        <i class="fa-solid fa-upload"></i> 画像をアップロード
+                                        <input type="file" id="thumbFileInput" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden">
+                                    </label>
+                                    <p id="thumbUploadStatus" class="text-[10px] text-slate-400"></p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-6 flex items-center gap-3">
                             <button id="btnSave" class="h-10 px-6 bg-sky-500 text-white rounded-full text-sm font-bold hover:bg-sky-600 transition shadow-lg shadow-sky-200">
                                 <i class="fa-solid fa-check mr-2"></i>保存
+                            </button>
+                            <button id="btnDelete" class="h-10 px-5 bg-white border border-red-200 text-red-500 rounded-full text-sm font-bold hover:bg-red-50 hover:border-red-300 transition">
+                                <i class="fa-solid fa-trash mr-1"></i>削除
                             </button>
                         </div>
 
@@ -241,6 +264,23 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             document.getElementById('selectedDate').textContent = primaryDate ? new Date(primaryDate).toLocaleDateString('ja-JP') : '';
             editCategory.value = video.category || '';
 
+            const ud = video.upload_date || '';
+            document.getElementById('editUploadDate').value = ud ? ud.substring(0, 10) : '';
+
+            const thumbUrl = getThumbnailUrl(video);
+            const thumbPreview = document.getElementById('thumbPreview');
+            const thumbPlaceholder = document.getElementById('thumbPlaceholder');
+            if (thumbUrl) {
+                thumbPreview.src = thumbUrl;
+                thumbPreview.classList.remove('hidden');
+                thumbPlaceholder.classList.add('hidden');
+            } else {
+                thumbPreview.classList.add('hidden');
+                thumbPlaceholder.classList.remove('hidden');
+            }
+            document.getElementById('thumbUploadStatus').textContent = '';
+            document.getElementById('thumbFileInput').value = '';
+
             noSelection.classList.add('hidden');
             settingsPanel.classList.remove('hidden');
         }
@@ -248,10 +288,16 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         async function saveSettings() {
             if (!selectedMetaId) return;
             const category = editCategory.value;
+            const uploadDate = document.getElementById('editUploadDate').value || null;
             const res = await fetch('/hinata/api/update_media_metadata.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ meta_id: selectedMetaId, category: category })
+                body: JSON.stringify({
+                    meta_id: selectedMetaId,
+                    asset_id: selectedVideo?.asset_id || null,
+                    category: category,
+                    upload_date: uploadDate,
+                })
             });
             const json = await res.json();
             if (json.status !== 'success') {
@@ -260,18 +306,46 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             }
             showToast('保存しました');
             selectedVideo.category = category || null;
+            if (uploadDate) selectedVideo.upload_date = uploadDate;
             const row = videoList.querySelector(`[data-meta-id="${selectedMetaId}"]`);
             if (row) {
                 const span = row.querySelector('.text-xs');
                 if (span) span.textContent = category || '（未設定）';
+                row.setAttribute('data-video', JSON.stringify(selectedVideo).replace(/&/g, '&amp;').replace(/"/g, '&quot;'));
             }
             document.getElementById('selectedCategory').textContent = category || '（未設定）';
+            const dateDisplay = uploadDate ? new Date(uploadDate).toLocaleDateString('ja-JP') : '';
+            document.getElementById('selectedDate').textContent = dateDisplay;
+        }
+
+        async function deleteMedia() {
+            if (!selectedMetaId) return;
+            if (!confirm(`「${selectedVideo?.title || ''}」を削除しますか？\nメンバー紐付け・楽曲紐付けも同時に削除されます。`)) return;
+
+            const res = await fetch('/hinata/api/delete_media.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ meta_id: selectedMetaId })
+            });
+            const json = await res.json();
+            if (json.status !== 'success') {
+                showToast('エラー: ' + (json.message || '削除に失敗しました'));
+                return;
+            }
+            showToast('削除しました');
+            const row = videoList.querySelector(`[data-meta-id="${selectedMetaId}"]`);
+            if (row) row.remove();
+            selectedMetaId = null;
+            selectedVideo = null;
+            settingsPanel.classList.add('hidden');
+            noSelection.classList.remove('hidden');
         }
 
         btnSearch.addEventListener('click', loadVideos);
         searchVideo.addEventListener('keydown', (e) => { if (e.key === 'Enter') loadVideos(); });
         filterCategory.addEventListener('change', loadVideos);
         btnSave.addEventListener('click', saveSettings);
+        document.getElementById('btnDelete').addEventListener('click', deleteMedia);
 
         loadVideos();
 
@@ -381,6 +455,48 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
 
         document.getElementById('mobileMenuBtn')?.addEventListener('click', () => {
             document.querySelector('.sidebar')?.classList.toggle('mobile-open');
+        });
+
+        document.getElementById('thumbFileInput').addEventListener('change', async function() {
+            if (!this.files.length || !selectedVideo) return;
+            const file = this.files[0];
+            if (file.size > 5 * 1024 * 1024) { showToast('5MB以下の画像を選択してください'); this.value = ''; return; }
+
+            const statusEl = document.getElementById('thumbUploadStatus');
+            statusEl.textContent = 'アップロード中...';
+            statusEl.className = 'text-[10px] text-sky-500 font-bold';
+
+            const formData = new FormData();
+            formData.append('asset_id', selectedVideo.asset_id);
+            formData.append('file', file);
+
+            try {
+                const res = await fetch('/hinata/api/upload_thumbnail.php', { method: 'POST', body: formData });
+                const json = await res.json();
+                if (json.status === 'success') {
+                    const newUrl = json.thumbnail_url;
+                    document.getElementById('thumbPreview').src = newUrl;
+                    document.getElementById('thumbPreview').classList.remove('hidden');
+                    document.getElementById('thumbPlaceholder').classList.add('hidden');
+                    document.getElementById('selectedThumbImg').src = newUrl;
+                    selectedVideo.thumbnail_url = newUrl;
+                    const row = videoList.querySelector('[data-meta-id="' + selectedMetaId + '"]');
+                    if (row) {
+                        const img = row.querySelector('img');
+                        if (img) img.src = newUrl;
+                    }
+                    statusEl.textContent = 'アップロード完了';
+                    statusEl.className = 'text-[10px] text-emerald-600 font-bold';
+                    showToast('サムネイルを更新しました');
+                } else {
+                    statusEl.textContent = json.message || 'エラーが発生しました';
+                    statusEl.className = 'text-[10px] text-red-500 font-bold';
+                }
+            } catch (e) {
+                statusEl.textContent = '通信エラー: ' + e.message;
+                statusEl.className = 'text-[10px] text-red-500 font-bold';
+            }
+            this.value = '';
         });
     </script>
 </body>

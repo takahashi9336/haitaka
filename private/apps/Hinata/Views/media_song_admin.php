@@ -111,8 +111,11 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 <div id="selectionPanel" class="hidden flex-1 flex flex-col overflow-hidden">
                     <div class="p-4 md:p-6 bg-white border-b border-sky-100 shrink-0">
                         <div class="flex gap-4 items-start">
-                            <div id="selectedThumb" class="w-24 md:w-32 shrink-0 aspect-video rounded-lg overflow-hidden bg-slate-200">
+                            <div id="selectedThumb" class="w-24 md:w-32 shrink-0 aspect-video rounded-lg overflow-hidden bg-slate-200 cursor-pointer group relative" onclick="playSelectedVideo(event)">
                                 <img id="selectedThumbImg" src="" alt="" class="w-full h-full object-cover">
+                                <div class="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                                    <i class="fa-solid fa-play text-white text-xl"></i>
+                                </div>
                             </div>
                             <div class="flex-1 min-w-0">
                                 <span id="selectedCategory" class="inline-block px-2 py-0.5 rounded text-xs font-bold bg-sky-100 text-sky-700 mb-1"></span>
@@ -166,6 +169,8 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         </div>
     </main>
 
+    <?php include __DIR__ . '/../../../components/video_modal.php'; ?>
+
     <script>
         const videoList = document.getElementById('videoList');
         const noSelection = document.getElementById('noSelection');
@@ -181,6 +186,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         const filterUnlinkedOnly = document.getElementById('filterUnlinkedOnly');
 
         let selectedMetaId = null;
+        let selectedVideoData = null;
         let linkedSong = null;
         const trackTypesDisplay = <?= json_encode($trackTypesDisplay ?? []) ?>;
 
@@ -227,12 +233,18 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             videoList.querySelectorAll('.video-row').forEach(row => { row.onclick = () => selectVideo(row); });
         }
 
+        function playSelectedVideo(ev) {
+            if (!selectedVideoData) return;
+            openVideoModalWithData(selectedVideoData, ev);
+        }
+
         async function selectVideo(rowEl) {
             document.querySelectorAll('.video-row').forEach(r => r.classList.remove('selected'));
             rowEl.classList.add('selected');
             const dataStr = rowEl.getAttribute('data-video');
             const video = JSON.parse(dataStr ? dataStr.replace(/&quot;/g, '"').replace(/&amp;/g, '&') : '{}');
             selectedMetaId = video.meta_id;
+            selectedVideoData = video;
             document.getElementById('selectedThumbImg').src = getThumbnailUrl(video) || '';
             document.getElementById('selectedCategory').textContent = video.category || '';
             document.getElementById('selectedTitle').textContent = video.title || '';

@@ -80,6 +80,7 @@ class MediaController {
             $sort = $_GET['sort'] ?? 'newest';
             $memberId = (int)($_GET['member_id'] ?? 0);
             $generation = $_GET['generation'] ?? '';
+            $mediaType = $_GET['media_type'] ?? '';
 
             // limit の上限チェック
             if ($limit > 100) {
@@ -104,6 +105,10 @@ class MediaController {
                 $where[] = "EXISTS (SELECT 1 FROM hn_media_members hmm2 JOIN hn_members m ON hmm2.member_id = m.id WHERE hmm2.media_meta_id = hmeta.id AND m.generation = :generation)";
                 $params['generation'] = $generation;
             }
+            if ($mediaType !== '') {
+                $where[] = "ma.media_type = :media_type";
+                $params['media_type'] = $mediaType;
+            }
             
             $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
             
@@ -124,6 +129,7 @@ class MediaController {
                         ma.platform,
                         ma.media_key,
                         ma.sub_key,
+                        ma.media_type,
                         ma.title,
                         ma.thumbnail_url,
                         ma.description,
@@ -233,9 +239,66 @@ class MediaController {
                 echo json_encode(['status' => 'error', 'message' => '更新に失敗しました']);
                 return;
             }
+
+            $uploadDate = $input['upload_date'] ?? null;
+            if ($uploadDate !== null) {
+                $assetId = (int)($input['asset_id'] ?? 0);
+                if ($assetId) {
+                    $dateVal = trim($uploadDate) !== '' ? $uploadDate : null;
+                    $mediaModel->updateAssetUploadDate($assetId, $dateVal);
+                }
+            }
+
             Logger::info("hn_media_metadata update meta_id={$metaId} category={$category} by=" . ($_SESSION['user']['id_name'] ?? 'guest'));
-            echo json_encode(['status' => 'success', 'category' => $category ?: null]);
+            echo json_encode(['status' => 'success', 'category' => $category ?: null, 'upload_date' => $uploadDate ?? null]);
         } catch (\Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * メディア削除API
+     * POST: { meta_id: int }
+     * hn_media_metadata（+ CASCADE先の hn_media_members, hn_song_media_links）を削除。
+     * com_media_assets は他から参照される可能性があるため残す。
+     */
+    public function deleteMedia(): void {
+        header('Content-Type: application/json');
+        try {
+            $auth = new Auth();
+            if (!$auth->check() || !$auth->isHinataAdmin()) {
+                echo json_encode(['status' => 'error', 'message' => '権限がありません']);
+                return;
+            }
+            $input = json_decode(file_get_contents('php://input'), true) ?: [];
+            $metaId = (int)($input['meta_id'] ?? 0);
+            if (!$metaId) {
+                echo json_encode(['status' => 'error', 'message' => 'meta_id は必須です']);
+                return;
+            }
+
+            $pdo = Database::connect();
+
+            $stmt = $pdo->prepare("SELECT hmeta.id, ma.title FROM hn_media_metadata hmeta JOIN com_media_assets ma ON ma.id = hmeta.asset_id WHERE hmeta.id = :id");
+            $stmt->execute(['id' => $metaId]);
+            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+            if (!$row) {
+                echo json_encode(['status' => 'error', 'message' => '指定されたメディアが見つかりません']);
+                return;
+            }
+
+            $pdo->beginTransaction();
+            $pdo->prepare('DELETE FROM hn_song_media_links WHERE media_meta_id = ?')->execute([$metaId]);
+            $pdo->prepare('DELETE FROM hn_media_members WHERE media_meta_id = ?')->execute([$metaId]);
+            $pdo->prepare('DELETE FROM hn_media_metadata WHERE id = ?')->execute([$metaId]);
+            $pdo->commit();
+
+            Logger::info("hn_media_metadata delete meta_id={$metaId} title=\"{$row['title']}\" by=" . ($_SESSION['user']['id_name'] ?? 'guest'));
+            echo json_encode(['status' => 'success', 'message' => '削除しました']);
+        } catch (\Exception $e) {
+            if (isset($pdo) && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
         }
     }
@@ -954,5 +1017,490 @@ class MediaController {
             'Error' => 'エラー',
             default => '',
         };
+    }
+
+    /* ================================================================
+     *  メディア登録機能（YouTube検索 + URL貼り付け）
+     * ================================================================ */
+
+    /**
+     * メディア登録画面の表示
+     */
+    public function registerPage(): void {
+        $auth = new Auth();
+        $auth->requireHinataAdmin('/hinata/');
+
+        $categories = $this->getMediaCategories();
+        $ytClient = new \App\Hinata\Model\YouTubeApiClient();
+        $youtubeConfigured = $ytClient->isConfigured();
+        $presetChannels = \App\Hinata\Model\YouTubeApiClient::PRESET_CHANNELS;
+        $user = $_SESSION['user'];
+        require_once __DIR__ . '/../Views/media_register.php';
+    }
+
+    /**
+     * YouTube チャンネル動画一覧API
+     * GET: ?channel_id=xxx&page_token=&max_results=25
+     */
+    public function youtubeChannelVideos(): void {
+        header('Content-Type: application/json');
+        try {
+            $auth = new Auth();
+            if (!$auth->check() || !$auth->isHinataAdmin()) {
+                echo json_encode(['status' => 'error', 'message' => '権限がありません']);
+                return;
+            }
+
+            $ytClient = new \App\Hinata\Model\YouTubeApiClient();
+            if (!$ytClient->isConfigured()) {
+                echo json_encode(['status' => 'error', 'message' => 'YouTube APIキーが設定されていません']);
+                return;
+            }
+
+            $channelId  = trim($_GET['channel_id'] ?? '');
+            $pageToken  = trim($_GET['page_token'] ?? '') ?: null;
+            $maxResults = (int)($_GET['max_results'] ?? 25);
+
+            if (empty($channelId)) {
+                echo json_encode(['status' => 'error', 'message' => 'channel_id は必須です']);
+                return;
+            }
+
+            $playlistId = $ytClient->getUploadsPlaylistId($channelId);
+            if (!$playlistId) {
+                echo json_encode(['status' => 'error', 'message' => 'チャンネルのアップロードリストが取得できませんでした']);
+                return;
+            }
+
+            $result = $ytClient->getPlaylistItems($playlistId, $maxResults, $pageToken);
+            if (!$result) {
+                echo json_encode(['status' => 'error', 'message' => '動画一覧の取得に失敗しました']);
+                return;
+            }
+
+            $this->markRegisteredVideos($result['videos']);
+
+            echo json_encode([
+                'status' => 'success',
+                'data'   => $result['videos'],
+                'next_page_token' => $result['next_page_token'],
+                'prev_page_token' => $result['prev_page_token'],
+                'total_results'   => $result['total_results'],
+            ]);
+        } catch (\Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * YouTube キーワード検索API
+     * GET: ?q=xxx&channel_id=&page_token=&max_results=25
+     */
+    public function youtubeSearch(): void {
+        header('Content-Type: application/json');
+        try {
+            $auth = new Auth();
+            if (!$auth->check() || !$auth->isHinataAdmin()) {
+                echo json_encode(['status' => 'error', 'message' => '権限がありません']);
+                return;
+            }
+
+            $ytClient = new \App\Hinata\Model\YouTubeApiClient();
+            if (!$ytClient->isConfigured()) {
+                echo json_encode(['status' => 'error', 'message' => 'YouTube APIキーが設定されていません']);
+                return;
+            }
+
+            $query      = trim($_GET['q'] ?? '');
+            $channelId  = trim($_GET['channel_id'] ?? '') ?: null;
+            $pageToken  = trim($_GET['page_token'] ?? '') ?: null;
+            $maxResults = (int)($_GET['max_results'] ?? 25);
+
+            if (empty($query)) {
+                echo json_encode(['status' => 'error', 'message' => '検索キーワードを入力してください']);
+                return;
+            }
+
+            $result = $ytClient->searchVideos($query, $maxResults, $pageToken, $channelId);
+            if (!$result) {
+                echo json_encode(['status' => 'error', 'message' => '検索に失敗しました']);
+                return;
+            }
+
+            $this->markRegisteredVideos($result['videos']);
+
+            echo json_encode([
+                'status' => 'success',
+                'data'   => $result['videos'],
+                'next_page_token' => $result['next_page_token'],
+                'prev_page_token' => $result['prev_page_token'],
+                'total_results'   => $result['total_results'],
+            ]);
+        } catch (\Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * oEmbed 情報取得API（YouTube / TikTok / Instagram 対応）
+     * POST: { urls: ["url1", "url2", ...] }
+     */
+    public function fetchOembed(): void {
+        header('Content-Type: application/json');
+        try {
+            $auth = new Auth();
+            if (!$auth->check() || !$auth->isHinataAdmin()) {
+                echo json_encode(['status' => 'error', 'message' => '権限がありません']);
+                return;
+            }
+
+            $input = json_decode(file_get_contents('php://input'), true) ?: [];
+            $urls = $input['urls'] ?? [];
+            if (!is_array($urls) || empty($urls)) {
+                echo json_encode(['status' => 'error', 'message' => 'URLが指定されていません']);
+                return;
+            }
+
+            $mediaModel = new MediaAssetModel();
+
+            $parsed_all = [];
+            $ytVideoIds = [];
+
+            foreach (array_slice($urls, 0, 50) as $url) {
+                $url = trim($url);
+                if ($url === '') continue;
+                $parsed = $mediaModel->parseUrl($url);
+                $parsed_all[] = ['url' => $url, 'parsed' => $parsed];
+                if ($parsed && $parsed['platform'] === 'youtube') {
+                    $ytVideoIds[] = $parsed['media_key'];
+                }
+            }
+
+            $ytDetails = [];
+            if (!empty($ytVideoIds)) {
+                $ytClient = new \App\Hinata\Model\YouTubeApiClient();
+                if ($ytClient->isConfigured()) {
+                    $ytDetails = $ytClient->getVideoDetails($ytVideoIds);
+                }
+            }
+
+            $results = [];
+            foreach ($parsed_all as $entry) {
+                $url    = $entry['url'];
+                $parsed = $entry['parsed'];
+
+                if (!$parsed) {
+                    $results[] = [
+                        'url'      => $url,
+                        'status'   => 'error',
+                        'message'  => '対応していないURLです',
+                    ];
+                    continue;
+                }
+
+                $oembedData = null;
+                if ($parsed['platform'] === 'youtube') {
+                    if (isset($ytDetails[$parsed['media_key']])) {
+                        $detail = $ytDetails[$parsed['media_key']];
+                        $oembedData = [
+                            'title'         => $detail['title'],
+                            'description'   => $detail['description'],
+                            'author_name'   => $detail['channel_title'],
+                            'thumbnail_url' => $detail['thumbnail_url'],
+                            'published_at'  => $detail['published_at'],
+                            'media_type'    => $detail['media_type'],
+                        ];
+                    } else {
+                        $oembedData = \App\Hinata\Model\YouTubeApiClient::fetchOembed($url);
+                    }
+                } elseif ($parsed['platform'] === 'tiktok') {
+                    $oembedData = $this->fetchTikTokOembed($url);
+                } elseif ($parsed['platform'] === 'instagram') {
+                    $oembedData = $this->fetchInstagramOembed($url);
+                }
+
+                $thumbnail = '';
+                if ($oembedData && !empty($oembedData['thumbnail_url'])) {
+                    $thumbnail = $oembedData['thumbnail_url'];
+                } elseif ($parsed['platform'] === 'youtube') {
+                    $thumbnail = "https://img.youtube.com/vi/{$parsed['media_key']}/mqdefault.jpg";
+                }
+
+                $dupStatus = $this->checkDuplicateStatus($parsed, '');
+
+                $results[] = [
+                    'url'           => $url,
+                    'platform'      => $parsed['platform'],
+                    'media_key'     => $parsed['media_key'],
+                    'sub_key'       => $parsed['sub_key'],
+                    'title'         => $oembedData['title'] ?? '',
+                    'description'   => $oembedData['description'] ?? '',
+                    'author_name'   => $oembedData['author_name'] ?? '',
+                    'thumbnail_url' => $thumbnail,
+                    'published_at'  => $oembedData['published_at'] ?? null,
+                    'media_type'    => $oembedData['media_type'] ?? null,
+                    'status'        => $dupStatus === 'Registered' ? 'registered' : 'ok',
+                    'dup_status'    => $dupStatus,
+                    'message'       => $this->getStatusMessage($dupStatus),
+                ];
+            }
+
+            echo json_encode(['status' => 'success', 'data' => $results]);
+        } catch (\Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * URL貼り付けからの一括登録API
+     * POST: { items: [ { url, title, category, platform, media_key, sub_key, thumbnail_url }, ... ] }
+     */
+    public function bulkRegister(): void {
+        header('Content-Type: application/json');
+        try {
+            $auth = new Auth();
+            if (!$auth->check() || !$auth->isHinataAdmin()) {
+                echo json_encode(['status' => 'error', 'message' => '権限がありません']);
+                return;
+            }
+
+            $input = json_decode(file_get_contents('php://input'), true) ?: [];
+            $items = $input['items'] ?? [];
+            if (empty($items)) {
+                echo json_encode(['status' => 'error', 'message' => '登録するデータがありません']);
+                return;
+            }
+
+            $pdo = Database::connect();
+            $pdo->beginTransaction();
+
+            $mediaModel = new MediaAssetModel();
+            $saved = 0;
+            $skipped = 0;
+            $autoLinkedCount = 0;
+
+            $allMembers = $pdo->query("SELECT id, name, kana FROM hn_members ORDER BY id")->fetchAll(\PDO::FETCH_ASSOC);
+
+            foreach ($items as $item) {
+                $platform = $item['platform'] ?? '';
+                $mediaKey = $item['media_key'] ?? '';
+                $title    = trim($item['title'] ?? '');
+                $category = trim($item['category'] ?? '');
+                if ($category === '') $category = null;
+
+                if (empty($platform) || empty($mediaKey) || empty($title)) {
+                    $skipped++;
+                    continue;
+                }
+
+                $assetId = $mediaModel->findOrCreateAsset(
+                    $platform,
+                    $mediaKey,
+                    $item['sub_key'] ?? null,
+                    $title,
+                    $item['thumbnail_url'] ?? null,
+                    !empty($item['published_at']) ? date('Y-m-d H:i:s', strtotime($item['published_at'])) : null,
+                    $item['description'] ?? null,
+                    $item['media_type'] ?? null
+                );
+
+                if (!$assetId) {
+                    $skipped++;
+                    continue;
+                }
+
+                $metaId = $mediaModel->findOrCreateMetadata($assetId, $category);
+                if (!$metaId) {
+                    $skipped++;
+                    continue;
+                }
+
+                $text = ($item['title'] ?? '') . ' ' . ($item['description'] ?? '');
+                $matchedMemberIds = $this->detectMembersFromText($text, $allMembers);
+                if (!empty($matchedMemberIds)) {
+                    $this->autoLinkMembers($pdo, $metaId, $matchedMemberIds);
+                    $autoLinkedCount += count($matchedMemberIds);
+                }
+
+                $saved++;
+            }
+
+            $pdo->commit();
+            Logger::info("media bulkRegister saved={$saved} skipped={$skipped} autoLinked={$autoLinkedCount} by=" . ($_SESSION['user']['id_name'] ?? 'guest'));
+
+            $msg = "{$saved}件を登録しました。";
+            if ($skipped > 0) $msg .= "{$skipped}件をスキップ。";
+            if ($autoLinkedCount > 0) $msg .= " メンバー自動紐付け: {$autoLinkedCount}件。";
+
+            echo json_encode([
+                'status'  => 'success',
+                'saved'   => $saved,
+                'skipped' => $skipped,
+                'auto_linked' => $autoLinkedCount,
+                'message' => $msg,
+            ]);
+        } catch (\Exception $e) {
+            if (isset($pdo) && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * 動画リストに登録済みかどうかをマーク
+     */
+    private function markRegisteredVideos(array &$videos): void {
+        if (empty($videos)) return;
+
+        $pdo = Database::connect();
+        $keys = array_column($videos, 'video_id');
+        $placeholders = implode(',', array_fill(0, count($keys), '?'));
+
+        $sql = "SELECT ma.media_key, hmeta.id as meta_id
+                FROM com_media_assets ma
+                JOIN hn_media_metadata hmeta ON hmeta.asset_id = ma.id
+                WHERE ma.platform = 'youtube' AND ma.media_key IN ({$placeholders})";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($keys);
+        $registered = [];
+        while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+            $registered[$row['media_key']] = true;
+        }
+
+        foreach ($videos as &$v) {
+            $v['is_registered'] = isset($registered[$v['video_id']]);
+        }
+        unset($v);
+    }
+
+    /**
+     * Instagram oEmbed APIを呼び出す（Meta App Access Token 必要）
+     */
+    private function fetchInstagramOembed(string $url): ?array {
+        $token = $_ENV['INSTAGRAM_ACCESS_TOKEN'] ?? '';
+        if (empty($token)) {
+            $envPath = __DIR__ . '/../../../.env';
+            if (file_exists($envPath)) {
+                $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+                foreach ($lines as $line) {
+                    if (str_starts_with(trim($line), '#')) continue;
+                    if (str_contains($line, '=')) {
+                        [$key, $val] = explode('=', $line, 2);
+                        if (trim($key) === 'INSTAGRAM_ACCESS_TOKEN') {
+                            $token = trim($val);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        if (empty($token)) return null;
+
+        $oembedUrl = 'https://graph.facebook.com/v21.0/instagram_oembed'
+            . '?url=' . urlencode($url)
+            . '&access_token=' . urlencode($token);
+
+        $ctx = stream_context_create([
+            'http' => ['method' => 'GET', 'timeout' => 10, 'ignore_errors' => true],
+        ]);
+        $response = @file_get_contents($oembedUrl, false, $ctx);
+        if ($response === false) return null;
+
+        $data = json_decode($response, true);
+        if (!$data || isset($data['error'])) return null;
+
+        return [
+            'title'         => $data['title'] ?? '',
+            'description'   => $data['title'] ?? '',
+            'author_name'   => $data['author_name'] ?? '',
+            'thumbnail_url' => $data['thumbnail_url'] ?? '',
+            'published_at'  => null,
+        ];
+    }
+
+    /**
+     * TikTok oEmbed APIを呼び出す（APIキー不要）
+     */
+    private function fetchTikTokOembed(string $url): ?array {
+        $oembedUrl = 'https://www.tiktok.com/oembed?url=' . urlencode($url);
+
+        $ctx = stream_context_create([
+            'http' => ['method' => 'GET', 'timeout' => 10, 'ignore_errors' => true],
+        ]);
+        $response = @file_get_contents($oembedUrl, false, $ctx);
+        if ($response === false) return null;
+
+        $data = json_decode($response, true);
+        if (!$data || !isset($data['title'])) return null;
+
+        $publishedAt = null;
+        if (preg_match('/\/video\/(\d+)/', $url, $m)) {
+            $publishedAt = self::extractTikTokTimestamp($m[1]);
+        }
+
+        return [
+            'title'         => $data['title'],
+            'description'   => $data['title'],
+            'author_name'   => $data['author_name'] ?? '',
+            'thumbnail_url' => $data['thumbnail_url'] ?? '',
+            'published_at'  => $publishedAt,
+        ];
+    }
+
+    /**
+     * TikTok動画IDからアップロード日時を抽出（Snowflake ID方式）
+     * 動画IDの上位31ビットがUnixタイムスタンプ
+     */
+    private static function extractTikTokTimestamp(string $videoId): ?string {
+        if (!ctype_digit($videoId) || strlen($videoId) < 15) return null;
+        $id = (int)$videoId;
+        if ($id <= 0) return null;
+        $timestamp = $id >> 32;
+        if ($timestamp < 1420070400 || $timestamp > 2524608000) return null;
+        return date('Y-m-d\TH:i:s\Z', $timestamp);
+    }
+
+    /**
+     * テキスト内からメンバー名を検出し、マッチしたメンバーIDリストを返す
+     * 漢字名（姓 or 名 or フルネーム）でマッチング
+     */
+    private function detectMembersFromText(string $text, array $allMembers): array {
+        if (trim($text) === '') return [];
+        $matched = [];
+        foreach ($allMembers as $m) {
+            $name = $m['name'] ?? '';
+            if ($name === '') continue;
+            if (mb_strpos($text, $name) !== false) {
+                $matched[] = (int)$m['id'];
+                continue;
+            }
+            $parts = preg_split('/\s+/u', $name);
+            if (count($parts) === 2) {
+                $sei = $parts[0];
+                $mei = $parts[1];
+                if (mb_strlen($mei) >= 2 && mb_strpos($text, $mei) !== false) {
+                    $matched[] = (int)$m['id'];
+                }
+            }
+        }
+        return array_unique($matched);
+    }
+
+    /**
+     * hn_media_members に自動紐付け（既存の紐付けがなければ INSERT）
+     */
+    private function autoLinkMembers(\PDO $pdo, int $metaId, array $memberIds): void {
+        $existing = $pdo->prepare("SELECT member_id FROM hn_media_members WHERE media_meta_id = ?");
+        $existing->execute([$metaId]);
+        $existingIds = array_map('intval', $existing->fetchAll(\PDO::FETCH_COLUMN));
+
+        $insert = $pdo->prepare("INSERT INTO hn_media_members (media_meta_id, member_id, update_user) VALUES (?, ?, ?)");
+        $user = $_SESSION['user']['id_name'] ?? 'auto';
+        foreach ($memberIds as $mid) {
+            if (!in_array($mid, $existingIds, true)) {
+                $insert->execute([$metaId, $mid, $user]);
+            }
+        }
     }
 }
