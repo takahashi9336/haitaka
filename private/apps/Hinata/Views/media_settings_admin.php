@@ -87,6 +87,18 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                             <option value="<?= htmlspecialchars($key) ?>"><?= htmlspecialchars($label) ?></option>
                         <?php endforeach; ?>
                     </select>
+                    <select id="filterPlatform" class="w-full h-10 px-4 border border-sky-100 rounded-lg text-sm outline-none bg-slate-50">
+                        <option value="">プラットフォーム: すべて</option>
+                        <option value="youtube">YouTube</option>
+                        <option value="instagram">Instagram</option>
+                        <option value="tiktok">TikTok</option>
+                    </select>
+                    <select id="filterMediaType" class="w-full h-10 px-4 border border-sky-100 rounded-lg text-sm outline-none bg-slate-50">
+                        <option value="">種別: すべて</option>
+                        <option value="video">動画</option>
+                        <option value="short">ショート</option>
+                        <option value="live">ライブ</option>
+                    </select>
                     <button id="btnSearch" class="w-full h-10 bg-sky-500 text-white rounded-lg text-sm font-bold hover:bg-sky-600 transition">
                         <i class="fa-solid fa-search mr-2"></i>検索
                     </button>
@@ -112,7 +124,11 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                                 <img id="selectedThumbImg" src="" alt="" class="w-full h-full object-cover">
                             </div>
                             <div class="flex-1 min-w-0">
-                                <span id="selectedCategory" class="inline-block px-2 py-0.5 rounded text-xs font-bold bg-sky-100 text-sky-700 mb-1"></span>
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span id="selectedPlatformBadge" class="inline-block px-2 py-0.5 rounded text-[10px] font-bold text-white"></span>
+                                    <span id="selectedMediaTypeBadge" class="inline-block px-2 py-0.5 rounded text-[10px] font-bold"></span>
+                                    <span id="selectedCategory" class="inline-block px-2 py-0.5 rounded text-xs font-bold bg-sky-100 text-sky-700"></span>
+                                </div>
                                 <h2 id="selectedTitle" class="text-lg font-bold text-slate-800 truncate"></h2>
                                 <p id="selectedDate" class="text-xs text-slate-400 mt-1"></p>
                             </div>
@@ -128,6 +144,15 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                                     <?php foreach ($categories as $key => $label): ?>
                                         <option value="<?= htmlspecialchars($key) ?>"><?= htmlspecialchars($label) ?></option>
                                     <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-2">動画種別</label>
+                                <select id="editMediaType" class="w-full max-w-xs h-10 px-4 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-sky-200 bg-white">
+                                    <option value="">（未設定）</option>
+                                    <option value="video">動画</option>
+                                    <option value="short">ショート</option>
+                                    <option value="live">ライブ</option>
                                 </select>
                             </div>
                             <div>
@@ -193,8 +218,11 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         const settingsPanel = document.getElementById('settingsPanel');
         const searchVideo = document.getElementById('searchVideo');
         const filterCategory = document.getElementById('filterCategory');
+        const filterPlatform = document.getElementById('filterPlatform');
+        const filterMediaType = document.getElementById('filterMediaType');
         const btnSearch = document.getElementById('btnSearch');
         const editCategory = document.getElementById('editCategory');
+        const editMediaType = document.getElementById('editMediaType');
         const btnSave = document.getElementById('btnSave');
 
         let selectedMetaId = null;
@@ -213,6 +241,51 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             return div.innerHTML;
         }
 
+        function platformBadge(p) {
+            const cfg = {
+                youtube:   { bg: 'bg-red-500', label: 'YT' },
+                instagram: { bg: 'bg-gradient-to-r from-purple-500 to-pink-500', label: 'IG' },
+                tiktok:    { bg: 'bg-slate-800', label: 'TT' },
+            };
+            const c = cfg[p];
+            if (!c) return '';
+            return `<span class="text-[9px] font-bold text-white px-1.5 py-0.5 rounded ${c.bg}">${c.label}</span>`;
+        }
+
+        function mediaTypeBadge(mt) {
+            const cfg = {
+                video: { cls: 'bg-blue-100 text-blue-700', label: '動画' },
+                short: { cls: 'bg-amber-100 text-amber-700', label: 'ショート' },
+                live:  { cls: 'bg-red-100 text-red-700', label: 'ライブ' },
+            };
+            const c = cfg[mt];
+            if (!c) return '';
+            return `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded ${c.cls}">${c.label}</span>`;
+        }
+
+        function setPlatformBadgeEl(el, platform) {
+            const cfg = {
+                youtube:   { bg: 'bg-red-500', label: 'YouTube' },
+                instagram: { bg: 'bg-gradient-to-r from-purple-500 to-pink-500', label: 'Instagram' },
+                tiktok:    { bg: 'bg-slate-800', label: 'TikTok' },
+            };
+            const c = cfg[platform] || { bg: 'bg-slate-400', label: platform || '' };
+            el.className = 'inline-block px-2 py-0.5 rounded text-[10px] font-bold text-white ' + c.bg;
+            el.textContent = c.label;
+        }
+
+        function setMediaTypeBadgeEl(el, mt) {
+            const cfg = {
+                video: { cls: 'bg-blue-100 text-blue-700', label: '動画' },
+                short: { cls: 'bg-amber-100 text-amber-700', label: 'ショート' },
+                live:  { cls: 'bg-red-100 text-red-700', label: 'ライブ' },
+            };
+            const c = cfg[mt];
+            if (!c) { el.className = 'hidden'; el.textContent = ''; return; }
+            el.className = 'inline-block px-2 py-0.5 rounded text-[10px] font-bold ' + c.cls;
+            el.textContent = c.label;
+        }
+
         function getThumbnailUrl(v) {
             if (v.thumbnail_url) return v.thumbnail_url;
             if (v.platform === 'youtube' && v.media_key) return 'https://img.youtube.com/vi/' + v.media_key + '/mqdefault.jpg';
@@ -220,7 +293,14 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         }
 
         async function loadVideos() {
-            const params = new URLSearchParams({ q: searchVideo.value, category: filterCategory.value, limit: 200, link_type: 'settings' });
+            const params = new URLSearchParams({
+                q: searchVideo.value,
+                category: filterCategory.value,
+                platform: filterPlatform.value,
+                media_type: filterMediaType.value,
+                limit: 200,
+                link_type: 'settings',
+            });
             const res = await fetch(`/hinata/api/list_media_for_link.php?${params}`);
             const json = await res.json();
             if (json.status !== 'success') {
@@ -239,7 +319,11 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                         <img src="${thumbUrl}" alt="" class="w-full h-full object-cover" onerror="this.src=''">
                     </div>
                     <div class="flex-1 min-w-0">
-                        <span class="text-xs font-bold text-sky-600">${v.category || '（未設定）'}</span>
+                        <div class="flex items-center gap-1 mb-0.5">
+                            ${platformBadge(v.platform)}
+                            ${mediaTypeBadge(v.media_type)}
+                            <span class="text-[10px] font-bold text-sky-600">${v.category || ''}</span>
+                        </div>
                         <p class="text-sm font-bold text-slate-800 truncate">${escapeHtml(v.title || '')}</p>
                     </div>
                 </div>`;
@@ -263,6 +347,10 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             const primaryDate = video.upload_date || video.release_date || '';
             document.getElementById('selectedDate').textContent = primaryDate ? new Date(primaryDate).toLocaleDateString('ja-JP') : '';
             editCategory.value = video.category || '';
+            editMediaType.value = video.media_type || '';
+
+            setPlatformBadgeEl(document.getElementById('selectedPlatformBadge'), video.platform);
+            setMediaTypeBadgeEl(document.getElementById('selectedMediaTypeBadge'), video.media_type);
 
             const ud = video.upload_date || '';
             document.getElementById('editUploadDate').value = ud ? ud.substring(0, 10) : '';
@@ -289,6 +377,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             if (!selectedMetaId) return;
             const category = editCategory.value;
             const uploadDate = document.getElementById('editUploadDate').value || null;
+            const mediaType = editMediaType.value || null;
             const res = await fetch('/hinata/api/update_media_metadata.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -297,6 +386,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                     asset_id: selectedVideo?.asset_id || null,
                     category: category,
                     upload_date: uploadDate,
+                    media_type: mediaType,
                 })
             });
             const json = await res.json();
@@ -306,14 +396,15 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             }
             showToast('保存しました');
             selectedVideo.category = category || null;
+            selectedVideo.media_type = mediaType || null;
             if (uploadDate) selectedVideo.upload_date = uploadDate;
             const row = videoList.querySelector(`[data-meta-id="${selectedMetaId}"]`);
             if (row) {
-                const span = row.querySelector('.text-xs');
-                if (span) span.textContent = category || '（未設定）';
                 row.setAttribute('data-video', JSON.stringify(selectedVideo).replace(/&/g, '&amp;').replace(/"/g, '&quot;'));
+                loadVideos();
             }
             document.getElementById('selectedCategory').textContent = category || '（未設定）';
+            setMediaTypeBadgeEl(document.getElementById('selectedMediaTypeBadge'), mediaType);
             const dateDisplay = uploadDate ? new Date(uploadDate).toLocaleDateString('ja-JP') : '';
             document.getElementById('selectedDate').textContent = dateDisplay;
         }
@@ -344,6 +435,8 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         btnSearch.addEventListener('click', loadVideos);
         searchVideo.addEventListener('keydown', (e) => { if (e.key === 'Enter') loadVideos(); });
         filterCategory.addEventListener('change', loadVideos);
+        filterPlatform.addEventListener('change', loadVideos);
+        filterMediaType.addEventListener('change', loadVideos);
         btnSave.addEventListener('click', saveSettings);
         document.getElementById('btnDelete').addEventListener('click', deleteMedia);
 

@@ -87,6 +87,8 @@ class YouTubeApiClient {
             ];
         }
 
+        $videos = $this->enrichMediaTypes($videos);
+
         return [
             'videos'         => $videos,
             'next_page_token' => $data['nextPageToken'] ?? null,
@@ -135,6 +137,8 @@ class YouTubeApiClient {
             ];
         }
 
+        $videos = $this->enrichMediaTypes($videos);
+
         return [
             'videos'         => $videos,
             'next_page_token' => $data['nextPageToken'] ?? null,
@@ -146,6 +150,7 @@ class YouTubeApiClient {
     /**
      * 動画IDリストから詳細情報を一括取得（videos.list / quota cost: 1 unit per call）
      * 最大50件ずつバッチ処理。完全な description を返す。
+     * contentDetails.duration で Shorts (≤60s) を正確に判定。
      *
      * @return array<string, array> videoId => ['title','description','thumbnail_url','published_at','channel_title','media_type']
      */
@@ -153,7 +158,7 @@ class YouTubeApiClient {
         $result = [];
         foreach (array_chunk($videoIds, 50) as $chunk) {
             $data = $this->apiRequest('/videos', [
-                'part' => 'snippet,liveStreamingDetails',
+                'part' => 'snippet,contentDetails,liveStreamingDetails',
                 'id'   => implode(',', $chunk),
             ]);
             if (!$data || empty($data['items'])) continue;
@@ -161,6 +166,8 @@ class YouTubeApiClient {
             foreach ($data['items'] as $item) {
                 $id = $item['id'];
                 $snippet = $item['snippet'] ?? [];
+                $contentDetails = $item['contentDetails'] ?? [];
+                $liveDetails = $item['liveStreamingDetails'] ?? null;
                 $result[$id] = [
                     'title'         => $snippet['title'] ?? '',
                     'description'   => $snippet['description'] ?? '',
@@ -169,7 +176,7 @@ class YouTubeApiClient {
                                        ?? "https://img.youtube.com/vi/{$id}/mqdefault.jpg",
                     'published_at'  => $snippet['publishedAt'] ?? null,
                     'channel_title' => $snippet['channelTitle'] ?? '',
-                    'media_type'    => self::detectMediaType($snippet),
+                    'media_type'    => self::detectMediaTypeAdvanced($snippet, $contentDetails, $liveDetails),
                 ];
             }
         }
@@ -203,7 +210,75 @@ class YouTubeApiClient {
     }
 
     /**
-     * snippet 情報から media_type (video/short/live) を推定
+     * 動画リストに videos.list の contentDetails を使った正確な media_type を付与する。
+     * playlistItems / search の結果に対して呼び出す（追加 quota: 1 unit per 50件）。
+     */
+    private function enrichMediaTypes(array $videos): array {
+        $ids = array_map(fn($v) => $v['video_id'], $videos);
+        if (empty($ids)) return $videos;
+
+        $details = [];
+        foreach (array_chunk($ids, 50) as $chunk) {
+            $data = $this->apiRequest('/videos', [
+                'part' => 'contentDetails,liveStreamingDetails',
+                'id'   => implode(',', $chunk),
+            ]);
+            if (!$data || empty($data['items'])) continue;
+            foreach ($data['items'] as $item) {
+                $details[$item['id']] = [
+                    'contentDetails'       => $item['contentDetails'] ?? [],
+                    'liveStreamingDetails' => $item['liveStreamingDetails'] ?? null,
+                ];
+            }
+        }
+
+        foreach ($videos as &$v) {
+            $vid = $v['video_id'];
+            if (isset($details[$vid])) {
+                $snippet = ['title' => $v['title'], 'liveBroadcastContent' => 'none'];
+                $v['media_type'] = self::detectMediaTypeAdvanced(
+                    $snippet,
+                    $details[$vid]['contentDetails'],
+                    $details[$vid]['liveStreamingDetails']
+                );
+            }
+        }
+        unset($v);
+        return $videos;
+    }
+
+    /**
+     * snippet + contentDetails + liveStreamingDetails から media_type を正確に判定
+     *
+     * - liveStreamingDetails が存在 → live（アーカイブ含む）
+     * - duration ≤ 60秒 → short
+     * - それ以外 → video
+     */
+    private static function detectMediaTypeAdvanced(array $snippet, array $contentDetails, ?array $liveDetails): string {
+        if ($liveDetails !== null) {
+            return 'live';
+        }
+
+        $live = $snippet['liveBroadcastContent'] ?? 'none';
+        if ($live === 'live' || $live === 'upcoming') {
+            return 'live';
+        }
+
+        $duration = $contentDetails['duration'] ?? '';
+        if ($duration !== '' && self::parseDurationSeconds($duration) <= 60) {
+            return 'short';
+        }
+
+        $title = $snippet['title'] ?? '';
+        if (preg_match('/#shorts?\b/i', $title)) {
+            return 'short';
+        }
+
+        return 'video';
+    }
+
+    /**
+     * snippet 情報だけで media_type を推定（フォールバック用）
      */
     private static function detectMediaType(array $snippet): string {
         $live = $snippet['liveBroadcastContent'] ?? 'none';
@@ -215,6 +290,16 @@ class YouTubeApiClient {
             return 'short';
         }
         return 'video';
+    }
+
+    /**
+     * ISO 8601 duration (PT1M30S etc.) を秒数に変換
+     */
+    private static function parseDurationSeconds(string $iso): int {
+        if (!preg_match('/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/', $iso, $m)) {
+            return 9999;
+        }
+        return (int)($m[1] ?? 0) * 3600 + (int)($m[2] ?? 0) * 60 + (int)($m[3] ?? 0);
     }
 
     private function apiRequest(string $endpoint, array $params): ?array {

@@ -88,6 +88,18 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                             <option value="<?= htmlspecialchars($key) ?>"><?= htmlspecialchars($label) ?></option>
                         <?php endforeach; ?>
                     </select>
+                    <select id="filterPlatform" class="w-full h-10 px-4 border border-sky-100 rounded-lg text-sm outline-none bg-slate-50">
+                        <option value="">プラットフォーム: すべて</option>
+                        <option value="youtube">YouTube</option>
+                        <option value="instagram">Instagram</option>
+                        <option value="tiktok">TikTok</option>
+                    </select>
+                    <select id="filterMediaType" class="w-full h-10 px-4 border border-sky-100 rounded-lg text-sm outline-none bg-slate-50">
+                        <option value="">種別: すべて</option>
+                        <option value="video">動画</option>
+                        <option value="short">ショート</option>
+                        <option value="live">ライブ</option>
+                    </select>
                     <label class="flex items-center gap-2 cursor-pointer text-sm font-bold text-slate-600 hover:text-slate-800">
                         <input type="checkbox" id="filterUnlinkedOnly" class="rounded border-sky-200 text-sky-500 focus:ring-sky-300">
                         <span>未紐づけの動画のみ</span>
@@ -177,6 +189,8 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         const selectionPanel = document.getElementById('selectionPanel');
         const searchVideo = document.getElementById('searchVideo');
         const filterCategory = document.getElementById('filterCategory');
+        const filterPlatform = document.getElementById('filterPlatform');
+        const filterMediaType = document.getElementById('filterMediaType');
         const btnSearch = document.getElementById('btnSearch');
         const linkedSongDisplay = document.getElementById('linkedSongDisplay');
         const linkedSongTitle = document.getElementById('linkedSongTitle');
@@ -204,6 +218,15 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             return div.innerHTML;
         }
 
+        function _platformBadge(p) {
+            const c = { youtube: { bg: 'bg-red-500', l: 'YT' }, instagram: { bg: 'bg-gradient-to-r from-purple-500 to-pink-500', l: 'IG' }, tiktok: { bg: 'bg-slate-800', l: 'TT' } }[p];
+            return c ? '<span class="text-[9px] font-bold text-white px-1.5 py-0.5 rounded ' + c.bg + '">' + c.l + '</span>' : '';
+        }
+        function _mediaTypeBadge(mt) {
+            const c = { video: { cls: 'bg-blue-100 text-blue-700', l: '動画' }, short: { cls: 'bg-amber-100 text-amber-700', l: 'ショート' }, live: { cls: 'bg-red-100 text-red-700', l: 'ライブ' } }[mt];
+            return c ? '<span class="text-[9px] font-bold px-1.5 py-0.5 rounded ' + c.cls + '">' + c.l + '</span>' : '';
+        }
+
         function getThumbnailUrl(v) {
             if (v.thumbnail_url) return v.thumbnail_url;
             if (v.platform === 'youtube' && v.media_key) return 'https://img.youtube.com/vi/' + v.media_key + '/mqdefault.jpg';
@@ -211,7 +234,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         }
 
         async function loadVideos() {
-            const params = new URLSearchParams({ q: searchVideo.value, category: filterCategory.value, limit: 200, link_type: 'song' });
+            const params = new URLSearchParams({ q: searchVideo.value, category: filterCategory.value, platform: filterPlatform.value, media_type: filterMediaType.value, limit: 200, link_type: 'song' });
             if (filterUnlinkedOnly && filterUnlinkedOnly.checked) params.set('unlinked_only', '1');
             const res = await fetch('/hinata/api/list_media_for_link.php?' + params);
             const json = await res.json();
@@ -228,7 +251,8 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 const thumbUrl = getThumbnailUrl(v);
                 return '<div class="video-row cursor-pointer px-3 py-2 rounded-lg flex items-center gap-3 border-b border-slate-50 transition" data-meta-id="' + v.meta_id + '" data-video="' + dataStr + '">' +
                     '<div class="w-12 shrink-0 aspect-video rounded overflow-hidden bg-slate-100"><img src="' + thumbUrl + '" alt="" class="w-full h-full object-cover" onerror="this.src=\'\'"></div>' +
-                    '<div class="flex-1 min-w-0"><span class="text-xs font-bold text-sky-600">' + (v.category || '') + '</span><p class="text-sm font-bold text-slate-800 truncate">' + escapeHtml(v.title || '') + '</p></div></div>';
+                    '<div class="flex-1 min-w-0"><div class="flex items-center gap-1 mb-0.5">' + _platformBadge(v.platform) + _mediaTypeBadge(v.media_type) + '<span class="text-[10px] font-bold text-sky-600">' + (v.category || '') + '</span></div>' +
+                    '<p class="text-sm font-bold text-slate-800 truncate">' + escapeHtml(v.title || '') + '</p></div></div>';
             }).join('');
             videoList.querySelectorAll('.video-row').forEach(row => { row.onclick = () => selectVideo(row); });
         }
@@ -346,6 +370,8 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         btnSearch.onclick = loadVideos;
         searchVideo.onkeydown = (e) => { if (e.key === 'Enter') loadVideos(); };
         filterCategory.onchange = loadVideos;
+        filterPlatform.onchange = loadVideos;
+        filterMediaType.onchange = loadVideos;
         if (filterUnlinkedOnly) filterUnlinkedOnly.addEventListener('change', loadVideos);
         document.getElementById('mobileMenuBtn').onclick = () => document.getElementById('sidebar').classList.add('mobile-open');
         loadVideos();

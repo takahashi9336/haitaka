@@ -192,12 +192,19 @@ class MediaAssetModel extends BaseModel {
      * asset_id で com_media_assets.upload_date を更新
      */
     public function updateAssetUploadDate(int $assetId, ?string $uploadDate): bool {
-        $stmt = $this->pdo->prepare("
-            UPDATE com_media_assets
-            SET upload_date = :upload_date
-            WHERE id = :id
-        ");
-        return $stmt->execute(['id' => $assetId, 'upload_date' => $uploadDate]);
+        return $this->updateAssetField($assetId, 'upload_date', $uploadDate);
+    }
+
+    /**
+     * com_media_assets の任意カラムを更新（ホワイトリストで制限）
+     */
+    public function updateAssetField(int $assetId, string $field, mixed $value): bool {
+        $allowed = ['upload_date', 'media_type', 'thumbnail_url', 'title', 'description'];
+        if (!in_array($field, $allowed, true)) {
+            return false;
+        }
+        $stmt = $this->pdo->prepare("UPDATE com_media_assets SET {$field} = :val WHERE id = :id");
+        return $stmt->execute(['id' => $assetId, 'val' => $value]);
     }
 }
 

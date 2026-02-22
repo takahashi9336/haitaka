@@ -110,12 +110,25 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
 
                             <!-- 検索結果 -->
                             <div id="ytSearchResults" class="hidden">
-                                <div class="flex items-center justify-between mb-3">
+                                <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
                                     <p class="text-xs text-slate-500"><span id="ytResultCount">0</span>件の動画</p>
-                                    <div class="flex gap-2">
-                                        <button id="ytSelectAll" class="text-xs font-bold text-blue-500 hover:text-blue-700">全選択</button>
-                                        <span class="text-slate-300">|</span>
-                                        <button id="ytDeselectAll" class="text-xs font-bold text-slate-400 hover:text-slate-600">全解除</button>
+                                    <div class="flex flex-wrap items-center gap-3">
+                                        <!-- 種別タブ -->
+                                        <div id="ytMediaTypeTabs" class="flex gap-1">
+                                            <button type="button" class="yt-media-type-tab px-3 py-1.5 text-xs font-bold rounded-full bg-red-500 text-white" data-type="">すべて</button>
+                                            <button type="button" class="yt-media-type-tab px-3 py-1.5 text-xs font-bold rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200" data-type="video">動画</button>
+                                            <button type="button" class="yt-media-type-tab px-3 py-1.5 text-xs font-bold rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200" data-type="short">Shorts</button>
+                                            <button type="button" class="yt-media-type-tab px-3 py-1.5 text-xs font-bold rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200" data-type="live">LIVE</button>
+                                        </div>
+                                        <label class="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer shrink-0">
+                                            <input type="checkbox" id="ytShowRegistered" class="rounded">
+                                            <span>登録済みも表示</span>
+                                        </label>
+                                        <div class="flex gap-2 border-l border-slate-200 pl-2">
+                                            <button id="ytSelectAll" class="text-xs font-bold text-blue-500 hover:text-blue-700">全選択</button>
+                                            <span class="text-slate-300">|</span>
+                                            <button id="ytDeselectAll" class="text-xs font-bold text-slate-400 hover:text-slate-600">全解除</button>
+                                        </div>
                                     </div>
                                 </div>
                                 <div id="ytVideoGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mb-4"></div>
@@ -238,6 +251,10 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         let registerItems = [];
         let currentTab = 'youtube';
         let ytPageTokens = { next: null, prev: null };
+        let ytCurrentPageVideos = [];
+        let ytTotalResultsCount = 0;
+        let ytMediaTypeFilter = '';
+        let ytShowRegistered = false;
         const youtubeConfigured = <?= json_encode($youtubeConfigured) ?>;
 
         const categories = <?= json_encode(array_keys($categories)) ?>;
@@ -300,11 +317,12 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 const res = await fetch('/hinata/api/youtube_channel_videos.php?' + params);
                 const json = await res.json();
                 if (json.status === 'success') {
-                    renderYtGrid(json.data);
+                    ytCurrentPageVideos = json.data || [];
+                    ytTotalResultsCount = json.total_results || ytCurrentPageVideos.length;
                     ytPageTokens = { next: json.next_page_token, prev: json.prev_page_token };
-                    renderYtPagination(json.total_results, () => loadYtChannel);
+                    renderYtPagination(ytTotalResultsCount, () => loadYtChannel);
                     document.getElementById('ytSearchResults').classList.remove('hidden');
-                    document.getElementById('ytResultCount').textContent = json.total_results || json.data.length;
+                    applyYtFiltersAndRender();
                 } else {
                     alert(json.message || 'エラーが発生しました');
                 }
@@ -328,11 +346,12 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 const res = await fetch('/hinata/api/youtube_search.php?' + params);
                 const json = await res.json();
                 if (json.status === 'success') {
-                    renderYtGrid(json.data);
+                    ytCurrentPageVideos = json.data || [];
+                    ytTotalResultsCount = json.total_results || ytCurrentPageVideos.length;
                     ytPageTokens = { next: json.next_page_token, prev: json.prev_page_token };
-                    renderYtPagination(json.total_results, () => searchYt);
+                    renderYtPagination(ytTotalResultsCount, () => searchYt);
                     document.getElementById('ytSearchResults').classList.remove('hidden');
-                    document.getElementById('ytResultCount').textContent = json.total_results || json.data.length;
+                    applyYtFiltersAndRender();
                 } else {
                     alert(json.message || 'エラーが発生しました');
                 }
@@ -342,6 +361,31 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 btn.innerHTML = '<i class="fa-solid fa-magnifying-glass mr-1"></i> 検索';
             }
         }
+
+        function applyYtFiltersAndRender() {
+            let list = ytCurrentPageVideos;
+            if (!ytShowRegistered) list = list.filter(v => !v.is_registered);
+            if (ytMediaTypeFilter) list = list.filter(v => (v.media_type || 'video') === ytMediaTypeFilter);
+            document.getElementById('ytResultCount').textContent = list.length;
+            renderYtGrid(list);
+        }
+
+        document.querySelectorAll('.yt-media-type-tab').forEach(btn => {
+            btn.addEventListener('click', () => {
+                ytMediaTypeFilter = btn.dataset.type || '';
+                document.querySelectorAll('.yt-media-type-tab').forEach(b => {
+                    b.classList.toggle('bg-red-500', b.dataset.type === ytMediaTypeFilter);
+                    b.classList.toggle('text-white', b.dataset.type === ytMediaTypeFilter);
+                    b.classList.toggle('bg-slate-100', b.dataset.type !== ytMediaTypeFilter);
+                    b.classList.toggle('text-slate-600', b.dataset.type !== ytMediaTypeFilter);
+                });
+                applyYtFiltersAndRender();
+            });
+        });
+        document.getElementById('ytShowRegistered').addEventListener('change', (e) => {
+            ytShowRegistered = e.target.checked;
+            applyYtFiltersAndRender();
+        });
 
         function renderYtGrid(videos) {
             const grid = document.getElementById('ytVideoGrid');

@@ -230,17 +230,24 @@ class MediaController {
                 return;
             }
 
+            $assetId = (int)($input['asset_id'] ?? 0);
+
             $uploadDate = $input['upload_date'] ?? null;
-            if ($uploadDate !== null) {
-                $assetId = (int)($input['asset_id'] ?? 0);
-                if ($assetId) {
-                    $dateVal = trim($uploadDate) !== '' ? $uploadDate : null;
-                    $mediaModel->updateAssetUploadDate($assetId, $dateVal);
+            if ($uploadDate !== null && $assetId) {
+                $dateVal = trim($uploadDate) !== '' ? $uploadDate : null;
+                $mediaModel->updateAssetUploadDate($assetId, $dateVal);
+            }
+
+            $newMediaType = $input['media_type'] ?? null;
+            if ($newMediaType !== null && $assetId) {
+                $validTypes = ['video', 'short', 'live', ''];
+                if (in_array($newMediaType, $validTypes, true)) {
+                    $mediaModel->updateAssetField($assetId, 'media_type', $newMediaType ?: null);
                 }
             }
 
             Logger::info("hn_media_metadata update meta_id={$metaId} category={$category} by=" . ($_SESSION['user']['id_name'] ?? 'guest'));
-            echo json_encode(['status' => 'success', 'category' => $category ?: null, 'upload_date' => $uploadDate ?? null]);
+            echo json_encode(['status' => 'success', 'category' => $category ?: null, 'upload_date' => $uploadDate ?? null, 'media_type' => $newMediaType ?? null]);
         } catch (\Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
         }
@@ -445,6 +452,8 @@ class MediaController {
             }
             $q = trim($_GET['q'] ?? '');
             $category = $_GET['category'] ?? '';
+            $platform = $_GET['platform'] ?? '';
+            $mediaType = $_GET['media_type'] ?? '';
             $unlinkedOnly = !empty($_GET['unlinked_only']);
             $linkType = $_GET['link_type'] ?? 'song';
             $limit = min((int)($_GET['limit'] ?? 100), 200);
@@ -462,6 +471,14 @@ class MediaController {
                 $params['q'] = '%' . $q . '%';
                 $params['q2'] = '%' . $q . '%';
             }
+            if ($platform !== '') {
+                $where[] = 'ma.platform = :platform';
+                $params['platform'] = $platform;
+            }
+            if ($mediaType !== '') {
+                $where[] = 'ma.media_type = :media_type';
+                $params['media_type'] = $mediaType;
+            }
             if ($unlinkedOnly) {
                 if ($linkType === 'member') {
                     $where[] = 'NOT EXISTS (SELECT 1 FROM hn_media_members hmm WHERE hmm.media_meta_id = hmeta.id)';
@@ -475,7 +492,8 @@ class MediaController {
                         hmeta.category, 
                         hmeta.release_date,
                         ma.id as asset_id, 
-                        ma.platform, 
+                        ma.platform,
+                        ma.media_type,
                         ma.media_key, 
                         ma.title, 
                         ma.thumbnail_url,
@@ -1218,6 +1236,12 @@ class MediaController {
 
                 $dupStatus = $this->checkDuplicateStatus($parsed, '');
 
+                $mediaType = $oembedData['media_type'] ?? null;
+                if ($mediaType === null) {
+                    $platformDefaults = ['instagram' => 'short', 'tiktok' => 'short'];
+                    $mediaType = $platformDefaults[$parsed['platform']] ?? null;
+                }
+
                 $results[] = [
                     'url'           => $url,
                     'platform'      => $parsed['platform'],
@@ -1228,7 +1252,7 @@ class MediaController {
                     'author_name'   => $oembedData['author_name'] ?? '',
                     'thumbnail_url' => $thumbnail,
                     'published_at'  => $oembedData['published_at'] ?? null,
-                    'media_type'    => $oembedData['media_type'] ?? null,
+                    'media_type'    => $mediaType,
                     'status'        => $dupStatus === 'Registered' ? 'registered' : 'ok',
                     'dup_status'    => $dupStatus,
                     'message'       => $this->getStatusMessage($dupStatus),
