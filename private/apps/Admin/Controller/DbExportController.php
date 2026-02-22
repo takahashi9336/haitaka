@@ -4,13 +4,13 @@ namespace App\Admin\Controller;
 
 use Core\Auth;
 use Core\Database;
-use Core\Utils\StringUtil;
 
 /**
  * DB一括抽出（管理画面の子画面）
  * 全CREATE文・スキーマ概要（Markdown）・JSON の3形式でダウンロードを提供する。
  */
 class DbExportController {
+    use DbSchemaTrait;
 
     public function index(): void {
         $auth = new Auth();
@@ -32,34 +32,6 @@ class DbExportController {
 
         $user = $_SESSION['user'];
         require_once __DIR__ . '/../Views/db_export.php';
-    }
-
-    private function getTableList(\PDO $pdo): array {
-        $stmt = $pdo->query("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME");
-        $list = [];
-        while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
-            $list[] = $row['TABLE_NAME'];
-        }
-        return $list;
-    }
-
-    private function getTableStructure(\PDO $pdo, string $table): array {
-        $table = StringUtil::sanitizeIdentifier($table);
-        $stmt = $pdo->query("
-            SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_KEY, COLUMN_DEFAULT, EXTRA
-            FROM information_schema.COLUMNS
-            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = " . $pdo->quote($table) . "
-            ORDER BY ORDINAL_POSITION
-        ");
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
-    }
-
-    private function getCreateTable(\PDO $pdo, string $table): ?string {
-        $table = StringUtil::sanitizeIdentifier($table);
-        $safeTable = '`' . str_replace('`', '``', $table) . '`';
-        $stmt = $pdo->query("SHOW CREATE TABLE $safeTable");
-        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
-        return $row['Create Table'] ?? null;
     }
 
     /**

@@ -1,7 +1,7 @@
 <?php
 /**
  * 共通サイドバー (日本語版)
- * セッションに apps があれば DB 由来のメニューを描画、なければ従来のハードコードにフォールバック
+ * セッションの apps ツリー（DB 由来）からメニューを動的に描画する
  */
 $uri = $_SERVER['REQUEST_URI'];
 if (strpos($uri, '?') !== false) {
@@ -12,10 +12,6 @@ $uri = rtrim($uri, '/') ?: '/';
 $user = $_SESSION['user'] ?? ['id_name' => 'ゲスト', 'role' => ''];
 $initial = mb_substr($user['id_name'] ?? '?', 0, 1);
 $logoText = $user['logo_text'] ?? 'MyPlatform';
-$isAdmin = ($user['role'] ?? '') === 'admin';
-// 日向坂ポータル内の管理系リンク表示用（admin / hinata_admin）
-$isHinataAdmin = in_array($user['role'] ?? '', ['admin', 'hinata_admin'], true);
-
 $sessionApps = $user['apps'] ?? null;
 // 新しい形式（ツリー: 各要素に app_key / name がある）のみセッションメニューを使用。古い形式（app_key=>権限配列）はフォールバック
 $useSessionMenu = false;
@@ -67,8 +63,7 @@ $themeActiveAttrs = function (array $app, ?array $parentApp = null) {
             })($primary);
         return ['class' => 'font-bold shadow-sm', 'style' => 'background-color: ' . $bg . '; color: ' . $primary . ';'];
     }
-    $allowed = ['indigo' => true, 'sky' => true, 'slate' => true, 'amber' => true, 'orange' => true, 'violet' => true, 'emerald' => true];
-    $t = preg_match('/^([a-z]+)/', $primary, $m) && isset($allowed[$m[1]]) ? $m[1] : 'indigo';
+    $t = preg_match('/^([a-z]+)/', $primary, $m) && isset(THEME_ALLOWED_TW[$m[1]]) ? $m[1] : 'indigo';
     $classes = [
         'indigo'  => 'bg-indigo-50 text-indigo-700 font-bold shadow-sm shadow-indigo-100/50',
         'sky'     => 'bg-sky-50 text-sky-600 font-bold shadow-sm shadow-sky-100/50',
@@ -81,7 +76,6 @@ $themeActiveAttrs = function (array $app, ?array $parentApp = null) {
     return ['class' => $classes[$t], 'style' => ''];
 };
 
-$activeClass = "bg-indigo-50 text-indigo-700 font-bold shadow-sm shadow-indigo-100/50";
 $inactiveClass = "text-slate-500 hover:bg-slate-50 transition";
 ?>
 <aside id="sidebar" class="sidebar bg-white border-r border-slate-200 flex flex-col shrink-0 z-50 transition-all duration-300">
@@ -116,7 +110,6 @@ $inactiveClass = "text-slate-500 hover:bg-slate-50 transition";
                 <?php if (!empty($app['children'])): ?>
                 <div class="pl-10 md:pl-8 space-y-1 nav-text">
                     <?php
-                    $themeMap = ['sky' => 'sky', 'indigo' => 'indigo', 'slate' => 'slate', 'amber' => 'amber', 'orange' => 'orange', 'violet' => 'violet', 'emerald' => 'emerald'];
                     foreach ($app['children'] as $child):
                         $cPath = $child['path'] ?? '';
                         $cHref = !empty($cPath)
@@ -128,7 +121,7 @@ $inactiveClass = "text-slate-500 hover:bg-slate-50 transition";
                             $cStyle = $cActive ? ' color: ' . $cPrimary . ';' : '';
                             $cClass = $cActive ? 'font-bold' : 'text-slate-400';
                         } else {
-                            $t = preg_match('/^([a-z]+)/', $cPrimary, $m) && isset($themeMap[$m[1]]) ? $themeMap[$m[1]] : 'sky';
+                            $t = preg_match('/^([a-z]+)/', $cPrimary, $m) && isset(THEME_ALLOWED_TW[$m[1]]) ? $m[1] : 'sky';
                             $cStyle = '';
                             $cClass = $cActive ? "text-{$t}-500 font-bold" : 'text-slate-400';
                         }
@@ -139,51 +132,6 @@ $inactiveClass = "text-slate-500 hover:bg-slate-50 transition";
                 <?php endif; ?>
             </div>
             <?php endforeach; ?>
-        <?php else: ?>
-            <?php
-            $isPortal = ($uri === '/' || strpos($uri, '/index.php') === 0);
-            $isTask   = strpos($uri, '/task_manager/') !== false;
-            $isHinata = strpos($uri, '/hinata/') !== false;
-            $isAdminUri = strpos($uri, '/admin') !== false || strpos($uri, '/db_viewer') !== false;
-            ?>
-            <a href="/index.php" class="nav-item flex items-center px-3 py-3 rounded-xl <?= $isPortal ? $activeClass : $inactiveClass ?>">
-                <i class="fa-solid fa-house w-6 text-center text-lg"></i>
-                <span class="nav-text ml-2 text-sm">ダッシュボード</span>
-            </a>
-            <a href="/task_manager/" class="nav-item flex items-center px-3 py-3 rounded-xl <?= $isTask ? $activeClass : $inactiveClass ?>">
-                <i class="fa-solid fa-list-check w-6 text-center text-lg"></i>
-                <span class="nav-text ml-2 text-sm">タスク管理</span>
-            </a>
-            <a href="/note/" class="nav-item flex items-center px-3 py-3 rounded-xl <?= strpos($uri, '/note/') !== false ? $activeClass : $inactiveClass ?>">
-                <i class="fa-solid fa-lightbulb w-6 text-center text-lg"></i>
-                <span class="nav-text ml-2 text-sm">メモ</span>
-            </a>
-            <div class="space-y-1">
-                <a href="/hinata/" class="nav-item flex items-center px-3 py-3 rounded-xl <?= $isHinata ? 'bg-sky-50 text-sky-600 font-bold' : $inactiveClass ?>">
-                    <i class="fa-solid fa-star w-6 text-center text-lg <?= $isHinata ? 'text-sky-500' : 'text-sky-400' ?>"></i>
-                    <span class="nav-text ml-2 text-sm">日向坂ポータル</span>
-                </a>
-                <?php if ($isHinata): ?>
-                <div class="pl-10 md:pl-8 space-y-1 nav-text">
-                    <a href="/hinata/members.php" class="block py-1.5 text-[11px] font-bold <?= strpos($uri, 'members.php') !== false ? 'text-sky-500' : 'text-slate-400' ?> hover:text-sky-500 transition">メンバー帳</a>
-                    <a href="/hinata/events.php" class="block py-1.5 text-[11px] font-bold <?= strpos($uri, 'events.php') !== false ? 'text-sky-500' : 'text-slate-400' ?> hover:text-sky-500 transition">イベント</a>
-                    <a href="/hinata/talk.php" class="block py-1.5 text-[11px] font-bold <?= strpos($uri, 'talk.php') !== false ? 'text-sky-500' : 'text-slate-400' ?> hover:text-sky-500 transition">ミーグリネタ帳</a>
-                    <a href="/hinata/media_list.php" class="block py-1.5 text-[11px] font-bold <?= strpos($uri, 'media_list.php') !== false ? 'text-sky-500' : 'text-slate-400' ?> hover:text-sky-500 transition">動画一覧</a>
-                    <?php if ($isHinataAdmin): ?>
-                    <a href="/hinata/media_register.php" class="block py-1.5 text-[11px] font-bold <?= strpos($uri, 'media_register.php') !== false ? 'text-sky-500' : 'text-slate-400' ?> hover:text-sky-500 transition">メディア登録</a>
-                    <a href="/hinata/media_member_admin.php" class="block py-1.5 text-[11px] font-bold <?= strpos($uri, 'media_member_admin.php') !== false ? 'text-sky-500' : 'text-slate-400' ?> hover:text-sky-500 transition">動画・メンバー紐付け</a>
-                    <a href="/hinata/media_song_admin.php" class="block py-1.5 text-[11px] font-bold <?= strpos($uri, 'media_song_admin.php') !== false ? 'text-sky-500' : 'text-slate-400' ?> hover:text-sky-500 transition">動画・楽曲紐付け</a>
-                    <a href="/hinata/media_settings_admin.php" class="block py-1.5 text-[11px] font-bold <?= strpos($uri, 'media_settings_admin.php') !== false ? 'text-sky-500' : 'text-slate-400' ?> hover:text-sky-500 transition">動画設定</a>
-                    <?php endif; ?>
-                </div>
-                <?php endif; ?>
-            </div>
-            <?php if ($isAdmin): ?>
-            <a href="/admin/" class="nav-item flex items-center px-3 py-3 rounded-xl mt-auto <?= $isAdminUri ? 'bg-slate-100 text-slate-800 font-bold shadow-sm' : $inactiveClass ?>">
-                <i class="fa-solid fa-shield-halved w-6 text-center text-lg"></i>
-                <span class="nav-text ml-2 text-sm">管理画面</span>
-            </a>
-            <?php endif; ?>
         <?php endif; ?>
     </nav>
 

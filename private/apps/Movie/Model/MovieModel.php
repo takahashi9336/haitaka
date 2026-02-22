@@ -21,14 +21,9 @@ class MovieModel extends BaseModel {
     ];
 
     /**
-     * TMDB IDで映画を検索し、なければ作成して返す
+     * TMDB API レスポンスから DB カラムへのマッピングを生成する
      */
-    public function findOrCreateByTmdbId(array $tmdbData): array {
-        $existing = $this->findByTmdbId($tmdbData['id']);
-        if ($existing) {
-            return $existing;
-        }
-
+    private function mapTmdbData(array $tmdbData, bool $includeTmdbId = false): array {
         $genres = [];
         if (!empty($tmdbData['genres'])) {
             $genres = array_map(fn($g) => $g['name'], $tmdbData['genres']);
@@ -37,7 +32,6 @@ class MovieModel extends BaseModel {
         }
 
         $data = [
-            'tmdb_id' => $tmdbData['id'],
             'title' => $tmdbData['title'] ?? '',
             'original_title' => $tmdbData['original_title'] ?? null,
             'overview' => $tmdbData['overview'] ?? null,
@@ -50,7 +44,36 @@ class MovieModel extends BaseModel {
             'runtime' => $tmdbData['runtime'] ?? null,
         ];
 
-        $this->createMovie($data);
+        if ($includeTmdbId) {
+            $data = ['tmdb_id' => $tmdbData['id']] + $data;
+        }
+
+        return $data;
+    }
+
+    /**
+     * 指定 ID のレコードを連想配列で UPDATE する
+     */
+    private function updateColumnsById(int $id, array $data): bool {
+        $sets = [];
+        foreach (array_keys($data) as $key) {
+            $sets[] = "{$key} = :{$key}";
+        }
+        $sql = "UPDATE {$this->table} SET " . implode(', ', $sets) . " WHERE id = :target_id";
+        $data['target_id'] = $id;
+        return $this->pdo->prepare($sql)->execute($data);
+    }
+
+    /**
+     * TMDB IDで映画を検索し、なければ作成して返す
+     */
+    public function findOrCreateByTmdbId(array $tmdbData): array {
+        $existing = $this->findByTmdbId($tmdbData['id']);
+        if ($existing) {
+            return $existing;
+        }
+
+        $this->createMovie($this->mapTmdbData($tmdbData, true));
         return $this->findByTmdbId($tmdbData['id']);
     }
 
@@ -118,34 +141,7 @@ class MovieModel extends BaseModel {
      * 仮登録映画にTMDB情報を紐付け
      */
     public function linkToTmdb(int $id, array $tmdbData): bool {
-        $genres = [];
-        if (!empty($tmdbData['genres'])) {
-            $genres = array_map(fn($g) => $g['name'], $tmdbData['genres']);
-        } elseif (!empty($tmdbData['genre_ids'])) {
-            $genres = $tmdbData['genre_ids'];
-        }
-
-        $data = [
-            'tmdb_id' => $tmdbData['id'],
-            'title' => $tmdbData['title'] ?? '',
-            'original_title' => $tmdbData['original_title'] ?? null,
-            'overview' => $tmdbData['overview'] ?? null,
-            'poster_path' => $tmdbData['poster_path'] ?? null,
-            'backdrop_path' => $tmdbData['backdrop_path'] ?? null,
-            'release_date' => !empty($tmdbData['release_date']) ? $tmdbData['release_date'] : null,
-            'vote_average' => $tmdbData['vote_average'] ?? null,
-            'vote_count' => $tmdbData['vote_count'] ?? null,
-            'genres' => json_encode($genres, JSON_UNESCAPED_UNICODE),
-            'runtime' => $tmdbData['runtime'] ?? null,
-        ];
-
-        $sets = [];
-        foreach (array_keys($data) as $key) {
-            $sets[] = "{$key} = :{$key}";
-        }
-        $sql = "UPDATE {$this->table} SET " . implode(', ', $sets) . " WHERE id = :target_id";
-        $data['target_id'] = $id;
-        return $this->pdo->prepare($sql)->execute($data);
+        return $this->updateColumnsById($id, $this->mapTmdbData($tmdbData, true));
     }
 
     /**
@@ -174,30 +170,6 @@ class MovieModel extends BaseModel {
      * 映画キャッシュを更新（TMDB詳細取得時に呼ぶ）
      */
     public function updateFromTmdb(int $id, array $tmdbData): bool {
-        $genres = [];
-        if (!empty($tmdbData['genres'])) {
-            $genres = array_map(fn($g) => $g['name'], $tmdbData['genres']);
-        }
-
-        $data = [
-            'title' => $tmdbData['title'] ?? '',
-            'original_title' => $tmdbData['original_title'] ?? null,
-            'overview' => $tmdbData['overview'] ?? null,
-            'poster_path' => $tmdbData['poster_path'] ?? null,
-            'backdrop_path' => $tmdbData['backdrop_path'] ?? null,
-            'release_date' => !empty($tmdbData['release_date']) ? $tmdbData['release_date'] : null,
-            'vote_average' => $tmdbData['vote_average'] ?? null,
-            'vote_count' => $tmdbData['vote_count'] ?? null,
-            'genres' => json_encode($genres, JSON_UNESCAPED_UNICODE),
-            'runtime' => $tmdbData['runtime'] ?? null,
-        ];
-
-        $sets = [];
-        foreach (array_keys($data) as $key) {
-            $sets[] = "{$key} = :{$key}";
-        }
-        $sql = "UPDATE {$this->table} SET " . implode(', ', $sets) . " WHERE id = :target_id";
-        $data['target_id'] = $id;
-        return $this->pdo->prepare($sql)->execute($data);
+        return $this->updateColumnsById($id, $this->mapTmdbData($tmdbData));
     }
 }

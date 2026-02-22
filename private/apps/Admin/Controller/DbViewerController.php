@@ -7,6 +7,7 @@ use Core\Database;
 use Core\Utils\StringUtil;
 
 class DbViewerController {
+    use DbSchemaTrait;
     /** 一覧表示数の選択肢（数値＝件数、'all'＝すべて） */
     private const LIMIT_OPTIONS = [50, 100, 250, 500, 'all'];
     private const LIMIT_ALL_MAX = 10000; // 「すべて」の上限（負荷対策）
@@ -46,15 +47,6 @@ class DbViewerController {
         require_once __DIR__ . '/../Views/db_viewer.php';
     }
 
-    private function getTableList(\PDO $pdo): array {
-        $stmt = $pdo->query("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME");
-        $list = [];
-        while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
-            $list[] = $row['TABLE_NAME'];
-        }
-        return $list;
-    }
-
     private function sanitizeTableName(string $name): string {
         return StringUtil::sanitizeIdentifier($name);
     }
@@ -63,31 +55,6 @@ class DbViewerController {
         $table = StringUtil::sanitizeIdentifier($table);
         $stmt = $pdo->query("SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = " . $pdo->quote($table) . " ORDER BY ORDINAL_POSITION");
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
-    }
-
-    /**
-     * テーブル構造情報を取得（カラム詳細）
-     */
-    private function getTableStructure(\PDO $pdo, string $table): array {
-        $table = StringUtil::sanitizeIdentifier($table);
-        $stmt = $pdo->query("
-            SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_KEY, COLUMN_DEFAULT, EXTRA
-            FROM information_schema.COLUMNS
-            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = " . $pdo->quote($table) . "
-            ORDER BY ORDINAL_POSITION
-        ");
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
-    }
-
-    /**
-     * CREATE TABLE 文を取得
-     */
-    private function getCreateTable(\PDO $pdo, string $table): ?string {
-        $table = StringUtil::sanitizeIdentifier($table);
-        $safeTable = '`' . str_replace('`', '``', $table) . '`';
-        $stmt = $pdo->query("SHOW CREATE TABLE $safeTable");
-        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
-        return $row['Create Table'] ?? null;
     }
 
     private function getCount(\PDO $pdo, string $table): int {

@@ -7,141 +7,118 @@
  *   $cardIconBg, $cardIconText, $cardIconHover, $cardDeco, $cardBorder
  *   (hex の場合は _Style 版も: $headerIconStyle, $cardIconStyle 等)
  */
-if (!isset($appKey) || $appKey === '') {
-    $appKey = 'indigo';
-}
 
-$themePrimary = 'indigo';
-$themeLight = null;
-$isThemeHex = false;
-$themeTailwind = 'indigo';
-
-$apps = $_SESSION['user']['apps'] ?? [];
-$findApp = function ($list) use ($appKey, &$findApp) {
-    foreach ($list as $a) {
-        if (isset($a['app_key']) && $a['app_key'] === $appKey) {
-            return $a;
-        }
-        if (!empty($a['children'])) {
-            $r = $findApp($a['children']);
-            if ($r) {
-                return $r;
-            }
-        }
-    }
-    return null;
-};
-$app = $findApp($apps);
-if ($app) {
-    $themePrimary = $app['theme_primary'] ?? 'indigo';
-    $themeLight = $app['theme_light'] ?? null;
-}
-$isThemeHex = preg_match('/^#[0-9A-Fa-f]{3,8}$/', $themePrimary);
-$allowedTw = ['indigo' => 1, 'sky' => 1, 'slate' => 1, 'amber' => 1, 'orange' => 1, 'violet' => 1, 'emerald' => 1];
-if (!$isThemeHex && preg_match('/^([a-z]+)/', $themePrimary, $m)) {
-    $themeTailwind = isset($allowedTw[$m[1]]) ? $m[1] : 'indigo';
-}
-
-if ($isThemeHex) {
-    $bodyBgClass = '';
-    $bodyStyle = 'background-color: ' . (function () use ($themeLight, $themePrimary) {
-        if ($themeLight && preg_match('/^#[0-9A-Fa-f]{6}$/i', $themeLight)) {
-            return $themeLight;
-        }
-        if (preg_match('/^#([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})$/i', $themePrimary, $hex)) {
-            $r = hexdec($hex[1]); $g = hexdec($hex[2]); $b = hexdec($hex[3]);
-            return "rgba($r,$g,$b,0.12)";
-        }
-        return '#f8fafc';
-    })() . ';';
-    $headerIconBg = '';
-    $headerIconStyle = 'background-color: ' . $themePrimary . '; color: #fff;';
-    $headerBorder = 'border-slate-100';
-    $headerShadow = 'shadow-slate-200';
-    $cardIconBg = $cardIconText = $cardIconHover = $cardDeco = '';
-    $cardBorder = 'border-slate-100';
-    $cardIconStyle = 'background-color: ' . ($themeLight ?: 'rgba(100,116,139,0.15)') . '; color: ' . $themePrimary . ';';
-    $cardIconHoverStyle = 'background-color: ' . $themePrimary . '; color: #fff;';
-    $cardDecoStyle = 'color: ' . $themePrimary . ';';
-    $btnBgClass = '';
-    $btnBgStyle = 'background-color: ' . $themePrimary . ';';
-    $tabActiveClass = '';
-    $tabActiveStyle = 'color: ' . $themePrimary . '; border-bottom-color: ' . $themePrimary . ';';
-} else {
-    $bodyBgClass = "bg-{$themeTailwind}-50";
-    $bodyStyle = '';
-    $headerIconBg = "bg-{$themeTailwind}-500";
-    $headerIconStyle = '';
-    $headerBorder = "border-{$themeTailwind}-100";
-    $headerShadow = "shadow-{$themeTailwind}-200";
-    $cardIconBg = "bg-{$themeTailwind}-50";
-    $cardIconText = "text-{$themeTailwind}-500";
-    $cardIconHover = "group-hover:bg-{$themeTailwind}-500 group-hover:text-white";
-    $cardDeco = "text-{$themeTailwind}-500";
-    $cardBorder = "border-{$themeTailwind}-100";
-    $cardIconStyle = $cardIconHoverStyle = $cardDecoStyle = '';
-    $btnBgClass = "bg-{$themeTailwind}-500 hover:bg-{$themeTailwind}-600";
-    $btnBgStyle = '';
-    $tabActiveClass = "text-{$themeTailwind}-600 border-{$themeTailwind}-500";
-    $tabActiveStyle = '';
-}
-// タブ・JS連携用: 常に hex を用意（Tailwind はマッピング）
-$themePrimaryHex = $themePrimary;
-if (!$isThemeHex) {
-    $twToHex = ['indigo' => '#6366f1', 'sky' => '#0ea5e9', 'slate' => '#64748b', 'amber' => '#f59e0b', 'orange' => '#ea580c', 'violet' => '#8b5cf6', 'emerald' => '#10b981'];
-    $themePrimaryHex = $twToHex[$themeTailwind] ?? '#6366f1';
+if (!defined('THEME_ALLOWED_TW')) {
+    define('THEME_ALLOWED_TW', [
+        'indigo' => 1, 'sky' => 1, 'slate' => 1,
+        'amber' => 1, 'orange' => 1, 'violet' => 1, 'emerald' => 1,
+    ]);
+    define('THEME_TW_TO_HEX', [
+        'indigo' => '#6366f1', 'sky' => '#0ea5e9', 'slate' => '#64748b',
+        'amber' => '#f59e0b', 'orange' => '#ea580c', 'violet' => '#8b5cf6',
+        'emerald' => '#10b981',
+    ]);
 }
 
 /**
- * 指定 app_key のテーマ変数を配列で返す（ダッシュボード等でアプリ別ボックス用）
- * @param string $appKey note, task_manager, hinata 等
- * @return array cardIconBg, cardIconText, cardIconStyle, cardDeco, cardDecoStyle, cardBorder, headerIconBg, headerIconStyle, headerShadow, themePrimary, themePrimaryHex, isThemeHex, themeTailwind, btnBgClass, btnBgStyle
+ * セッション apps ツリーから app_key に一致するアプリを再帰検索する
  */
-function getThemeVarsForApp(string $appKey): array {
+function findAppInSessionTree(string $appKey): ?array {
     $apps = $_SESSION['user']['apps'] ?? [];
-    $findApp = function ($list) use ($appKey, &$findApp) {
+    $search = function ($list) use ($appKey, &$search) {
         foreach ($list as $a) {
-            if (isset($a['app_key']) && $a['app_key'] === $appKey) return $a;
+            if (isset($a['app_key']) && $a['app_key'] === $appKey) {
+                return $a;
+            }
             if (!empty($a['children'])) {
-                $r = $findApp($a['children']);
+                $r = $search($a['children']);
                 if ($r) return $r;
             }
         }
         return null;
     };
-    $app = $findApp($apps);
+    return $search($apps);
+}
+
+/**
+ * Tailwind カラー名を解決する（hex の場合は null を返す）
+ */
+function resolveThemeTailwind(string $primary): ?string {
+    if (preg_match('/^#[0-9A-Fa-f]{3,8}$/', $primary)) {
+        return null;
+    }
+    if (preg_match('/^([a-z]+)/', $primary, $m) && isset(THEME_ALLOWED_TW[$m[1]])) {
+        return $m[1];
+    }
+    return 'indigo';
+}
+
+/**
+ * 指定 app_key のテーマ変数を配列で返す
+ *
+ * @return array 全テーマ変数を含む連想配列
+ */
+function getThemeVarsForApp(string $appKey): array {
+    $app = findAppInSessionTree($appKey);
     $themePrimary = $app ? ($app['theme_primary'] ?? 'indigo') : 'indigo';
     $themeLight = $app ? ($app['theme_light'] ?? null) : null;
-    $isThemeHex = preg_match('/^#[0-9A-Fa-f]{3,8}$/', $themePrimary);
-    $allowedTw = ['indigo' => 1, 'sky' => 1, 'slate' => 1, 'amber' => 1, 'orange' => 1, 'violet' => 1, 'emerald' => 1];
-    $themeTailwind = 'indigo';
-    if (!$isThemeHex && preg_match('/^([a-z]+)/', $themePrimary, $m)) {
-        $themeTailwind = isset($allowedTw[$m[1]]) ? $m[1] : 'indigo';
-    }
-    $twToHex = ['indigo' => '#6366f1', 'sky' => '#0ea5e9', 'slate' => '#64748b', 'amber' => '#f59e0b', 'orange' => '#ea580c', 'violet' => '#8b5cf6', 'emerald' => '#10b981'];
-    $themePrimaryHex = $isThemeHex ? $themePrimary : ($twToHex[$themeTailwind] ?? '#6366f1');
+    $isThemeHex = (bool)preg_match('/^#[0-9A-Fa-f]{3,8}$/', $themePrimary);
+    $themeTailwind = resolveThemeTailwind($themePrimary) ?? 'indigo';
+    $themePrimaryHex = $isThemeHex ? $themePrimary : (THEME_TW_TO_HEX[$themeTailwind] ?? '#6366f1');
 
     if ($isThemeHex) {
-        $cardIconBg = $cardIconText = $cardDeco = '';
-        $cardBorder = 'border-slate-100';
-        $cardIconStyle = 'background-color: ' . ($themeLight ?: 'rgba(100,116,139,0.15)') . '; color: ' . $themePrimary . ';';
-        $cardDecoStyle = 'color: ' . $themePrimary . ';';
+        $bodyBgClass = '';
+        $bodyStyle = 'background-color: ' . (function () use ($themeLight, $themePrimary) {
+            if ($themeLight && preg_match('/^#[0-9A-Fa-f]{6}$/i', $themeLight)) {
+                return $themeLight;
+            }
+            if (preg_match('/^#([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})$/i', $themePrimary, $hex)) {
+                $r = hexdec($hex[1]); $g = hexdec($hex[2]); $b = hexdec($hex[3]);
+                return "rgba($r,$g,$b,0.12)";
+            }
+            return '#f8fafc';
+        })() . ';';
         $headerIconBg = '';
         $headerIconStyle = 'background-color: ' . $themePrimary . '; color: #fff;';
+        $headerBorder = 'border-slate-100';
         $headerShadow = 'shadow-slate-200';
+        $cardIconBg = $cardIconText = $cardIconHover = $cardDeco = '';
+        $cardBorder = 'border-slate-100';
+        $cardIconStyle = 'background-color: ' . ($themeLight ?: 'rgba(100,116,139,0.15)') . '; color: ' . $themePrimary . ';';
+        $cardIconHoverStyle = 'background-color: ' . $themePrimary . '; color: #fff;';
+        $cardDecoStyle = 'color: ' . $themePrimary . ';';
         $btnBgClass = '';
         $btnBgStyle = 'background-color: ' . $themePrimary . ';';
+        $tabActiveClass = '';
+        $tabActiveStyle = 'color: ' . $themePrimary . '; border-bottom-color: ' . $themePrimary . ';';
     } else {
-        $cardIconBg = "bg-{$themeTailwind}-50";
-        $cardIconText = "text-{$themeTailwind}-500";
-        $cardBorder = "border-{$themeTailwind}-100";
-        $cardIconStyle = $cardDecoStyle = '';
-        $cardDeco = "text-{$themeTailwind}-500";
+        $bodyBgClass = "bg-{$themeTailwind}-50";
+        $bodyStyle = '';
         $headerIconBg = "bg-{$themeTailwind}-500";
         $headerIconStyle = '';
+        $headerBorder = "border-{$themeTailwind}-100";
         $headerShadow = "shadow-{$themeTailwind}-200";
+        $cardIconBg = "bg-{$themeTailwind}-50";
+        $cardIconText = "text-{$themeTailwind}-500";
+        $cardIconHover = "group-hover:bg-{$themeTailwind}-500 group-hover:text-white";
+        $cardDeco = "text-{$themeTailwind}-500";
+        $cardBorder = "border-{$themeTailwind}-100";
+        $cardIconStyle = $cardIconHoverStyle = $cardDecoStyle = '';
         $btnBgClass = "bg-{$themeTailwind}-500 hover:bg-{$themeTailwind}-600";
         $btnBgStyle = '';
+        $tabActiveClass = "text-{$themeTailwind}-600 border-{$themeTailwind}-500";
+        $tabActiveStyle = '';
     }
-    return compact('cardIconBg', 'cardIconText', 'cardIconStyle', 'cardDeco', 'cardDecoStyle', 'cardBorder', 'headerIconBg', 'headerIconStyle', 'headerShadow', 'themePrimary', 'themePrimaryHex', 'isThemeHex', 'themeTailwind', 'btnBgClass', 'btnBgStyle');
+
+    return compact(
+        'themePrimary', 'themeLight', 'isThemeHex', 'themeTailwind', 'themePrimaryHex',
+        'bodyBgClass', 'bodyStyle',
+        'headerIconBg', 'headerIconStyle', 'headerBorder', 'headerShadow',
+        'cardIconBg', 'cardIconText', 'cardIconHover', 'cardIconStyle',
+        'cardIconHoverStyle', 'cardDeco', 'cardDecoStyle', 'cardBorder',
+        'btnBgClass', 'btnBgStyle',
+        'tabActiveClass', 'tabActiveStyle'
+    );
 }
+
+extract(getThemeVarsForApp($appKey ?? 'indigo'));
