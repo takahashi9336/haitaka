@@ -6,6 +6,18 @@
 $appKey = 'hinata';
 require_once __DIR__ . '/../../../components/theme_from_session.php';
 $tab = isset($_GET['tab']) && $_GET['tab'] === 'songs' ? 'songs' : 'releases';
+
+// 推しメンバーの参加楽曲IDセットを構築（ハイライト用）
+$oshi = $_SESSION['oshi'] ?? [];
+$oshiMemberIds = array_column($oshi, 'id');
+$oshiSongIds = [];
+if (!empty($oshiMemberIds)) {
+    $pdo = \Core\Database::connect();
+    $ph = implode(',', array_fill(0, count($oshiMemberIds), '?'));
+    $stmt = $pdo->prepare("SELECT DISTINCT song_id FROM hn_song_members WHERE member_id IN ($ph)");
+    $stmt->execute(array_values($oshiMemberIds));
+    $oshiSongIds = array_flip(array_column($stmt->fetchAll(\PDO::FETCH_ASSOC), 'song_id'));
+}
 // 画像下の短いラベル（TYPE-A、通常盤など）
 $editionShort = ['type_a' => 'TYPE-A', 'type_b' => 'TYPE-B', 'type_c' => 'TYPE-C', 'type_d' => 'TYPE-D', 'normal' => '通常盤'];
 ?>
@@ -165,11 +177,13 @@ $editionShort = ['type_a' => 'TYPE-A', 'type_b' => 'TYPE-B', 'type_c' => 'TYPE-C
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($relGroup['songs'] as $s): ?>
-                                <tr class="border-t <?= $cardBorder ?> hover:bg-slate-50/50 transition">
+                                <?php foreach ($relGroup['songs'] as $s):
+                                    $isOshiSong = isset($oshiSongIds[$s['id']]);
+                                ?>
+                                <tr class="border-t <?= $cardBorder ?> hover:bg-slate-50/50 transition <?= $isOshiSong ? 'bg-amber-50/60' : '' ?>">
                                     <td class="px-3 py-2 text-slate-400 font-mono"><?= (int)($s['track_number'] ?? 0) ?></td>
                                     <td class="px-3 py-2">
-                                        <a href="/hinata/song.php?id=<?= (int)$s['id'] ?>&from=songs" class="font-bold text-slate-800 hover:underline block truncate max-w-[280px]"><?= htmlspecialchars($s['title']) ?></a>
+                                        <a href="/hinata/song.php?id=<?= (int)$s['id'] ?>&from=songs" class="font-bold <?= $isOshiSong ? 'text-amber-700' : 'text-slate-800' ?> hover:underline block truncate max-w-[280px]"><?= $isOshiSong ? '<i class="fa-solid fa-heart text-amber-400 text-[9px] mr-1"></i>' : '' ?><?= htmlspecialchars($s['title']) ?></a>
                                     </td>
                                     <td class="px-3 py-2 text-slate-500"><?= htmlspecialchars($trackTypesDisplay[$s['track_type'] ?? ''] ?? $s['track_type'] ?? '') ?></td>
                                     <td class="px-3 py-2">

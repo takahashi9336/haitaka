@@ -26,14 +26,13 @@ $isAdmin = in_array(($user['role'] ?? ''), ['admin', 'hinata_admin'], true);
         0% { transform: translate(0, 0) scale(1); opacity: 1; }
         100% { transform: translate(var(--modal-translate-x, 0), var(--modal-translate-y, 0)) scale(0.3); opacity: 0; }
     }
-    .fav-btn-base { width: 2.25rem; height: 2.25rem; border-radius: 9999px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; transition: all 0.18s ease-out; }
+    .fav-btn-base { height: 2rem; border-radius: 9999px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 700; transition: all 0.18s ease-out; padding: 0 0.5rem; gap: 0.25rem; white-space: nowrap; }
     .fav-btn-base:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(15, 23, 42, 0.25); }
-    .fav-btn-inactive { background-color: rgba(15,23,42,0.65); }
-    .fav-btn-active-star { background-color: #eab308; }
-    .fav-btn-active-heart { background-color: #ec4899; }
-    .fav-icon-star { color: #fde68a; }
-    .fav-icon-heart { color: #fbcfe8; }
-    .fav-icon-on { color: #ffffff; }
+    .fav-btn-inactive { background-color: rgba(15,23,42,0.55); color: rgba(255,255,255,0.7); }
+    .fav-btn-active-top { background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; }
+    .fav-btn-active-2nd { background: linear-gradient(135deg, #ec4899, #db2777); color: #fff; }
+    .fav-btn-active-3rd { background: linear-gradient(135deg, #f472b6, #e879a0); color: #fff; }
+    .fav-btn-active-star { background: linear-gradient(135deg, #f59e0b, #eab308); color: #fff; }
     @keyframes favorite-pop { 0% { transform: scale(1); } 40% { transform: scale(1.25); } 100% { transform: scale(1); } }
     .favorite-pop { animation: favorite-pop 0.22s ease-out; }
 </style>
@@ -49,11 +48,13 @@ $isAdmin = in_array(($user['role'] ?? ''), ['admin', 'hinata_admin'], true);
                         <span id="modalGen" class="text-[10px] font-black opacity-90 tracking-wider bg-black/20 px-2 py-0.5 rounded self-start"></span>
                         <div class="flex items-end justify-between gap-3 mt-auto">
                             <h2 id="modalName" class="text-3xl md:text-4xl font-black leading-tight break-words"></h2>
-                            <div id="favButtonBar" class="flex items-center gap-2">
-                                <button type="button" id="favStarBtn" class="fav-btn-base fav-btn-inactive" title="気になる"><i class="fa-regular fa-star fav-icon-star"></i></button>
-                                <button type="button" id="favHeartBtn" class="fav-btn-base fav-btn-inactive" title="推し"><i class="fa-regular fa-heart fav-icon-heart"></i></button>
+                            <div id="favButtonBar" class="flex items-center gap-1.5 flex-wrap justify-end">
+                                <button type="button" id="favTopBtn" data-level="9" class="fav-btn-base fav-btn-inactive" title="最推し"><i class="fa-solid fa-crown"></i><span class="hidden sm:inline">最推し</span></button>
+                                <button type="button" id="fav2ndBtn" data-level="8" class="fav-btn-base fav-btn-inactive" title="2推し"><i class="fa-solid fa-heart"></i><span class="hidden sm:inline">2推し</span></button>
+                                <button type="button" id="fav3rdBtn" data-level="7" class="fav-btn-base fav-btn-inactive" title="3推し"><i class="fa-regular fa-heart"></i><span class="hidden sm:inline">3推し</span></button>
+                                <button type="button" id="favStarBtn" data-level="1" class="fav-btn-base fav-btn-inactive" title="気になる"><i class="fa-regular fa-star"></i></button>
                                 <?php if ($isAdmin): ?>
-                                <a id="adminEditBtn" href="#" class="fav-btn-base bg-sky-500 text-white shadow-lg hover:bg-sky-600 transition hidden" title="このメンバーを編集"><i class="fa-solid fa-user-pen text-xs"></i></a>
+                                <a id="adminEditBtn" href="#" class="fav-btn-base bg-sky-500 text-white shadow-lg hover:bg-sky-600 transition hidden" title="このメンバーを編集" style="padding:0;width:2rem;"><i class="fa-solid fa-user-pen text-xs"></i></a>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -81,9 +82,12 @@ $isAdmin = in_array(($user['role'] ?? ''), ['admin', 'hinata_admin'], true);
                         <div class="bg-slate-50 p-3 rounded-lg border border-slate-100"><p class="text-[9px] font-black text-slate-400 mb-1 tracking-wider">生年月日</p><p id="modalBirth" class="text-base font-black text-slate-700">--</p></div>
                         <div class="bg-slate-50 p-3 rounded-lg border border-slate-100"><p class="text-[9px] font-black text-slate-400 mb-1 tracking-wider">出身地</p><p id="modalPlace" class="text-base font-black text-slate-700">--</p></div>
                     </div>
-                    <div id="snsLinks" class="grid grid-cols-1 gap-2 pb-10 md:pb-0">
+                    <div id="snsLinks" class="grid grid-cols-1 gap-2">
                         <a id="blogBtn" href="#" target="_blank" class="h-12 bg-sky-50 rounded-xl flex items-center px-4 gap-3 text-xs font-black text-sky-600 border border-sky-100/50 hover:bg-sky-100 transition-all hidden"><i class="fa-solid fa-blog"></i> 公式ブログ</a>
                         <a id="instaBtn" href="#" target="_blank" class="h-12 bg-pink-50 rounded-xl flex items-center px-4 gap-3 text-xs font-black text-pink-600 border border-pink-100/50 hover:bg-pink-100 transition-all hidden"><i class="fa-brands fa-instagram text-lg"></i> Instagram</a>
+                    </div>
+                    <div class="pb-10 md:pb-0">
+                        <a id="memberDetailPageBtn" href="#" class="h-12 bg-slate-800 rounded-xl flex items-center justify-center px-4 gap-2 text-xs font-black text-white hover:bg-slate-700 transition-all shadow-sm"><i class="fa-solid fa-arrow-right"></i>メンバー詳細ページへ</a>
                     </div>
                 </div>
             </div>

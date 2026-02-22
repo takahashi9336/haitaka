@@ -77,6 +77,7 @@ class MemberModel extends BaseModel {
         $sql = "SELECT m.*,
                        c1.color_code as color1, c1.color_name as color1_name,
                        c2.color_code as color2, c2.color_name as color2_name,
+                       COALESCE(f.level, 0) as favorite_level,
                        (
                            SELECT ma.media_key
                            FROM hn_media_members hmm
@@ -90,8 +91,11 @@ class MemberModel extends BaseModel {
                 FROM {$this->table} m
                 LEFT JOIN hn_colors c1 ON m.color_id1 = c1.id
                 LEFT JOIN hn_colors c2 ON m.color_id2 = c2.id
+                LEFT JOIN hn_favorites f ON f.member_id = m.id AND f.user_id = :uid_fav
                 ORDER BY m.is_active DESC, m.generation ASC, m.kana ASC";
-        $rows = $this->pdo->query($sql)->fetchAll(\PDO::FETCH_ASSOC);
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(['uid_fav' => $this->userId]);
+        $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
         $ids = array_column($rows, 'id');
         $imagesMap = $this->getMemberImagesMap($ids);
         foreach ($rows as &$r) {

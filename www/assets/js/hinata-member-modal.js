@@ -1,9 +1,19 @@
 /**
  * メンバー詳細モーダル共通ロジック（メンバー帳・楽曲フォーメーション等で利用）
  * 使用: HinataMemberModal.init({ detailApiUrl, imgCacheBust, isAdmin }); のあと HinataMemberModal.open(memberId, event)
+ *
+ * レベル定義: 0=なし, 1=気になる, 7=3推し, 8=2推し, 9=最推し
  */
 (function () {
     'use strict';
+
+    var LEVEL = { NONE: 0, KINNINARU: 1, OSHI_3: 7, OSHI_2: 8, OSHI_TOP: 9 };
+
+    var LEVEL_BTN_MAP = {};
+    LEVEL_BTN_MAP[LEVEL.OSHI_TOP] = { btnId: 'favTopBtn', activeClass: 'fav-btn-active-top' };
+    LEVEL_BTN_MAP[LEVEL.OSHI_2]   = { btnId: 'fav2ndBtn', activeClass: 'fav-btn-active-2nd' };
+    LEVEL_BTN_MAP[LEVEL.OSHI_3]   = { btnId: 'fav3rdBtn', activeClass: 'fav-btn-active-3rd' };
+    LEVEL_BTN_MAP[LEVEL.KINNINARU] = { btnId: 'favStarBtn', activeClass: 'fav-btn-active-star' };
 
     var config = {
         detailApiUrl: '/hinata/members.php',
@@ -12,7 +22,7 @@
     };
     var currentMemberId = null;
     var currentFavoriteLevel = 0;
-    var FAVORITE_LEVELS = {};
+    var closeTimer = null;
 
     function getTextColor(hex) {
         if (!hex) return '#111827';
@@ -25,50 +35,74 @@
 
     function updateFavoriteUI(level) {
         currentFavoriteLevel = level || 0;
-        var heartBtn = document.getElementById('favHeartBtn');
-        var starBtn = document.getElementById('favStarBtn');
-        if (!heartBtn || !starBtn) return;
-        var heartIcon = heartBtn.querySelector('i');
-        var starIcon = starBtn.querySelector('i');
-        heartBtn.classList.remove('fav-btn-active-heart', 'fav-btn-inactive');
-        starBtn.classList.remove('fav-btn-active-star', 'fav-btn-inactive');
-        heartIcon.className = 'fa-regular fa-heart fav-icon-heart';
-        starIcon.className = 'fa-regular fa-star fav-icon-star';
-        if (currentFavoriteLevel >= 2) {
-            heartBtn.classList.add('fav-btn-active-heart');
-            starBtn.classList.add('fav-btn-active-star');
-            heartIcon.className = 'fa-solid fa-heart fav-icon-on';
-            starIcon.className = 'fa-solid fa-star fav-icon-on';
-        } else if (currentFavoriteLevel === 1) {
-            starBtn.classList.add('fav-btn-active-star');
-            heartBtn.classList.add('fav-btn-inactive');
-            starIcon.className = 'fa-solid fa-star fav-icon-on';
-        } else {
-            heartBtn.classList.add('fav-btn-inactive');
-            starBtn.classList.add('fav-btn-inactive');
+        var allBtnIds = ['favTopBtn', 'fav2ndBtn', 'fav3rdBtn', 'favStarBtn'];
+        var allActiveClasses = ['fav-btn-active-top', 'fav-btn-active-2nd', 'fav-btn-active-3rd', 'fav-btn-active-star'];
+
+        allBtnIds.forEach(function (id, i) {
+            var btn = document.getElementById(id);
+            if (!btn) return;
+            btn.classList.remove(allActiveClasses[i]);
+            btn.classList.remove('fav-btn-inactive');
+            btn.classList.add('fav-btn-inactive');
+        });
+
+        var mapping = LEVEL_BTN_MAP[currentFavoriteLevel];
+        if (mapping) {
+            var btn = document.getElementById(mapping.btnId);
+            if (btn) {
+                btn.classList.remove('fav-btn-inactive');
+                btn.classList.add(mapping.activeClass);
+            }
         }
     }
 
     function setFavoriteLevel(level) {
         if (!currentMemberId) return;
-        var targetBtn = level === 2 ? document.getElementById('favHeartBtn') : level === 1 ? document.getElementById('favStarBtn') : null;
+        var actualLevel = (currentFavoriteLevel === level) ? 0 : level;
+
         fetch('/hinata/api/toggle_favorite.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ member_id: currentMemberId, level: level })
+            body: JSON.stringify({ member_id: currentMemberId, level: actualLevel })
         }).then(function (r) { return r.json(); }).then(function (res) {
             if (res.status === 'success') {
-                var newLevel = res.level !== undefined ? res.level : (level !== undefined ? level : 0);
+                var newLevel = res.level !== undefined ? res.level : actualLevel;
                 updateFavoriteUI(newLevel);
-                if (targetBtn) {
-                    targetBtn.classList.remove('favorite-pop');
-                    void targetBtn.offsetWidth;
-                    targetBtn.classList.add('favorite-pop');
+
+                var mapping = LEVEL_BTN_MAP[newLevel];
+                if (mapping) {
+                    var targetBtn = document.getElementById(mapping.btnId);
+                    if (targetBtn) {
+                        targetBtn.classList.remove('favorite-pop');
+                        void targetBtn.offsetWidth;
+                        targetBtn.classList.add('favorite-pop');
+                    }
+                }
+
+                if (res.swapped_member_name) {
+                    showToast(res.swapped_member_name + ' の推しランクが解除されました');
                 }
             } else {
                 alert('お気に入りの更新に失敗しました: ' + (res.message || ''));
             }
         });
+    }
+
+    function showToast(msg) {
+        var toast = document.getElementById('app-toast');
+        if (toast && toast.dataset && typeof window.AppToast !== 'undefined') {
+            window.AppToast.show(msg);
+            return;
+        }
+        var el = document.createElement('div');
+        el.textContent = msg;
+        el.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:8px 20px;border-radius:8px;font-size:12px;font-weight:700;z-index:9999;opacity:0;transition:opacity 0.3s;';
+        document.body.appendChild(el);
+        requestAnimationFrame(function () { el.style.opacity = '1'; });
+        setTimeout(function () {
+            el.style.opacity = '0';
+            setTimeout(function () { el.remove(); }, 300);
+        }, 2500);
     }
 
     function setLink(id, url) {
@@ -179,7 +213,6 @@
 
         var serverLevelRaw = (d.favorite_level !== undefined && d.favorite_level !== null) ? parseInt(d.favorite_level, 10) : 0;
         var serverLevel = isNaN(serverLevelRaw) ? 0 : serverLevelRaw;
-        FAVORITE_LEVELS[currentMemberId] = serverLevel;
         updateFavoriteUI(serverLevel);
 
         var adminBtn = document.getElementById('adminEditBtn');
@@ -194,6 +227,13 @@
 
         setLink('blogBtn', d.blog_url);
         setLink('instaBtn', d.insta_url);
+
+        var detailPageBtn = document.getElementById('memberDetailPageBtn');
+        if (detailPageBtn) {
+            var memberUrl = d.id ? '/hinata/member.php?id=' + encodeURIComponent(d.id) : '';
+            detailPageBtn.setAttribute('data-url', memberUrl);
+            detailPageBtn.href = memberUrl || '#';
+        }
 
         var video = document.getElementById('modalVideo');
         var videoArea = document.getElementById('videoArea');
@@ -214,7 +254,8 @@
         if (!modal) return;
         modal.classList.remove('modal-opening');
         modal.classList.add('modal-closing');
-        setTimeout(function () {
+        closeTimer = setTimeout(function () {
+            closeTimer = null;
             modal.classList.remove('active', 'modal-closing');
             var v = document.getElementById('modalVideo');
             if (v) v.src = '';
@@ -229,6 +270,11 @@
             var d = res.data;
             var modal = document.getElementById('memberModal');
             if (!modal) return;
+
+            if (closeTimer) {
+                clearTimeout(closeTimer);
+                closeTimer = null;
+            }
 
             if (sourceEvent && sourceEvent.currentTarget) {
                 var rect = sourceEvent.currentTarget.getBoundingClientRect();
@@ -266,15 +312,34 @@
         });
         var closeBtn = document.getElementById('memberModalCloseBtn');
         if (closeBtn) closeBtn.addEventListener('click', closeMemberModal);
+
         document.addEventListener('click', function (e) {
-            if (e.target.closest('#favHeartBtn')) {
-                e.stopPropagation();
-                setFavoriteLevel(currentFavoriteLevel === 2 ? 0 : 2);
+            var detailBtn = e.target.closest('#memberDetailPageBtn');
+            if (detailBtn) {
+                e.preventDefault();
+                var url = detailBtn.getAttribute('data-url');
+                if (url) {
+                    window.location.href = url;
+                }
+                return;
             }
-            if (e.target.closest('#favStarBtn')) {
+
+            var favBtn = e.target.closest('[data-level]');
+            if (favBtn && favBtn.closest('#favButtonBar')) {
                 e.stopPropagation();
-                var next = currentFavoriteLevel === 1 ? 0 : (currentFavoriteLevel === 2 ? 1 : 1);
-                setFavoriteLevel(next);
+                setFavoriteLevel(parseInt(favBtn.dataset.level, 10));
+            }
+        });
+
+        window.addEventListener('pageshow', function (e) {
+            if (e.persisted) {
+                var m = document.getElementById('memberModal');
+                if (m && m.classList.contains('active')) {
+                    m.classList.remove('active', 'modal-opening', 'modal-closing');
+                    var v = document.getElementById('modalVideo');
+                    if (v) v.src = '';
+                    document.body.style.overflow = '';
+                }
             }
         });
     }

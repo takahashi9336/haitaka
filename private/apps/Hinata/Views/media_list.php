@@ -218,6 +218,23 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                             <i id="filterToggleIcon" class="fa-solid fa-chevron-down text-[10px] text-slate-400 transition-transform"></i>
                         </button>
                         <div id="filterBody" class="hidden md:block p-4 md:pt-4">
+                            <?php
+                            $oshi = $_SESSION['oshi'] ?? [];
+                            if (!empty($oshi)):
+                            ?>
+                            <div class="flex items-center gap-2 mb-3 pb-3 border-b border-slate-100">
+                                <span class="text-[10px] font-black text-slate-400"><i class="fa-solid fa-heart mr-1"></i>推し:</span>
+                                <?php if (!empty($oshi[9])): ?>
+                                <button type="button" class="oshi-quick-filter h-7 px-3 rounded-full text-[10px] font-bold bg-amber-50 text-amber-600 border border-amber-200 hover:bg-amber-100 transition" data-member-id="<?= $oshi[9]['id'] ?>"><i class="fa-solid fa-crown mr-1"></i><?= htmlspecialchars($oshi[9]['name']) ?></button>
+                                <?php endif; ?>
+                                <?php if (!empty($oshi[8])): ?>
+                                <button type="button" class="oshi-quick-filter h-7 px-3 rounded-full text-[10px] font-bold bg-pink-50 text-pink-600 border border-pink-200 hover:bg-pink-100 transition" data-member-id="<?= $oshi[8]['id'] ?>"><i class="fa-solid fa-heart mr-1"></i><?= htmlspecialchars($oshi[8]['name']) ?></button>
+                                <?php endif; ?>
+                                <?php if (!empty($oshi[7])): ?>
+                                <button type="button" class="oshi-quick-filter h-7 px-3 rounded-full text-[10px] font-bold bg-rose-50 text-rose-500 border border-rose-200 hover:bg-rose-100 transition" data-member-id="<?= $oshi[7]['id'] ?>"><i class="fa-regular fa-heart mr-1"></i><?= htmlspecialchars($oshi[7]['name']) ?></button>
+                                <?php endif; ?>
+                            </div>
+                            <?php endif; ?>
                             <div class="flex flex-wrap items-center gap-4">
                                 <!-- カテゴリフィルター -->
                                 <div class="flex items-center gap-2">
@@ -339,6 +356,12 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         // カテゴリ表示順（その他は常に最後）
         const CATEGORY_ORDER = ['CM', 'Hinareha', 'Live', 'MV', 'SelfIntro', 'SoloPV', 'Special', 'Teaser', 'Trailer', 'Variety', 'その他'];
 
+        // URLパラメータの member_id で初期フィルタ
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('member_id')) {
+            filterMember.value = urlParams.get('member_id');
+        }
+
         // 初回ロード
         loadVideos();
 
@@ -366,6 +389,17 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         filterMember.addEventListener('change', onFilterChange);
         filterGeneration.addEventListener('change', onFilterChange);
         filterSort.addEventListener('change', onFilterChange);
+
+        // 推しクイックフィルタボタン
+        document.querySelectorAll('.oshi-quick-filter').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const mid = btn.dataset.memberId;
+                filterMember.value = mid;
+                onFilterChange();
+                document.querySelectorAll('.oshi-quick-filter').forEach(b => b.classList.remove('ring-2'));
+                btn.classList.add('ring-2');
+            });
+        });
 
         document.querySelectorAll('.media-type-tab').forEach(tab => {
             tab.addEventListener('click', () => {

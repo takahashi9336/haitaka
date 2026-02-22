@@ -265,7 +265,7 @@ if ($mainVideo !== null && !empty($mainVideo['media_key']) && ($mainVideo['platf
 
     <?php require_once __DIR__ . '/partials/member_modal.php'; ?>
 
-    <script src="/assets/js/hinata-member-modal.js"></script>
+    <script src="/assets/js/hinata-member-modal.js?v=<?= time() ?>"></script>
     <script>
         HinataMemberModal.init({
             detailApiUrl: '/hinata/members.php',

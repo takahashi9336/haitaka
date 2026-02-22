@@ -75,6 +75,15 @@ class Auth {
             ];
 
             Logger::info("login success id_name={$user['id_name']} user_id={$user['id']}");
+
+            // 推し情報をセッションにキャッシュ
+            try {
+                $favModel = new \App\Hinata\Model\FavoriteModel();
+                $favModel->cacheOshiToSession();
+            } catch (\Throwable $e) {
+                // hn_favorites テーブルがまだ無い場合などは無視
+            }
+
             return true;
         }
 

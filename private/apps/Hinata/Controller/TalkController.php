@@ -4,6 +4,7 @@ namespace App\Hinata\Controller;
 
 use App\Hinata\Model\MemberModel;
 use App\Hinata\Model\NetaModel;
+use App\Hinata\Model\FavoriteModel;
 use Core\Auth;
 use Core\Database;
 
@@ -99,6 +100,7 @@ class TalkController {
 
     /**
      * 推し（お気に入り）登録の切り替え (toggle_favorite.php用)
+     * level 7-9 は排他制御付き（ユーザーにつき各1名のみ）
      */
     public function toggleFavorite(): void {
         header('Content-Type: application/json');
@@ -108,44 +110,17 @@ class TalkController {
             if (!$memberId) throw new \Exception('メンバーIDが指定されていません');
             $level = isset($input['level']) ? (int)$input['level'] : null;
 
-            $db = Database::connect();
-            $userId = $_SESSION['user']['id'];
+            $favModel = new FavoriteModel();
 
-            // 現在の状態を確認
-            $stmt = $db->prepare("SELECT id, level FROM hn_favorites WHERE user_id = ? AND member_id = ?");
-            $stmt->execute([$userId, $memberId]);
-            $fav = $stmt->fetch();
-
-            // level が指定されていない場合は、従来通り「ON/OFFトグル（level=1）」として扱う
             if ($level === null) {
-                if ($fav) {
-                    $db->prepare("DELETE FROM hn_favorites WHERE id = ?")->execute([$fav['id']]);
-                    echo json_encode(['status' => 'success', 'level' => 0]);
-                } else {
-                    $db->prepare("INSERT INTO hn_favorites (user_id, member_id, level, created_at) VALUES (?, ?, 1, NOW())")
-                       ->execute([$userId, $memberId]);
-                    echo json_encode(['status' => 'success', 'level' => 1]);
-                }
-                return;
-            }
-
-            if ($level <= 0) {
-                // 0指定はお気に入り解除
-                if ($fav) {
-                    $db->prepare("DELETE FROM hn_favorites WHERE id = ?")->execute([$fav['id']]);
-                }
-                $level = 0;
+                $current = $favModel->getMemberLevel((int)$memberId);
+                $newLevel = $current > 0 ? 0 : 1;
+                $result = $favModel->setLevel((int)$memberId, $newLevel);
             } else {
-                if ($fav) {
-                    $db->prepare("UPDATE hn_favorites SET level = ?, created_at = created_at WHERE id = ?")
-                       ->execute([$level, $fav['id']]);
-                } else {
-                    $db->prepare("INSERT INTO hn_favorites (user_id, member_id, level, created_at) VALUES (?, ?, ?, NOW())")
-                       ->execute([$userId, $memberId, $level]);
-                }
+                $result = $favModel->setLevel((int)$memberId, $level);
             }
 
-            echo json_encode(['status' => 'success', 'level' => $level]);
+            echo json_encode($result, JSON_UNESCAPED_UNICODE);
         } catch (\Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
         }

@@ -109,7 +109,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
     <?php require_once __DIR__ . '/partials/member_modal.php'; ?>
 
     <script src="/assets/js/core.js?v=2"></script>
-    <script src="/assets/js/hinata-member-modal.js"></script>
+    <script src="/assets/js/hinata-member-modal.js?v=<?= time() ?>"></script>
     <script>
         const IS_ADMIN = <?= in_array(($user['role'] ?? ''), ['admin', 'hinata_admin'], true) ? 'true' : 'false' ?>;
         HinataMemberModal.init({ detailApiUrl: '/hinata/members.php', imgCacheBust: '<?= time() ?>', isAdmin: IS_ADMIN });
@@ -273,6 +273,23 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             }
             card.appendChild(imageContainer);
             
+            const favLevel = parseInt(m.favorite_level) || 0;
+            if (favLevel > 0) {
+                const badge = document.createElement('div');
+                badge.className = 'absolute top-3 right-2 z-10';
+                const badgeMap = {
+                    9: { icon: 'fa-solid fa-crown', cls: 'bg-amber-400 text-white', label: '最推し' },
+                    8: { icon: 'fa-solid fa-heart', cls: 'bg-pink-400 text-white', label: '2推し' },
+                    7: { icon: 'fa-regular fa-heart', cls: 'bg-rose-300 text-white', label: '3推し' },
+                    1: { icon: 'fa-regular fa-star', cls: 'bg-amber-200 text-amber-700', label: '気になる' }
+                };
+                const bm = badgeMap[favLevel];
+                if (bm) {
+                    badge.innerHTML = '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-black shadow-sm ' + bm.cls + '"><i class="' + bm.icon + '"></i></span>';
+                    card.appendChild(badge);
+                }
+            }
+
             const info = document.createElement('div');
             info.className = 'space-y-1';
             info.innerHTML = `
@@ -364,6 +381,11 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 <td class="px-3 py-2 font-bold text-slate-800 whitespace-nowrap">
                     ${m.name}
                     ${!m.is_active ? '<span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full bg-slate-100 text-[10px] font-bold text-slate-500">卒業</span>' : ''}
+                    ${(() => {
+                        const fl = parseInt(m.favorite_level) || 0;
+                        const fm = {9:{i:'fa-solid fa-crown',c:'bg-amber-100 text-amber-600'},8:{i:'fa-solid fa-heart',c:'bg-pink-100 text-pink-600'},7:{i:'fa-regular fa-heart',c:'bg-rose-100 text-rose-500'},1:{i:'fa-regular fa-star',c:'bg-amber-50 text-amber-500'}};
+                        return fm[fl] ? '<span class="ml-1.5 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-black '+fm[fl].c+'"><i class="'+fm[fl].i+'"></i></span>' : '';
+                    })()}
                 </td>
                 <td class="px-3 py-2 text-slate-600 whitespace-nowrap">${m.generation}期</td>
                 <td class="px-3 py-2">
