@@ -49,7 +49,7 @@ if (!$mainJacket && !empty($release['editions'])) {
         <header class="h-14 bg-white border-b <?= $headerBorder ?> flex items-center justify-between px-4 shrink-0 sticky top-0 z-10 shadow-sm">
             <div class="flex items-center gap-2">
                 <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
-                <a href="/hinata/songs.php" class="text-slate-400 p-2"><i class="fa-solid fa-chevron-left text-lg"></i></a>
+                <a href="/hinata/songs.php" onclick="event.preventDefault();App.goBack('/hinata/songs.php');" class="text-slate-400 p-2"><i class="fa-solid fa-chevron-left text-lg"></i></a>
                 <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md <?= $headerIconBg ?> <?= $headerShadow ?>"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?>><i class="fa-solid fa-compact-disc text-sm"></i></div>
                 <h1 class="font-black text-slate-700 text-lg tracking-tight truncate max-w-[200px]"><?= htmlspecialchars($release['title']) ?></h1>
             </div>
@@ -110,6 +110,7 @@ if (!$mainJacket && !empty($release['editions'])) {
         </div>
     </main>
 
+    <script src="/assets/js/core.js?v=3"></script>
     <script>
         document.getElementById('mobileMenuBtn')?.addEventListener('click', () => {
             document.getElementById('sidebar').classList.add('mobile-open');

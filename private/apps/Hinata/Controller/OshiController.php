@@ -7,6 +7,9 @@ use App\Hinata\Model\MemberModel;
 use App\Hinata\Model\NetaModel;
 use App\Hinata\Model\SongModel;
 use App\Hinata\Model\EventModel;
+use App\Hinata\Model\BlogModel;
+use App\Hinata\Model\NewsModel;
+use App\Hinata\Model\ScheduleModel;
 use Core\Auth;
 use Core\Database;
 
@@ -91,6 +94,25 @@ class OshiController {
 
         // ミーグリネタ
         $memberNeta = $this->getMemberNeta($memberId);
+
+        // 最新ブログ
+        $memberBlogPosts = [];
+        try {
+            $blogModel = new BlogModel();
+            $memberBlogPosts = $blogModel->getLatestByMember($memberId, 5);
+        } catch (\Exception $e) {}
+
+        // ニュース・スケジュール
+        $memberNews = [];
+        $memberSchedule = [];
+        try {
+            $newsModel = new NewsModel();
+            $memberNews = $newsModel->getLatestByMember($memberId, 5);
+        } catch (\Exception $e) {}
+        try {
+            $scheduleModel = new ScheduleModel();
+            $memberSchedule = $scheduleModel->getUpcomingByMember($memberId, 10);
+        } catch (\Exception $e) {}
 
         $user = $_SESSION['user'];
         require_once __DIR__ . '/../Views/oshi_member.php';

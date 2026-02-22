@@ -757,25 +757,25 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         function platformBadgeHtml(platform) {
             if (!platform) return '';
             const cfg = {
-                youtube:   { bg: 'bg-red-600', icon: 'fa-youtube', label: 'Youtube' },
-                instagram: { bg: 'bg-gradient-to-r from-purple-500 to-pink-500', icon: 'fa-instagram', label: 'Instagram' },
-                tiktok:    { bg: 'bg-slate-800', icon: 'fa-tiktok', label: 'TikTok' },
+                youtube:   { bg: 'bg-red-600', icon: 'fa-youtube' },
+                instagram: { bg: 'bg-gradient-to-r from-purple-500 to-pink-500', icon: 'fa-instagram' },
+                tiktok:    { bg: 'bg-slate-800', icon: 'fa-tiktok' },
             };
             const c = cfg[platform];
             if (!c) return '';
-            return `<span class="absolute top-1.5 left-1.5 text-[9px] font-bold text-white px-1.5 py-0.5 rounded ${c.bg}"><i class="fa-brands fa-${c.icon} mr-0.5"></i>${c.label}</span>`;
+            return `<span class="absolute top-1.5 left-1.5 w-5 h-5 ${c.bg} rounded-full flex items-center justify-center shadow"><i class="fa-brands fa-${c.icon} text-[10px] text-white"></i></span>`;
         }
 
         function platformBadgeInline(platform) {
             if (!platform) return '';
             const cfg = {
-                youtube:   { bg: 'bg-red-600', icon: 'fa-youtube', label: 'Youtube' },
-                instagram: { bg: 'bg-gradient-to-r from-purple-500 to-pink-500', icon: 'fa-instagram', label: 'Instagram' },
-                tiktok:    { bg: 'bg-slate-800', icon: 'fa-tiktok', label: 'TikTok' },
+                youtube:   { bg: 'bg-red-600', icon: 'fa-youtube' },
+                instagram: { bg: 'bg-gradient-to-r from-purple-500 to-pink-500', icon: 'fa-instagram' },
+                tiktok:    { bg: 'bg-slate-800', icon: 'fa-tiktok' },
             };
             const c = cfg[platform];
             if (!c) return '';
-            return `<span class="text-[9px] font-bold text-white px-1.5 py-0.5 rounded shrink-0 ${c.bg}"><i class="fa-brands fa-${c.icon} mr-0.5"></i>${c.label}</span>`;
+            return `<span class="inline-flex w-5 h-5 ${c.bg} rounded-full items-center justify-center shadow shrink-0"><i class="fa-brands fa-${c.icon} text-[10px] text-white"></i></span>`;
         }
 
         // フィルター折り畳み（スマホ）

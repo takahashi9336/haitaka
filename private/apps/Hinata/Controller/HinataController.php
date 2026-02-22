@@ -8,6 +8,7 @@ use App\Hinata\Model\FavoriteModel;
 use App\Hinata\Model\MeetGreetModel;
 use App\Hinata\Model\ReleaseModel;
 use App\Hinata\Model\ReleaseEditionModel;
+use App\Hinata\Model\BlogModel;
 use Core\Auth;
 use Core\Database;
 
@@ -48,6 +49,18 @@ class HinataController {
             $todayMeetGreetSlots = $mgModel->getSlotsByDate($today);
         }
 
+        // 推しメンバーの最新ブログ
+        $oshiBlogPosts = [];
+        try {
+            $oshiMemberIds = array_column($oshiSummary, 'member_id');
+            if (!empty($oshiMemberIds)) {
+                $blogModel = new BlogModel();
+                $oshiBlogPosts = $blogModel->getLatestForOshi($oshiMemberIds, 10);
+            }
+        } catch (\Exception $e) {
+            // テーブル未作成時は空配列のまま
+        }
+
         // 推し情報をセッションにキャッシュ
         $favModel->cacheOshiToSession();
 
@@ -70,6 +83,20 @@ class HinataController {
         $release['jacket_url'] = $editionModel->getMainJacketUrl((int)$release['id']);
         $release['editions'] = $editionModel->getByReleaseId((int)$release['id']);
         $release['release_type_label'] = ReleaseModel::RELEASE_TYPES[$release['release_type']] ?? $release['release_type'];
+
+        $mvSql = "SELECT DISTINCT s.title AS song_title, s.track_number,
+                         ma.media_key, ma.thumbnail_url, ma.title AS video_title, ma.platform
+                  FROM hn_songs s
+                  JOIN hn_song_media_links l ON l.song_id = s.id
+                  JOIN hn_media_metadata hmeta ON hmeta.id = l.media_meta_id
+                  JOIN com_media_assets ma ON ma.id = hmeta.asset_id
+                  WHERE s.release_id = :rid
+                    AND hmeta.category = 'MV'
+                    AND ma.platform = 'youtube'
+                  ORDER BY s.track_number ASC, ma.upload_date DESC";
+        $mvStmt = $pdo->prepare($mvSql);
+        $mvStmt->execute(['rid' => (int)$release['id']]);
+        $release['mvs'] = $mvStmt->fetchAll(\PDO::FETCH_ASSOC);
 
         return $release;
     }

@@ -91,7 +91,7 @@ if ($mainVideo !== null && !empty($mainVideo['media_key']) && ($mainVideo['platf
         <header class="h-14 bg-white border-b <?= $headerBorder ?> flex items-center justify-between px-4 shrink-0 sticky top-0 z-10 shadow-sm">
             <div class="flex items-center gap-2">
                 <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
-                <a href="<?= $backUrl ?>" class="text-slate-400 p-2 inline-flex items-center justify-center" title="楽曲一覧へ戻る"><i class="fa-solid fa-chevron-left text-lg"></i></a>
+                <a href="<?= $backUrl ?>" onclick="event.preventDefault();App.goBack('<?= $backUrl ?>');" class="text-slate-400 p-2 inline-flex items-center justify-center" title="戻る"><i class="fa-solid fa-chevron-left text-lg"></i></a>
                 <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md <?= $headerIconBg ?> <?= $headerShadow ?>"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?>><i class="fa-solid fa-music text-sm"></i></div>
                 <h1 class="font-black text-slate-700 text-lg tracking-tight truncate max-w-[180px]"><?= htmlspecialchars($song['title']) ?></h1>
             </div>
@@ -265,6 +265,7 @@ if ($mainVideo !== null && !empty($mainVideo['media_key']) && ($mainVideo['platf
 
     <?php require_once __DIR__ . '/partials/member_modal.php'; ?>
 
+    <script src="/assets/js/core.js?v=3"></script>
     <script src="/assets/js/hinata-member-modal.js?v=<?= time() ?>"></script>
     <script>
         HinataMemberModal.init({

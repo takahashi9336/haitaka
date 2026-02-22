@@ -119,6 +119,16 @@ const App = {
         sessionStorage.setItem('app:lastListParams:' + basePath, location.search);
     },
 
+    goBack(fallback) {
+        try {
+            if (document.referrer && new URL(document.referrer).origin === location.origin) {
+                history.back();
+                return;
+            }
+        } catch (e) {}
+        location.href = fallback || '/hinata/';
+    },
+
     initSidebar() {
         const sidebar = document.getElementById('sidebar');
         const toggleBtn = document.getElementById('sidebarToggle'); // PC用最小化ボタン

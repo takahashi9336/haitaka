@@ -72,7 +72,7 @@ $editionShort = ['type_a' => 'TYPE-A', 'type_b' => 'TYPE-B', 'type_c' => 'TYPE-C
             </div>
         </div>
 
-        <div class="flex-1 overflow-y-auto custom-scroll">
+        <div class="flex-1 overflow-y-auto custom-scroll" data-scroll-persist="hinata-songs">
             <?php if ($tab === 'releases'): ?>
             <div class="p-4 md:p-8 max-w-6xl mx-auto">
                 <?php if (empty($releases)): ?>
@@ -202,6 +202,7 @@ $editionShort = ['type_a' => 'TYPE-A', 'type_b' => 'TYPE-B', 'type_c' => 'TYPE-C
         </div>
     </main>
 
+    <script src="/assets/js/core.js?v=3"></script>
     <script>
         document.getElementById('mobileMenuBtn')?.addEventListener('click', () => {
             document.getElementById('sidebar').classList.add('mobile-open');
