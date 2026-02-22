@@ -174,16 +174,6 @@ class MediaController {
     /**
      * インポート画面の表示
      */
-    public function import(): void {
-        $auth = new Auth();
-        // 日向坂ポータル管理者（admin / hinata_admin）のみ
-        $auth->requireHinataAdmin('/hinata/');
-
-        $categories = $this->getMediaCategories();
-        $user = $_SESSION['user'];
-        require_once __DIR__ . '/../Views/media_import.php';
-    }
-
     /**
      * 動画・メンバー紐付け管理画面（管理者専用）
      */
