@@ -58,126 +58,123 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             <p class="text-[10px] font-bold text-slate-400 tracking-wider">参照専用（管理者）</p>
         </header>
 
-        <div class="flex-1 overflow-y-auto p-6 md:p-12">
-            <div class="max-w-6xl mx-auto w-full">
-
-                <!-- ① テーブル選択ボックス（プルダウン＋クリアのみ） -->
-                <div class="bg-white p-5 md:p-8 rounded-xl border border-slate-100 shadow-sm mb-6">
-                    <div class="flex items-center gap-3 mb-4">
-                        <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 <?= $cardIconBg ?> <?= $cardIconText ?>"<?= $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>>
-                            <i class="fa-solid fa-table-list text-sm"></i>
-                        </div>
-                        <div>
-                            <h2 class="text-base font-bold text-slate-800">テーブルを選択</h2>
-                            <p class="text-[10px] font-bold text-slate-400 tracking-wider">表示するテーブルを選んでください</p>
-                        </div>
+        <!-- ① テーブル選択（コンパクト横並び） -->
+        <div class="shrink-0 px-6 py-4">
+                <form method="get" action="/db_viewer/" class="bg-white px-4 py-3 rounded-xl border border-slate-100 shadow-sm flex items-center gap-3 flex-wrap">
+                    <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 <?= $cardIconBg ?> <?= $cardIconText ?>"<?= $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>>
+                        <i class="fa-solid fa-table-list text-xs"></i>
                     </div>
-                    <form method="get" action="/db_viewer/" class="flex flex-wrap items-end gap-3">
-                        <div class="min-w-[200px]">
-                            <select name="table" onchange="this.form.submit()" class="w-full border border-slate-200 rounded-xl h-12 px-4 text-sm bg-slate-50 focus:bg-white focus:ring-2 <?= $isThemeHex ? 'admin-focus' : 'focus:ring-' . $themeTailwind . '-100' ?> outline-none transition-all">
-                                <option value="">— テーブルを選択 —</option>
-                                <?php foreach ($tables as $t): ?>
-                                <option value="<?= htmlspecialchars($t) ?>" <?= $selectedTable === $t ? 'selected' : '' ?>><?= htmlspecialchars($t) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <?php if ($selectedTable): ?>
-                        <a href="/db_viewer/" class="text-slate-500 hover:text-slate-700 text-sm font-bold">クリア</a>
-                        <?php endif; ?>
-                    </form>
+                    <span class="text-sm font-bold text-slate-800 shrink-0">テーブルを選択</span>
+                    <select name="table" onchange="this.form.submit()" class="border border-slate-200 rounded-lg h-9 px-3 text-sm bg-slate-50 focus:bg-white focus:ring-2 <?= $isThemeHex ? 'admin-focus' : 'focus:ring-' . $themeTailwind . '-100' ?> outline-none transition-all min-w-[200px]">
+                        <option value="">— 選択 —</option>
+                        <?php foreach ($tables as $t): ?>
+                        <option value="<?= htmlspecialchars($t) ?>" <?= $selectedTable === $t ? 'selected' : '' ?>><?= htmlspecialchars($t) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <?php if ($selectedTable): ?>
+                    <a href="/db_viewer/" class="text-slate-400 hover:text-slate-600 text-xs font-bold transition">クリア</a>
+                    <?php endif; ?>
+                </form>
+        </div>
+
+        <?php if ($selectedTable && (!empty($columns) || !empty($tableStructure) || !empty($createSql))): ?>
+        <!-- ② 抽出結果（残り高さを使い切る flex 構造） -->
+        <div class="flex-1 flex flex-col min-h-0 px-6 pb-4">
+            <div class="w-full flex-1 flex flex-col min-h-0 bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+                <!-- タブ -->
+                <div class="shrink-0 flex border-b border-slate-100 px-6 gap-6">
+                    <span class="db-tab active py-4 text-sm" data-tab="data">データ</span>
+                    <span class="db-tab py-4 text-sm" data-tab="structure">構造</span>
+                    <span class="db-tab py-4 text-sm" data-tab="create">CREATE情報</span>
                 </div>
 
-                <?php if ($selectedTable && (!empty($columns) || !empty($tableStructure) || !empty($createSql))): ?>
-                <!-- ② 抽出結果ボックス（タブ切り替え） -->
-                <div class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden mb-6">
-                    <!-- タブ -->
-                    <div class="flex border-b border-slate-100 px-6 gap-6">
-                        <span class="db-tab active py-4 text-sm" data-tab="data">データ</span>
-                        <span class="db-tab py-4 text-sm" data-tab="structure">構造</span>
-                        <span class="db-tab py-4 text-sm" data-tab="create">CREATE情報</span>
-                    </div>
-
-                    <!-- ダウンロード・コピー行（区切り・ヘッダー含む） -->
-                    <div class="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center gap-4">
-                        <div id="db_opt_group" class="flex items-center gap-4">
-                            <span class="text-xs text-slate-500 font-bold">区切り文字</span>
-                            <label class="flex items-center gap-2 cursor-pointer text-sm text-slate-600">
-                                <input type="radio" name="db_delimiter" value="tab" checked class="rounded-full border-slate-300 text-slate-600 focus:ring-slate-500">
-                                タブ
-                            </label>
-                            <label class="flex items-center gap-2 cursor-pointer text-sm text-slate-600">
-                                <input type="radio" name="db_delimiter" value="comma" class="rounded-full border-slate-300 text-slate-600 focus:ring-slate-500">
-                                カンマ
-                            </label>
-                        </div>
-                        <label id="db_header_label" class="flex items-center gap-2 cursor-pointer text-sm text-slate-600">
-                            <input type="checkbox" name="db_header" id="db_header" class="rounded border-slate-300 text-slate-600 focus:ring-slate-500">
-                            ヘッダーあり
+                <!-- ダウンロード・コピー行 -->
+                <div class="shrink-0 px-6 py-3 border-b border-slate-100 flex flex-wrap items-center gap-4">
+                    <div id="db_opt_group" class="flex items-center gap-4">
+                        <span class="text-xs text-slate-500 font-bold">区切り文字</span>
+                        <label class="flex items-center gap-2 cursor-pointer text-sm text-slate-600">
+                            <input type="radio" name="db_delimiter" value="tab" checked class="rounded-full border-slate-300 text-slate-600 focus:ring-slate-500">
+                            タブ
                         </label>
-                        <div class="flex items-center gap-2 ml-auto">
-                            <button type="button" id="db_download_btn" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
-                                <i class="fa-solid fa-download text-xs"></i>
-                                <span class="db_btn_text">ダウンロード</span>
-                            </button>
-                            <button type="button" id="db_copy_btn" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
-                                <i class="fa-solid fa-copy text-xs"></i>
-                                コピー
-                            </button>
-                        </div>
+                        <label class="flex items-center gap-2 cursor-pointer text-sm text-slate-600">
+                            <input type="radio" name="db_delimiter" value="comma" class="rounded-full border-slate-300 text-slate-600 focus:ring-slate-500">
+                            カンマ
+                        </label>
                     </div>
+                    <label id="db_header_label" class="flex items-center gap-2 cursor-pointer text-sm text-slate-600">
+                        <input type="checkbox" name="db_header" id="db_header" class="rounded border-slate-300 text-slate-600 focus:ring-slate-500">
+                        ヘッダーあり
+                    </label>
+                    <div class="flex items-center gap-2 ml-auto">
+                        <button type="button" id="db_download_btn" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                            <i class="fa-solid fa-download text-xs"></i>
+                            <span class="db_btn_text">ダウンロード</span>
+                        </button>
+                        <button type="button" id="db_copy_btn" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
+                            <i class="fa-solid fa-copy text-xs"></i>
+                            コピー
+                        </button>
+                    </div>
+                </div>
 
+                <!-- データタブ用ヘッダー（テーブル名・件数・表示件数・ページネーション） -->
+                <?php if (!empty($columns)): ?>
+                <?php
+                $limitOption = $limitOption ?? '100';
+                $baseUrl = '?table=' . rawurlencode($selectedTable) . '&limit=' . rawurlencode($limitOption);
+                $totalPages = $rowsPerPage > 0 ? max(1, (int)ceil(($totalCount ?? 0) / $rowsPerPage)) : 1;
+                ?>
+                <div id="db_data_header" class="shrink-0 px-6 py-3 border-b border-slate-100 flex items-center gap-4">
+                    <h3 class="font-bold text-slate-800"><?= htmlspecialchars($selectedTable) ?> <span class="text-slate-400 font-normal text-sm">（<?= $totalCount ?? 0 ?> 件）</span></h3>
+                    <div class="ml-auto flex items-center gap-4">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-slate-500 font-bold">表示件数</span>
+                            <select onchange="location.href='?table=<?= rawurlencode($selectedTable) ?>&limit='+this.value+'&page=1'" class="border border-slate-200 rounded-lg h-8 px-3 text-xs font-bold bg-slate-50 focus:ring-2 focus:ring-slate-200 outline-none">
+                                <option value="50"   <?= $limitOption === '50'   ? 'selected' : '' ?>>50</option>
+                                <option value="100"  <?= $limitOption === '100'  ? 'selected' : '' ?>>100</option>
+                                <option value="250"  <?= $limitOption === '250'  ? 'selected' : '' ?>>250</option>
+                                <option value="500"  <?= $limitOption === '500'  ? 'selected' : '' ?>>500</option>
+                                <option value="all"  <?= $limitOption === 'all'  ? 'selected' : '' ?>>すべて</option>
+                            </select>
+                        </div>
+                        <?php if ($totalPages > 1): ?>
+                        <nav class="flex items-center gap-2">
+                            <?php if ($page > 1): ?>
+                            <a href="<?= $baseUrl ?>&page=<?= $page - 1 ?>" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition">前へ</a>
+                            <?php endif; ?>
+                            <span class="text-xs text-slate-500 font-bold"><?= $page ?> / <?= $totalPages ?></span>
+                            <?php if ($page < $totalPages): ?>
+                            <a href="<?= $baseUrl ?>&page=<?= $page + 1 ?>" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition">次へ</a>
+                            <?php endif; ?>
+                        </nav>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <!-- ③ スクロール可能なコンテンツエリア -->
+                <div class="flex-1 overflow-auto min-h-0">
                     <!-- タブコンテンツ：データ -->
                     <div id="tab_data" class="db-tab-content active">
                         <?php if (!empty($columns)): ?>
-                        <?php
-                        $limitOption = $limitOption ?? '100';
-                        $baseUrl = '?table=' . rawurlencode($selectedTable) . '&limit=' . rawurlencode($limitOption);
-                        $totalPages = $rowsPerPage > 0 ? max(1, (int)ceil(($totalCount ?? 0) / $rowsPerPage)) : 1;
-                        ?>
-                        <div class="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-4">
-                            <h3 class="font-bold text-slate-800"><?= htmlspecialchars($selectedTable) ?> <span class="text-slate-400 font-normal text-sm">（<?= $totalCount ?? 0 ?> 件）</span></h3>
-                            <div class="flex flex-wrap items-center gap-3">
-                                <span class="text-xs text-slate-500 font-bold">表示件数</span>
-                                <select onchange="location.href='?table=<?= rawurlencode($selectedTable) ?>&limit='+this.value+'&page=1'" class="border border-slate-200 rounded-lg h-8 px-3 text-xs font-bold bg-slate-50 focus:ring-2 focus:ring-slate-200 outline-none">
-                                    <option value="50"   <?= $limitOption === '50'   ? 'selected' : '' ?>>50</option>
-                                    <option value="100"  <?= $limitOption === '100'  ? 'selected' : '' ?>>100</option>
-                                    <option value="250"  <?= $limitOption === '250'  ? 'selected' : '' ?>>250</option>
-                                    <option value="500"  <?= $limitOption === '500'  ? 'selected' : '' ?>>500</option>
-                                    <option value="all"  <?= $limitOption === 'all'  ? 'selected' : '' ?>>すべて</option>
-                                </select>
-                            </div>
-                            <?php if ($totalPages > 1): ?>
-                            <nav class="flex items-center gap-2">
-                                <?php if ($page > 1): ?>
-                                <a href="<?= $baseUrl ?>&page=<?= $page - 1 ?>" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition">前へ</a>
-                                <?php endif; ?>
-                                <span class="text-xs text-slate-500 font-bold"><?= $page ?> / <?= $totalPages ?></span>
-                                <?php if ($page < $totalPages): ?>
-                                <a href="<?= $baseUrl ?>&page=<?= $page + 1 ?>" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition">次へ</a>
-                                <?php endif; ?>
-                            </nav>
-                            <?php endif; ?>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="db-table w-full text-left text-sm min-w-[600px]">
-                                <thead class="bg-slate-50 border-b border-slate-100">
-                                    <tr>
-                                        <?php foreach ($columns as $col): ?>
-                                        <th class="px-4 py-3 font-black text-[10px] text-slate-500 tracking-wider" title="<?= htmlspecialchars($col['DATA_TYPE']) ?>"><?= htmlspecialchars($col['COLUMN_NAME']) ?></th>
-                                        <?php endforeach; ?>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-slate-50">
-                                    <?php foreach ($rows as $row): ?>
-                                    <tr class="hover:bg-slate-50/50">
-                                        <?php foreach ($columns as $col): ?>
-                                        <td class="px-4 py-2 text-slate-700 text-xs font-medium" title="<?= htmlspecialchars((string)($row[$col['COLUMN_NAME']] ?? '')) ?>"><?= htmlspecialchars(mb_strimwidth((string)($row[$col['COLUMN_NAME']] ?? ''), 0, 50)) ?></td>
-                                        <?php endforeach; ?>
-                                    </tr>
+                        <table class="db-table w-full text-left text-sm min-w-[600px]">
+                            <thead class="bg-slate-50 border-b border-slate-100 sticky top-0 z-[1]">
+                                <tr>
+                                    <?php foreach ($columns as $col): ?>
+                                    <th class="px-4 py-3 font-black text-[10px] text-slate-500 tracking-wider" title="<?= htmlspecialchars($col['DATA_TYPE']) ?>"><?= htmlspecialchars($col['COLUMN_NAME']) ?></th>
                                     <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50">
+                                <?php foreach ($rows as $row): ?>
+                                <tr class="hover:bg-slate-50/50">
+                                    <?php foreach ($columns as $col): ?>
+                                    <td class="px-4 py-2 text-slate-700 text-xs font-medium" title="<?= htmlspecialchars((string)($row[$col['COLUMN_NAME']] ?? '')) ?>"><?= htmlspecialchars(mb_strimwidth((string)($row[$col['COLUMN_NAME']] ?? ''), 0, 50)) ?></td>
+                                    <?php endforeach; ?>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
                         <?php if (empty($rows)): ?>
                         <p class="px-6 py-8 text-center text-slate-400 text-sm">データがありません</p>
                         <?php endif; ?>
@@ -189,32 +186,30 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                     <!-- タブコンテンツ：構造 -->
                     <div id="tab_structure" class="db-tab-content">
                         <?php if (!empty($tableStructure)): ?>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left text-sm">
-                                <thead class="bg-slate-50 border-b border-slate-100">
-                                    <tr>
-                                        <th class="px-4 py-2 font-black text-[10px] text-slate-500 tracking-wider">カラム名</th>
-                                        <th class="px-4 py-2 font-black text-[10px] text-slate-500 tracking-wider">型</th>
-                                        <th class="px-4 py-2 font-black text-[10px] text-slate-500 tracking-wider">NULL</th>
-                                        <th class="px-4 py-2 font-black text-[10px] text-slate-500 tracking-wider">キー</th>
-                                        <th class="px-4 py-2 font-black text-[10px] text-slate-500 tracking-wider">デフォルト</th>
-                                        <th class="px-4 py-2 font-black text-[10px] text-slate-500 tracking-wider">EXTRA</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-slate-50">
-                                    <?php foreach ($tableStructure as $col): ?>
-                                    <tr class="hover:bg-slate-50/50">
-                                        <td class="px-4 py-2 font-mono text-xs text-slate-800"><?= htmlspecialchars($col['COLUMN_NAME'] ?? '') ?></td>
-                                        <td class="px-4 py-2 font-mono text-xs text-slate-600"><?= htmlspecialchars($col['COLUMN_TYPE'] ?? '') ?></td>
-                                        <td class="px-4 py-2 text-xs text-slate-600"><?= htmlspecialchars($col['IS_NULLABLE'] ?? '') ?></td>
-                                        <td class="px-4 py-2 text-xs"><span class="inline-flex px-2 py-0.5 rounded text-[10px] font-bold <?= !empty($col['COLUMN_KEY']) ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500' ?>"><?= htmlspecialchars($col['COLUMN_KEY'] ?: '—') ?></span></td>
-                                        <td class="px-4 py-2 font-mono text-xs text-slate-600"><?= htmlspecialchars($col['COLUMN_DEFAULT'] ?? 'NULL') ?></td>
-                                        <td class="px-4 py-2 font-mono text-xs text-slate-600"><?= htmlspecialchars($col['EXTRA'] ?? '') ?></td>
-                                    </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-50 border-b border-slate-100 sticky top-0 z-[1]">
+                                <tr>
+                                    <th class="px-4 py-2 font-black text-[10px] text-slate-500 tracking-wider">カラム名</th>
+                                    <th class="px-4 py-2 font-black text-[10px] text-slate-500 tracking-wider">型</th>
+                                    <th class="px-4 py-2 font-black text-[10px] text-slate-500 tracking-wider">NULL</th>
+                                    <th class="px-4 py-2 font-black text-[10px] text-slate-500 tracking-wider">キー</th>
+                                    <th class="px-4 py-2 font-black text-[10px] text-slate-500 tracking-wider">デフォルト</th>
+                                    <th class="px-4 py-2 font-black text-[10px] text-slate-500 tracking-wider">EXTRA</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50">
+                                <?php foreach ($tableStructure as $col): ?>
+                                <tr class="hover:bg-slate-50/50">
+                                    <td class="px-4 py-2 font-mono text-xs text-slate-800"><?= htmlspecialchars($col['COLUMN_NAME'] ?? '') ?></td>
+                                    <td class="px-4 py-2 font-mono text-xs text-slate-600"><?= htmlspecialchars($col['COLUMN_TYPE'] ?? '') ?></td>
+                                    <td class="px-4 py-2 text-xs text-slate-600"><?= htmlspecialchars($col['IS_NULLABLE'] ?? '') ?></td>
+                                    <td class="px-4 py-2 text-xs"><span class="inline-flex px-2 py-0.5 rounded text-[10px] font-bold <?= !empty($col['COLUMN_KEY']) ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500' ?>"><?= htmlspecialchars($col['COLUMN_KEY'] ?: '—') ?></span></td>
+                                    <td class="px-4 py-2 font-mono text-xs text-slate-600"><?= htmlspecialchars($col['COLUMN_DEFAULT'] ?? 'NULL') ?></td>
+                                    <td class="px-4 py-2 font-mono text-xs text-slate-600"><?= htmlspecialchars($col['EXTRA'] ?? '') ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
                         <?php else: ?>
                         <p class="px-6 py-8 text-center text-slate-400 text-sm">構造情報がありません</p>
                         <?php endif; ?>
@@ -223,15 +218,15 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                     <!-- タブコンテンツ：CREATE情報 -->
                     <div id="tab_create" class="db-tab-content">
                         <?php if (!empty($createSql)): ?>
-                        <pre id="db_create_sql" class="p-4 text-xs font-mono text-slate-700 bg-slate-50 overflow-x-auto whitespace-pre-wrap break-all m-0"><?= htmlspecialchars($createSql) ?></pre>
+                        <pre id="db_create_sql" class="p-4 text-xs font-mono text-slate-700 bg-slate-50 whitespace-pre-wrap break-all m-0"><?= htmlspecialchars($createSql) ?></pre>
                         <?php else: ?>
                         <p class="px-6 py-8 text-center text-slate-400 text-sm">CREATE情報がありません</p>
                         <?php endif; ?>
                     </div>
                 </div>
-                <?php endif; ?>
             </div>
         </div>
+        <?php endif; ?>
     </main>
 
     <script src="/assets/js/core.js?v=2"></script>
@@ -285,6 +280,8 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                             headerLabel.classList.remove('db-opt-disabled');
                         }
                     }
+                    var dataHeader = document.getElementById('db_data_header');
+                    if (dataHeader) dataHeader.style.display = (t === 'data') ? '' : 'none';
                 });
             });
 

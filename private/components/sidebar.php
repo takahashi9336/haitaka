@@ -3,6 +3,12 @@
  * 共通サイドバー (日本語版)
  * セッションの apps ツリー（DB 由来）からメニューを動的に描画する
  */
+if (!defined('THEME_ALLOWED_TW')) {
+    define('THEME_ALLOWED_TW', [
+        'indigo' => 1, 'sky' => 1, 'slate' => 1,
+        'amber' => 1, 'orange' => 1, 'violet' => 1, 'emerald' => 1,
+    ]);
+}
 $uri = $_SERVER['REQUEST_URI'];
 if (strpos($uri, '?') !== false) {
     $uri = strstr($uri, '?', true);
