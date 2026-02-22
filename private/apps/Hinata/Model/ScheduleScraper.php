@@ -42,64 +42,67 @@ class ScheduleScraper
         libxml_clear_errors();
 
         $xpath = new \DOMXPath($doc);
-
-        $links = $xpath->query("//a[contains(@href, '/media/detail/')]");
-        if ($links === false || $links->length === 0) {
-            $this->errors[] = "No schedule items found for {$ym}";
-            return [];
-        }
-
-        // 日付コンテキスト: リンクの祖先から日付を推定
-        // 公式サイトは日付ヘッダの後にアイテムが並ぶ構造
-        // テキストパースでフォールバック
         $items = [];
-        $currentDay = null;
 
-        // 全テキストからパースするアプローチ
-        // HTML内で日付パターン (数字+曜日) を探し、それ以降のリンクにその日付を適用
-        $body = $xpath->query("//div[contains(@class, 'p-schedule')]")->item(0)
-             ?? $xpath->query("//div[@id='content']")->item(0)
-             ?? $doc->getElementsByTagName('body')->item(0);
+        // 公式サイト構造: div.p-schedule__list-group ごとに日付+アイテム一覧
+        //   日付: div.c-schedule__date--list > <span>日数字</span><b>曜日</b>
+        //   アイテム: ul > li > a[href*="/media/detail/"]
+        $groups = $xpath->query("//div[contains(@class, 'p-schedule__list-group')]");
+        if ($groups && $groups->length > 0) {
+            foreach ($groups as $group) {
+                $dateSpan = $xpath->query(".//div[contains(@class, 'c-schedule__date--list')]/span", $group)->item(0);
+                $dayNum = $dateSpan ? trim($dateSpan->textContent) : null;
+                if (!$dayNum || !ctype_digit($dayNum)) continue;
+                $day = str_pad($dayNum, 2, '0', STR_PAD_LEFT);
 
-        if ($body) {
-            $this->walkNodes($body, $xpath, $items, $currentDay, $year, $month);
-        }
-
-        // walkNodesで取れなかった場合はフォールバック
-        if (empty($items)) {
-            foreach ($links as $a) {
-                $item = $this->parseScheduleLink($a, $year, $month, '01');
-                if ($item !== null) {
-                    $items[] = $item;
+                $links = $xpath->query(".//a[contains(@href, '/media/detail/')]", $group);
+                foreach ($links as $a) {
+                    $item = $this->parseScheduleLink($a, $year, $month, $day);
+                    if ($item !== null) {
+                        $items[] = $item;
+                    }
                 }
             }
+        }
+
+        // list-group構造が見つからない場合: DOMウォークでフォールバック
+        if (empty($items)) {
+            $currentDay = null;
+            $body = $xpath->query("//div[contains(@class, 'l-maincontents--schedule')]")->item(0)
+                 ?? $xpath->query("//div[@id='content']")->item(0)
+                 ?? $doc->getElementsByTagName('body')->item(0);
+            if ($body) {
+                $this->walkNodes($body, $xpath, $items, $currentDay, $year, $month);
+            }
+        }
+
+        if (empty($items)) {
+            $this->errors[] = "No schedule items found for {$ym}";
         }
 
         return $items;
     }
 
     /**
-     * DOM ツリーを走査して日付コンテキストを保持しながらスケジュールを抽出
+     * フォールバック: DOM ツリーを走査して日付コンテキストを保持しながらスケジュールを抽出
      */
     private function walkNodes(\DOMNode $node, \DOMXPath $xpath, array &$items, ?string &$currentDay, string $year, string $month): void
     {
         foreach ($node->childNodes as $child) {
             if ($child->nodeType === XML_TEXT_NODE) {
                 $text = trim($child->textContent);
-                // 日付パターン: "1日", "2月", "15日" (日の後に曜日) or 単に数字
                 if (preg_match('/^(\d{1,2})[日月火水木金土]/', $text, $dm)) {
                     $currentDay = str_pad($dm[1], 2, '0', STR_PAD_LEFT);
                 }
             } elseif ($child->nodeType === XML_ELEMENT_NODE) {
+                /** @var \DOMElement $el */
                 $el = $child;
                 $text = trim($el->textContent);
 
-                // 日付ヘッダ要素を検出
-                if (preg_match('/^(\d{1,2})[日月火水木金土]/', $text, $dm) && mb_strlen($text) < 10) {
+                if (preg_match('/^(\d{1,2})[日月火水木金土]?$/', $text, $dm) && mb_strlen($text) < 10) {
                     $currentDay = str_pad($dm[1], 2, '0', STR_PAD_LEFT);
                 }
 
-                // リンク要素を検出
                 if ($el->tagName === 'a' && $currentDay !== null) {
                     $href = $el->getAttribute('href');
                     if (str_contains($href, '/media/detail/')) {
@@ -123,25 +126,47 @@ class ScheduleScraper
             return null;
         }
         $scheduleCode = $m[1];
-        $text = trim($a->textContent);
 
         $category = '';
         $timeText = null;
-        $title = $text;
+        $title = '';
 
-        $cats = ['テレビ','ラジオ','雑誌','配信','イベント','WEB連載','放送','誕生日','グッズ','チケット','リリース','その他'];
-        foreach ($cats as $c) {
-            if (str_starts_with($text, $c)) {
-                $category = $c;
-                $remaining = trim(mb_substr($text, mb_strlen($c)));
-                // 時間パターン: "24:40～" or "8:30～"
-                if (preg_match('/^(\d{1,2}:\d{2}～?(?:\d{1,2}:\d{2})?\s*)/u', $remaining, $tm)) {
-                    $timeText = trim($tm[1]);
-                    $title = trim(substr($remaining, strlen($tm[0])));
-                } else {
-                    $title = $remaining;
+        // 公式サイト構造: a > div.p-schedule__head (カテゴリ+時間) + p.c-schedule__text (タイトル)
+        $doc = $a->ownerDocument;
+        $xpath = new \DOMXPath($doc);
+
+        $catEl = $xpath->query(".//div[contains(@class, 'c-schedule__category')]", $a)->item(0);
+        if ($catEl) {
+            $category = trim($catEl->textContent);
+        }
+
+        $timeEl = $xpath->query(".//div[contains(@class, 'c-schedule__time')]", $a)->item(0);
+        if ($timeEl) {
+            $timeText = trim($timeEl->textContent) ?: null;
+        }
+
+        $textEl = $xpath->query(".//p[contains(@class, 'c-schedule__text')]", $a)->item(0);
+        if ($textEl) {
+            $title = trim($textEl->textContent);
+        }
+
+        // 構造化要素が取れなかった場合: テキスト全体からパース
+        if (!$title) {
+            $text = trim($a->textContent);
+            $title = $text;
+            $cats = ['テレビ','ラジオ','雑誌','配信','イベント','WEB連載','放送','誕生日','グッズ','チケット','リリース','その他'];
+            foreach ($cats as $c) {
+                if (str_starts_with($text, $c)) {
+                    $category = $category ?: $c;
+                    $remaining = trim(mb_substr($text, mb_strlen($c)));
+                    if (preg_match('/^(\d{1,2}:\d{2}～?(?:\d{1,2}:\d{2})?\s*)/u', $remaining, $tm)) {
+                        $timeText = $timeText ?: trim($tm[1]);
+                        $title = trim(substr($remaining, strlen($tm[0])));
+                    } else {
+                        $title = $remaining;
+                    }
+                    break;
                 }
-                break;
             }
         }
 

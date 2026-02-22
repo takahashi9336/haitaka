@@ -5,6 +5,7 @@ namespace App\Hinata\Controller;
 use App\Hinata\Model\EventModel;
 use App\Hinata\Model\MeetGreetModel;
 use App\Hinata\Model\MemberModel;
+use App\Hinata\Model\SetlistModel;
 use Core\Auth;
 use Core\Database;
 use Core\Logger;
@@ -41,6 +42,12 @@ class EventController {
                 }
             }
         }
+
+        $attendedEventIds = [];
+        try {
+            $setlistModel = new SetlistModel();
+            $attendedEventIds = $setlistModel->getAttendedEventIds();
+        } catch (\Exception $e) {}
 
         $user = $_SESSION['user'];
         require_once __DIR__ . '/../Views/event_index.php';

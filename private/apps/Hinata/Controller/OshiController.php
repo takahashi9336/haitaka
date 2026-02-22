@@ -114,6 +114,9 @@ class OshiController {
             $memberSchedule = $scheduleModel->getUpcomingByMember($memberId, 10);
         } catch (\Exception $e) {}
 
+        // ユーザ固有のプロフィール画像
+        $userProfileImage = $this->getUserMemberProfileImage($memberId);
+
         $user = $_SESSION['user'];
         require_once __DIR__ . '/../Views/oshi_member.php';
     }
@@ -121,6 +124,7 @@ class OshiController {
     private function getMemberSongs(int $memberId): array {
         $pdo = Database::connect();
         $sql = "SELECT s.id, s.title, s.track_type, s.track_number,
+                       s.apple_music_url, s.spotify_url,
                        r.title as release_title, r.release_date, r.release_type,
                        sm.is_center, sm.row_number, sm.position
                 FROM hn_song_members sm
@@ -216,6 +220,14 @@ class OshiController {
         $stmt = $pdo->prepare($sql);
         $stmt->execute(['uid' => $userId, 'mid' => $memberId]);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
+    private function getUserMemberProfileImage(int $memberId): ?string {
+        $pdo = Database::connect();
+        $userId = $_SESSION['user']['id'] ?? 0;
+        $stmt = $pdo->prepare("SELECT image_path FROM hn_user_member_profiles WHERE user_id = :uid AND member_id = :mid");
+        $stmt->execute(['uid' => $userId, 'mid' => $memberId]);
+        return $stmt->fetchColumn() ?: null;
     }
 
     private function getMemberNeta(int $memberId): array {

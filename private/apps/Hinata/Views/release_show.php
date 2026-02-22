@@ -97,6 +97,14 @@ if (!$mainJacket && !empty($release['editions'])) {
                                     <p class="font-bold text-slate-800"><?= htmlspecialchars($s['title']) ?></p>
                                     <p class="text-[10px] text-slate-500"><?= htmlspecialchars($trackTypesDisplay[$s['track_type'] ?? ''] ?? $s['track_type'] ?? '') ?></p>
                                 </div>
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <?php if (!empty($s['apple_music_url'])): ?>
+                                    <i class="fa-brands fa-apple text-slate-400 text-xs" title="Apple Music"></i>
+                                    <?php endif; ?>
+                                    <?php if (!empty($s['spotify_url'])): ?>
+                                    <i class="fa-brands fa-spotify text-green-400 text-xs" title="Spotify"></i>
+                                    <?php endif; ?>
+                                </div>
                                 <i class="fa-solid fa-chevron-right text-slate-300 text-xs"></i>
                             </a>
                         </li>
@@ -104,6 +112,53 @@ if (!$mainJacket && !empty($release['editions'])) {
                     </ul>
                     <?php endif; ?>
                 </section>
+
+                <?php
+                $isAdmin = in_array(($user['role'] ?? ''), ['admin', 'hinata_admin'], true);
+                if ($isAdmin && !empty($release['songs'])):
+                ?>
+                <section class="bg-white rounded-2xl border <?= $cardBorder ?> shadow-sm overflow-hidden">
+                    <div class="px-5 py-3 border-b <?= $cardBorder ?> flex items-center justify-between">
+                        <h3 class="text-[10px] font-black text-slate-400 tracking-wider"><i class="fa-solid fa-headphones text-violet-400 mr-1"></i>ストリーミングURL 一括編集</h3>
+                        <button onclick="StreamingBulk.toggle()" id="streamingBulkToggle" class="text-[10px] font-bold text-violet-500 hover:text-violet-700 transition">
+                            <i class="fa-solid fa-pen-to-square mr-0.5"></i>開く
+                        </button>
+                    </div>
+                    <div id="streamingBulkBody" class="hidden">
+                        <div class="px-5 py-3 space-y-4">
+                            <?php foreach ($release['songs'] as $i => $s): ?>
+                            <div class="border border-slate-100 rounded-xl p-3 space-y-2" data-song-id="<?= (int)$s['id'] ?>">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-slate-400 text-[10px] font-mono w-5"><?= (int)($s['track_number'] ?? 0) ?></span>
+                                    <p class="text-sm font-bold text-slate-700 flex-1 truncate"><?= htmlspecialchars($s['title']) ?></p>
+                                    <?php if (!empty($s['apple_music_url']) && !empty($s['spotify_url'])): ?>
+                                    <span class="text-[8px] font-bold text-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded-full">登録済</span>
+                                    <?php elseif (!empty($s['apple_music_url']) || !empty($s['spotify_url'])): ?>
+                                    <span class="text-[8px] font-bold text-amber-500 bg-amber-50 px-1.5 py-0.5 rounded-full">一部</span>
+                                    <?php else: ?>
+                                    <span class="text-[8px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full">未登録</span>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="text-[9px] font-bold text-slate-400 flex items-center gap-1 mb-0.5"><i class="fa-brands fa-apple text-pink-400"></i>Apple Music</label>
+                                        <input type="url" class="streaming-input apple w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-[11px] focus:outline-none focus:ring-2 focus:ring-violet-200 transition" placeholder="https://music.apple.com/jp/album/..." value="<?= htmlspecialchars($s['apple_music_url'] ?? '') ?>" data-song-id="<?= (int)$s['id'] ?>" data-type="apple">
+                                    </div>
+                                    <div>
+                                        <label class="text-[9px] font-bold text-slate-400 flex items-center gap-1 mb-0.5"><i class="fa-brands fa-spotify text-emerald-400"></i>Spotify</label>
+                                        <input type="url" class="streaming-input spotify w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-[11px] focus:outline-none focus:ring-2 focus:ring-violet-200 transition" placeholder="https://open.spotify.com/track/..." value="<?= htmlspecialchars($s['spotify_url'] ?? '') ?>" data-song-id="<?= (int)$s['id'] ?>" data-type="spotify">
+                                    </div>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <div class="px-5 py-3 border-t <?= $cardBorder ?> flex items-center justify-between bg-slate-50/50">
+                            <p id="streamingBulkStatus" class="text-[10px] text-slate-400"></p>
+                            <button onclick="StreamingBulk.save()" class="px-4 py-2 bg-violet-500 text-white text-xs font-bold rounded-lg hover:bg-violet-600 transition shadow-sm"><i class="fa-solid fa-floppy-disk mr-1"></i>一括保存</button>
+                        </div>
+                    </div>
+                </section>
+                <?php endif; ?>
 
                 <p class="text-center"><a href="/hinata/songs.php" class="text-sm font-bold <?= $cardIconText ?>"<?= $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>><i class="fa-solid fa-arrow-left mr-1"></i>リリース一覧へ戻る</a></p>
             </div>
@@ -115,6 +170,73 @@ if (!$mainJacket && !empty($release['editions'])) {
         document.getElementById('mobileMenuBtn')?.addEventListener('click', () => {
             document.getElementById('sidebar').classList.add('mobile-open');
         });
+
+        var StreamingBulk = {
+            open: false,
+            toggle: function() {
+                this.open = !this.open;
+                var body = document.getElementById('streamingBulkBody');
+                var btn = document.getElementById('streamingBulkToggle');
+                if (this.open) {
+                    body.classList.remove('hidden');
+                    btn.innerHTML = '<i class="fa-solid fa-chevron-up mr-0.5"></i>閉じる';
+                } else {
+                    body.classList.add('hidden');
+                    btn.innerHTML = '<i class="fa-solid fa-pen-to-square mr-0.5"></i>開く';
+                }
+            },
+            save: function() {
+                var songs = [];
+                var cards = document.querySelectorAll('#streamingBulkBody [data-song-id]');
+                var seen = {};
+                cards.forEach(function(card) {
+                    if (card.tagName === 'INPUT') return;
+                    var songId = parseInt(card.getAttribute('data-song-id'));
+                    if (seen[songId]) return;
+                    seen[songId] = true;
+                    var appleInput = card.querySelector('input[data-type="apple"]');
+                    var spotifyInput = card.querySelector('input[data-type="spotify"]');
+                    songs.push({
+                        song_id: songId,
+                        apple_music_url: appleInput ? appleInput.value.trim() : '',
+                        spotify_url: spotifyInput ? spotifyInput.value.trim() : ''
+                    });
+                });
+
+                if (songs.length === 0) return;
+                var statusEl = document.getElementById('streamingBulkStatus');
+                statusEl.textContent = '保存中...';
+                statusEl.className = 'text-[10px] text-violet-500';
+
+                App.post('/hinata/api/bulk_save_streaming.php', { songs: songs }).then(function(res) {
+                    if (res.status === 'success') {
+                        statusEl.textContent = res.message;
+                        statusEl.className = 'text-[10px] text-emerald-500 font-bold';
+                        cards.forEach(function(card) {
+                            if (card.tagName === 'INPUT') return;
+                            var appleVal = (card.querySelector('input[data-type="apple"]') || {}).value || '';
+                            var spotifyVal = (card.querySelector('input[data-type="spotify"]') || {}).value || '';
+                            var badge = card.querySelector('span[class*="rounded-full"]');
+                            if (badge) {
+                                if (appleVal && spotifyVal) {
+                                    badge.className = 'text-[8px] font-bold text-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded-full';
+                                    badge.textContent = '登録済';
+                                } else if (appleVal || spotifyVal) {
+                                    badge.className = 'text-[8px] font-bold text-amber-500 bg-amber-50 px-1.5 py-0.5 rounded-full';
+                                    badge.textContent = '一部';
+                                } else {
+                                    badge.className = 'text-[8px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full';
+                                    badge.textContent = '未登録';
+                                }
+                            }
+                        });
+                    } else {
+                        statusEl.textContent = res.message || 'エラーが発生しました';
+                        statusEl.className = 'text-[10px] text-red-500 font-bold';
+                    }
+                });
+            }
+        };
     </script>
 </body>
 </html>

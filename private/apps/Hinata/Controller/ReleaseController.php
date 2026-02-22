@@ -202,6 +202,8 @@ class ReleaseController {
                         'composer' => $songData['composer'] ?? null,
                         'duration' => $songData['duration'] ?? null,
                         'memo' => $songData['memo'] ?? null,
+                        'apple_music_url' => $songData['apple_music_url'] ?? null,
+                        'spotify_url' => $songData['spotify_url'] ?? null,
                     ];
 
                     if (!empty($songData['id'])) {

@@ -52,9 +52,30 @@ class FavoriteModel extends BaseModel {
 
         $memberIds = array_column($rows, 'member_id');
         $imagesMap = (new MemberModel())->getMemberImagesMap($memberIds);
+
+        // ユーザ設定のプロフィール画像を優先
+        $userProfileMap = [];
+        if (!empty($memberIds)) {
+            $ph = implode(',', array_fill(0, count($memberIds), '?'));
+            $upStmt = $this->pdo->prepare(
+                "SELECT member_id, image_path FROM hn_user_member_profiles WHERE user_id = ? AND member_id IN ($ph)"
+            );
+            $upStmt->execute(array_merge([$this->userId], $memberIds));
+            foreach ($upStmt->fetchAll(\PDO::FETCH_ASSOC) as $up) {
+                $userProfileMap[(int)$up['member_id']] = $up['image_path'];
+            }
+        }
+
         foreach ($rows as &$r) {
-            $imgs = $imagesMap[$r['member_id']] ?? [];
-            $r['image_url'] = $imgs[0] ?? $r['image_url'] ?? null;
+            $mid = (int)$r['member_id'];
+            if (isset($userProfileMap[$mid])) {
+                $r['image_url'] = '/' . $userProfileMap[$mid];
+                $r['is_custom_image'] = true;
+            } else {
+                $imgs = $imagesMap[$mid] ?? [];
+                $r['image_url'] = $imgs[0] ?? $r['image_url'] ?? null;
+                $r['is_custom_image'] = false;
+            }
         }
         unset($r);
         return $rows;

@@ -9,6 +9,7 @@ use App\Hinata\Model\ReleaseMemberImageModel;
 use App\Hinata\Model\SongMemberModel;
 use App\Hinata\Model\MemberModel;
 use Core\Auth;
+use Core\Database;
 use Core\Logger;
 
 /**
@@ -130,6 +131,21 @@ class SongController {
             if ($b === 'MV' && $a !== 'MV') return 1;
             return strcmp((string)$a, (string)$b);
         });
+
+        // この楽曲が披露されたライブイベント一覧
+        $livePerformances = [];
+        try {
+            $pdo = Database::connect();
+            $lpSql = "SELECT e.id, e.event_name, e.event_date, sl.encore
+                      FROM hn_setlists sl
+                      JOIN hn_events e ON e.id = sl.event_id
+                      WHERE sl.song_id = :sid
+                      ORDER BY e.event_date DESC
+                      LIMIT 20";
+            $lpStmt = $pdo->prepare($lpSql);
+            $lpStmt->execute(['sid' => $songId]);
+            $livePerformances = $lpStmt->fetchAll(\PDO::FETCH_ASSOC);
+        } catch (\Exception $e) {}
 
         $releaseTypes = ReleaseModel::RELEASE_TYPES;
         $trackTypesDisplay = SongModel::TRACK_TYPES_DISPLAY;

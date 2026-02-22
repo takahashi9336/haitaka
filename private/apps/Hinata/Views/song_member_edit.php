@@ -90,7 +90,7 @@ $allMembersJson = json_encode(array_map(function ($m) {
         <header class="h-14 bg-white border-b <?= $headerBorder ?> flex items-center justify-between px-4 shrink-0 sticky top-0 z-10 shadow-sm">
             <div class="flex items-center gap-2">
                 <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
-                <a href="/hinata/song.php?id=<?= $songId ?>" class="text-slate-400 p-2"><i class="fa-solid fa-chevron-left text-lg"></i></a>
+                <button onclick="App.goBack('/hinata/song.php?id=<?= $songId ?>')" class="text-slate-400 p-2"><i class="fa-solid fa-chevron-left text-lg"></i></button>
                 <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md <?= $headerIconBg ?> <?= $headerShadow ?>"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?>><i class="fa-solid fa-users-cog text-sm"></i></div>
                 <h1 class="font-black text-slate-700 text-lg tracking-tight truncate max-w-[200px]">参加メンバー編集</h1>
             </div>
@@ -247,6 +247,7 @@ $allMembersJson = json_encode(array_map(function ($m) {
         </div>
     </main>
 
+    <script src="/assets/js/core.js?v=3"></script>
     <script>
 (function () {
     const songId = <?= (int)$songId ?>;

@@ -23,6 +23,18 @@ $trackTypeLabels = SongModel::TRACK_TYPES_DISPLAY;
 
 $upcomingEvents = array_filter($memberEvents, fn($e) => (int)($e['days_left'] ?? -1) >= 0);
 $pastEvents = array_filter($memberEvents, fn($e) => (int)($e['days_left'] ?? -1) < 0);
+
+$displayImage = $userProfileImage
+    ? '/' . htmlspecialchars($userProfileImage)
+    : ($member['image_url'] ? '/assets/img/members/' . htmlspecialchars($member['image_url']) : null);
+$presetImage = $member['image_url'] ? '/assets/img/members/' . htmlspecialchars($member['image_url']) : null;
+
+$memberAge = null;
+if (!empty($member['birth_date'])) {
+    $bd = new \DateTime($member['birth_date']);
+    $now = new \DateTime();
+    $memberAge = $bd->diff($now)->y;
+}
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -85,8 +97,8 @@ $pastEvents = array_filter($memberEvents, fn($e) => (int)($e['days_left'] ?? -1)
         <div class="flex-1 overflow-y-auto custom-scroll">
             <!-- ヒーロー画像エリア (プロフィール + リンク統合) -->
             <div class="relative h-56 md:h-72 bg-gradient-to-br from-slate-700 to-slate-900 overflow-hidden">
-                <?php if ($member['image_url']): ?>
-                <img src="/assets/img/members/<?= htmlspecialchars($member['image_url']) ?>" class="absolute inset-0 w-full h-full object-cover opacity-50" alt="">
+                <?php if ($displayImage): ?>
+                <img src="<?= $displayImage ?>" class="absolute inset-0 w-full h-full object-cover opacity-50" alt="">
                 <?php endif; ?>
                 <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
                 <?php
@@ -103,12 +115,21 @@ $pastEvents = array_filter($memberEvents, fn($e) => (int)($e['days_left'] ?? -1)
                 <?php endif; ?>
                 <div class="absolute bottom-0 left-0 right-0 p-6 md:p-10">
                     <div class="max-w-5xl mx-auto flex items-end gap-5">
-                        <div class="w-24 h-24 md:w-32 md:h-32 rounded-xl overflow-hidden bg-white/20 shadow-2xl ring-4 ring-white/30 shrink-0">
-                            <?php if ($member['image_url']): ?>
-                            <img src="/assets/img/members/<?= htmlspecialchars($member['image_url']) ?>" class="w-full h-full object-cover" alt="">
-                            <?php else: ?>
-                            <div class="w-full h-full flex items-center justify-center text-white/50"><i class="fa-solid fa-user text-4xl"></i></div>
-                            <?php endif; ?>
+                        <div class="relative group w-24 h-24 md:w-32 md:h-32 shrink-0">
+                            <div class="w-full h-full rounded-xl overflow-hidden bg-white/20 shadow-2xl ring-4 ring-white/30">
+                                <?php if ($displayImage): ?>
+                                <img id="memberProfileImg" src="<?= $displayImage ?>" class="w-full h-full object-cover" alt="">
+                                <?php else: ?>
+                                <div id="memberProfileImg" class="w-full h-full flex items-center justify-center text-white/50"><i class="fa-solid fa-user text-4xl"></i></div>
+                                <?php endif; ?>
+                            </div>
+                            <label class="absolute inset-0 rounded-xl flex items-center justify-center bg-black/0 group-hover:bg-black/40 cursor-pointer transition">
+                                <span class="opacity-0 group-hover:opacity-100 transition text-white text-sm flex flex-col items-center gap-1">
+                                    <i class="fa-solid fa-camera"></i>
+                                    <span class="text-[9px] font-bold">変更</span>
+                                </span>
+                                <input type="file" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="MemberProfile.upload(this.files)">
+                            </label>
                         </div>
                         <div class="text-white pb-1 flex-1 min-w-0">
                             <div class="flex items-center gap-2 mb-0.5">
@@ -127,7 +148,7 @@ $pastEvents = array_filter($memberEvents, fn($e) => (int)($e['days_left'] ?? -1)
                                 <?php endif; ?>
                             </div>
                             <p class="text-[10px] md:text-xs text-white/60 mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
-                                <?php if ($member['birth_date']): ?><span><?= date('Y/m/d', strtotime($member['birth_date'])) ?></span><?php endif; ?>
+                                <?php if ($member['birth_date']): ?><span><?= date('Y/m/d', strtotime($member['birth_date'])) ?><?php if ($memberAge !== null): ?> (<?= $memberAge ?>歳)<?php endif; ?></span><?php endif; ?>
                                 <?php if ($member['blood_type']): ?><span><?= htmlspecialchars($member['blood_type']) ?>型</span><?php endif; ?>
                                 <?php if ($member['height']): ?><span><?= htmlspecialchars($member['height']) ?>cm</span><?php endif; ?>
                                 <?php if (!empty($member['birth_place'])): ?><span><?= htmlspecialchars($member['birth_place']) ?></span><?php endif; ?>
@@ -139,6 +160,20 @@ $pastEvents = array_filter($memberEvents, fn($e) => (int)($e['days_left'] ?? -1)
 
             <div class="p-6 md:p-10">
                 <div class="max-w-5xl mx-auto space-y-8">
+
+                    <!-- 推し活タイムライン -->
+                    <section>
+                        <div class="flex items-center gap-2 mb-3">
+                            <i class="fa-solid fa-stream text-indigo-500"></i>
+                            <h3 class="text-xs font-black text-slate-500 tracking-wider">タイムライン</h3>
+                        </div>
+                        <div id="timelineContainer" class="space-y-0">
+                            <div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin text-slate-300"></i></div>
+                        </div>
+                        <div id="timelineExpand" class="hidden mt-2 text-center">
+                            <button onclick="OshiTimeline.expand()" class="text-[10px] font-bold text-indigo-500 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-full transition inline-flex items-center gap-1"><i class="fa-solid fa-chevron-down text-[8px]"></i><span>もっと見る</span></button>
+                        </div>
+                    </section>
 
                     <!-- 最新ブログ (画像カルーセル) -->
                     <?php if (!empty($memberBlogPosts)): ?>
@@ -293,24 +328,51 @@ $pastEvents = array_filter($memberEvents, fn($e) => (int)($e['days_left'] ?? -1)
                     <section>
                         <h3 class="text-xs font-black text-slate-500 tracking-wider mb-3"><i class="fa-solid fa-music text-violet-500 mr-2"></i>参加楽曲 (<?= count($memberSongs) ?>曲)</h3>
                         <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                            <div id="songMiniPlayer" class="hidden border-b border-slate-200 bg-slate-50/80">
+                                <div class="flex items-center gap-2 px-4 py-2">
+                                    <p id="songMiniTitle" class="text-[11px] font-bold text-slate-700 flex-1 truncate"></p>
+                                    <button onclick="SongPlayer.close()" class="w-6 h-6 rounded-full bg-slate-200 text-slate-500 hover:bg-slate-300 flex items-center justify-center transition text-[10px]"><i class="fa-solid fa-xmark"></i></button>
+                                </div>
+                                <div id="songMiniEmbed" class="px-4 pb-3"></div>
+                            </div>
                             <div class="divide-y divide-slate-100 max-h-96 overflow-y-auto">
-                                <?php foreach ($memberSongs as $s): ?>
-                                <a href="/hinata/song.php?id=<?= $s['id'] ?>" class="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition">
-                                    <div class="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
+                                <?php foreach ($memberSongs as $s):
+                                    $hasApple = !empty($s['apple_music_url']);
+                                    $hasSpotify = !empty($s['spotify_url']);
+                                    $hasStream = $hasApple || $hasSpotify;
+                                ?>
+                                <div class="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition group">
+                                    <a href="/hinata/song.php?id=<?= $s['id'] ?>" class="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
                                         <?php if ($s['is_center']): ?>
                                         <i class="fa-solid fa-crown text-amber-500 text-xs"></i>
                                         <?php else: ?>
                                         <i class="fa-solid fa-music text-violet-400 text-xs"></i>
                                         <?php endif; ?>
-                                    </div>
-                                    <div class="flex-1 min-w-0">
+                                    </a>
+                                    <a href="/hinata/song.php?id=<?= $s['id'] ?>" class="flex-1 min-w-0">
                                         <p class="text-sm font-bold text-slate-700 truncate"><?= htmlspecialchars($s['title']) ?></p>
                                         <p class="text-[10px] text-slate-400"><?= htmlspecialchars($s['release_title']) ?> &middot; <?= $trackTypeLabels[$s['track_type']] ?? $s['track_type'] ?></p>
-                                    </div>
+                                    </a>
                                     <?php if ($s['is_center']): ?>
-                                    <span class="text-[8px] font-black bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded-full">CENTER</span>
+                                    <span class="text-[8px] font-black bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded-full shrink-0">CENTER</span>
                                     <?php endif; ?>
-                                </a>
+                                    <?php if ($hasStream): ?>
+                                    <div class="flex gap-1 shrink-0">
+                                        <?php if ($hasApple): ?>
+                                        <button onclick="SongPlayer.play('apple', '<?= htmlspecialchars(addslashes($s['apple_music_url'])) ?>', '<?= htmlspecialchars(addslashes($s['title'])) ?>')"
+                                                class="w-7 h-7 rounded-full bg-slate-100 hover:bg-pink-50 flex items-center justify-center transition text-slate-400 hover:text-pink-500" title="Apple Musicで再生">
+                                            <i class="fa-brands fa-apple text-xs"></i>
+                                        </button>
+                                        <?php endif; ?>
+                                        <?php if ($hasSpotify): ?>
+                                        <button onclick="SongPlayer.play('spotify', '<?= htmlspecialchars(addslashes($s['spotify_url'])) ?>', '<?= htmlspecialchars(addslashes($s['title'])) ?>')"
+                                                class="w-7 h-7 rounded-full bg-slate-100 hover:bg-emerald-50 flex items-center justify-center transition text-slate-400 hover:text-emerald-500" title="Spotifyで再生">
+                                            <i class="fa-brands fa-spotify text-xs"></i>
+                                        </button>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php endif; ?>
+                                </div>
                                 <?php endforeach; ?>
                             </div>
                         </div>
@@ -492,6 +554,70 @@ $pastEvents = array_filter($memberEvents, fn($e) => (int)($e['days_left'] ?? -1)
 
     document.addEventListener('DOMContentLoaded', function() { OshiRec.init(); });
 
+    var SongPlayer = {
+        currentUrl: null,
+        play: function(type, url, title) {
+            if (!url) return;
+            var player = document.getElementById('songMiniPlayer');
+            var embed = document.getElementById('songMiniEmbed');
+            var titleEl = document.getElementById('songMiniTitle');
+            if (!player || !embed) return;
+
+            if (this.currentUrl === url) {
+                this.close();
+                return;
+            }
+            this.currentUrl = url;
+
+            titleEl.textContent = title;
+            var iframe = '';
+            if (type === 'apple') {
+                var embedUrl = url.replace('music.apple.com', 'embed.music.apple.com');
+                iframe = '<iframe src="' + embedUrl + '" height="175" frameborder="0" allow="autoplay *; encrypted-media *;" sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-top-navigation-by-user-activation" style="width:100%; border-radius:12px; overflow:hidden; background:transparent;"></iframe>';
+            } else if (type === 'spotify') {
+                var embedUrl = url.replace('open.spotify.com/', 'open.spotify.com/embed/');
+                iframe = '<iframe src="' + embedUrl + '" height="152" frameborder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" style="width:100%; border-radius:12px;"></iframe>';
+            }
+            embed.innerHTML = iframe;
+            player.classList.remove('hidden');
+            player.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        },
+        close: function() {
+            var player = document.getElementById('songMiniPlayer');
+            var embed = document.getElementById('songMiniEmbed');
+            if (player) player.classList.add('hidden');
+            if (embed) embed.innerHTML = '';
+            this.currentUrl = null;
+        }
+    };
+
+    var MemberProfile = {
+        memberId: <?= $member['id'] ?>,
+        upload: function(files) {
+            if (!files || files.length === 0) return;
+            var fd = new FormData();
+            fd.append('image', files[0]);
+            fd.append('member_id', this.memberId);
+            fetch('/hinata/api/save_member_profile_image.php', { method: 'POST', body: fd })
+                .then(function(r) { return r.json(); })
+                .then(function(res) {
+                    if (res.status === 'success') {
+                        var img = document.getElementById('memberProfileImg');
+                        if (img && img.tagName === 'IMG') {
+                            img.src = '/' + res.image_path + '?t=' + Date.now();
+                        } else {
+                            location.reload();
+                        }
+                        var bgImg = img ? img.closest('.overflow-hidden') : null;
+                        var heroBg = document.querySelector('.relative.h-56 img');
+                        if (heroBg) heroBg.src = '/' + res.image_path + '?t=' + Date.now();
+                    } else {
+                        alert('エラー: ' + (res.message || ''));
+                    }
+                });
+        }
+    };
+
     var OshiPhoto = {
         memberId: <?= $member['id'] ?>,
 
@@ -598,6 +724,173 @@ $pastEvents = array_filter($memberEvents, fn($e) => (int)($e['days_left'] ?? -1)
     document.getElementById('netaInput').addEventListener('keydown', function(e) {
         if (e.key === 'Enter') { e.preventDefault(); MemberNeta.add(); }
     });
+
+    var OshiTimeline = {
+        memberId: <?= $member['id'] ?>,
+        allItems: [],
+        visibleCount: 5,
+        expanded: false,
+        loading: false,
+
+        typeConfig: {
+            blog:     { icon: 'fa-solid fa-pen-fancy',   color: 'text-sky-600',     bg: 'bg-sky-500',     pill: 'bg-sky-100 text-sky-700',      label: 'ブログ' },
+            news:     { icon: 'fa-solid fa-newspaper',    color: 'text-blue-600',    bg: 'bg-blue-500',    pill: 'bg-blue-100 text-blue-700',    label: 'ニュース' },
+            schedule: { icon: 'fa-solid fa-calendar-day', color: 'text-emerald-600', bg: 'bg-emerald-500', pill: 'bg-emerald-100 text-emerald-700', label: 'スケジュール' },
+            event:    { icon: 'fa-solid fa-flag',         color: 'text-amber-600',   bg: 'bg-amber-500',   pill: 'bg-amber-100 text-amber-700',  label: 'イベント' },
+            video:    { icon: 'fa-solid fa-play',         color: 'text-red-600',     bg: 'bg-red-500',     pill: 'bg-red-100 text-red-700',      label: '動画' }
+        },
+
+        esc: function(s) {
+            if (!s) return '';
+            var d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        },
+
+        formatDate: function(dateStr) {
+            if (!dateStr) return '';
+            var d = new Date(dateStr);
+            if (isNaN(d)) return dateStr.substring(0, 10);
+            return (d.getMonth() + 1) + '/' + d.getDate();
+        },
+
+        parseVideoExtra: function(item) {
+            if (item.type !== 'video' || !item.extra) return null;
+            try {
+                return typeof item.extra === 'string' ? JSON.parse(item.extra) : item.extra;
+            } catch(e) { return null; }
+        },
+
+        renderItem: function(item, index) {
+            var cfg = this.typeConfig[item.type] || this.typeConfig.news;
+            var videoData = this.parseVideoExtra(item);
+
+            var isClickable = (item.type === 'video' && videoData) || item.url;
+            var wrapTag = isClickable ? 'a' : 'div';
+            var clickAttr = '';
+            if (item.type === 'video' && videoData) {
+                clickAttr = ' href="javascript:void(0)" onclick="OshiTimeline.playVideo(' + index + ', event)" ';
+            } else if (item.url) {
+                clickAttr = ' href="' + this.esc(item.url) + '" target="_blank" ';
+            }
+
+            var html = '<' + wrapTag + clickAttr + 'class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition ' + (isClickable ? 'hover:bg-slate-50 cursor-pointer' : '') + '">';
+
+            // 左: 日付
+            html += '<div class="w-10 text-center shrink-0">';
+            html += '<p class="text-xs font-black text-slate-600 leading-tight">' + this.formatDate(item.event_date) + '</p>';
+            html += '</div>';
+
+            // 種別ピル
+            html += '<span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black ' + cfg.pill + '">';
+            html += '<i class="' + cfg.icon + ' text-[8px]"></i>' + cfg.label;
+            html += '</span>';
+
+            // 中央: タイトル
+            html += '<div class="flex-1 min-w-0">';
+            html += '<p class="text-xs font-bold text-slate-700 truncate">' + this.esc(item.title || '(無題)') + '</p>';
+            // サブ情報
+            if (item.type === 'video' && videoData) {
+                var pIcon = videoData.platform === 'youtube' ? 'fa-brands fa-youtube text-red-400' : videoData.platform === 'tiktok' ? 'fa-brands fa-tiktok text-slate-400' : 'fa-brands fa-instagram text-pink-400';
+                if (videoData.category) {
+                    html += '<p class="text-[10px] text-slate-400 mt-0.5"><i class="' + pIcon + ' mr-1"></i>' + this.esc(videoData.category) + '</p>';
+                }
+            } else if (item.extra && item.type !== 'video') {
+                html += '<p class="text-[10px] text-slate-400 mt-0.5">' + this.esc(item.extra) + '</p>';
+            }
+            html += '</div>';
+
+            // 右: サムネイル（動画とブログのみ）
+            var thumb = item.thumbnail_url;
+            if (!thumb && videoData && videoData.platform === 'youtube') {
+                thumb = 'https://img.youtube.com/vi/' + videoData.media_key + '/default.jpg';
+            }
+            if (thumb) {
+                html += '<div class="w-10 h-10 rounded-lg overflow-hidden bg-slate-100 shrink-0 relative">';
+                html += '<img src="' + this.esc(thumb) + '" class="w-full h-full object-cover" loading="lazy">';
+                if (item.type === 'video') html += '<div class="absolute inset-0 flex items-center justify-center"><i class="fa-solid fa-play text-white text-[8px] drop-shadow"></i></div>';
+                html += '</div>';
+            }
+
+            html += '</' + wrapTag + '>';
+            return html;
+        },
+
+        playVideo: function(index, ev) {
+            var item = this.allItems[index];
+            if (!item) return;
+            var videoData = this.parseVideoExtra(item);
+            if (!videoData) return;
+            openVideoModalWithData({
+                media_key: videoData.media_key,
+                platform: videoData.platform,
+                sub_key: videoData.sub_key || '',
+                title: item.title || '',
+                category: videoData.category || '',
+                upload_date: videoData.upload_date || item.event_date || '',
+                thumbnail_url: item.thumbnail_url || '',
+                description: videoData.description || ''
+            }, ev);
+        },
+
+        render: function() {
+            var container = document.getElementById('timelineContainer');
+            var expandBtn = document.getElementById('timelineExpand');
+            if (!this.allItems.length) {
+                container.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">タイムラインデータがありません</p>';
+                expandBtn.classList.add('hidden');
+                return;
+            }
+            var count = this.expanded ? this.allItems.length : Math.min(this.visibleCount, this.allItems.length);
+            var html = '<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden divide-y divide-slate-100">';
+            for (var i = 0; i < count; i++) {
+                html += this.renderItem(this.allItems[i], i);
+            }
+            html += '</div>';
+            container.innerHTML = html;
+
+            if (this.allItems.length > this.visibleCount) {
+                expandBtn.classList.remove('hidden');
+                var btnSpan = expandBtn.querySelector('span');
+                var btnIcon = expandBtn.querySelector('i');
+                if (this.expanded) {
+                    btnSpan.textContent = '折りたたむ';
+                    btnIcon.className = 'fa-solid fa-chevron-up text-[8px]';
+                } else {
+                    btnSpan.textContent = 'もっと見る（残り' + (this.allItems.length - this.visibleCount) + '件）';
+                    btnIcon.className = 'fa-solid fa-chevron-down text-[8px]';
+                }
+            } else {
+                expandBtn.classList.add('hidden');
+            }
+        },
+
+        expand: function() {
+            this.expanded = !this.expanded;
+            this.render();
+        },
+
+        load: function() {
+            if (this.loading) return;
+            this.loading = true;
+            var self = this;
+            fetch('/hinata/api/get_oshi_timeline.php?member_id=' + this.memberId + '&offset=0&limit=30')
+                .then(function(r) { return r.json(); })
+                .then(function(res) {
+                    self.loading = false;
+                    if (res.status === 'success' && res.data) {
+                        self.allItems = res.data;
+                    }
+                    self.render();
+                })
+                .catch(function() {
+                    self.loading = false;
+                    document.getElementById('timelineContainer').innerHTML = '<p class="text-xs text-slate-400 text-center py-4">読み込みに失敗しました</p>';
+                });
+        }
+    };
+
+    document.addEventListener('DOMContentLoaded', function() { OshiTimeline.load(); });
 
     document.getElementById('mobileMenuBtn').onclick = function() {
         document.getElementById('sidebar').classList.add('mobile-open');

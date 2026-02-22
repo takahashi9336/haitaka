@@ -9,6 +9,7 @@ use App\Hinata\Model\MeetGreetModel;
 use App\Hinata\Model\ReleaseModel;
 use App\Hinata\Model\ReleaseEditionModel;
 use App\Hinata\Model\BlogModel;
+use App\Hinata\Model\MemberModel;
 use Core\Auth;
 use Core\Database;
 
@@ -61,11 +62,75 @@ class HinataController {
             // テーブル未作成時は空配列のまま
         }
 
+        // 次の誕生日メンバー
+        $upcomingBirthdays = $this->getUpcomingBirthdays();
+
+        // 今日は何の日（日向坂ヒストリー）
+        $todayInHistory = $this->getTodayInHistory();
+
         // 推し情報をセッションにキャッシュ
         $favModel->cacheOshiToSession();
 
         $user = $_SESSION['user'];
         require_once __DIR__ . '/../Views/portal.php';
+    }
+
+    /**
+     * 次の誕生日メンバー（今日含む直近3名）
+     */
+    private function getUpcomingBirthdays(): array {
+        $pdo = Database::connect();
+        $sql = "SELECT m.id, m.name, m.birth_date, m.generation, m.image_url,
+                       c1.color_code as color1, c2.color_code as color2,
+                       (SELECT mi.image_url FROM hn_member_images mi WHERE mi.member_id = m.id ORDER BY mi.sort_order ASC LIMIT 1) as first_image,
+                       CASE
+                           WHEN DATE_FORMAT(m.birth_date, '%m-%d') >= DATE_FORMAT(CURDATE(), '%m-%d')
+                           THEN DATEDIFF(
+                               CONCAT(YEAR(CURDATE()), '-', DATE_FORMAT(m.birth_date, '%m-%d')),
+                               CURDATE()
+                           )
+                           ELSE DATEDIFF(
+                               CONCAT(YEAR(CURDATE()) + 1, '-', DATE_FORMAT(m.birth_date, '%m-%d')),
+                               CURDATE()
+                           )
+                       END AS days_until
+                FROM hn_members m
+                LEFT JOIN hn_colors c1 ON m.color_id1 = c1.id
+                LEFT JOIN hn_colors c2 ON m.color_id2 = c2.id
+                WHERE m.is_active = 1 AND m.birth_date IS NOT NULL
+                ORDER BY days_until ASC
+                LIMIT 3";
+        return $pdo->query($sql)->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * 今日は何の日（過去のリリース・イベント）
+     */
+    private function getTodayInHistory(): array {
+        $pdo = Database::connect();
+        $items = [];
+
+        $releaseSql = "SELECT 'release' as type, r.id, r.title, r.release_type, r.release_date,
+                              YEAR(CURDATE()) - YEAR(r.release_date) as years_ago
+                       FROM hn_releases r
+                       WHERE DATE_FORMAT(r.release_date, '%m-%d') = DATE_FORMAT(CURDATE(), '%m-%d')
+                         AND YEAR(r.release_date) < YEAR(CURDATE())
+                       ORDER BY r.release_date DESC";
+        $items = array_merge($items, $pdo->query($releaseSql)->fetchAll(\PDO::FETCH_ASSOC));
+
+        $eventSql = "SELECT 'event' as type, e.id, e.event_name as title, e.category, e.event_date,
+                            YEAR(CURDATE()) - YEAR(e.event_date) as years_ago
+                     FROM hn_events e
+                     WHERE DATE_FORMAT(e.event_date, '%m-%d') = DATE_FORMAT(CURDATE(), '%m-%d')
+                       AND YEAR(e.event_date) < YEAR(CURDATE())
+                     ORDER BY e.event_date DESC";
+        $items = array_merge($items, $pdo->query($eventSql)->fetchAll(\PDO::FETCH_ASSOC));
+
+        usort($items, function ($a, $b) {
+            return ((int)$a['years_ago']) - ((int)$b['years_ago']);
+        });
+
+        return $items;
     }
 
     private function getLatestRelease(): ?array {
@@ -97,6 +162,15 @@ class HinataController {
         $mvStmt = $pdo->prepare($mvSql);
         $mvStmt->execute(['rid' => (int)$release['id']]);
         $release['mvs'] = $mvStmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        $songsSql = "SELECT s.id, s.title, s.track_type, s.track_number,
+                            s.apple_music_url, s.spotify_url
+                     FROM hn_songs s
+                     WHERE s.release_id = :rid
+                     ORDER BY s.track_number ASC, s.id ASC";
+        $songsStmt = $pdo->prepare($songsSql);
+        $songsStmt->execute(['rid' => (int)$release['id']]);
+        $release['songs'] = $songsStmt->fetchAll(\PDO::FETCH_ASSOC);
 
         return $release;
     }

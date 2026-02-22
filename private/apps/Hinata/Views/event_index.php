@@ -117,6 +117,18 @@ $getCatInfo = function($catId) {
                         </div>
 
                         <div id="detail-<?= $e['id'] ?>" class="hidden border-t border-slate-50 bg-slate-50/30 p-4 space-y-4">
+                            <?php if ((int)$e['category'] === 1): ?>
+                            <div class="flex items-center gap-2">
+                                <button onclick="toggleAttendance(<?= $e['id'] ?>, this)" class="attendance-btn text-[10px] font-bold px-3 py-1.5 rounded-full border transition flex items-center gap-1 <?= in_array($e['id'], $attendedEventIds ?? []) ? 'bg-sky-500 text-white border-sky-500' : 'bg-white text-slate-500 border-slate-200 hover:border-sky-300' ?>" data-attended="<?= in_array($e['id'], $attendedEventIds ?? []) ? '1' : '0' ?>">
+                                    <i class="fa-solid fa-flag text-[8px]"></i>
+                                    <span><?= in_array($e['id'], $attendedEventIds ?? []) ? '参戦済み' : '参戦した' ?></span>
+                                </button>
+                                <button onclick="loadSetlist(<?= $e['id'] ?>)" class="text-[10px] font-bold text-slate-400 hover:text-slate-600 px-3 py-1.5 rounded-full border border-slate-200 hover:border-slate-300 transition flex items-center gap-1">
+                                    <i class="fa-solid fa-list-ol text-[8px]"></i>セットリスト
+                                </button>
+                            </div>
+                            <div id="setlist-<?= $e['id'] ?>" class="hidden"></div>
+                            <?php endif; ?>
                             <?php if (!empty($eventSlots[$e['id']])): ?>
                                 <div class="bg-white rounded-xl border border-emerald-100 shadow-sm overflow-hidden">
                                     <div class="px-4 py-2 bg-emerald-50 flex items-center gap-2">
@@ -387,6 +399,144 @@ $getCatInfo = function($catId) {
             document.getElementById('tab-calendar').classList.toggle('active', mode === 'calendar');
             if (mode === 'calendar' && calendar) setTimeout(() => calendar.updateSize(), 10);
         }
+
+        function toggleAttendance(eventId, btn) {
+            App.post('/hinata/api/toggle_attendance.php', { event_id: eventId }, function(res) {
+                if (res.status === 'success') {
+                    var attended = res.attended;
+                    btn.dataset.attended = attended ? '1' : '0';
+                    btn.className = 'attendance-btn text-[10px] font-bold px-3 py-1.5 rounded-full border transition flex items-center gap-1 ' +
+                        (attended ? 'bg-sky-500 text-white border-sky-500' : 'bg-white text-slate-500 border-slate-200 hover:border-sky-300');
+                    btn.querySelector('span').textContent = attended ? '参戦済み' : '参戦した';
+                    App.toast(res.message, 'success');
+                }
+            });
+        }
+
+        function loadSetlist(eventId) {
+            var container = document.getElementById('setlist-' + eventId);
+            if (!container) return;
+            if (!container.classList.contains('hidden')) {
+                container.classList.add('hidden');
+                return;
+            }
+            container.innerHTML = '<p class="text-xs text-slate-400 py-2"><i class="fa-solid fa-spinner fa-spin mr-1"></i>読み込み中...</p>';
+            container.classList.remove('hidden');
+            fetch('/hinata/api/get_event_setlist.php?event_id=' + eventId)
+                .then(r => r.json())
+                .then(res => {
+                    if (res.status !== 'success' || !res.data.setlist.length) {
+                        <?php if (in_array(($user['role'] ?? ''), ['admin', 'hinata_admin'], true)): ?>
+                        container.innerHTML = '<div class="bg-white rounded-xl border border-slate-100 shadow-sm p-4">' +
+                            '<p class="text-xs text-slate-400 mb-3">セットリスト未登録</p>' +
+                            '<button onclick="openSetlistEditor(' + eventId + ')" class="text-[10px] font-bold text-sky-600 bg-sky-50 px-3 py-1.5 rounded-full hover:bg-sky-100 transition"><i class="fa-solid fa-plus mr-1"></i>セットリストを登録</button>' +
+                            '</div>';
+                        <?php else: ?>
+                        container.innerHTML = '<p class="text-xs text-slate-400 py-2">セットリストは未登録です</p>';
+                        <?php endif; ?>
+                        return;
+                    }
+                    var html = '<div class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">';
+                    html += '<div class="px-4 py-2 bg-indigo-50 flex items-center gap-2"><i class="fa-solid fa-list-ol text-indigo-500 text-xs"></i><span class="text-[10px] font-bold text-indigo-700 tracking-wider">セットリスト</span><span class="text-[10px] text-indigo-400 ml-auto">' + res.data.setlist.length + '曲</span></div>';
+                    html += '<ol class="divide-y divide-slate-50">';
+                    var lastEncore = false;
+                    res.data.setlist.forEach(function(item, i) {
+                        if (item.encore && !lastEncore) {
+                            html += '<li class="px-4 py-1.5 bg-slate-50 text-center"><span class="text-[9px] font-black text-slate-400 tracking-wider">ENCORE</span></li>';
+                        }
+                        lastEncore = !!item.encore;
+                        html += '<li class="px-4 py-2 flex items-center gap-3 text-xs">';
+                        html += '<span class="text-slate-400 w-5 text-right font-mono">' + (i + 1) + '</span>';
+                        html += '<a href="/hinata/song.php?id=' + item.song_id + '" class="flex-1 font-bold text-slate-800 hover:text-sky-600 transition truncate">' + _esc(item.song_title) + '</a>';
+                        html += '<span class="text-[10px] text-slate-400 shrink-0">' + _esc(item.release_title) + '</span>';
+                        html += '</li>';
+                    });
+                    html += '</ol>';
+                    <?php if (in_array(($user['role'] ?? ''), ['admin', 'hinata_admin'], true)): ?>
+                    html += '<div class="px-4 py-2 border-t border-slate-50"><button onclick="openSetlistEditor(' + eventId + ')" class="text-[10px] font-bold text-sky-600 hover:text-sky-700 transition"><i class="fa-solid fa-pen mr-0.5"></i>編集</button></div>';
+                    <?php endif; ?>
+                    html += '</div>';
+                    container.innerHTML = html;
+                });
+        }
+
+        <?php if (in_array(($user['role'] ?? ''), ['admin', 'hinata_admin'], true)): ?>
+        var allSongs = <?= json_encode(
+            (function() {
+                $songModel = new \App\Hinata\Model\SongModel();
+                $songs = $songModel->getAllSongsWithRelease();
+                return array_map(fn($s) => ['id' => $s['id'], 'title' => $s['title'], 'release_title' => $s['release_title'] ?? ''], $songs);
+            })(),
+            JSON_UNESCAPED_UNICODE
+        ) ?>;
+
+        function openSetlistEditor(eventId) {
+            var container = document.getElementById('setlist-' + eventId);
+            if (!container) return;
+
+            fetch('/hinata/api/get_event_setlist.php?event_id=' + eventId)
+                .then(r => r.json())
+                .then(res => {
+                    var existing = (res.status === 'success' && res.data.setlist) ? res.data.setlist : [];
+                    var html = '<div class="bg-white rounded-xl border border-sky-100 shadow-sm p-4 space-y-3">';
+                    html += '<h4 class="text-[10px] font-black text-slate-500 tracking-wider">セットリスト編集</h4>';
+                    html += '<div id="setlist-editor-items-' + eventId + '" class="space-y-1">';
+                    existing.forEach(function(item, i) {
+                        html += setlistItemRow(eventId, i, item.song_id, item.encore);
+                    });
+                    html += '</div>';
+                    html += '<div class="flex items-center gap-2">';
+                    html += '<button onclick="addSetlistItem(' + eventId + ')" class="text-[10px] font-bold text-sky-600 bg-sky-50 px-3 py-1.5 rounded-full hover:bg-sky-100 transition"><i class="fa-solid fa-plus mr-1"></i>曲を追加</button>';
+                    html += '<button onclick="saveSetlist(' + eventId + ')" class="text-[10px] font-bold text-white bg-sky-500 px-4 py-1.5 rounded-full hover:bg-sky-600 transition"><i class="fa-solid fa-check mr-1"></i>保存</button>';
+                    html += '</div></div>';
+                    container.innerHTML = html;
+                    container.classList.remove('hidden');
+                });
+        }
+
+        function setlistItemRow(eventId, index, selectedSongId, isEncore) {
+            var opts = '<option value="">-- 楽曲を選択 --</option>';
+            allSongs.forEach(function(s) {
+                opts += '<option value="' + s.id + '"' + (s.id == selectedSongId ? ' selected' : '') + '>' + _esc(s.title) + ' (' + _esc(s.release_title) + ')</option>';
+            });
+            return '<div class="flex items-center gap-2" data-index="' + index + '">' +
+                '<span class="text-[10px] text-slate-400 w-5 text-right">' + (index + 1) + '</span>' +
+                '<select class="setlist-song-select flex-1 border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-sky-200">' + opts + '</select>' +
+                '<label class="flex items-center gap-1 text-[10px] text-slate-500 shrink-0"><input type="checkbox" class="setlist-encore-check"' + (isEncore ? ' checked' : '') + '> EN</label>' +
+                '<button onclick="this.parentElement.remove()" class="text-slate-300 hover:text-red-400 text-xs"><i class="fa-solid fa-xmark"></i></button>' +
+                '</div>';
+        }
+
+        function addSetlistItem(eventId) {
+            var list = document.getElementById('setlist-editor-items-' + eventId);
+            var count = list.children.length;
+            list.insertAdjacentHTML('beforeend', setlistItemRow(eventId, count, '', false));
+        }
+
+        function saveSetlist(eventId) {
+            var list = document.getElementById('setlist-editor-items-' + eventId);
+            var items = [];
+            list.querySelectorAll('[data-index]').forEach(function(row, i) {
+                var select = row.querySelector('.setlist-song-select');
+                var encore = row.querySelector('.setlist-encore-check');
+                if (select && select.value) {
+                    items.push({
+                        song_id: parseInt(select.value),
+                        sort_order: i + 1,
+                        encore: encore && encore.checked ? 1 : 0
+                    });
+                }
+            });
+            App.post('/hinata/api/save_setlist.php', { event_id: eventId, items: items }, function(res) {
+                if (res.status === 'success') {
+                    App.toast('セットリストを保存しました', 'success');
+                    loadSetlist(eventId);
+                } else {
+                    App.toast(res.message || 'エラー', 'error');
+                }
+            });
+        }
+        <?php endif; ?>
     </script>
 </body>
 </html>

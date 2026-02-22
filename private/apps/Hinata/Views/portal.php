@@ -6,12 +6,18 @@ $appKey = 'hinata';
 require_once __DIR__ . '/../../../components/theme_from_session.php';
 
 use App\Hinata\Model\FavoriteModel;
+use App\Hinata\Model\ReleaseModel;
 
 $oshiByLevel = [];
 foreach ($oshiSummary as $o) {
     $oshiByLevel[(int)$o['level']] = $o;
 }
 $hasOshi = !empty($oshiSummary);
+
+function oshiImgSrc(?string $imageUrl): string {
+    if (!$imageUrl) return '';
+    return str_starts_with($imageUrl, '/') ? htmlspecialchars($imageUrl) : '/assets/img/members/' . htmlspecialchars($imageUrl);
+}
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -62,6 +68,9 @@ $hasOshi = !empty($oshiSummary);
         .yt-arrow.left { left: -4px; }
         .yt-arrow.right { right: -4px; }
         .yt-arrow.hidden { display: none; }
+        .blog-card { flex: 0 0 130px; transition: transform 0.2s ease; }
+        @media (min-width: 768px) { .blog-card { flex: 0 0 150px; } }
+        .blog-card:hover { transform: translateY(-3px); }
         @keyframes skeletonPulse { 0%,100% { opacity: 0.4; } 50% { opacity: 0.7; } }
         .skeleton-card { animation: skeletonPulse 1.5s ease-in-out infinite; }
     </style>
@@ -113,6 +122,72 @@ $hasOshi = !empty($oshiSummary);
                             <i class="fa-solid fa-chevron-right text-xs"></i>
                         </a>
                     </div>
+                </div>
+                <?php endif; ?>
+
+                <?php if (!empty($upcomingBirthdays)): ?>
+                <div class="mb-8">
+                    <?php
+                    $bdToday = array_filter($upcomingBirthdays, fn($b) => (int)$b['days_until'] === 0);
+                    $bdUpcoming = array_filter($upcomingBirthdays, fn($b) => (int)$b['days_until'] > 0);
+                    ?>
+                    <?php if (!empty($bdToday)): ?>
+                    <div class="bg-gradient-to-r from-pink-50 to-rose-50 rounded-xl border border-pink-200 shadow-sm px-5 py-4 mb-3 relative overflow-hidden">
+                        <div class="absolute top-0 right-0 opacity-10 text-6xl p-3 text-pink-300"><i class="fa-solid fa-cake-candles"></i></div>
+                        <div class="flex items-center gap-3 mb-2">
+                            <div class="w-8 h-8 rounded-lg bg-pink-500 text-white flex items-center justify-center shadow-sm"><i class="fa-solid fa-birthday-cake text-sm"></i></div>
+                            <h3 class="text-sm font-black text-pink-700 tracking-tight">Happy Birthday!</h3>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <?php foreach ($bdToday as $bd): ?>
+                            <?php
+                            $bdImg = $bd['first_image'] ?: ($bd['image_url'] ?? null);
+                            $bdAge = $bd['birth_date'] ? (date('Y') - (int)date('Y', strtotime($bd['birth_date']))) : null;
+                            ?>
+                            <a href="/hinata/member.php?id=<?= (int)$bd['id'] ?>" class="flex items-center gap-3 hover:opacity-80 transition">
+                                <div class="w-14 h-14 rounded-full overflow-hidden bg-pink-100 shrink-0 ring-2 ring-pink-300 shadow-md">
+                                    <?php if ($bdImg): ?>
+                                    <img src="/assets/img/members/<?= htmlspecialchars($bdImg) ?>" class="w-full h-full object-cover" alt="">
+                                    <?php else: ?>
+                                    <div class="w-full h-full flex items-center justify-center text-pink-300"><i class="fa-solid fa-user text-xl"></i></div>
+                                    <?php endif; ?>
+                                </div>
+                                <div>
+                                    <p class="text-base font-black text-pink-800"><?= htmlspecialchars($bd['name']) ?></p>
+                                    <p class="text-xs text-pink-600"><?= $bd['generation'] ?>期生<?= $bdAge ? " &middot; {$bdAge}歳" : '' ?></p>
+                                </div>
+                            </a>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                    <?php if (!empty($bdUpcoming)): ?>
+                    <div class="flex gap-3">
+                        <?php foreach ($bdUpcoming as $bd): ?>
+                        <?php
+                        $bdImg = $bd['first_image'] ?: ($bd['image_url'] ?? null);
+                        $bdDate = $bd['birth_date'] ? date('n/j', strtotime(date('Y') . '-' . date('m-d', strtotime($bd['birth_date'])))) : '';
+                        if ($bd['birth_date'] && date('m-d', strtotime($bd['birth_date'])) < date('m-d')) {
+                            $bdDate = date('n/j', strtotime((date('Y') + 1) . '-' . date('m-d', strtotime($bd['birth_date']))));
+                        }
+                        ?>
+                        <a href="/hinata/member.php?id=<?= (int)$bd['id'] ?>" class="flex items-center gap-3 bg-white rounded-xl border <?= $cardBorder ?> shadow-sm px-4 py-3 flex-1 hover:shadow-md hover:border-pink-200 transition">
+                            <div class="w-10 h-10 rounded-full overflow-hidden bg-slate-100 shrink-0" style="<?= !empty($bd['color1']) ? 'box-shadow: 0 0 0 2px ' . htmlspecialchars($bd['color1']) : '' ?>">
+                                <?php if ($bdImg): ?>
+                                <img src="/assets/img/members/<?= htmlspecialchars($bdImg) ?>" class="w-full h-full object-cover" alt="">
+                                <?php else: ?>
+                                <div class="w-full h-full flex items-center justify-center text-slate-300"><i class="fa-solid fa-user text-sm"></i></div>
+                                <?php endif; ?>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-xs font-bold text-slate-800 truncate"><?= htmlspecialchars($bd['name']) ?></p>
+                                <p class="text-[10px] text-slate-400"><?= $bdDate ?> &middot; あと<?= (int)$bd['days_until'] ?>日</p>
+                            </div>
+                            <i class="fa-solid fa-cake-candles text-pink-300 text-xs ml-auto shrink-0"></i>
+                        </a>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php endif; ?>
                 </div>
                 <?php endif; ?>
 
@@ -177,7 +252,7 @@ $hasOshi = !empty($oshiSummary);
                                 <div class="flex gap-5 h-full">
                                     <div class="w-36 md:w-44 rounded-xl overflow-hidden bg-slate-100 shrink-0 shadow-md self-stretch">
                                         <?php if ($mainOshi['image_url']): ?>
-                                        <img id="oshiMainImg" src="/assets/img/members/<?= htmlspecialchars($mainOshi['image_url']) ?>" class="w-full h-full object-cover" alt="">
+                                        <img id="oshiMainImg" src="<?= oshiImgSrc($mainOshi['image_url']) ?>" class="w-full h-full object-cover" alt="">
                                         <?php else: ?>
                                         <div id="oshiMainImg" class="w-full h-full flex items-center justify-center text-slate-300"><i class="fa-solid fa-user text-4xl"></i></div>
                                         <?php endif; ?>
@@ -221,7 +296,7 @@ $hasOshi = !empty($oshiSummary);
                                      onclick="OshiPortal.switchMain(<?= $ss['level'] ?>)">
                                     <div class="w-11 h-11 md:w-12 md:h-12 rounded-full overflow-hidden bg-slate-100 shrink-0 <?= $isMain ? 'ring-2 ring-amber-400' : '' ?>">
                                         <?php if ($so['image_url']): ?>
-                                        <img src="/assets/img/members/<?= htmlspecialchars($so['image_url']) ?>" class="w-full h-full object-cover" alt="">
+                                        <img src="<?= oshiImgSrc($so['image_url']) ?>" class="w-full h-full object-cover" alt="">
                                         <?php else: ?>
                                         <div class="w-full h-full flex items-center justify-center text-slate-300"><i class="fa-solid fa-user text-sm"></i></div>
                                         <?php endif; ?>
@@ -247,88 +322,170 @@ $hasOshi = !empty($oshiSummary);
                     <?php endif; ?>
                 </section>
 
+                <?php if (!empty($todayInHistory)): ?>
+                <section class="mb-10">
+                    <div class="flex items-center gap-2 mb-3">
+                        <i class="fa-solid fa-clock-rotate-left text-indigo-500"></i>
+                        <h2 class="text-sm font-bold text-slate-700">今日は何の日</h2>
+                        <span class="text-[10px] text-slate-400 ml-1"><?= date('n月j日') ?></span>
+                    </div>
+                    <div class="space-y-2">
+                        <?php foreach ($todayInHistory as $hist): ?>
+                        <div class="flex items-center gap-3 bg-white rounded-xl border <?= $cardBorder ?> shadow-sm px-4 py-3">
+                            <?php if ($hist['type'] === 'release'): ?>
+                            <div class="w-8 h-8 rounded-lg bg-violet-100 text-violet-500 flex items-center justify-center shrink-0"><i class="fa-solid fa-compact-disc text-sm"></i></div>
+                            <?php else: ?>
+                            <div class="w-8 h-8 rounded-lg bg-sky-100 text-sky-500 flex items-center justify-center shrink-0"><i class="fa-solid fa-calendar-star text-sm"></i></div>
+                            <?php endif; ?>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-bold text-slate-800 truncate"><?= htmlspecialchars($hist['title']) ?></p>
+                                <p class="text-[10px] text-slate-400">
+                                    <?= (int)$hist['years_ago'] ?>年前
+                                    <?php if ($hist['type'] === 'release'): ?>
+                                    &middot; <?= htmlspecialchars(ReleaseModel::RELEASE_TYPES[$hist['release_type']] ?? '') ?>
+                                    <?php endif; ?>
+                                </p>
+                            </div>
+                            <?php if ($hist['type'] === 'release'): ?>
+                            <a href="/hinata/release.php?id=<?= (int)$hist['id'] ?>" class="text-[10px] font-bold <?= $cardIconText ?> hover:opacity-80 transition shrink-0"<?= $isThemeHex ? ' style="color:' . htmlspecialchars($themePrimary) . '"' : '' ?>>詳細</a>
+                            <?php endif; ?>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                </section>
+                <?php endif; ?>
+
                 <!-- 最新リリース情報 -->
-                <?php if ($latestRelease): ?>
+                <?php if ($latestRelease):
+                    $releaseIsNew = !empty($latestRelease['release_date'])
+                        && (strtotime($latestRelease['release_date']) >= strtotime('-90 days'));
+                ?>
                 <section class="mb-10">
                     <div class="flex items-center gap-2 mb-3">
                         <i class="fa-solid fa-compact-disc text-violet-500"></i>
                         <h2 class="text-sm font-bold text-slate-700">最新リリース</h2>
+                        <?php if ($releaseIsNew): ?>
+                        <span class="text-[10px] font-black text-white bg-red-500 px-2.5 py-0.5 rounded-full shadow-sm shadow-red-200 animate-pulse">NEW</span>
+                        <?php endif; ?>
                     </div>
-                    <a href="/hinata/release.php?id=<?= $latestRelease['id'] ?>" class="block bg-white rounded-xl border <?= $cardBorder ?> shadow-sm p-5 hover:shadow-md transition group">
-                        <div class="flex items-start gap-5">
-                            <div class="flex-1 min-w-0">
-                                <span class="text-[10px] font-bold text-violet-500 bg-violet-50 px-2 py-0.5 rounded-full"><?= htmlspecialchars($latestRelease['release_type_label']) ?></span>
-                                <h3 class="text-lg font-black text-slate-800 mt-1 mb-1 truncate"><?= htmlspecialchars($latestRelease['title']) ?></h3>
-                                <p class="text-xs text-slate-400">
-                                    <?= $latestRelease['release_date'] ? date('Y/m/d', strtotime($latestRelease['release_date'])) : '' ?>
-                                    <?php if ($latestRelease['song_count']): ?> &middot; <?= $latestRelease['song_count'] ?> 曲収録<?php endif; ?>
-                                </p>
+                    <div class="bg-white rounded-xl border <?= $cardBorder ?> shadow-sm overflow-hidden">
+                        <a href="/hinata/release.php?id=<?= $latestRelease['id'] ?>" class="block p-5 hover:bg-slate-50/50 transition group">
+                            <div class="flex items-start gap-5">
+                                <div class="flex-1 min-w-0">
+                                    <span class="text-[10px] font-bold text-violet-500 bg-violet-50 px-2 py-0.5 rounded-full"><?= htmlspecialchars($latestRelease['release_type_label']) ?></span>
+                                    <h3 class="text-lg font-black text-slate-800 mt-1 mb-1 truncate"><?= htmlspecialchars($latestRelease['title']) ?></h3>
+                                    <p class="text-xs text-slate-400">
+                                        <?= $latestRelease['release_date'] ? date('Y/m/d', strtotime($latestRelease['release_date'])) : '' ?>
+                                        <?php if ($latestRelease['song_count']): ?> &middot; <?= $latestRelease['song_count'] ?> 曲収録<?php endif; ?>
+                                    </p>
+                                </div>
+                                <i class="fa-solid fa-chevron-right text-slate-300 group-hover:text-slate-500 transition hidden md:block mt-2"></i>
                             </div>
-                            <i class="fa-solid fa-chevron-right text-slate-300 group-hover:text-slate-500 transition hidden md:block mt-2"></i>
-                        </div>
-                        <?php
-                        $jackets = [];
-                        if (!empty($latestRelease['editions'])) {
-                            foreach ($latestRelease['editions'] as $ed) {
-                                if (!empty($ed['jacket_image_url'])) {
-                                    $jackets[] = $ed;
+                            <?php
+                            $jackets = [];
+                            if (!empty($latestRelease['editions'])) {
+                                foreach ($latestRelease['editions'] as $ed) {
+                                    if (!empty($ed['jacket_image_url'])) {
+                                        $jackets[] = $ed;
+                                    }
                                 }
                             }
-                        }
-                        if (!empty($jackets)):
-                        ?>
-                        <div class="flex gap-3 mt-4 overflow-x-auto pb-1" style="scrollbar-width: none; -webkit-overflow-scrolling: touch;">
-                            <?php foreach ($jackets as $jk): ?>
-                            <div class="shrink-0 w-28 md:w-32">
-                                <div class="aspect-square rounded-lg overflow-hidden shadow-md group-hover:shadow-lg transition bg-slate-100">
-                                    <img src="<?= htmlspecialchars($jk['jacket_image_url']) ?>" class="w-full h-full object-cover" loading="lazy" alt="">
-                                </div>
-                                <p class="text-[9px] text-slate-400 mt-1 text-center truncate"><?= htmlspecialchars(\App\Hinata\Model\ReleaseEditionModel::EDITIONS[$jk['edition']] ?? $jk['edition']) ?></p>
-                            </div>
-                            <?php endforeach; ?>
-                        </div>
-                        <?php elseif ($latestRelease['jacket_url']): ?>
-                        <div class="mt-4">
-                            <div class="w-28 md:w-32 aspect-square rounded-lg overflow-hidden shadow-md group-hover:shadow-lg transition bg-slate-100">
-                                <img src="<?= htmlspecialchars($latestRelease['jacket_url']) ?>" class="w-full h-full object-cover" alt="">
-                            </div>
-                        </div>
-                        <?php endif; ?>
-                    </a>
-                    <?php if (!empty($latestRelease['mvs'])): ?>
-                    <div class="mt-4">
-                        <div class="flex items-center gap-2 mb-2">
-                            <i class="fa-solid fa-play-circle text-violet-400 text-xs"></i>
-                            <span class="text-[10px] font-bold text-slate-500">MV</span>
-                        </div>
-                        <div id="releaseMvPlayer" class="hidden mb-3">
-                            <div class="aspect-video rounded-xl overflow-hidden bg-black">
-                                <iframe id="releaseMvIframe" class="w-full h-full" src="" allow="autoplay; encrypted-media" allowfullscreen></iframe>
-                            </div>
-                            <div class="flex items-center justify-between mt-2">
-                                <p id="releaseMvTitle" class="text-xs font-bold text-slate-700 truncate"></p>
-                                <button onclick="document.getElementById('releaseMvPlayer').classList.add('hidden');document.getElementById('releaseMvIframe').src='';" class="text-[10px] text-slate-400 hover:text-slate-600 transition shrink-0 ml-2"><i class="fa-solid fa-xmark mr-0.5"></i>閉じる</button>
-                            </div>
-                        </div>
-                        <div class="yt-scroll-wrap">
-                            <button class="yt-arrow left hidden" onclick="YtCarousel.scroll('releaseMvCards', -1)"><i class="fa-solid fa-chevron-left text-sm"></i></button>
-                            <div id="releaseMvCards" class="yt-scroll">
-                                <?php foreach ($latestRelease['mvs'] as $mv): ?>
-                                <div class="yt-card cursor-pointer" onclick="playReleaseMv('<?= htmlspecialchars($mv['media_key']) ?>', '<?= htmlspecialchars(addslashes($mv['song_title'])) ?>')">
-                                    <div class="aspect-video rounded-lg overflow-hidden bg-slate-200 mb-2 shadow-sm relative group">
-                                        <img src="<?= htmlspecialchars($mv['thumbnail_url'] ?: 'https://img.youtube.com/vi/' . $mv['media_key'] . '/mqdefault.jpg') ?>" class="w-full h-full object-cover" loading="lazy" alt="">
-                                        <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition flex items-center justify-center">
-                                            <i class="fa-solid fa-play text-white text-xl opacity-60 group-hover:opacity-100 transition drop-shadow-lg"></i>
-                                        </div>
+                            if (!empty($jackets)):
+                            ?>
+                            <div class="flex gap-3 mt-4 overflow-x-auto pb-1" style="scrollbar-width: none; -webkit-overflow-scrolling: touch;">
+                                <?php foreach ($jackets as $jk): ?>
+                                <div class="shrink-0 w-28 md:w-32">
+                                    <div class="aspect-square rounded-lg overflow-hidden shadow-md group-hover:shadow-lg transition bg-slate-100">
+                                        <img src="<?= htmlspecialchars($jk['jacket_image_url']) ?>" class="w-full h-full object-cover" loading="lazy" alt="">
                                     </div>
-                                    <h3 class="text-xs font-bold text-slate-700 line-clamp-2 leading-snug"><?= htmlspecialchars($mv['song_title']) ?></h3>
+                                    <p class="text-[9px] text-slate-400 mt-1 text-center truncate"><?= htmlspecialchars(\App\Hinata\Model\ReleaseEditionModel::EDITIONS[$jk['edition']] ?? $jk['edition']) ?></p>
                                 </div>
                                 <?php endforeach; ?>
                             </div>
-                            <button class="yt-arrow right" onclick="YtCarousel.scroll('releaseMvCards', 1)"><i class="fa-solid fa-chevron-right text-sm"></i></button>
+                            <?php elseif ($latestRelease['jacket_url']): ?>
+                            <div class="mt-4">
+                                <div class="w-28 md:w-32 aspect-square rounded-lg overflow-hidden shadow-md group-hover:shadow-lg transition bg-slate-100">
+                                    <img src="<?= htmlspecialchars($latestRelease['jacket_url']) ?>" class="w-full h-full object-cover" alt="">
+                                </div>
+                            </div>
+                            <?php endif; ?>
+                        </a>
+                        <?php if (!empty($latestRelease['mvs'])): ?>
+                        <div class="border-t border-slate-100 px-5 py-4">
+                            <div class="flex items-center gap-2 mb-3">
+                                <i class="fa-solid fa-play-circle text-violet-400 text-sm"></i>
+                                <span class="text-[11px] font-bold text-slate-600">ミュージックビデオ</span>
+                                <span class="text-[9px] text-slate-400"><?= count($latestRelease['mvs']) ?> 本</span>
+                            </div>
+                            <div class="yt-scroll-wrap">
+                                <button class="yt-arrow left hidden" onclick="YtCarousel.scroll('releaseMvCards', -1)"><i class="fa-solid fa-chevron-left text-sm"></i></button>
+                                <div id="releaseMvCards" class="yt-scroll">
+                                    <?php foreach ($latestRelease['mvs'] as $mv): ?>
+                                    <div class="yt-card cursor-pointer" onclick="playReleaseMv('<?= htmlspecialchars($mv['media_key']) ?>', '<?= htmlspecialchars(addslashes($mv['song_title'])) ?>', event)">
+                                        <div class="aspect-video rounded-lg overflow-hidden bg-slate-200 mb-1.5 shadow-sm relative group">
+                                            <img src="<?= htmlspecialchars($mv['thumbnail_url'] ?: 'https://img.youtube.com/vi/' . $mv['media_key'] . '/mqdefault.jpg') ?>" class="w-full h-full object-cover" loading="lazy" alt="">
+                                            <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition flex items-center justify-center">
+                                                <i class="fa-solid fa-play text-white text-xl opacity-60 group-hover:opacity-100 transition drop-shadow-lg"></i>
+                                            </div>
+                                        </div>
+                                        <h3 class="text-xs font-bold text-slate-700 line-clamp-2 leading-snug"><?= htmlspecialchars($mv['song_title']) ?></h3>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
+                                <button class="yt-arrow right" onclick="YtCarousel.scroll('releaseMvCards', 1)"><i class="fa-solid fa-chevron-right text-sm"></i></button>
+                            </div>
                         </div>
+                        <?php endif; ?>
+                        <?php if (!empty($latestRelease['songs'])): ?>
+                        <div class="border-t border-slate-100">
+                            <div class="flex items-center gap-2 px-5 pt-4 pb-2">
+                                <i class="fa-solid fa-list-music text-violet-400 text-sm"></i>
+                                <span class="text-[11px] font-bold text-slate-600">収録曲</span>
+                                <span class="text-[9px] text-slate-400"><?= count($latestRelease['songs']) ?> 曲</span>
+                            </div>
+                            <div id="releaseTrackMiniPlayer" class="hidden border-b border-slate-100 bg-slate-50/80">
+                                <div class="flex items-center gap-2 px-5 py-2">
+                                    <p id="releaseTrackTitle" class="text-[11px] font-bold text-slate-700 flex-1 truncate"></p>
+                                    <button onclick="ReleasePlayer.close()" class="w-6 h-6 rounded-full bg-slate-200 text-slate-500 hover:bg-slate-300 flex items-center justify-center transition text-[10px]"><i class="fa-solid fa-xmark"></i></button>
+                                </div>
+                                <div id="releaseTrackEmbed" class="px-5 pb-3"></div>
+                            </div>
+                            <ul class="divide-y divide-slate-100">
+                                <?php
+                                $trackTypeLabelsPortal = \App\Hinata\Model\SongModel::TRACK_TYPES_DISPLAY;
+                                foreach ($latestRelease['songs'] as $rs):
+                                    $rsHasApple = !empty($rs['apple_music_url']);
+                                    $rsHasSpotify = !empty($rs['spotify_url']);
+                                    $rsHasStream = $rsHasApple || $rsHasSpotify;
+                                ?>
+                                <li class="flex items-center gap-2.5 px-5 py-2.5 hover:bg-slate-50/50 transition">
+                                    <span class="text-slate-300 text-[10px] font-mono w-4 text-right shrink-0"><?= (int)($rs['track_number'] ?? 0) ?></span>
+                                    <a href="/hinata/song.php?id=<?= (int)$rs['id'] ?>" class="flex-1 min-w-0">
+                                        <p class="text-[12px] font-bold text-slate-700 truncate"><?= htmlspecialchars($rs['title']) ?></p>
+                                        <p class="text-[9px] text-slate-400"><?= htmlspecialchars($trackTypeLabelsPortal[$rs['track_type'] ?? ''] ?? $rs['track_type'] ?? '') ?></p>
+                                    </a>
+                                    <?php if ($rsHasStream): ?>
+                                    <div class="flex gap-1 shrink-0">
+                                        <?php if ($rsHasApple): ?>
+                                        <button onclick="ReleasePlayer.play('apple','<?= htmlspecialchars(addslashes($rs['apple_music_url'])) ?>','<?= htmlspecialchars(addslashes($rs['title'])) ?>')"
+                                                class="w-6 h-6 rounded-full bg-slate-100 hover:bg-pink-50 flex items-center justify-center transition text-slate-400 hover:text-pink-500" title="Apple Music">
+                                            <i class="fa-brands fa-apple text-[10px]"></i>
+                                        </button>
+                                        <?php endif; ?>
+                                        <?php if ($rsHasSpotify): ?>
+                                        <button onclick="ReleasePlayer.play('spotify','<?= htmlspecialchars(addslashes($rs['spotify_url'])) ?>','<?= htmlspecialchars(addslashes($rs['title'])) ?>')"
+                                                class="w-6 h-6 rounded-full bg-slate-100 hover:bg-emerald-50 flex items-center justify-center transition text-slate-400 hover:text-emerald-500" title="Spotify">
+                                            <i class="fa-brands fa-spotify text-[10px]"></i>
+                                        </button>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php endif; ?>
+                                </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </div>
+                        <?php endif; ?>
                     </div>
-                    <?php endif; ?>
                 </section>
                 <?php endif; ?>
 
@@ -344,16 +501,16 @@ $hasOshi = !empty($oshiSummary);
                         <button class="yt-arrow left hidden" onclick="YtCarousel.scroll('blogCards', -1)"><i class="fa-solid fa-chevron-left text-sm"></i></button>
                         <div id="blogCards" class="yt-scroll">
                             <?php foreach ($oshiBlogPosts as $bp): ?>
-                            <a href="<?= htmlspecialchars($bp['detail_url']) ?>" target="_blank" class="rec-card-portrait block">
-                                <div class="aspect-[3/4] rounded-lg overflow-hidden bg-slate-100 mb-2 shadow-sm relative">
+                            <a href="<?= htmlspecialchars($bp['detail_url']) ?>" target="_blank" class="blog-card block">
+                                <div class="aspect-[3/4] rounded-lg overflow-hidden bg-slate-100 mb-1.5 shadow-sm relative">
                                     <?php if ($bp['thumbnail_url']): ?>
                                     <img src="<?= htmlspecialchars($bp['thumbnail_url']) ?>" class="w-full h-full object-cover" loading="lazy" alt="">
                                     <?php else: ?>
-                                    <div class="w-full h-full flex items-center justify-center text-slate-300"><i class="fa-solid fa-pen-fancy text-3xl"></i></div>
+                                    <div class="w-full h-full flex items-center justify-center text-slate-300"><i class="fa-solid fa-pen-fancy text-2xl"></i></div>
                                     <?php endif; ?>
                                 </div>
-                                <h3 class="text-xs font-bold text-slate-700 line-clamp-2 leading-snug mb-0.5"><?= htmlspecialchars($bp['title'] ?: '(無題)') ?></h3>
-                                <p class="text-[10px] text-slate-400"><?= htmlspecialchars($bp['member_name'] ?? '') ?> &middot; <?= $bp['published_at'] ? date('m/d H:i', strtotime($bp['published_at'])) : '' ?></p>
+                                <h3 class="text-[11px] font-bold text-slate-700 line-clamp-2 leading-snug mb-0.5"><?= htmlspecialchars($bp['title'] ?: '(無題)') ?></h3>
+                                <p class="text-[9px] text-slate-400 truncate"><?= htmlspecialchars($bp['member_name'] ?? '') ?> <?= $bp['published_at'] ? date('m/d H:i', strtotime($bp['published_at'])) : '' ?></p>
                             </a>
                             <?php endforeach; ?>
                         </div>
@@ -512,10 +669,16 @@ $hasOshi = !empty($oshiSummary);
         </div>
     </main>
 
+    <?php include __DIR__ . '/../../../components/video_modal.php'; ?>
+
     <script>
     // 推しエリア切り替え
     var OshiPortal = {
         data: <?= json_encode($oshiByLevel, JSON_UNESCAPED_UNICODE) ?>,
+        imgSrc: function(url) {
+            if (!url) return '';
+            return url.charAt(0) === '/' ? url : '/assets/img/members/' + url;
+        },
         switchMain: function(level) {
             var d = this.data[level];
             if (!d) return;
@@ -523,7 +686,7 @@ $hasOshi = !empty($oshiSummary);
             var el = function(id) { return document.getElementById(id); };
             var mainImg = el('oshiMainImg');
             if (mainImg && mainImg.tagName === 'IMG' && d.image_url) {
-                mainImg.src = '/assets/img/members/' + d.image_url;
+                mainImg.src = this.imgSrc(d.image_url);
             }
             if (el('oshiMainLabel')) el('oshiMainLabel').textContent = label;
             if (el('oshiMainName')) el('oshiMainName').textContent = d.name || '';
@@ -577,18 +740,24 @@ $hasOshi = !empty($oshiSummary);
             el.addEventListener('scroll', update, { passive: true });
             update();
         },
+        videos: [],
         esc: function(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; },
         renderCard: function(v) {
             var thumb = v.thumbnail_url || ('https://img.youtube.com/vi/' + v.video_id + '/mqdefault.jpg');
             var title = this.esc(v.title || '');
             var date = v.published_at ? v.published_at.substring(0, 10) : '';
-            return '<a href="https://www.youtube.com/watch?v=' + v.video_id + '" target="_blank" class="yt-card block">' +
+            var idx = this.videos.length;
+            this.videos.push({
+                media_key: v.video_id, platform: 'youtube', title: v.title || '',
+                category: '', upload_date: v.published_at || '', thumbnail_url: thumb, description: '', sub_key: ''
+            });
+            return '<div class="yt-card" onclick="openPortalVideo(' + idx + ', event)">' +
                 '<div class="aspect-video rounded-lg overflow-hidden bg-slate-200 mb-2 shadow-sm relative group">' +
                 '<img src="' + thumb + '" class="w-full h-full object-cover" loading="lazy" alt="">' +
-                '<div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition flex items-center justify-center"><i class="fa-solid fa-play text-white text-xl opacity-0 group-hover:opacity-100 transition"></i></div>' +
+                '<div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition flex items-center justify-center"><i class="fa-solid fa-play text-white text-xl opacity-0 group-hover:opacity-100 transition drop-shadow-lg"></i></div>' +
                 '</div>' +
                 '<h3 class="text-xs font-bold text-slate-700 line-clamp-2 leading-snug mb-0.5">' + title + '</h3>' +
-                '<p class="text-[10px] text-slate-400">' + date + '</p></a>';
+                '<p class="text-[10px] text-slate-400">' + date + '</p></div>';
         },
         loadChannel: function(idx) {
             var cardsId = 'ytCards' + idx;
@@ -620,16 +789,50 @@ $hasOshi = !empty($oshiSummary);
         }
     };
 
-    function playReleaseMv(mediaKey, title) {
-        var player = document.getElementById('releaseMvPlayer');
-        var iframe = document.getElementById('releaseMvIframe');
-        var titleEl = document.getElementById('releaseMvTitle');
-        if (!player || !iframe) return;
-        iframe.src = 'https://www.youtube.com/embed/' + mediaKey + '?rel=0&autoplay=1';
-        if (titleEl) titleEl.textContent = title;
-        player.classList.remove('hidden');
-        player.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    function openPortalVideo(idx, ev) {
+        var video = YtCarousel.videos[idx];
+        if (!video) return;
+        openVideoModalWithData(video, ev);
     }
+
+    function playReleaseMv(mediaKey, title, ev) {
+        openVideoModalWithData({
+            media_key: mediaKey, platform: 'youtube', title: title,
+            category: 'MV', upload_date: '', thumbnail_url: '', description: '', sub_key: ''
+        }, ev);
+    }
+
+    var ReleasePlayer = {
+        currentUrl: null,
+        play: function(type, url, title) {
+            if (!url) return;
+            var player = document.getElementById('releaseTrackMiniPlayer');
+            var embed = document.getElementById('releaseTrackEmbed');
+            var titleEl = document.getElementById('releaseTrackTitle');
+            if (!player || !embed) return;
+            if (this.currentUrl === url) { this.close(); return; }
+            this.currentUrl = url;
+            titleEl.textContent = title;
+            var iframe = '';
+            if (type === 'apple') {
+                var eu = url.replace('music.apple.com', 'embed.music.apple.com');
+                iframe = '<iframe src="' + eu + '" height="175" frameborder="0" allow="autoplay *; encrypted-media *;" sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-top-navigation-by-user-activation" style="width:100%;border-radius:12px;overflow:hidden;background:transparent;"></iframe>';
+            } else if (type === 'spotify') {
+                var eu = url.replace('open.spotify.com/', 'open.spotify.com/embed/');
+                iframe = '<iframe src="' + eu + '" height="152" frameborder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" style="width:100%;border-radius:12px;"></iframe>';
+            }
+            embed.innerHTML = iframe;
+            player.classList.remove('hidden');
+            player.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        },
+        close: function() {
+            var player = document.getElementById('releaseTrackMiniPlayer');
+            var embed = document.getElementById('releaseTrackEmbed');
+            if (player) player.classList.add('hidden');
+            if (embed) embed.innerHTML = '';
+            this.currentUrl = null;
+        }
+    };
 
     function switchYtTab(idx) {
         document.querySelectorAll('.yt-tab-panel').forEach(function(p) {

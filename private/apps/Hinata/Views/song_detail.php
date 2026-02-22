@@ -129,6 +129,64 @@ if ($mainVideo !== null && !empty($mainVideo['media_key']) && ($mainVideo['platf
                 </section>
                 <?php endif; ?>
 
+                <?php
+                $hasAppleMusic = !empty($song['apple_music_url']);
+                $hasSpotify = !empty($song['spotify_url']);
+                $isAdmin = in_array(($user['role'] ?? ''), ['admin', 'hinata_admin'], true);
+                if ($hasAppleMusic || $hasSpotify || $isAdmin):
+                ?>
+                <section class="bg-white rounded-2xl border <?= $cardBorder ?> shadow-sm p-5 song-detail-section">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-[10px] font-black text-slate-400 tracking-wider">試聴</h3>
+                        <?php if ($isAdmin): ?>
+                        <button id="streamingEditBtn" class="text-[10px] font-bold text-slate-400 hover:text-slate-600 transition" onclick="StreamingAdmin.toggle()"><i class="fa-solid fa-pen text-[8px] mr-0.5"></i>編集</button>
+                        <?php endif; ?>
+                    </div>
+                    <?php if ($hasAppleMusic): ?>
+                    <div class="mb-3">
+                        <div class="flex items-center gap-1.5 mb-1.5">
+                            <i class="fa-brands fa-apple text-slate-600 text-sm"></i>
+                            <span class="text-[10px] font-bold text-slate-500">Apple Music</span>
+                        </div>
+                        <?php
+                        $amUrl = $song['apple_music_url'];
+                        $amEmbed = str_replace('music.apple.com', 'embed.music.apple.com', $amUrl);
+                        ?>
+                        <iframe allow="autoplay *; encrypted-media *; fullscreen *; clipboard-write" frameborder="0" height="175" style="width:100%;max-width:660px;overflow:hidden;border-radius:10px;" sandbox="allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation" src="<?= htmlspecialchars($amEmbed) ?>"></iframe>
+                    </div>
+                    <?php endif; ?>
+                    <?php if ($hasSpotify): ?>
+                    <div class="mb-1">
+                        <div class="flex items-center gap-1.5 mb-1.5">
+                            <i class="fa-brands fa-spotify text-green-500 text-sm"></i>
+                            <span class="text-[10px] font-bold text-slate-500">Spotify</span>
+                        </div>
+                        <?php
+                        $spUrl = $song['spotify_url'];
+                        $spEmbed = preg_replace('#https?://open\.spotify\.com/(track|album|playlist)/#', 'https://open.spotify.com/embed/$1/', $spUrl);
+                        ?>
+                        <iframe style="border-radius:12px;width:100%;max-width:660px;" src="<?= htmlspecialchars($spEmbed) ?>" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+                    </div>
+                    <?php endif; ?>
+                    <?php if (!$hasAppleMusic && !$hasSpotify && $isAdmin): ?>
+                    <p class="text-xs text-slate-400 mb-2">ストリーミングURLが未登録です。「編集」から登録できます。</p>
+                    <?php endif; ?>
+                    <?php if ($isAdmin): ?>
+                    <div id="streamingEditForm" class="hidden mt-3 border-t border-slate-100 pt-3 space-y-3">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 flex items-center gap-1 mb-1"><i class="fa-brands fa-apple"></i>Apple Music URL</label>
+                            <input id="appleMusicUrlInput" type="url" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200" placeholder="https://music.apple.com/jp/album/..." value="<?= htmlspecialchars($song['apple_music_url'] ?? '') ?>">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 flex items-center gap-1 mb-1"><i class="fa-brands fa-spotify"></i>Spotify URL</label>
+                            <input id="spotifyUrlInput" type="url" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200" placeholder="https://open.spotify.com/track/..." value="<?= htmlspecialchars($song['spotify_url'] ?? '') ?>">
+                        </div>
+                        <button onclick="StreamingAdmin.save()" class="px-4 py-2 bg-sky-500 text-white text-xs font-bold rounded-lg hover:bg-sky-600 transition"><i class="fa-solid fa-check mr-1"></i>保存</button>
+                    </div>
+                    <?php endif; ?>
+                </section>
+                <?php endif; ?>
+
                 <?php if (!empty($mainEmbedUrl)): ?>
                 <section class="bg-white rounded-2xl border <?= $cardBorder ?> shadow-sm p-5 song-detail-section">
                     <h3 id="mainVideoCategory" class="text-[10px] font-black text-slate-400 tracking-wider mb-1"><?= htmlspecialchars($mainCategoryLabel) ?></h3>
@@ -251,6 +309,24 @@ if ($mainVideo !== null && !empty($mainVideo['media_key']) && ($mainVideo['platf
                 </section>
                 <?php endif; ?>
 
+                <?php if (!empty($livePerformances)): ?>
+                <section class="bg-white rounded-2xl border <?= $cardBorder ?> shadow-sm p-5">
+                    <h3 class="text-[10px] font-black text-slate-400 tracking-wider mb-3">ライブ披露</h3>
+                    <div class="space-y-2">
+                        <?php foreach ($livePerformances as $lp): ?>
+                        <a href="/hinata/events.php?event_id=<?= (int)$lp['id'] ?>" class="flex items-center gap-3 text-sm hover:bg-slate-50 rounded-lg px-2 py-1.5 -mx-2 transition">
+                            <i class="fa-solid fa-music text-indigo-300 text-xs shrink-0"></i>
+                            <span class="font-bold text-slate-700 truncate"><?= htmlspecialchars($lp['event_name']) ?></span>
+                            <?php if ($lp['encore']): ?>
+                            <span class="text-[9px] font-black text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded shrink-0">EN</span>
+                            <?php endif; ?>
+                            <span class="text-[10px] text-slate-400 ml-auto shrink-0"><?= !empty($lp['event_date']) ? date('Y/m/d', strtotime($lp['event_date'])) : '' ?></span>
+                        </a>
+                        <?php endforeach; ?>
+                    </div>
+                </section>
+                <?php endif; ?>
+
                 <?php if (!empty($song['memo'])): ?>
                 <section class="bg-white rounded-2xl border <?= $cardBorder ?> shadow-sm p-5">
                     <h3 class="text-[10px] font-black text-slate-400 tracking-wider mb-2">メモ</h3>
@@ -341,6 +417,29 @@ if ($mainVideo !== null && !empty($mainVideo['media_key']) && ($mainVideo['platf
                 });
             });
         })();
+
+        // ストリーミングURL管理（管理者用）
+        var StreamingAdmin = {
+            toggle: function() {
+                var form = document.getElementById('streamingEditForm');
+                if (form) form.classList.toggle('hidden');
+            },
+            save: function() {
+                var payload = {
+                    song_id: <?= (int)$song['id'] ?>,
+                    apple_music_url: (document.getElementById('appleMusicUrlInput') || {}).value || '',
+                    spotify_url: (document.getElementById('spotifyUrlInput') || {}).value || ''
+                };
+                App.post('/hinata/api/save_song_streaming.php', payload, function(res) {
+                    if (res.status === 'success') {
+                        App.toast('保存しました', 'success');
+                        setTimeout(function() { location.reload(); }, 600);
+                    } else {
+                        App.toast(res.message || 'エラー', 'error');
+                    }
+                });
+            }
+        };
 
         // フォーメーション名を枠に収まるようフォントサイズを縮小（改行・省略なし）
         document.querySelectorAll('.formation-name').forEach(function (el) {
