@@ -124,6 +124,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         // メンバーデータをJavaScript配列として保持
         const membersData = <?= json_encode($members, JSON_UNESCAPED_UNICODE) ?>;
         const IMG_CACHE_BUST = '?v=<?= time() ?>';
+        const POKA_MEMBER_ID = 99;  // ポカ（マスコット）は最後の帯に表示
 
         function changeSortOrder() {
             const select = document.getElementById('sortSelect');
@@ -209,28 +210,31 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             gridContainer.innerHTML = '';
             
             if (currentSortOrder === 'generation') {
-                // 期生順の場合はグルーピング表示
+                // 期生順の場合はグルーピング表示（ポカid=99は専用帯で最後に表示）
                 const generations = {};
                 sorted.forEach(m => {
-                    if (!generations[m.generation]) {
-                        generations[m.generation] = [];
+                    if (m.id === POKA_MEMBER_ID) {
+                        if (!generations['poka']) generations['poka'] = [];
+                        generations['poka'].push(m);
+                    } else {
+                        const k = String(m.generation);
+                        if (!generations[k]) generations[k] = [];
+                        generations[k].push(m);
                     }
-                    generations[m.generation].push(m);
                 });
                 
-                // 期生グループの順序を昇順・降順で制御
-                const genKeys = Object.keys(generations).sort((a, b) => {
-                    return isAscending ? (a - b) : (b - a);
+                // 期生グループの順序を昇順・降順で制御（ポカは常に最後）
+                const regularKeys = Object.keys(generations).filter(k => k !== 'poka').sort((a, b) => {
+                    return isAscending ? (Number(a) - Number(b)) : (Number(b) - Number(a));
                 });
+                const genKeys = generations['poka'] ? [...regularKeys, 'poka'] : regularKeys;
                 
                 genKeys.forEach(gen => {
-                    // 期生ヘッダー
                     const genHeader = document.createElement('div');
                     genHeader.className = 'col-span-full mt-6 mb-3 pb-2 border-b-2 border-sky-200';
-                    genHeader.innerHTML = `<h2 class="text-lg font-black text-sky-600">${gen}期生</h2>`;
+                    genHeader.innerHTML = `<h2 class="text-lg font-black text-sky-600">${gen === 'poka' ? 'ポカ' : gen + '期生'}</h2>`;
                     gridContainer.appendChild(genHeader);
                     
-                    // メンバーカード
                     generations[gen].forEach(m => {
                         gridContainer.appendChild(createMemberCard(m));
                     });
@@ -292,8 +296,9 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
 
             const info = document.createElement('div');
             info.className = 'space-y-1';
+            const genLabel = (m.id === POKA_MEMBER_ID) ? 'ポカ' : (m.generation + '期生');
             info.innerHTML = `
-                <span class="text-[9px] font-black text-sky-400 tracking-wider">${m.generation}期生</span>
+                <span class="text-[9px] font-black text-sky-400 tracking-wider">${genLabel}</span>
                 <h3 class="font-black text-slate-800 text-base">${m.name}</h3>
                 ${!m.is_active ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-[10px] font-bold text-slate-500">卒業</span>' : ''}
             `;
@@ -308,28 +313,30 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             tbody.querySelectorAll('tr').forEach(tr => tr.remove());
             
             if (currentSortOrder === 'generation') {
-                // 期生順の場合はグルーピング表示
+                // 期生順の場合はグルーピング表示（ポカid=99は専用帯で最後に表示）
                 const generations = {};
                 members.forEach(m => {
-                    if (!generations[m.generation]) {
-                        generations[m.generation] = [];
+                    if (m.id === POKA_MEMBER_ID) {
+                        if (!generations['poka']) generations['poka'] = [];
+                        generations['poka'].push(m);
+                    } else {
+                        const k = String(m.generation);
+                        if (!generations[k]) generations[k] = [];
+                        generations[k].push(m);
                     }
-                    generations[m.generation].push(m);
                 });
                 
-                // 期生グループの順序を昇順・降順で制御
-                const genKeys = Object.keys(generations).sort((a, b) => {
-                    return isAscending ? (a - b) : (b - a);
+                const regularKeys = Object.keys(generations).filter(k => k !== 'poka').sort((a, b) => {
+                    return isAscending ? (Number(a) - Number(b)) : (Number(b) - Number(a));
                 });
+                const genKeys = generations['poka'] ? [...regularKeys, 'poka'] : regularKeys;
                 
                 genKeys.forEach(gen => {
-                    // グループヘッダー行
                     const headerRow = document.createElement('tr');
                     headerRow.className = 'border-t border-slate-100 bg-slate-50/60';
-                    headerRow.innerHTML = `<td colspan="5" class="px-3 py-2 text-[11px] font-bold text-slate-500 tracking-wider">${gen}期生</td>`;
+                    headerRow.innerHTML = `<td colspan="5" class="px-3 py-2 text-[11px] font-bold text-slate-500 tracking-wider">${gen === 'poka' ? 'ポカ' : gen + '期生'}</td>`;
                     tbody.appendChild(headerRow);
                     
-                    // メンバー行
                     generations[gen].forEach(m => {
                         tbody.appendChild(createMemberRow(m));
                     });
@@ -387,7 +394,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                         return fm[fl] ? '<span class="ml-1.5 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-black '+fm[fl].c+'"><i class="'+fm[fl].i+'"></i></span>' : '';
                     })()}
                 </td>
-                <td class="px-3 py-2 text-slate-600 whitespace-nowrap">${m.generation}期</td>
+                <td class="px-3 py-2 text-slate-600 whitespace-nowrap">${m.id === POKA_MEMBER_ID ? 'ポカ' : (m.generation + '期')}</td>
                 <td class="px-3 py-2">
                     <div class="flex items-center gap-1 flex-wrap">
                         ${penlightCell(m.color1, m.color1_name)}

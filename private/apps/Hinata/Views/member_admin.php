@@ -112,11 +112,12 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                                 <div>
                                     <label class="block text-[10px] font-black text-slate-400 mb-1 ml-1 tracking-wider">期生</label>
                                     <select name="generation" id="f_gen" class="w-full h-11 border border-slate-100 rounded-xl px-4 text-sm outline-none bg-slate-50">
+                                        <option value="0">ポカ／期別なし</option>
                                         <option value="1">1期</option>
                                         <option value="2">2期</option>
                                         <option value="3">3期</option>
                                         <option value="4">4期</option>
-                                        <option value="5">5期</option> <!-- 5期を追加 -->
+                                        <option value="5">5期</option>
                                     </select>
                                 </div>
                             </div>
@@ -206,6 +207,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                                         </td>
                                         <td class="px-2 py-1">
                                             <select id="row_<?= $m['id'] ?>_generation" class="border border-slate-200 rounded px-1 py-1 text-[11px]">
+                                                <option value="0" <?= (int)$m['generation']===0?'selected':'' ?>>ポカ／期別なし</option>
                                                 <?php for($g=1;$g<=5;$g++): ?>
                                                     <option value="<?= $g ?>" <?= (int)$m['generation']===$g?'selected':'' ?>><?= $g ?>期</option>
                                                 <?php endfor; ?>
