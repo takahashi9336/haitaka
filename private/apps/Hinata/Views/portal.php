@@ -271,6 +271,32 @@ function oshiImgSrc(?string $imageUrl): string {
                                                 <?php if ($mainOshi['song_count'] > 0): ?>
                                                 <div id="oshiMainSongs" class="flex items-center gap-2 text-slate-600"><i class="fa-solid fa-music w-4 text-slate-400"></i>参加楽曲 <?= $mainOshi['song_count'] ?> 曲</div>
                                                 <?php endif; ?>
+                                                <?php
+                                                $mainNewItem = $oshiLatestItemByMember[$mainOshi['member_id']] ?? null;
+                                                $hasAnyNewItems = !empty($oshiLatestItemByMember);
+                                                ?>
+                                                <?php if ($hasAnyNewItems): ?>
+                                                <div id="oshiMainNewItemWrap" class="pt-2<?= !$mainNewItem ? ' hidden' : '' ?>">
+                                                    <p class="text-sm font-black text-slate-600 mb-1.5"><i class="fa-solid fa-bell text-amber-500 mr-1"></i>推しの新着</p>
+                                                    <div id="oshiMainNewItemContent" class="flex items-start gap-2 text-sm min-w-0 rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 cursor-pointer hover:border-amber-300 hover:bg-amber-50/50 transition">
+                                                        <?php if ($mainNewItem):
+                                                            $ni = $mainNewItem;
+                                                            $niType = $ni['type'] ?? '';
+                                                            $niIcon = ['blog' => 'fa-blog text-sky-500', 'news' => 'fa-newspaper text-rose-500', 'schedule' => 'fa-calendar text-violet-500', 'video' => 'fa-play text-red-500'][$niType] ?? 'fa-circle-info text-slate-400';
+                                                            $niDate = !empty($ni['event_date']) ? date('n/j', strtotime($ni['event_date'])) : '';
+                                                            $niUrl = !empty($ni['url']) ? $ni['url'] : null;
+                                                        ?>
+                                                        <span class="text-xs text-slate-400 shrink-0"><?= $niDate ?></span>
+                                                        <i class="fa-solid <?= $niIcon ?> w-4 shrink-0 mt-0.5"></i>
+                                                        <?php if ($niUrl): ?>
+                                                        <a href="<?= htmlspecialchars($niUrl) ?>" target="_blank" rel="noopener" class="flex-1 min-w-0 text-slate-700 hover:text-amber-600 line-clamp-2 break-words" title="<?= htmlspecialchars($ni['title'] ?? '') ?>"><?= htmlspecialchars($ni['title'] ?? '') ?></a>
+                                                        <?php else: ?>
+                                                        <span class="flex-1 min-w-0 text-slate-700 line-clamp-2 break-words" title="<?= htmlspecialchars($ni['title'] ?? '') ?>"><?= htmlspecialchars($ni['title'] ?? '') ?></span>
+                                                        <?php endif; ?>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </div>
+                                                <?php endif; ?>
                                             </div>
                                         </div>
                                         <a id="oshiMainLink" href="/hinata/member.php?id=<?= $mainOshi['member_id'] ?>" class="inline-flex items-center justify-center gap-2 mt-3 w-full px-5 py-2.5 rounded-full text-sm font-black text-white bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-md hover:shadow-lg transition-all"><i class="fa-solid fa-arrow-right text-xs"></i>推し個別ページへ</a>
@@ -675,6 +701,7 @@ function oshiImgSrc(?string $imageUrl): string {
     // 推しエリア切り替え
     var OshiPortal = {
         data: <?= json_encode($oshiByLevel, JSON_UNESCAPED_UNICODE) ?>,
+        newItemsByMember: <?= json_encode($oshiLatestItemByMember ?? [], JSON_UNESCAPED_UNICODE) ?>,
         imgSrc: function(url) {
             if (!url) return '';
             return url.charAt(0) === '/' ? url : '/assets/img/members/' + url;
@@ -714,6 +741,25 @@ function oshiImgSrc(?string $imageUrl): string {
                     img.classList.toggle('ring-amber-400', cardLevel === level);
                 }
             });
+
+            var wrap = el('oshiMainNewItemWrap');
+            var content = el('oshiMainNewItemContent');
+            if (wrap && content) {
+                var ni = this.newItemsByMember[d.member_id] || this.newItemsByMember[String(d.member_id)];
+                var icons = {blog:'fa-blog text-sky-500',news:'fa-newspaper text-rose-500',schedule:'fa-calendar text-violet-500',video:'fa-play text-red-500'};
+                var ic = (icons[ni && ni.type] || 'fa-circle-info text-slate-400');
+                if (ni && ni.title) {
+                    wrap.classList.remove('hidden');
+                    var esc = function(s){ var d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; };
+                    var title = ni.title || '';
+                    var link = ni.url ? '<a href="'+esc(ni.url)+'" target="_blank" rel="noopener" class="flex-1 min-w-0 text-slate-700 hover:text-amber-600 line-clamp-2 break-words" title="'+esc(title)+'">'+esc(title)+'</a>' : '<span class="flex-1 min-w-0 text-slate-700 line-clamp-2 break-words" title="'+esc(title)+'">'+esc(title)+'</span>';
+                    var m = (ni.event_date || '').match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+                    var date = m ? parseInt(m[2],10) + '/' + parseInt(m[3],10) : '';
+                    content.innerHTML = '<span class="text-xs text-slate-400 shrink-0">'+esc(date)+'</span><i class="fa-solid '+ic+' w-4 shrink-0 mt-0.5"></i>'+link;
+                } else {
+                    wrap.classList.add('hidden');
+                }
+            }
         }
     };
 
@@ -766,11 +812,11 @@ function oshiImgSrc(?string $imageUrl): string {
             var loadingEl = document.getElementById(loadingId);
             if (!cardsEl) return;
             var channelId = cardsEl.dataset.channelId;
+            var self = YtCarousel;
             fetch('/hinata/api/youtube_latest.php?channel_id=' + encodeURIComponent(channelId))
                 .then(function(r) { return r.json(); })
                 .then(function(res) {
                     if (res.status === 'success' && res.data && res.data.length > 0) {
-                        var self = YtCarousel;
                         cardsEl.innerHTML = res.data.map(function(v) { return self.renderCard(v); }).join('');
                         if (loadingEl) loadingEl.classList.add('hidden');
                         cardsEl.classList.remove('hidden');
@@ -842,6 +888,9 @@ function oshiImgSrc(?string $imageUrl): string {
             var active = parseInt(btn.dataset.idx) === idx;
             btn.className = 'yt-tab text-[10px] font-bold px-3 py-1 rounded-full transition ' +
                 (active ? 'bg-red-500 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200');
+        });
+        requestAnimationFrame(function() {
+            YtCarousel.updateArrows('ytCards' + idx);
         });
     }
 

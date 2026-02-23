@@ -39,6 +39,17 @@ class HinataController {
         // 推しサマリ（3名分、動画・イベント・楽曲数付き）
         $oshiSummary = $favModel->getOshiPortalSummary();
 
+        // 推しの新着情報（メンバーごとに最新1件）
+        $oshiLatestItemByMember = [];
+        try {
+            $oshiMemberIds = array_column($oshiSummary, 'member_id');
+            if (!empty($oshiMemberIds)) {
+                $oshiLatestItemByMember = $favModel->getOshiLatestItemPerMember($oshiMemberIds, 7);
+            }
+        } catch (\Exception $e) {
+            // テーブル未作成時は空配列のまま
+        }
+
         // 最新リリース情報
         $latestRelease = $this->getLatestRelease();
 

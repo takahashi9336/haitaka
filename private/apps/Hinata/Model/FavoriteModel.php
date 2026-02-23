@@ -176,6 +176,65 @@ class FavoriteModel extends BaseModel {
     }
 
     /**
+     * 推しメンバーごとの最新1件を取得（ブログ・ニュース・スケジュール・動画）
+     * @param int $days 直近何日分を新着とするか
+     * @return array [member_id => [type, title, event_date, url, member_name], ...]
+     */
+    public function getOshiLatestItemPerMember(array $memberIds, int $days = 7): array {
+        if (empty($memberIds)) return [];
+
+        $placeholders = implode(',', array_fill(0, count($memberIds), '?'));
+        $unions = [];
+        $unions[] = "SELECT 'blog' as type, bp.title, bp.published_at as event_date, bp.detail_url as url, bp.member_id, m.name as member_name
+                     FROM hn_blog_posts bp
+                     JOIN hn_members m ON m.id = bp.member_id
+                     WHERE bp.member_id IN ($placeholders) AND bp.published_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)";
+        $unions[] = "SELECT 'news' as type, n.title, n.published_date as event_date, n.detail_url as url, nm.member_id, m.name as member_name
+                     FROM hn_news n
+                     JOIN hn_news_members nm ON nm.news_id = n.id
+                     JOIN hn_members m ON m.id = nm.member_id
+                     WHERE nm.member_id IN ($placeholders) AND n.published_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)";
+        $unions[] = "SELECT 'schedule' as type, s.title, s.schedule_date as event_date, s.detail_url as url, sm.member_id, m.name as member_name
+                     FROM hn_schedule s
+                     JOIN hn_schedule_members sm ON sm.schedule_id = s.id
+                     JOIN hn_members m ON m.id = sm.member_id
+                     WHERE sm.member_id IN ($placeholders) AND s.schedule_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)";
+        $unions[] = "SELECT 'video' as type, COALESCE(ma.title, '動画') as title, COALESCE(ma.upload_date, ma.created_at) as event_date,
+                            CASE ma.platform
+                                WHEN 'tiktok' THEN CONCAT('https://www.tiktok.com/', COALESCE(NULLIF(TRIM(ma.sub_key), ''), '@user'), '/video/', ma.media_key)
+                                WHEN 'instagram' THEN CONCAT('https://www.instagram.com/reel/', ma.media_key, '/')
+                                ELSE CONCAT('https://www.youtube.com/watch?v=', ma.media_key)
+                            END as url,
+                            mm.member_id, m.name as member_name
+                     FROM hn_media_members mm
+                     JOIN hn_media_metadata hmeta ON hmeta.id = mm.media_meta_id
+                     JOIN com_media_assets ma ON ma.id = hmeta.asset_id
+                     JOIN hn_members m ON m.id = mm.member_id
+                     WHERE mm.member_id IN ($placeholders) AND (ma.upload_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY) OR ma.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY))";
+
+        $params = array_merge(
+            $memberIds, [$days],
+            $memberIds, [$days],
+            $memberIds, [$days],
+            $memberIds, [$days], [$days]
+        );
+        $sql = "SELECT * FROM (" . implode(" UNION ALL ", $unions) . ") combined
+                ORDER BY event_date DESC";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        $result = [];
+        foreach ($rows as $row) {
+            $mid = (int)$row['member_id'];
+            if (!isset($result[$mid])) {
+                $result[$mid] = $row;
+            }
+        }
+        return $result;
+    }
+
+    /**
      * 推しレベル設定（level 7-9 は排他制御付き）
      * @return array ['status', 'level', 'swapped_member_id'?, 'swapped_member_name'?]
      */
