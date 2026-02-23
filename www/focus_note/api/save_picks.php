@@ -2,11 +2,12 @@
 /**
  * ウィークリーで選んだタスク保存API
  */
-require_once __DIR__ . '/../../../private/vendor/autoload.php';
+require_once __DIR__ . '/../../../private/bootstrap.php';
 
 use App\FocusNote\Model\WeeklyPageModel;
 use App\FocusNote\Model\WeeklyTaskPickModel;
 use Core\Auth;
+use Core\Logger;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -46,6 +47,7 @@ try {
 
     echo json_encode(['status' => 'success', 'message' => '選択を保存しました'], JSON_UNESCAPED_UNICODE);
 } catch (\Exception $e) {
+    Logger::errorWithContext('save_picks: ' . $e->getMessage(), $e);
     http_response_code(400);
     echo json_encode(['status' => 'error', 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
 }

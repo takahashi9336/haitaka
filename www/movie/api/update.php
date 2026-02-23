@@ -3,7 +3,7 @@
  * 映画エントリ更新 API
  * 物理パス: haitaka/www/movie/api/update.php
  */
-require_once __DIR__ . '/../../../private/vendor/autoload.php';
+require_once __DIR__ . '/../../../private/bootstrap.php';
 
 use Core\Auth;
 use App\Movie\Controller\MovieController;

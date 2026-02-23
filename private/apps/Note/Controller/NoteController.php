@@ -4,6 +4,7 @@ namespace App\Note\Controller;
 
 use App\Note\Model\NoteModel;
 use Core\Auth;
+use Core\Logger;
 
 /**
  * メモ管理コントローラ
@@ -23,7 +24,7 @@ class NoteController {
             $notes = $noteModel->getActiveNotes();
         } catch (\Exception $e) {
             // テーブルが存在しない場合など、エラーが発生した場合は空配列を返す
-            error_log('Note error: ' . $e->getMessage());
+            Logger::errorWithContext('Note error', $e);
             $notes = [];
         }
         

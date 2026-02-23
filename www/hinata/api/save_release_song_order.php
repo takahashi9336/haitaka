@@ -1,9 +1,9 @@
 <?php
 /**
- * リリース内楽曲順序保存API（管理者専用）
+ * ???????????API???????
  * POST: { release_id, songs: [{ song_id, track_number }, ...] }
  */
-require_once __DIR__ . '/../../../private/vendor/autoload.php';
+require_once __DIR__ . '/../../../private/bootstrap.php';
 
 use App\Hinata\Model\SongModel;
 use Core\Auth;
@@ -15,7 +15,7 @@ header('Content-Type: application/json');
 $auth = new Auth();
 if (!$auth->check() || !$auth->isHinataAdmin()) {
     http_response_code(403);
-    echo json_encode(['status' => 'error', 'message' => '権限がありません']);
+    echo json_encode(['status' => 'error', 'message' => '????????']);
     exit;
 }
 
@@ -25,10 +25,10 @@ try {
     $songs = $input['songs'] ?? [];
 
     if ($releaseId === 0) {
-        throw new \Exception('release_id が必要です');
+        throw new \Exception('release_id ?????');
     }
     if (!is_array($songs) || count($songs) === 0) {
-        throw new \Exception('保存対象の楽曲がありません');
+        throw new \Exception('?????????????');
     }
 
     $pdo = Database::connect();
@@ -45,7 +45,7 @@ try {
 
         $song = $songModel->find($songId);
         if (!$song || (int)($song['release_id'] ?? 0) !== $releaseId) {
-            continue; // 対象リリースの楽曲でなければスキップ
+            continue; // ??????????????????
         }
 
         $songModel->update($songId, [
@@ -57,8 +57,9 @@ try {
 
     $pdo->commit();
     Logger::info("hn_songs track_order update release_id={$releaseId} count={$updated} by={$updateUser}");
-    echo json_encode(['status' => 'success', 'message' => "{$updated}曲の順序を保存しました", 'updated' => $updated]);
+    echo json_encode(['status' => 'success', 'message' => "{$updated}???????????", 'updated' => $updated]);
 } catch (\Exception $e) {
+    Logger::errorWithContext('save_release_song_order: ' . $e->getMessage(), $e);
     if (isset($pdo) && $pdo->inTransaction()) {
         $pdo->rollBack();
     }

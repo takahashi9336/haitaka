@@ -1265,7 +1265,8 @@ class MediaController {
             }
 
             echo json_encode(['status' => 'success', 'data' => $results], JSON_UNESCAPED_UNICODE);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            Logger::errorWithContext('fetchOembed: ' . $e->getMessage(), $e);
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
         }
     }
@@ -1364,7 +1365,8 @@ class MediaController {
                 'auto_linked' => $autoLinkedCount,
                 'message' => $msg,
             ], JSON_UNESCAPED_UNICODE);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            Logger::errorWithContext('bulkRegister: ' . $e->getMessage(), $e);
             if (isset($pdo) && $pdo->inTransaction()) {
                 $pdo->rollBack();
             }

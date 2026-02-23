@@ -3,7 +3,7 @@
  * 推しデータAPI（ポータル用サマリ）
  * 物理パス: haitaka/www/hinata/api/oshi_data.php
  */
-require_once __DIR__ . '/../../../private/vendor/autoload.php';
+require_once __DIR__ . '/../../../private/bootstrap.php';
 
 use Core\Auth;
 use App\Hinata\Controller\OshiController;

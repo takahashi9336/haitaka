@@ -5,7 +5,7 @@
  */
 
 // オートローダーの読み込み
-require_once __DIR__ . '/../../../private/vendor/autoload.php';
+require_once __DIR__ . '/../../../private/bootstrap.php';
 
 use Core\Auth;
 use App\TaskManager\Controller\TaskController;

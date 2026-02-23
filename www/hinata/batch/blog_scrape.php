@@ -1,22 +1,23 @@
 <?php
 /**
- * ブログスクレイピング バッチエンドポイント
+ * ?????????? ??????????
  *
- * モード1 (デフォルト): 全体の最新記事を取得
+ * ???1 (?????): ??????????
  *   GET ?pages=2
  *
- * モード2: 全メンバーを順番にスクレイプ (各メンバー pages ページずつ)
+ * ???2: ?????????????? (????? pages ?????)
  *   GET ?mode=members&pages=2
  *
- * 管理者認証必須。CLI からも実行可能。
+ * ????????CLI ????????
  *   CLI: php blog_scrape.php [pages] [mode]
- *   例:  php blog_scrape.php 2 members
+ *   ?:  php blog_scrape.php 2 members
  */
 $isCli = (php_sapi_name() === 'cli');
 
-require_once __DIR__ . '/../../../private/vendor/autoload.php';
+require_once __DIR__ . '/../../../private/bootstrap.php';
 
 use Core\Auth;
+use Core\Logger;
 use App\Hinata\Model\BlogScraper;
 use App\Hinata\Model\BlogModel;
 
@@ -25,7 +26,7 @@ if (!$isCli) {
     $auth->requireLogin();
     if (!in_array(($_SESSION['user']['role'] ?? ''), ['admin', 'hinata_admin'], true)) {
         http_response_code(403);
-        echo json_encode(['status' => 'error', 'message' => '権限がありません']);
+        echo json_encode(['status' => 'error', 'message' => '????????']);
         exit;
     }
     header('Content-Type: application/json; charset=utf-8');
@@ -34,6 +35,7 @@ if (!$isCli) {
 $pages = max(1, min(10, (int)($isCli ? ($argv[1] ?? 1) : ($_GET['pages'] ?? 1))));
 $mode  = $isCli ? ($argv[2] ?? 'latest') : ($_GET['mode'] ?? 'latest');
 
+try {
 $scraper = new BlogScraper();
 $model   = new BlogModel();
 $nameMap = $model->getMemberNameMap();
@@ -41,13 +43,13 @@ $nameMap = $model->getMemberNameMap();
 $stats = ['inserted' => 0, 'updated' => 0, 'skipped' => 0, 'no_member' => 0, 'members_done' => 0];
 
 if ($mode === 'members') {
-    // DB の official_blog_ct から ct マップを取得
+    // DB ? official_blog_ct ?? ct ??????
     $ctMap = $model->getCtToMemberIdMap(); // [ct => member_id]
 
-    // DB に ct が無い場合、公式サイトから自動取得して補完
+    // DB ? ct ?????????????????????
     if (empty($ctMap)) {
-        $discoveredCts = $scraper->discoverMemberCts(); // [正規化名 => ct]
-        // nameMap は [正規化名 => member_id]
+        $discoveredCts = $scraper->discoverMemberCts(); // [???? => ct]
+        // nameMap ? [???? => member_id]
         foreach ($discoveredCts as $normName => $ct) {
             if (isset($nameMap[$normName])) {
                 $ctMap[$ct] = $nameMap[$normName];
@@ -75,7 +77,7 @@ if ($mode === 'members') {
     $articles = $scraper->scrapeLatest($pages);
 
     foreach ($articles as $art) {
-        $memberName = str_replace([' ', '　'], '', $art['member_name'] ?? '');
+        $memberName = str_replace([' ', '?'], '', $art['member_name'] ?? '');
         $memberId = $nameMap[$memberName] ?? null;
         if ($memberId === null) {
             $stats['no_member']++;
@@ -108,4 +110,14 @@ if ($isCli) {
     }
 } else {
     echo json_encode($output, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+}
+} catch (\Throwable $e) {
+    Logger::errorWithContext('blog_scrape: ' . $e->getMessage(), $e);
+    if ($isCli) {
+        fwrite(STDERR, 'Error: ' . $e->getMessage() . PHP_EOL);
+        exit(1);
+    }
+    http_response_code(500);
+    echo json_encode(['status' => 'error', 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+    exit(1);
 }

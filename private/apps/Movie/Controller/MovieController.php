@@ -6,6 +6,7 @@ use App\Movie\Model\MovieModel;
 use App\Movie\Model\UserMovieModel;
 use App\Movie\Model\TmdbApiClient;
 use Core\Auth;
+use Core\Logger;
 
 /**
  * 映画管理コントローラ
@@ -42,7 +43,7 @@ class MovieController {
                 $avgRating = round($sum / $ratedCount, 1);
             }
         } catch (\Exception $e) {
-            error_log('Movie dashboard error: ' . $e->getMessage());
+            Logger::errorWithContext('Movie dashboard error', $e);
             $watchlistCount = $watchedCount = $thisMonthCount = $totalRuntime = $avgRating = $ratedCount = 0;
             $monthlyWatchCounts = [];
             $genreDistribution = $ratingDistribution = [];
@@ -137,7 +138,7 @@ class MovieController {
 
             echo json_encode($result ?? ['status' => 'empty'], JSON_UNESCAPED_UNICODE);
         } catch (\Exception $e) {
-            error_log('Recommendations API error: ' . $e->getMessage());
+            Logger::errorWithContext('Recommendations API error', $e);
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
         }
     }
@@ -231,7 +232,7 @@ class MovieController {
             $watchedCount = $userMovieModel->countByStatus('watched');
             $movies = $userMovieModel->getListByStatus($tab, $sort, $order, $filter);
         } catch (\Exception $e) {
-            error_log('Movie list error: ' . $e->getMessage());
+            Logger::errorWithContext('Movie list error', $e);
             $watchlistCount = 0;
             $watchedCount = 0;
             $movies = [];
@@ -291,7 +292,7 @@ class MovieController {
                 }
             }
         } catch (\Exception $e) {
-            error_log('Movie detail error: ' . $e->getMessage());
+            Logger::errorWithContext('Movie detail error', $e);
             header('Location: /movie/list.php');
             exit;
         }
@@ -845,7 +846,7 @@ class MovieController {
             $watchedCount = $userMovieModel->countByStatus('watched');
             $movies = $userMovieModel->getListByStatus($tab, $sort, $order);
         } catch (\Exception $e) {
-            error_log('Bulk edit error: ' . $e->getMessage());
+            Logger::errorWithContext('Bulk edit error', $e);
             $watchlistCount = 0;
             $watchedCount = 0;
             $movies = [];

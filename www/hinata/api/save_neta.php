@@ -2,7 +2,7 @@
 /**
  * ネタの保存・更新API
  */
-require_once __DIR__ . '/../../../private/vendor/autoload.php';
+require_once __DIR__ . '/../../../private/bootstrap.php';
 
 use Core\Auth;
 use App\Hinata\Controller\TalkController;

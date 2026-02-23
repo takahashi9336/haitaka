@@ -1,11 +1,12 @@
 <?php
 /**
- * 配信サービス一括取得バッチ（一時利用、後で削除）
- * ブラウザでアクセスして実行。TMDB APIのレートリミット対策で1件ずつ間隔を空けて処理。
+ * ????????????????????????
+ * ??????????????TMDB API???????????1????????????
  */
-require_once __DIR__ . '/../../private/vendor/autoload.php';
+require_once __DIR__ . '/../../private/bootstrap.php';
 
 use Core\Auth;
+use Core\Logger;
 use App\Movie\Model\MovieModel;
 use App\Movie\Model\TmdbApiClient;
 
@@ -24,7 +25,8 @@ $total = count($movies);
 
 if (isset($_GET['api'])) {
     header('Content-Type: application/json');
-    $offset = (int)($_GET['offset'] ?? 0);
+    try {
+        $offset = (int)($_GET['offset'] ?? 0);
     $batchSize = 5;
     $slice = array_slice($movies, $offset, $batchSize);
     $results = [];
@@ -49,6 +51,11 @@ if (isset($_GET['api'])) {
         'next_offset' => $offset + $batchSize,
         'total' => $total,
     ], JSON_UNESCAPED_UNICODE);
+    } catch (\Throwable $e) {
+        Logger::errorWithContext('batch_providers: ' . $e->getMessage(), $e);
+        http_response_code(500);
+        echo json_encode(['error' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+    }
     exit;
 }
 ?>
@@ -57,24 +64,24 @@ if (isset($_GET['api'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>配信サービス一括取得</title>
+    <title>??????????</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body class="bg-slate-50 min-h-screen flex items-center justify-center p-6">
     <div class="bg-white rounded-2xl shadow-lg border border-slate-100 p-8 max-w-lg w-full">
-        <h1 class="text-xl font-black text-slate-800 mb-2"><i class="fa-solid fa-tv mr-2 text-violet-500"></i>配信サービス一括取得</h1>
-        <p class="text-sm text-slate-500 mb-6">未取得の映画: <strong id="totalCount"><?= $total ?></strong> 件</p>
+        <h1 class="text-xl font-black text-slate-800 mb-2"><i class="fa-solid fa-tv mr-2 text-violet-500"></i>??????????</h1>
+        <p class="text-sm text-slate-500 mb-6">??????: <strong id="totalCount"><?= $total ?></strong> ?</p>
 
         <?php if ($total === 0): ?>
         <div class="text-center py-8 text-green-600 font-bold">
             <i class="fa-solid fa-check-circle text-3xl mb-2 block"></i>
-            すべての映画で配信情報取得済みです
+            ?????????????????
         </div>
         <?php else: ?>
         <div id="progress" class="mb-4">
             <div class="flex justify-between text-xs text-slate-500 mb-1">
-                <span>進捗</span>
+                <span>??</span>
                 <span id="progressText">0 / <?= $total ?></span>
             </div>
             <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
@@ -85,16 +92,16 @@ if (isset($_GET['api'])) {
         <div id="log" class="bg-slate-50 rounded-xl p-4 max-h-60 overflow-y-auto text-xs text-slate-600 space-y-1 mb-4 font-mono"></div>
 
         <button id="startBtn" onclick="startBatch()" class="w-full py-3 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-xl transition">
-            <i class="fa-solid fa-play mr-2"></i>実行開始
+            <i class="fa-solid fa-play mr-2"></i>????
         </button>
 
         <div id="doneMsg" class="hidden text-center py-4 text-green-600 font-bold">
             <i class="fa-solid fa-check-circle text-2xl mb-2 block"></i>
-            完了しました！
+            ???????
         </div>
         <?php endif; ?>
 
-        <a href="/movie/" class="block text-center text-sm text-slate-400 hover:text-slate-600 mt-4 transition">← ダッシュボードに戻る</a>
+        <a href="/movie/" class="block text-center text-sm text-slate-400 hover:text-slate-600 mt-4 transition">? ??????????</a>
     </div>
 
     <script>
@@ -103,7 +110,7 @@ if (isset($_GET['api'])) {
 
     async function startBatch() {
         document.getElementById('startBtn').disabled = true;
-        document.getElementById('startBtn').innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>処理中...';
+        document.getElementById('startBtn').innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>???...';
         await processBatch(0);
     }
 
@@ -113,8 +120,8 @@ if (isset($_GET['api'])) {
             const json = await res.json();
             json.processed.forEach(m => {
                 processed++;
-                const prov = m.providers ? m.providers.join(', ') : '配信なし';
-                addLog(`✓ ${m.title} → ${prov}`);
+                const prov = m.providers ? m.providers.join(', ') : '????';
+                addLog(`? ${m.title} ? ${prov}`);
             });
             updateProgress();
             if (!json.done) {
@@ -124,9 +131,9 @@ if (isset($_GET['api'])) {
                 document.getElementById('doneMsg').classList.remove('hidden');
             }
         } catch (e) {
-            addLog(`✗ エラー: ${e.message}`);
+            addLog(`? ???: ${e.message}`);
             document.getElementById('startBtn').disabled = false;
-            document.getElementById('startBtn').innerHTML = '<i class="fa-solid fa-play mr-2"></i>再開';
+            document.getElementById('startBtn').innerHTML = '<i class="fa-solid fa-play mr-2"></i>??';
         }
     }
 

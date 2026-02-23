@@ -4,7 +4,7 @@
  * POST: multipart/form-data, フィールド名 "file"
  * 返却: { status: 'success', url: '/assets/img/releases/xxx.jpg' } または error
  */
-require_once __DIR__ . '/../../../private/vendor/autoload.php';
+require_once __DIR__ . '/../../../private/bootstrap.php';
 
 use Core\Auth;
 

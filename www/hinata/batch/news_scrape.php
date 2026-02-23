@@ -1,14 +1,15 @@
 <?php
 /**
- * ニューススクレイピング バッチエンドポイント
- * GET ?months=2  (デフォルト: 当月+翌月)
- * 管理者認証必須。CLI からも実行可能。
+ * ??????????? ??????????
+ * GET ?months=2  (?????: ??+??)
+ * ????????CLI ????????
  */
 $isCli = (php_sapi_name() === 'cli');
 
-require_once __DIR__ . '/../../../private/vendor/autoload.php';
+require_once __DIR__ . '/../../../private/bootstrap.php';
 
 use Core\Auth;
+use Core\Logger;
 use App\Hinata\Model\NewsScraper;
 use App\Hinata\Model\NewsModel;
 
@@ -17,7 +18,7 @@ if (!$isCli) {
     $auth->requireLogin();
     if (!in_array(($_SESSION['user']['role'] ?? ''), ['admin', 'hinata_admin'], true)) {
         http_response_code(403);
-        echo json_encode(['status' => 'error', 'message' => '権限がありません']);
+        echo json_encode(['status' => 'error', 'message' => '????????']);
         exit;
     }
     header('Content-Type: application/json; charset=utf-8');
@@ -26,6 +27,7 @@ if (!$isCli) {
 $monthCount = max(1, min(6, (int)($isCli ? ($argv[1] ?? 2) : ($_GET['months'] ?? 2))));
 $pastMonths = max(0, min(12, (int)($isCli ? ($argv[2] ?? 0) : ($_GET['past'] ?? 0))));
 
+try {
 $scraper = new NewsScraper();
 $model   = new NewsModel();
 $nameMap = $model->getMemberNameMap();
@@ -75,4 +77,14 @@ if ($isCli) {
     }
 } else {
     echo json_encode($output, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+}
+} catch (\Throwable $e) {
+    Logger::errorWithContext('news_scrape: ' . $e->getMessage(), $e);
+    if ($isCli) {
+        fwrite(STDERR, 'Error: ' . $e->getMessage() . PHP_EOL);
+        exit(1);
+    }
+    http_response_code(500);
+    echo json_encode(['status' => 'error', 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+    exit(1);
 }

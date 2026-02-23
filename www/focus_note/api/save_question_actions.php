@@ -1,11 +1,12 @@
 <?php
 /**
- * 質問型アクション保存API（時間・場所）
+ * ??????????API???????
  */
-require_once __DIR__ . '/../../../private/vendor/autoload.php';
+require_once __DIR__ . '/../../../private/bootstrap.php';
 
 use App\FocusNote\Model\QuestionActionModel;
 use Core\Auth;
+use Core\Logger;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -25,7 +26,7 @@ try {
     }
 
     $model = new QuestionActionModel();
-    $userName = $_SESSION['user']['id_name'] ?? '私';
+    $userName = $_SESSION['user']['id_name'] ?? '?';
 
     foreach ($items as $item) {
         $pickId = (int)($item['pick_id'] ?? 0);
@@ -34,7 +35,7 @@ try {
         $time = trim((string)($item['time'] ?? ''));
         $place = trim((string)($item['place'] ?? ''));
         $taskContent = trim((string)($item['task_content'] ?? ''));
-        $questionText = $userName . 'は、' . ($time ?: '[時間]') . 'に' . ($place ?: '[場所]') . 'で' . $taskContent . 'をするか？';
+        $questionText = $userName . '??' . ($time ?: '[??]') . '?' . ($place ?: '[??]') . '?' . $taskContent . '?????';
 
         $model->upsertForPick($pickId, [
             'scheduled_time' => $time,
@@ -43,8 +44,9 @@ try {
         ]);
     }
 
-    echo json_encode(['status' => 'success', 'message' => '保存しました'], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['status' => 'success', 'message' => '??????'], JSON_UNESCAPED_UNICODE);
 } catch (\Exception $e) {
+    Logger::errorWithContext('save_question_actions: ' . $e->getMessage(), $e);
     http_response_code(400);
     echo json_encode(['status' => 'error', 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
 }

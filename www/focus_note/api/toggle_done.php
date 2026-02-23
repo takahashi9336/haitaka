@@ -1,11 +1,12 @@
 <?php
 /**
- * 質問型アクション 完了トグルAPI
+ * ???????? ?????API
  */
-require_once __DIR__ . '/../../../private/vendor/autoload.php';
+require_once __DIR__ . '/../../../private/bootstrap.php';
 
 use App\FocusNote\Model\QuestionActionModel;
 use Core\Auth;
+use Core\Logger;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -36,9 +37,10 @@ try {
     echo json_encode([
         'status' => 'success',
         'done' => (int)($updated['done'] ?? 0),
-        'message' => ($updated['done'] ?? 0) ? '完了にしました' : '未完了に戻しました'
+        'message' => ($updated['done'] ?? 0) ? '???????' : '?????????'
     ], JSON_UNESCAPED_UNICODE);
 } catch (\Exception $e) {
+    Logger::errorWithContext('toggle_done: ' . $e->getMessage(), $e);
     http_response_code(400);
     echo json_encode(['status' => 'error', 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
 }

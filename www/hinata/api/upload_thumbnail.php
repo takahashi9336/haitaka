@@ -4,9 +4,10 @@
  * POST (multipart/form-data): file, asset_id(任意)
  * asset_id がある場合は com_media_assets.thumbnail_url も更新
  */
-require_once __DIR__ . '/../../../private/vendor/autoload.php';
+require_once __DIR__ . '/../../../private/bootstrap.php';
 
 use Core\Auth;
+use Core\Logger;
 
 header('Content-Type: application/json');
 
@@ -64,5 +65,6 @@ try {
     }
     echo json_encode(['status' => 'success', 'thumbnail_url' => $publicUrl]);
 } catch (\Exception $e) {
+    Logger::errorWithContext('upload_thumbnail: ' . $e->getMessage(), $e);
     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
 }

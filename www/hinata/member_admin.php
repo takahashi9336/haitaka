@@ -3,7 +3,7 @@
  * メンバーメンテナンス画面 エントリ
  * 物理パス: haitaka/www/hinata/member_admin.php
  */
-require_once __DIR__ . '/../../private/vendor/autoload.php';
+require_once __DIR__ . '/../../private/bootstrap.php';
 
 use App\Hinata\Controller\MemberController;
 

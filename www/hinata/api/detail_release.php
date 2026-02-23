@@ -3,7 +3,7 @@
  * リリース詳細取得API（管理者用・編集時のデータ取得）
  * GET: ?id=1
  */
-require_once __DIR__ . '/../../../private/vendor/autoload.php';
+require_once __DIR__ . '/../../../private/bootstrap.php';
 
 use Core\Auth;
 use App\Hinata\Controller\ReleaseController;

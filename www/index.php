@@ -3,7 +3,7 @@
  * ポータルサイト ダッシュボード (日本語版)
  * 物理パス: haitaka/www/index.php
  */
-require_once __DIR__ . '/../private/vendor/autoload.php';
+require_once __DIR__ . '/../private/bootstrap.php';
 
 use Core\Auth;
 use App\TaskManager\Model\TaskModel;
@@ -61,7 +61,7 @@ try {
         $focusNoteActionCount = count(array_filter($actions, fn($a) => empty($a['done'])));
     }
 } catch (\Throwable $e) {
-    // テーブル未作成等
+    \Core\Logger::errorWithContext('Focus Note action count error', $e);
 }
 ?>
 <!DOCTYPE html>

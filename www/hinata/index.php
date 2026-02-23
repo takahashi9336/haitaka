@@ -2,7 +2,7 @@
 /**
  * 日向坂ポータルへの入り口 (全体ポータルから遷移)
  */
-require_once __DIR__ . '/../../private/vendor/autoload.php';
+require_once __DIR__ . '/../../private/bootstrap.php';
 
 use App\Hinata\Controller\HinataController;
 

@@ -4,7 +4,7 @@
  * GET ?channel_id=XXXX
  * 物理パス: haitaka/www/hinata/api/youtube_latest.php
  */
-require_once __DIR__ . '/../../../private/vendor/autoload.php';
+require_once __DIR__ . '/../../../private/bootstrap.php';
 
 use Core\Auth;
 use App\Hinata\Model\YouTubeApiClient;

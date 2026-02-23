@@ -3,7 +3,7 @@
  * ガチャ API（ランダムに見たい映画1件返却）
  * 物理パス: haitaka/www/movie/api/gacha.php
  */
-require_once __DIR__ . '/../../../private/vendor/autoload.php';
+require_once __DIR__ . '/../../../private/bootstrap.php';
 
 use Core\Auth;
 use App\Movie\Controller\MovieController;

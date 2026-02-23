@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../../private/vendor/autoload.php';
+require_once __DIR__ . '/../../private/bootstrap.php';
 
 use App\Admin\Controller\AdminController;
 

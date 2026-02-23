@@ -2,10 +2,11 @@
 /**
  * 質問型アクション 所要時間保存API
  */
-require_once __DIR__ . '/../../../private/vendor/autoload.php';
+require_once __DIR__ . '/../../../private/bootstrap.php';
 
 use App\FocusNote\Model\QuestionActionModel;
 use Core\Auth;
+use Core\Logger;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -35,6 +36,7 @@ try {
 
     echo json_encode(['status' => 'success', 'message' => '記録しました'], JSON_UNESCAPED_UNICODE);
 } catch (\Exception $e) {
+    Logger::errorWithContext('save_duration: ' . $e->getMessage(), $e);
     http_response_code(400);
     echo json_encode(['status' => 'error', 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
 }

@@ -2,6 +2,8 @@
 
 namespace App\Hinata\Model;
 
+use Core\Logger;
+
 /**
  * YouTube Data API v3 クライアント + oEmbed ユーティリティ
  * 物理パス: haitaka/private/apps/Hinata/Model/YouTubeApiClient.php
@@ -318,18 +320,18 @@ class YouTubeApiClient {
 
         $response = @file_get_contents($url, false, $ctx);
         if ($response === false) {
-            error_log('YouTube API request failed: ' . $url);
+            Logger::error('YouTube API request failed: ' . $url);
             return null;
         }
 
         $data = json_decode($response, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
-            error_log('YouTube API JSON parse error: ' . json_last_error_msg());
+            Logger::error('YouTube API JSON parse error: ' . json_last_error_msg());
             return null;
         }
 
         if (isset($data['error'])) {
-            error_log('YouTube API error: ' . json_encode($data['error']));
+            Logger::error('YouTube API error: ' . json_encode($data['error']));
             return null;
         }
 

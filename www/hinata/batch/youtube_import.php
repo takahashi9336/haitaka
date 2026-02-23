@@ -1,18 +1,19 @@
 <?php
 /**
- * YouTube 新着動画 自動取り込みバッチ
+ * YouTube ???? ?????????
  *
- * プリセット2チャンネルの最新動画を取得し、未登録分を DB に自動登録。
- * タイトル+説明文からメンバー名を検出し自動紐づけ。
+ * ?????2???????????????????? DB ??????
+ * ????+????????????????????
  *
- * GET (管理者) / CLI 対応
+ * GET (???) / CLI ??
  */
 $isCli = (php_sapi_name() === 'cli');
 
-require_once __DIR__ . '/../../../private/vendor/autoload.php';
+require_once __DIR__ . '/../../../private/bootstrap.php';
 
 use Core\Auth;
 use Core\Database;
+use Core\Logger;
 use Core\MediaAssetModel;
 use App\Hinata\Model\YouTubeApiClient;
 use App\Hinata\Model\NewsModel;
@@ -22,7 +23,7 @@ if (!$isCli) {
     $auth->requireLogin();
     if (!in_array(($_SESSION['user']['role'] ?? ''), ['admin', 'hinata_admin'], true)) {
         http_response_code(403);
-        echo json_encode(['status' => 'error', 'message' => '権限がありません']);
+        echo json_encode(['status' => 'error', 'message' => '????????']);
         exit;
     }
     header('Content-Type: application/json; charset=utf-8');
@@ -39,6 +40,7 @@ if (!$yt->isConfigured()) {
 $assetModel = new MediaAssetModel();
 $pdo = Database::connect();
 
+try {
 $newsModel = new NewsModel();
 $nameMap = $newsModel->getMemberNameMap();
 
@@ -94,7 +96,7 @@ foreach (YouTubeApiClient::PRESET_CHANNELS as $channelId => $channelName) {
 
         if (!$metaId) continue;
 
-        // 新規登録かどうかの判定: metaId が今回作成されたか
+        // ???????????: metaId ?????????
         $isNew = false;
         $checkStmt = $pdo->prepare(
             "SELECT COUNT(*) FROM hn_media_members WHERE media_meta_id = ?"
@@ -102,11 +104,11 @@ foreach (YouTubeApiClient::PRESET_CHANNELS as $channelId => $channelName) {
         $checkStmt->execute([$metaId]);
         $existingMembers = (int)$checkStmt->fetchColumn();
 
-        // まだメンバー紐づけがない場合のみ自動検出
+        // ????????????????????
         if ($existingMembers === 0) {
             $isNew = true;
             $text = $video['title'] . ' ' . ($video['description'] ?? '');
-            $normalizedText = str_replace([' ', '　'], '', $text);
+            $normalizedText = str_replace([' ', '?'], '', $text);
 
             $memberIds = [];
             foreach ($nameMap as $name => $memberId) {
@@ -153,4 +155,14 @@ if ($isCli) {
     }
 } else {
     echo json_encode($output, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+}
+} catch (\Throwable $e) {
+    Logger::errorWithContext('youtube_import: ' . $e->getMessage(), $e);
+    if ($isCli) {
+        fwrite(STDERR, 'Error: ' . $e->getMessage() . PHP_EOL);
+        exit(1);
+    }
+    http_response_code(500);
+    echo json_encode(['status' => 'error', 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+    exit(1);
 }

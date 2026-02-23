@@ -3,7 +3,7 @@
  * メンバー情報保存 API
  * 物理パス: haitaka/www/hinata/api/save_member.php
  */
-require_once __DIR__ . '/../../../private/vendor/autoload.php';
+require_once __DIR__ . '/../../../private/bootstrap.php';
 
 use Core\Auth;
 use App\Hinata\Controller\MemberController;

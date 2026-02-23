@@ -3,7 +3,7 @@
  * 仮登録映画にTMDB紐付け API
  * 物理パス: haitaka/www/movie/api/link_tmdb.php
  */
-require_once __DIR__ . '/../../../private/vendor/autoload.php';
+require_once __DIR__ . '/../../../private/bootstrap.php';
 
 use Core\Auth;
 use App\Movie\Controller\MovieController;

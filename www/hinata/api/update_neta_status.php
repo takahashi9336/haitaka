@@ -2,7 +2,7 @@
 /**
  * ネタのステータス(完了/未完了)のみを更新するAPI
  */
-require_once __DIR__ . '/../../../private/vendor/autoload.php';
+require_once __DIR__ . '/../../../private/bootstrap.php';
 
 use Core\Auth;
 use App\Hinata\Controller\TalkController;

@@ -1,9 +1,9 @@
 <?php
 /**
- * ストリーミングURL一括保存API（管理者専用）
+ * ???????URL????API???????
  * POST: { songs: [{ song_id, apple_music_url?, spotify_url? }, ...] }
  */
-require_once __DIR__ . '/../../../private/vendor/autoload.php';
+require_once __DIR__ . '/../../../private/bootstrap.php';
 
 use App\Hinata\Model\SongModel;
 use Core\Auth;
@@ -15,7 +15,7 @@ header('Content-Type: application/json');
 $auth = new Auth();
 if (!$auth->check() || !$auth->isHinataAdmin()) {
     http_response_code(403);
-    echo json_encode(['status' => 'error', 'message' => '権限がありません']);
+    echo json_encode(['status' => 'error', 'message' => '????????']);
     exit;
 }
 
@@ -23,7 +23,7 @@ try {
     $input = json_decode(file_get_contents('php://input'), true);
     $songs = $input['songs'] ?? [];
     if (!is_array($songs) || count($songs) === 0) {
-        throw new \Exception('保存対象の楽曲がありません');
+        throw new \Exception('?????????????');
     }
 
     $pdo = Database::connect();
@@ -50,8 +50,9 @@ try {
 
     $pdo->commit();
     Logger::info("hn_songs bulk_streaming_url update count={$updated} by={$updateUser}");
-    echo json_encode(['status' => 'success', 'message' => "{$updated}曲のストリーミングURLを保存しました", 'updated' => $updated]);
+    echo json_encode(['status' => 'success', 'message' => "{$updated}?????????URL???????", 'updated' => $updated]);
 } catch (\Exception $e) {
+    Logger::errorWithContext('bulk_save_streaming: ' . $e->getMessage(), $e);
     if (isset($pdo) && $pdo->inTransaction()) {
         $pdo->rollBack();
     }

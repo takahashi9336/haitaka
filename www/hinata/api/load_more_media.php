@@ -4,7 +4,7 @@
  * 物理パス: haitaka/www/hinata/api/load_more_media.php
  */
 
-require_once __DIR__ . '/../../../private/vendor/autoload.php';
+require_once __DIR__ . '/../../../private/bootstrap.php';
 
 use App\Hinata\Controller\MediaController;
 

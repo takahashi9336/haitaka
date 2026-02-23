@@ -4,7 +4,7 @@
  * POST JSON: { order: [id1, id2, id3, ...] }
  * 物理パス: haitaka/www/hinata/api/oshi_image_sort.php
  */
-require_once __DIR__ . '/../../../private/vendor/autoload.php';
+require_once __DIR__ . '/../../../private/bootstrap.php';
 
 use Core\Auth;
 use Core\Database;

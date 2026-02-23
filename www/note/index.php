@@ -3,7 +3,7 @@
  * メモ一覧画面
  * 物理パス: haitaka/www/note/index.php
  */
-require_once __DIR__ . '/../../private/vendor/autoload.php';
+require_once __DIR__ . '/../../private/bootstrap.php';
 
 use App\Note\Controller\NoteController;
 

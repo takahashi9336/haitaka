@@ -2,6 +2,8 @@
 
 namespace App\Movie\Model;
 
+use Core\Logger;
+
 /**
  * TMDB API クライアント
  * 物理パス: haitaka/private/apps/Movie/Model/TmdbApiClient.php
@@ -157,13 +159,13 @@ class TmdbApiClient {
 
         $response = @file_get_contents($url, false, $ctx);
         if ($response === false) {
-            error_log('TMDB API request failed: ' . $url);
+            Logger::error('TMDB API request failed: ' . $url);
             return null;
         }
 
         $data = json_decode($response, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
-            error_log('TMDB API JSON parse error: ' . json_last_error_msg());
+            Logger::error('TMDB API JSON parse error: ' . json_last_error_msg());
             return null;
         }
 

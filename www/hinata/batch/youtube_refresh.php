@@ -1,19 +1,20 @@
 <?php
 /**
- * 既存 YouTube 動画 メタデータ更新バッチ
+ * ?? YouTube ?? ??????????
  *
- * DB 登録済みの YouTube 動画のタイトル・サムネ・説明文を再取得して最新化。
- * YouTube API 規約: 30日以内にキャッシュデータを更新する義務への対応。
+ * DB ????? YouTube ?????????????????????????
+ * YouTube API ??: 30????????????????????????
  *
  * GET ?limit=50 / CLI: php youtube_refresh.php [limit]
- * 週1回の実行を想定。
+ * ?1????????
  */
 $isCli = (php_sapi_name() === 'cli');
 
-require_once __DIR__ . '/../../../private/vendor/autoload.php';
+require_once __DIR__ . '/../../../private/bootstrap.php';
 
 use Core\Auth;
 use Core\Database;
+use Core\Logger;
 use Core\MediaAssetModel;
 use App\Hinata\Model\YouTubeApiClient;
 
@@ -22,7 +23,7 @@ if (!$isCli) {
     $auth->requireLogin();
     if (!in_array(($_SESSION['user']['role'] ?? ''), ['admin', 'hinata_admin'], true)) {
         http_response_code(403);
-        echo json_encode(['status' => 'error', 'message' => '権限がありません']);
+        echo json_encode(['status' => 'error', 'message' => '????????']);
         exit;
     }
     header('Content-Type: application/json; charset=utf-8');
@@ -41,7 +42,8 @@ if (!$yt->isConfigured()) {
 $pdo = Database::connect();
 $assetModel = new MediaAssetModel();
 
-// upload_date の古い順に取得 (長期間更新されていない動画を優先)
+try {
+// upload_date ??????? (????????????????)
 $stmt = $pdo->prepare(
     "SELECT id, media_key FROM com_media_assets
      WHERE platform = 'youtube'
@@ -75,7 +77,7 @@ foreach ($videoIds as $vid) {
     $assetId = $idToAssetId[$vid];
 
     if (!isset($details[$vid])) {
-        // 動画が削除/非公開になっている可能性
+        // ?????/????????????
         $stats['deleted']++;
         continue;
     }
@@ -111,4 +113,14 @@ if ($isCli) {
     echo '  API returned: ' . $stats['api_returned'] . ', Possibly deleted: ' . $stats['deleted'] . PHP_EOL;
 } else {
     echo json_encode($output, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+}
+} catch (\Throwable $e) {
+    Logger::errorWithContext('youtube_refresh: ' . $e->getMessage(), $e);
+    if ($isCli) {
+        fwrite(STDERR, 'Error: ' . $e->getMessage() . PHP_EOL);
+        exit(1);
+    }
+    http_response_code(500);
+    echo json_encode(['status' => 'error', 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+    exit(1);
 }
