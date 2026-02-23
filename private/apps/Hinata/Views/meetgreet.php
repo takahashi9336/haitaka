@@ -190,8 +190,64 @@ $dayNames = ['日','月','火','水','木','金','土'];
                     <h2 class="font-bold text-slate-700">ミーグリ予定を追加</h2>
                     <button onclick="MG.closeImport()" class="text-slate-400 hover:text-slate-600 p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
                 </div>
+                <!-- タブ切り替え -->
+                <div class="flex border-b border-slate-100 px-6">
+                    <button id="tabImport" type="button" class="add-tab px-4 py-2 text-xs font-bold border-b-2 -mb-px transition" style="border-color: var(--mg-theme); color: var(--mg-theme);" onclick="MG.switchAddTab('import')">
+                        <i class="fa-solid fa-file-import mr-1"></i>テキストで一括追加
+                    </button>
+                    <button id="tabManual" type="button" class="add-tab px-4 py-2 text-xs font-bold text-slate-400 border-b-2 border-transparent -mb-px hover:text-slate-600 transition" onclick="MG.switchAddTab('manual')">
+                        <i class="fa-solid fa-pen-to-square mr-1"></i>手動で1件追加
+                    </button>
+                </div>
                 <div class="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-                    <!-- Step 1: 入力 -->
+                    <!-- 手動追加フォーム -->
+                    <div id="manualAddForm" class="hidden space-y-4">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 tracking-wider mb-1">日付 <span class="text-red-500">*</span></label>
+                            <input type="date" id="manualDate" class="w-full h-10 border border-slate-200 rounded-lg px-3 text-sm outline-none focus:ring-2" style="focus:ring-color: var(--mg-theme);" required>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 tracking-wider mb-1">部 <span class="text-red-500">*</span></label>
+                            <select id="manualSlot" class="w-full h-10 border border-slate-200 rounded-lg px-3 text-sm outline-none focus:ring-2" style="focus:ring-color: var(--mg-theme);" required>
+                                <option value="">選択</option>
+                                <option value="第1部">第1部</option>
+                                <option value="第2部">第2部</option>
+                                <option value="第3部">第3部</option>
+                                <option value="第4部">第4部</option>
+                                <option value="第5部">第5部</option>
+                                <option value="第6部">第6部</option>
+                                <option value="other">その他（下で入力）</option>
+                            </select>
+                            <input type="text" id="manualSlotOther" class="w-full h-10 border border-slate-200 rounded-lg px-3 text-sm mt-2 hidden" placeholder="部名を入力" style="focus:ring-color: var(--mg-theme);">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 tracking-wider mb-1">メンバー <span class="text-red-500">*</span></label>
+                            <select id="manualMember" class="w-full h-10 border border-slate-200 rounded-lg px-3 text-sm outline-none focus:ring-2" style="focus:ring-color: var(--mg-theme);" required>
+                                <option value="">選択</option>
+                                <?php foreach ($members as $m): ?>
+                                <option value="<?= (int)$m['id'] ?>"><?= htmlspecialchars($m['name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 tracking-wider mb-1">開始時刻</label>
+                                <input type="time" id="manualStartTime" class="w-full h-10 border border-slate-200 rounded-lg px-3 text-sm outline-none focus:ring-2" style="focus:ring-color: var(--mg-theme);">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 tracking-wider mb-1">終了時刻</label>
+                                <input type="time" id="manualEndTime" class="w-full h-10 border border-slate-200 rounded-lg px-3 text-sm outline-none focus:ring-2" style="focus:ring-color: var(--mg-theme);">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 tracking-wider mb-1">枚数</label>
+                            <input type="number" id="manualTickets" min="0" value="0" class="w-full h-10 border border-slate-200 rounded-lg px-3 text-sm outline-none focus:ring-2" style="focus:ring-color: var(--mg-theme);">
+                        </div>
+                        <button onclick="MG.submitManualAdd()" class="w-full h-11 rounded-lg font-bold text-white mt-3 transition active:scale-95" style="background: var(--mg-theme);">
+                            <i class="fa-solid fa-plus mr-1"></i>登録する
+                        </button>
+                    </div>
+                    <!-- Step 1: テキスト入力 -->
                     <div id="importStep1">
                         <label class="block text-[10px] font-bold text-slate-400 tracking-wider mb-2">forTUNE meetsの当選結果を貼り付け</label>
                         <textarea id="importText" rows="8" class="w-full border border-slate-200 rounded-lg p-4 text-sm outline-none focus:ring-2 resize-y font-mono" style="focus:ring-color: var(--mg-theme);"
@@ -328,13 +384,37 @@ $dayNames = ['日','月','火','水','木','金','土'];
             }
         },
 
-        // --- インポート ---
+        // --- インポート・手動追加 ---
+        switchAddTab(tab) {
+            const isImport = tab === 'import';
+            document.getElementById('importStep1').classList.toggle('hidden', !isImport);
+            document.getElementById('importStep2').classList.add('hidden');
+            document.getElementById('manualAddForm').classList.toggle('hidden', isImport);
+            document.querySelectorAll('.add-tab').forEach((btn, i) => {
+                const active = (tab === 'import' && i === 0) || (tab === 'manual' && i === 1);
+                btn.classList.toggle('text-slate-400', !active);
+                btn.style.borderColor = active ? 'var(--mg-theme)' : 'transparent';
+                btn.style.color = active ? 'var(--mg-theme)' : '';
+            });
+            if (tab === 'manual') {
+                const today = new Date().toISOString().slice(0, 10);
+                document.getElementById('manualDate').value = today;
+            }
+        },
+
         openImport() {
             document.getElementById('importModal').classList.remove('hidden');
-            document.getElementById('importStep1').classList.remove('hidden');
-            document.getElementById('importStep2').classList.add('hidden');
+            this.switchAddTab('import');
             document.getElementById('importText').value = '';
             document.getElementById('importDate').value = '';
+            document.getElementById('manualDate').value = new Date().toISOString().slice(0, 10);
+            document.getElementById('manualSlot').value = '';
+            document.getElementById('manualSlotOther').value = '';
+            document.getElementById('manualSlotOther').classList.add('hidden');
+            document.getElementById('manualMember').value = '';
+            document.getElementById('manualStartTime').value = '';
+            document.getElementById('manualEndTime').value = '';
+            document.getElementById('manualTickets').value = '0';
         },
 
         closeImport() {
@@ -561,6 +641,47 @@ $dayNames = ['日','月','火','水','木','金','土'];
             }
         },
 
+        async submitManualAdd() {
+            const dateVal = document.getElementById('manualDate').value;
+            const slotSel = document.getElementById('manualSlot').value;
+            const slotOther = document.getElementById('manualSlotOther').value.trim();
+            const memberId = document.getElementById('manualMember').value;
+            const startTime = document.getElementById('manualStartTime').value;
+            const endTime = document.getElementById('manualEndTime').value;
+            const ticketCount = parseInt(document.getElementById('manualTickets').value || '0', 10);
+
+            if (!dateVal) { App.toast('日付を選択してください'); return; }
+            let slotName = slotSel === 'other' ? slotOther : slotSel;
+            if (!slotName) { App.toast('部を選択または入力してください'); return; }
+            if (!memberId) { App.toast('メンバーを選択してください'); return; }
+
+            const member = memberList.find(m => String(m.id) === memberId);
+            const slots = [{
+                slot_name: slotName,
+                start_time: startTime || null,
+                end_time: endTime || null,
+                member_id: parseInt(memberId, 10),
+                member_name_raw: member ? member.name : null,
+                ticket_count: isNaN(ticketCount) ? 0 : ticketCount,
+            }];
+
+            const matchedEvent = mgEvents.find(e => e.event_date === dateVal);
+            const eventId = matchedEvent ? matchedEvent.id : null;
+
+            const res = await App.post('/hinata/api/meetgreet_import.php', {
+                event_date: dateVal,
+                event_id: eventId,
+                slots: slots,
+            });
+            if (res.status === 'success') {
+                App.toast(res.message);
+                this.closeImport();
+                location.reload();
+            } else {
+                App.toast('登録に失敗しました: ' + (res.message || ''));
+            }
+        },
+
         _esc(str) {
             const d = document.createElement('div');
             d.textContent = str;
@@ -570,6 +691,11 @@ $dayNames = ['日','月','火','水','木','金','土'];
 
     document.getElementById('openImportBtn').onclick = () => MG.openImport();
     document.getElementById('mobileMenuBtn').onclick = () => document.getElementById('sidebar').classList.add('mobile-open');
+    document.getElementById('manualSlot').onchange = function() {
+        const otherEl = document.getElementById('manualSlotOther');
+        otherEl.classList.toggle('hidden', this.value !== 'other');
+        if (this.value !== 'other') otherEl.value = '';
+    };
 
     // 保存済みのアコーディオン状態を復元
     window.onload = () => {

@@ -71,6 +71,9 @@ function oshiImgSrc(?string $imageUrl): string {
         .blog-card { flex: 0 0 130px; transition: transform 0.2s ease; }
         @media (min-width: 768px) { .blog-card { flex: 0 0 150px; } }
         .blog-card:hover { transform: translateY(-3px); }
+        /* 誕生日横スクロール */
+        .bd-scroll { display: flex; flex-wrap: nowrap; overflow-x: auto; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; scrollbar-width: none; gap: 12px; padding-bottom: 8px; }
+        .bd-scroll::-webkit-scrollbar { display: none; }
         @keyframes skeletonPulse { 0%,100% { opacity: 0.4; } 50% { opacity: 0.7; } }
         .skeleton-card { animation: skeletonPulse 1.5s ease-in-out infinite; }
     </style>
@@ -162,16 +165,13 @@ function oshiImgSrc(?string $imageUrl): string {
                     </div>
                     <?php endif; ?>
                     <?php if (!empty($bdUpcoming)): ?>
-                    <div class="flex gap-3">
+                    <div class="bd-scroll">
                         <?php foreach ($bdUpcoming as $bd): ?>
                         <?php
                         $bdImg = $bd['first_image'] ?: ($bd['image_url'] ?? null);
-                        $bdDate = $bd['birth_date'] ? date('n/j', strtotime(date('Y') . '-' . date('m-d', strtotime($bd['birth_date'])))) : '';
-                        if ($bd['birth_date'] && date('m-d', strtotime($bd['birth_date'])) < date('m-d')) {
-                            $bdDate = date('n/j', strtotime((date('Y') + 1) . '-' . date('m-d', strtotime($bd['birth_date']))));
-                        }
+                        $bdDate = $bd['birth_date'] ? date('Y/m/d', strtotime($bd['birth_date'])) : '';
                         ?>
-                        <a href="/hinata/member.php?id=<?= (int)$bd['id'] ?>" class="flex items-center gap-3 bg-white rounded-xl border <?= $cardBorder ?> shadow-sm px-4 py-3 flex-1 hover:shadow-md hover:border-pink-200 transition">
+                        <a href="/hinata/member.php?id=<?= (int)$bd['id'] ?>" class="flex items-center gap-3 bg-white rounded-xl border <?= $cardBorder ?> shadow-sm px-4 py-3 shrink-0 hover:shadow-md hover:border-pink-200 transition">
                             <div class="w-10 h-10 rounded-full overflow-hidden bg-slate-100 shrink-0" style="<?= !empty($bd['color1']) ? 'box-shadow: 0 0 0 2px ' . htmlspecialchars($bd['color1']) : '' ?>">
                                 <?php if ($bdImg): ?>
                                 <img src="/assets/img/members/<?= htmlspecialchars($bdImg) ?>" class="w-full h-full object-cover" alt="">
@@ -181,7 +181,8 @@ function oshiImgSrc(?string $imageUrl): string {
                             </div>
                             <div class="min-w-0">
                                 <p class="text-xs font-bold text-slate-800 truncate"><?= htmlspecialchars($bd['name']) ?></p>
-                                <p class="text-[10px] text-slate-400"><?= $bdDate ?> &middot; あと<?= (int)$bd['days_until'] ?>日</p>
+                                <p class="text-[10px] text-slate-400"><?= $bdDate ?></p>
+                                <p class="text-[10px] text-pink-500 font-bold">あと<?= (int)$bd['days_until'] ?>日</p>
                             </div>
                             <i class="fa-solid fa-cake-candles text-pink-300 text-xs ml-auto shrink-0"></i>
                         </a>
