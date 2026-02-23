@@ -620,7 +620,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             if (video.platform === 'youtube' && video.media_key) {
                 return `https://img.youtube.com/vi/${video.media_key}/mqdefault.jpg`;
             }
-            return '/assets/images/no-image.jpg';
+            return '/assets/images/no-image.svg';
         }
 
         // ブロック形式のカード生成（サイズは currentCardSize で切替）
@@ -661,7 +661,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 return `
                     <div class="video-card bg-white rounded-lg border border-slate-100 overflow-hidden" data-video="${dataVideo}" onclick="openVideoModal(this, event)">
                         <div class="video-thumbnail-portrait rounded-t-lg">
-                            <img src="${thumbUrl}" alt="${escapeHtml(video.title)}" onerror="this.src='/assets/images/no-image.jpg'">
+                            <img src="${thumbUrl}" alt="${escapeHtml(video.title)}" onerror="this.onerror=null;this.src='/assets/images/no-image.svg'">
                             <div class="play-icon">
                                 <i class="fa-solid fa-play text-white text-xl ml-0.5"></i>
                             </div>
@@ -688,7 +688,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             return `
                 <div class="${outerClass}" data-video="${dataVideo}" onclick="openVideoModal(this, event)">
                     <div class="video-thumbnail ${isSmall ? 'video-thumbnail-sm' : 'rounded-t-sm'}">
-                        <img src="${thumbUrl}" alt="${escapeHtml(video.title)}" onerror="this.src='/assets/images/no-image.jpg'">
+                        <img src="${thumbUrl}" alt="${escapeHtml(video.title)}" onerror="this.onerror=null;this.src='/assets/images/no-image.svg'">
                         <div class="play-icon">
                             <i class="fa-solid fa-play text-white text-2xl ml-1"></i>
                         </div>
@@ -739,7 +739,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             return `
                 <div class="video-card bg-white rounded-lg border border-sky-100 shadow-sm px-3 py-2 flex items-center gap-3 hover:bg-sky-50/50 transition cursor-pointer" data-video="${dataVideo}" onclick="openVideoModal(this, event)">
                     <div class="w-16 shrink-0 ${isVideoShort ? 'aspect-[9/16]' : 'aspect-video'} rounded overflow-hidden bg-slate-100 flex-shrink-0 relative">
-                        <img src="${thumbUrl}" alt="" class="w-full h-full object-cover" onerror="this.src='/assets/images/no-image.jpg'">
+                        <img src="${thumbUrl}" alt="" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='/assets/images/no-image.svg'">
                     </div>
                     <div class="flex-1 min-w-0 flex items-center gap-4">
                         ${platformBadgeInline(video.platform)}

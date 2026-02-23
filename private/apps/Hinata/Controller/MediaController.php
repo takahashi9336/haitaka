@@ -1319,12 +1319,24 @@ class MediaController {
                 if ($description !== null && $description !== '') {
                     $description = (string) mb_convert_encoding($description, 'UTF-8', 'UTF-8');
                 }
+
+                $thumbnailUrl = $item['thumbnail_url'] ?? null;
+                // TikTok/Instagram: 外部URLのサムネイルをサーバに保存（ホットリンク対策）
+                if ($thumbnailUrl && preg_match('#^https?://#i', $thumbnailUrl)) {
+                    if (in_array(strtolower($platform), ['tiktok', 'instagram'], true)) {
+                        $saved = $this->downloadAndSaveThumbnail($thumbnailUrl, strtolower($platform), $mediaKey);
+                        if ($saved) {
+                            $thumbnailUrl = $saved;
+                        }
+                    }
+                }
+
                 $assetId = $mediaModel->findOrCreateAsset(
                     $platform,
                     $mediaKey,
                     $item['sub_key'] ?? null,
                     (string) $title,
-                    $item['thumbnail_url'] ?? null,
+                    $thumbnailUrl,
                     !empty($item['published_at']) ? date('Y-m-d H:i:s', strtotime($item['published_at'])) : null,
                     $description === '' ? null : $description,
                     $item['media_type'] ?? null
@@ -1372,6 +1384,67 @@ class MediaController {
             }
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
         }
+    }
+
+    /**
+     * 既存TikTok動画のサムネイルをoEmbed経由で再取得し、サーバに保存する。
+     * バッチ処理用。戻り値: ['checked' => int, 'saved' => int, 'skipped' => int, 'error' => int]
+     */
+    public function refreshTikTokThumbnails(int $limit = 50): array {
+        $pdo = Database::connect();
+        $mediaModel = new MediaAssetModel();
+
+        $stmt = $pdo->prepare(
+            "SELECT id, media_key, sub_key FROM com_media_assets
+             WHERE platform = 'tiktok'
+             ORDER BY id ASC
+             LIMIT :lim"
+        );
+        $stmt->bindValue('lim', $limit, \PDO::PARAM_INT);
+        $stmt->execute();
+        $assets = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        $stats = ['checked' => count($assets), 'saved' => 0, 'skipped' => 0, 'error' => 0];
+
+        foreach ($assets as $row) {
+            $assetId = (int)$row['id'];
+            $mediaKey = $row['media_key'];
+            $subKey = trim($row['sub_key'] ?? '');
+
+            $url = null;
+            if ($subKey !== '' && ctype_digit((string)$mediaKey)) {
+                $userPart = str_starts_with($subKey, '@') ? $subKey : '@' . $subKey;
+                $url = 'https://www.tiktok.com/' . $userPart . '/video/' . $mediaKey;
+            } elseif (preg_match('/^[A-Za-z0-9_-]+$/', $mediaKey)) {
+                $url = 'https://vm.tiktok.com/' . $mediaKey . '/';
+            }
+            if (!$url) {
+                $stats['skipped']++;
+                continue;
+            }
+
+            $oembed = $this->fetchTikTokOembed($url);
+            if (!$oembed || empty($oembed['thumbnail_url'])) {
+                $stats['error']++;
+                continue;
+            }
+
+            $localUrl = $this->downloadAndSaveThumbnail(
+                $oembed['thumbnail_url'],
+                'tiktok',
+                $mediaKey
+            );
+            if ($localUrl) {
+                $mediaModel->updateAssetField($assetId, 'thumbnail_url', $localUrl);
+                $stats['saved']++;
+            } else {
+                $stats['error']++;
+            }
+
+            usleep(300000); // 0.3秒待機（oEmbed API レート制限対策）
+        }
+
+        return $stats;
     }
 
     /**
@@ -1486,6 +1559,64 @@ class MediaController {
         $timestamp = $id >> 32;
         if ($timestamp < 1420070400 || $timestamp > 2524608000) return null;
         return date('Y-m-d\TH:i:s\Z', $timestamp);
+    }
+
+    /**
+     * 外部URLからサムネイル画像をダウンロードし、サーバに保存する。
+     * TikTok/Instagram 等のホットリンク対策を回避するため、サーバ側で取得する。
+     *
+     * @param string $externalUrl 画像の外部URL
+     * @param string $platform platform (tiktok, instagram 等)
+     * @param string $mediaKey media_key
+     * @return string|null 保存した場合のローカルURL (/uploads/thumbnails/...)、失敗時は null
+     */
+    private function downloadAndSaveThumbnail(string $externalUrl, string $platform, string $mediaKey): ?string {
+        $url = trim($externalUrl);
+        if ($url === '' || !preg_match('#^https?://#i', $url)) {
+            return null;
+        }
+        // すでにローカルURLの場合はそのまま返す
+        if (str_starts_with($url, '/')) {
+            return $url;
+        }
+
+        $ctx = stream_context_create([
+            'http' => [
+                'method'        => 'GET',
+                'timeout'       => 15,
+                'ignore_errors' => true,
+                'header'        => "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\r\nReferer: https://www.tiktok.com/\r\n",
+            ],
+        ]);
+        $data = @file_get_contents($url, false, $ctx);
+        if ($data === false || strlen($data) < 100) {
+            return null;
+        }
+
+        $ext = 'jpg';
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $mime = $finfo->buffer($data);
+        $allowed = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp', 'image/gif' => 'gif'];
+        if (isset($allowed[$mime])) {
+            $ext = $allowed[$mime];
+        }
+
+        $baseDir = dirname(__DIR__, 4) . '/www/uploads/thumbnails/';
+        if (!is_dir($baseDir)) {
+            if (!@mkdir($baseDir, 0755, true)) {
+                return null;
+            }
+        }
+
+        $safeKey = preg_replace('/[^a-zA-Z0-9_-]/', '_', substr($mediaKey, 0, 64));
+        $filename = 'thumb_' . $platform . '_' . $safeKey . '_' . time() . '.' . $ext;
+        $path = $baseDir . $filename;
+
+        if (!file_put_contents($path, $data)) {
+            return null;
+        }
+
+        return '/uploads/thumbnails/' . $filename;
     }
 
     /**
