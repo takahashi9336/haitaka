@@ -112,6 +112,8 @@ class SongModel extends BaseModel {
             'row_1' => [],  // フロント
             'row_2' => [],  // 2列目
             'row_3' => [],  // 3列目
+            'row_4' => [],  // 4列目
+            'row_5' => [],  // 5列目
             'other' => [],  // その他（アンダー等）
         ];
 

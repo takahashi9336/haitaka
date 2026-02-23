@@ -119,6 +119,30 @@ if (!$mainJacket && !empty($release['editions'])) {
                 ?>
                 <section class="bg-white rounded-2xl border <?= $cardBorder ?> shadow-sm overflow-hidden">
                     <div class="px-5 py-3 border-b <?= $cardBorder ?> flex items-center justify-between">
+                        <h3 class="text-[10px] font-black text-slate-400 tracking-wider"><i class="fa-solid fa-sort-numeric-down text-sky-400 mr-1"></i>楽曲順序編集</h3>
+                        <button onclick="SongOrder.toggle()" id="songOrderToggle" class="text-[10px] font-bold text-sky-500 hover:text-sky-700 transition">
+                            <i class="fa-solid fa-pen-to-square mr-0.5"></i>開く
+                        </button>
+                    </div>
+                    <div id="songOrderBody" class="hidden">
+                        <div class="px-5 py-3 space-y-3">
+                            <p class="text-[10px] text-slate-500">各楽曲のトラック番号（順序）を指定してください。数値が小さいほど前に表示されます。</p>
+                            <?php foreach ($release['songs'] as $s): ?>
+                            <div class="flex items-center gap-3 border border-slate-100 rounded-xl p-3 bg-slate-50/50" data-song-id="<?= (int)$s['id'] ?>">
+                                <label class="text-[10px] font-bold text-slate-500 shrink-0 w-16">番号</label>
+                                <input type="number" min="1" class="song-order-input w-16 h-9 border <?= $cardBorder ?> rounded-lg px-2 text-sm text-center font-mono" value="<?= (int)($s['track_number'] ?? 0) ?: '' ?>" placeholder="—" data-song-id="<?= (int)$s['id'] ?>">
+                                <p class="text-sm font-bold text-slate-700 flex-1 truncate"><?= htmlspecialchars($s['title']) ?></p>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <div class="px-5 py-3 border-t <?= $cardBorder ?> flex items-center justify-between bg-slate-50/50">
+                            <p id="songOrderStatus" class="text-[10px] text-slate-400"></p>
+                            <button onclick="SongOrder.save()" class="px-4 py-2 bg-sky-500 text-white text-xs font-bold rounded-lg hover:bg-sky-600 transition shadow-sm"><i class="fa-solid fa-floppy-disk mr-1"></i>保存</button>
+                        </div>
+                    </div>
+                </section>
+                <section class="bg-white rounded-2xl border <?= $cardBorder ?> shadow-sm overflow-hidden">
+                    <div class="px-5 py-3 border-b <?= $cardBorder ?> flex items-center justify-between">
                         <h3 class="text-[10px] font-black text-slate-400 tracking-wider"><i class="fa-solid fa-headphones text-violet-400 mr-1"></i>ストリーミングURL 一括編集</h3>
                         <button onclick="StreamingBulk.toggle()" id="streamingBulkToggle" class="text-[10px] font-bold text-violet-500 hover:text-violet-700 transition">
                             <i class="fa-solid fa-pen-to-square mr-0.5"></i>開く
@@ -170,6 +194,50 @@ if (!$mainJacket && !empty($release['editions'])) {
         document.getElementById('mobileMenuBtn')?.addEventListener('click', () => {
             document.getElementById('sidebar').classList.add('mobile-open');
         });
+
+        var SongOrder = {
+            open: false,
+            toggle: function() {
+                this.open = !this.open;
+                var body = document.getElementById('songOrderBody');
+                var btn = document.getElementById('songOrderToggle');
+                if (this.open) {
+                    body.classList.remove('hidden');
+                    btn.innerHTML = '<i class="fa-solid fa-chevron-up mr-0.5"></i>閉じる';
+                } else {
+                    body.classList.add('hidden');
+                    btn.innerHTML = '<i class="fa-solid fa-pen-to-square mr-0.5"></i>開く';
+                }
+            },
+            save: function() {
+                var songs = [];
+                document.querySelectorAll('.song-order-input').forEach(function(input) {
+                    var songId = parseInt(input.getAttribute('data-song-id'));
+                    var val = input.value.trim();
+                    var trackNumber = val !== '' ? parseInt(val, 10) : null;
+                    if (songId) {
+                        songs.push({ song_id: songId, track_number: trackNumber > 0 ? trackNumber : null });
+                    }
+                });
+                if (songs.length === 0) return;
+                var statusEl = document.getElementById('songOrderStatus');
+                statusEl.textContent = '保存中...';
+                statusEl.className = 'text-[10px] text-sky-500';
+                App.post('/hinata/api/save_release_song_order.php', {
+                    release_id: <?= (int)$release['id'] ?>,
+                    songs: songs
+                }).then(function(res) {
+                    if (res.status === 'success') {
+                        statusEl.textContent = res.message;
+                        statusEl.className = 'text-[10px] text-emerald-500 font-bold';
+                        location.reload();
+                    } else {
+                        statusEl.textContent = res.message || 'エラーが発生しました';
+                        statusEl.className = 'text-[10px] text-red-500 font-bold';
+                    }
+                });
+            }
+        };
 
         var StreamingBulk = {
             open: false,

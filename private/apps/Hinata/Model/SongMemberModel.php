@@ -78,5 +78,7 @@ class SongMemberModel extends BaseModel {
         1 => 'フロント（1列目）',
         2 => '2列目',
         3 => '3列目',
+        4 => '4列目',
+        5 => '5列目（奥）',
     ];
 }

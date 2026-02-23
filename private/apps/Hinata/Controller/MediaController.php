@@ -76,6 +76,7 @@ class MediaController {
         try {
             $offset = (int)($_GET['offset'] ?? 0);
             $limit = (int)($_GET['limit'] ?? 25);
+            $platform = trim($_GET['platform'] ?? '');
             $category = $_GET['category'] ?? '';
             $sort = $_GET['sort'] ?? 'newest';
             $memberId = (int)($_GET['member_id'] ?? 0);
@@ -93,6 +94,10 @@ class MediaController {
             $where = [];
             $params = [];
             
+            if (!empty($platform)) {
+                $where[] = "ma.platform = :platform";
+                $params['platform'] = strtolower($platform);
+            }
             if (!empty($category)) {
                 $where[] = "hmeta.category = :category";
                 $params['category'] = $category;

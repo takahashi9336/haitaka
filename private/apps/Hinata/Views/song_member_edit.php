@@ -33,7 +33,8 @@ $allMembersJson = json_encode(array_map(function ($m) {
             .sidebar { position: fixed; transform: translateX(-100%); z-index: 100; height: 100%; width: 240px !important; }
             .sidebar.mobile-open { transform: translateX(0); }
         }
-        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
         .formation-draggable {
             cursor: grab;
             transition: transform 0.1s ease-out, box-shadow 0.1s ease-out;
@@ -48,6 +49,10 @@ $allMembersJson = json_encode(array_map(function ($m) {
             border-radius: 0.75rem;
             border: 1px dashed #cbd5f5;
             padding: 0.25rem;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
         }
         .formation-drop-row.is-over {
             background: #eff6ff;
@@ -56,6 +61,7 @@ $allMembersJson = json_encode(array_map(function ($m) {
         .formation-member-chip {
             width: 80px;
             margin: 0.1rem;
+            flex-shrink: 0;
         }
         .formation-member-chip img {
             width: 100%;
@@ -80,6 +86,16 @@ $allMembersJson = json_encode(array_map(function ($m) {
             color: #b45309;
             font-weight: 700;
         }
+        .formation-right-panel { overflow-x: auto; }
+        .formation-right-panel::-webkit-scrollbar { height: 6px; }
+        .formation-right-panel::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        .member-panel-transition { transition: width 0.2s ease, min-width 0.2s ease; }
+        .member-panel-collapsed { width: 5rem !important; min-width: 5rem !important; max-width: 5rem !important; }
+        .member-panel-collapsed .formation-narrow [class*="flex-wrap"] { flex-direction: column !important; flex-wrap: nowrap !important; }
+        .member-panel-collapsed .formation-narrow .mb-2 > p:first-child { display: none; }
+        .member-panel-collapsed .formation-narrow .formation-member-chip { width: 56px; }
+        .member-panel-collapsed .formation-narrow .formation-member-chip span { font-size: 0.5rem; }
+        .member-panel-collapsed .formation-narrow .formation-member-chip > div:first-child { width: 2.5rem !important; height: 2.5rem !important; }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden text-slate-800 <?= $bodyBgClass ?>"<?= $bodyStyle ? ' style="' . htmlspecialchars($bodyStyle) . '"' : '' ?>>
@@ -142,7 +158,9 @@ $allMembersJson = json_encode(array_map(function ($m) {
                                 <select id="addRowNumber" class="w-full h-10 border <?= $cardBorder ?> rounded-lg px-2 text-sm bg-white">
                                     <option value="1">1（手前）</option>
                                     <option value="2">2</option>
-                                    <option value="3">3（奥）</option>
+                                    <option value="3">3</option>
+                                    <option value="4">4</option>
+                                    <option value="5">5（奥）</option>
                                 </select>
                             </div>
                             <div class="w-20">
@@ -180,7 +198,9 @@ $allMembersJson = json_encode(array_map(function ($m) {
                                             <option value=""<?= ($m['row_number'] ?? '') === '' ? ' selected' : '' ?>>—</option>
                                             <option value="1"<?= (int)($m['row_number'] ?? 0) === 1 ? ' selected' : '' ?>>1（手前）</option>
                                             <option value="2"<?= (int)($m['row_number'] ?? 0) === 2 ? ' selected' : '' ?>>2</option>
-                                            <option value="3"<?= (int)($m['row_number'] ?? 0) === 3 ? ' selected' : '' ?>>3（奥）</option>
+                                            <option value="3"<?= (int)($m['row_number'] ?? 0) === 3 ? ' selected' : '' ?>>3</option>
+                                            <option value="4"<?= (int)($m['row_number'] ?? 0) === 4 ? ' selected' : '' ?>>4</option>
+                                            <option value="5"<?= (int)($m['row_number'] ?? 0) === 5 ? ' selected' : '' ?>>5（奥）</option>
                                         </select>
                                     </td>
                                     <td class="px-3 py-2">
@@ -216,28 +236,52 @@ $allMembersJson = json_encode(array_map(function ($m) {
                 </div>
             </div>
             <div class="md:flex gap-6">
-                <!-- 左：メンバー（期別グループ） -->
-                <div class="md:w-1/3 mb-4 md:mb-0">
+                <!-- 左：メンバー（期別グループ）・縮小可 -->
+                <div id="memberPanelWrapper" class="member-panel-transition md:w-1/3 mb-4 md:mb-0 shrink-0">
                     <div class="flex items-center justify-between mb-2">
                         <p class="text-[11px] font-bold text-slate-500">メンバー</p>
+                        <button type="button" id="btnToggleMemberPanel" class="inline-flex items-center gap-1 px-2 py-1 rounded-lg border <?= $cardBorder ?> text-slate-500 hover:bg-slate-100 text-[10px] font-bold transition" title="パネル幅を切り替え（縦1列に縮小）">
+                            <i class="fa-solid fa-angles-left text-[10px]" id="btnToggleMemberPanelIcon"></i>
+                            <span id="btnToggleMemberPanelLabel">縮小</span>
+                        </button>
                     </div>
-                    <div id="formationNonParticipants" class="h-80 md:h-[480px] overflow-y-auto custom-scroll border <?= $cardBorder ?> rounded-2xl p-3 bg-slate-50">
+                    <div id="formationNonParticipants" class="formation-narrow h-80 md:h-[480px] overflow-y-auto overflow-x-auto custom-scroll border <?= $cardBorder ?> rounded-2xl p-3 bg-slate-50">
                         <!-- JSで生成 -->
                     </div>
                 </div>
 
-                <!-- 右：フォーメーション（3列構成） -->
-                <div class="md:w-2/3">
+                <!-- 右：フォーメーション（3列が基本、必要時のみ4・5列を追加）・はみ出たら横スクロール -->
+                <div class="formation-right-panel md:flex-1 min-w-0">
                     <p class="text-[11px] text-slate-500 mb-2">ドラッグして列に配置すると、row/position に反映されます。</p>
                     <div class="space-y-4">
-                        <div class="border <?= $cardBorder ?> rounded-2xl px-4 py-4">
-                            <div id="formationRow3" class="formation-drop-row flex flex-wrap items-center justify-center gap-1"></div>
+                        <div id="formationRow5Wrapper" class="hidden">
+                            <div class="border <?= $cardBorder ?> rounded-2xl px-4 py-4 min-w-0">
+                                <div id="formationRow5" class="formation-drop-row custom-scroll flex items-center justify-center gap-1"></div>
+                            </div>
                         </div>
-                        <div class="border <?= $cardBorder ?> rounded-2xl px-4 py-4">
-                            <div id="formationRow2" class="formation-drop-row flex flex-wrap items-center justify-center gap-1"></div>
+                        <div id="btnAddRow5Wrapper" class="hidden">
+                            <button type="button" id="btnAddRow5" class="w-full py-2 rounded-xl border border-dashed <?= $cardBorder ?> text-slate-400 hover:bg-slate-50 hover:text-slate-600 hover:border-sky-300 transition flex items-center justify-center gap-2 text-xs font-bold">
+                                <i class="fa-solid fa-plus text-[10px]"></i>5列目を追加
+                            </button>
                         </div>
-                        <div class="border <?= $cardBorder ?> rounded-2xl px-4 py-4">
-                            <div id="formationRow1" class="formation-drop-row flex flex-wrap items-center justify-center gap-1"></div>
+                        <div id="formationRow4Wrapper" class="hidden">
+                            <div class="border <?= $cardBorder ?> rounded-2xl px-4 py-4 min-w-0">
+                                <div id="formationRow4" class="formation-drop-row custom-scroll flex items-center justify-center gap-1"></div>
+                            </div>
+                        </div>
+                        <div id="btnAddRow4Wrapper">
+                            <button type="button" id="btnAddRow4" class="w-full py-2 rounded-xl border border-dashed <?= $cardBorder ?> text-slate-400 hover:bg-slate-50 hover:text-slate-600 hover:border-sky-300 transition flex items-center justify-center gap-2 text-xs font-bold">
+                                <i class="fa-solid fa-plus text-[10px]"></i>4列目を追加
+                            </button>
+                        </div>
+                        <div class="border <?= $cardBorder ?> rounded-2xl px-4 py-4 min-w-0">
+                            <div id="formationRow3" class="formation-drop-row custom-scroll flex items-center justify-center gap-1"></div>
+                        </div>
+                        <div class="border <?= $cardBorder ?> rounded-2xl px-4 py-4 min-w-0">
+                            <div id="formationRow2" class="formation-drop-row custom-scroll flex items-center justify-center gap-1"></div>
+                        </div>
+                        <div class="border <?= $cardBorder ?> rounded-2xl px-4 py-4 min-w-0">
+                            <div id="formationRow1" class="formation-drop-row custom-scroll flex items-center justify-center gap-1"></div>
                         </div>
                     </div>
                 </div>
@@ -259,7 +303,16 @@ $allMembersJson = json_encode(array_map(function ($m) {
     const formationRow1 = document.getElementById('formationRow1');
     const formationRow2 = document.getElementById('formationRow2');
     const formationRow3 = document.getElementById('formationRow3');
+    const formationRow4 = document.getElementById('formationRow4');
+    const formationRow5 = document.getElementById('formationRow5');
+    const formationRow4Wrapper = document.getElementById('formationRow4Wrapper');
+    const formationRow5Wrapper = document.getElementById('formationRow5Wrapper');
+    const btnAddRow4Wrapper = document.getElementById('btnAddRow4Wrapper');
+    const btnAddRow5Wrapper = document.getElementById('btnAddRow5Wrapper');
     const formationShowGraduates = document.getElementById('formationShowGraduates');
+
+    let expandedRow4 = false;
+    let expandedRow5 = false;
     const formationNonParticipants = document.getElementById('formationNonParticipants');
 
     const tabFormation = document.getElementById('tabFormation');
@@ -278,14 +331,16 @@ $allMembersJson = json_encode(array_map(function ($m) {
     }
 
     function buildRowHtml(memberId, name, rowNumber, position, isCenter, partDescription) {
-        const selEmpty = (!rowNumber || (rowNumber !== 1 && rowNumber !== 2 && rowNumber !== 3)) ? ' selected' : '';
+        const selEmpty = (!rowNumber || (rowNumber < 1 || rowNumber > 5)) ? ' selected' : '';
         return '<tr class="member-row border-t border-slate-100 hover:bg-slate-50/50 align-middle">' +
             '<td class="px-3 py-2"><input type="hidden" name="member_id" value="' + escapeHtml(String(memberId)) + '"><span class="font-medium text-slate-800">' + escapeHtml(name) + '</span></td>' +
             '<td class="px-3 py-2"><select name="row_number" class="w-full max-w-[100px] h-9 border ' + cardBorder + ' rounded-lg px-2 text-sm bg-white">' +
                 '<option value=""' + selEmpty + '>—</option>' +
                 '<option value="1"' + (rowNumber == 1 ? ' selected' : '') + '>1（手前）</option>' +
                 '<option value="2"' + (rowNumber == 2 ? ' selected' : '') + '>2</option>' +
-                '<option value="3"' + (rowNumber == 3 ? ' selected' : '') + '>3（奥）</option>' +
+                '<option value="3"' + (rowNumber == 3 ? ' selected' : '') + '>3</option>' +
+                '<option value="4"' + (rowNumber == 4 ? ' selected' : '') + '>4</option>' +
+                '<option value="5"' + (rowNumber == 5 ? ' selected' : '') + '>5（奥）</option>' +
             '</select></td>' +
             '<td class="px-3 py-2"><input type="number" name="position" min="1" value="' + (position != null && position !== '' ? escapeHtml(String(position)) : '') + '" placeholder="—" class="w-full max-w-[70px] h-9 border ' + cardBorder + ' rounded-lg px-2 text-sm"></td>' +
             '<td class="px-3 py-2"><input type="checkbox" name="is_center" value="1" class="rounded border-slate-300"' + (isCenter ? ' checked' : '') + '></td>' +
@@ -357,7 +412,7 @@ $allMembersJson = json_encode(array_map(function ($m) {
 
     // 各列ごとに position を 1,2,3,... となるよう振り直す
     function normalizePositions() {
-        [1, 2, 3].forEach(function (rowNumber) {
+        [1, 2, 3, 4, 5].forEach(function (rowNumber) {
             const rows = [];
             tbody.querySelectorAll('tr.member-row').forEach(function (tr) {
                 const rowNumberEl = tr.querySelector('select[name="row_number"]');
@@ -410,15 +465,15 @@ $allMembersJson = json_encode(array_map(function ($m) {
         const formationMap = getFormationByMember();
 
         // 列ごとの配置
-        const rows = { 1: [], 2: [], 3: [] };
+        const rows = { 1: [], 2: [], 3: [], 4: [], 5: [] };
         Object.keys(formationMap).forEach(function (midStr) {
             const mid = parseInt(midStr, 10);
             const info = formationMap[mid];
-            const rowKey = info.rowNumber === 1 || info.rowNumber === 2 || info.rowNumber === 3 ? info.rowNumber : null;
+            const rowKey = (info.rowNumber >= 1 && info.rowNumber <= 5) ? info.rowNumber : null;
             if (!rowKey) return;
             rows[rowKey].push({ memberId: mid, position: info.position || 0, isCenter: !!info.isCenter });
         });
-        [1, 2, 3].forEach(function (key) {
+        [1, 2, 3, 4, 5].forEach(function (key) {
             rows[key].sort(function (a, b) { return a.position - b.position; });
         });
 
@@ -464,9 +519,19 @@ $allMembersJson = json_encode(array_map(function ($m) {
             });
         }
 
+        renderRow(formationRow5, 5);
+        renderRow(formationRow4, 4);
         renderRow(formationRow3, 3);
         renderRow(formationRow2, 2);
         renderRow(formationRow1, 1);
+
+        // 4・5列の表示制御（メンバーがいる or ユーザーが追加した場合は表示）
+        const showRow4 = (rows[4] && rows[4].length > 0) || expandedRow4;
+        const showRow5 = (rows[5] && rows[5].length > 0) || expandedRow5;
+        if (formationRow4Wrapper) formationRow4Wrapper.classList.toggle('hidden', !showRow4);
+        if (formationRow5Wrapper) formationRow5Wrapper.classList.toggle('hidden', !showRow5);
+        if (btnAddRow4Wrapper) btnAddRow4Wrapper.classList.toggle('hidden', showRow4);
+        if (btnAddRow5Wrapper) btnAddRow5Wrapper.classList.toggle('hidden', !showRow4 || showRow5);
 
         // 非参加メンバー（期別）
         if (formationNonParticipants) {
@@ -551,7 +616,7 @@ $allMembersJson = json_encode(array_map(function ($m) {
         });
     });
 
-    [formationRow1, formationRow2, formationRow3].forEach(function (rowEl, idx) {
+    [formationRow1, formationRow2, formationRow3, formationRow4, formationRow5].forEach(function (rowEl, idx) {
         if (!rowEl) return;
         rowEl.addEventListener('dragover', function (e) {
             if (!draggingMemberId) return;
@@ -573,6 +638,8 @@ $allMembersJson = json_encode(array_map(function ($m) {
             if (rowEl === formationRow1) rowNumber = 1;
             else if (rowEl === formationRow2) rowNumber = 2;
             else if (rowEl === formationRow3) rowNumber = 3;
+            else if (rowEl === formationRow4) rowNumber = 4;
+            else if (rowEl === formationRow5) rowNumber = 5;
             else rowNumber = null; // その他
 
             // 既存の並び順を取得し、ドロップ位置に応じて左右に挿入
@@ -619,6 +686,26 @@ $allMembersJson = json_encode(array_map(function ($m) {
     if (formationShowGraduates) {
         formationShowGraduates.addEventListener('change', renderFormation);
     }
+
+    document.getElementById('btnAddRow4')?.addEventListener('click', function () {
+        expandedRow4 = true;
+        renderFormation();
+    });
+    document.getElementById('btnAddRow5')?.addEventListener('click', function () {
+        expandedRow5 = true;
+        renderFormation();
+    });
+
+    document.getElementById('btnToggleMemberPanel')?.addEventListener('click', function () {
+        var wrapper = document.getElementById('memberPanelWrapper');
+        var icon = document.getElementById('btnToggleMemberPanelIcon');
+        var label = document.getElementById('btnToggleMemberPanelLabel');
+        if (!wrapper) return;
+        wrapper.classList.toggle('member-panel-collapsed');
+        var collapsed = wrapper.classList.contains('member-panel-collapsed');
+        if (icon) icon.className = collapsed ? 'fa-solid fa-angles-right text-[10px]' : 'fa-solid fa-angles-left text-[10px]';
+        if (label) label.textContent = collapsed ? '展開' : '縮小';
+    });
 
     // 非参加メンバーエリアにドロップされた場合はフォーメーションから外す（テーブル行ごと削除＆position詰め）
     if (formationNonParticipants) {

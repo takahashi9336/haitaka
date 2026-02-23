@@ -279,33 +279,40 @@ if ($mainVideo !== null && !empty($mainVideo['media_key']) && ($mainVideo['platf
                 </section>
                 <?php endif; ?>
 
-                <?php if ($showFormation && (!empty($centerMembers) || !empty($formation['row_1']) || !empty($formation['row_2']) || !empty($formation['row_3']) || !empty($formation['other']))): ?>
+                <?php if ($showFormation && (!empty($centerMembers) || !empty($formation['row_1']) || !empty($formation['row_2']) || !empty($formation['row_3']) || !empty($formation['row_4']) || !empty($formation['row_5']) || !empty($formation['other']))): ?>
                 <section class="bg-white rounded-2xl border <?= $cardBorder ?> shadow-sm p-5">
                     <h3 class="text-[10px] font-black text-slate-400 tracking-wider mb-3">フォーメーション</h3>
                     <?php if (!empty($centerMembers)): ?>
                     <p class="text-xs text-slate-500 mb-3">センター：<?= implode('、', array_map(function ($m) { return htmlspecialchars($m['name']); }, $centerMembers)) ?></p>
                     <?php endif; ?>
                     <?php
-                    // 手前（一番下）が一列目になるよう、row_3→1列目、row_2→2列目、row_1→3列目で表示。列ラベルは表示しない。全メンバー同一サイズ（スマホ・PCとも固定）。
-                    $formationOrder = ['row_3', 'row_2', 'row_1', 'other'];
+                    // 手前（一番下）が一列目になるよう、row_5→row_4→row_3→row_2→row_1の順で表示。列ラベルは表示しない。全メンバー同一サイズ。ボックスに収まらない場合は全体を等倍縮小。
+                    $formationOrder = ['row_5', 'row_4', 'row_3', 'row_2', 'row_1', 'other'];
                     ?>
-                    <div class="flex flex-col items-center gap-4">
-                        <?php foreach ($formationOrder as $key): ?>
-                            <?php if (!empty($formation[$key])): ?>
-                            <div class="flex flex-nowrap justify-center gap-2 md:gap-5 w-full formation-row">
-                                <?php foreach ($formation[$key] as $m): ?>
-                                <?php $memberImg = ($releaseMemberImageMap[$m['member_id']] ?? null) ?: ($m['image_url'] ?? null); ?>
-                                <div class="formation-member-cell flex flex-col items-center flex-none w-9 md:w-24 cursor-pointer hover:opacity-90 transition-opacity" data-member-id="<?= (int)$m['member_id'] ?>" role="button" tabindex="0" title="<?= htmlspecialchars($m['name']) ?>">
-                                    <div class="w-9 h-9 md:w-24 md:h-24 shrink-0 overflow-hidden rounded-lg <?= !empty($m['is_center']) ? 'ring-2 ring-amber-400' : '' ?>">
-                                        <?php if (!empty($memberImg)): ?><img src="<?= htmlspecialchars($memberImg) ?>" alt="" class="w-full h-full object-cover object-top"><?php else: ?><div class="w-full h-full bg-slate-200 flex items-center justify-center"><i class="fa-solid fa-user text-slate-400 text-[10px] md:text-base"></i></div><?php endif; ?>
-                                    </div>
-                                    <span class="formation-name text-[9px] md:text-sm font-medium text-slate-600 mt-0.5 w-9 md:w-24 min-w-0 overflow-hidden text-center whitespace-nowrap <?= !empty($m['is_center']) ? 'text-amber-700' : '' ?>"><?= htmlspecialchars($m['name']) ?></span>
+                    <div id="formationContainer" class="formation-container overflow-hidden w-full min-w-0">
+                        <div id="formationScaler" class="formation-scaler overflow-hidden flex justify-center">
+                            <div id="formationWrapper" class="formation-wrapper inline-block">
+                                <div class="flex flex-col items-center gap-4">
+                                    <?php foreach ($formationOrder as $key): ?>
+                                        <?php if (!empty($formation[$key])): ?>
+                                        <div class="formation-row flex flex-nowrap justify-center gap-2 md:gap-5">
+                                            <?php foreach ($formation[$key] as $m): ?>
+                                            <?php $memberImg = ($releaseMemberImageMap[$m['member_id']] ?? null) ?: ($m['image_url'] ?? null); ?>
+                                            <div class="formation-member-cell flex flex-col items-center flex-none shrink-0 w-9 md:w-24 cursor-pointer hover:opacity-90 transition-opacity" data-member-id="<?= (int)$m['member_id'] ?>" role="button" tabindex="0" title="<?= htmlspecialchars($m['name']) ?>">
+                                                <div class="formation-member-img w-9 h-9 md:w-24 md:h-24 shrink-0 overflow-hidden rounded-lg <?= !empty($m['is_center']) ? 'ring-2 ring-amber-400' : '' ?>">
+                                                    <?php if (!empty($memberImg)): ?><img src="<?= htmlspecialchars($memberImg) ?>" alt="" class="w-full h-full object-cover object-top block"><?php else: ?><div class="w-full h-full bg-slate-200 flex items-center justify-center"><i class="fa-solid fa-user text-slate-400 text-[10px] md:text-base"></i></div><?php endif; ?>
+                                                </div>
+                                                <span class="formation-name text-[9px] md:text-sm font-medium text-slate-600 mt-0.5 w-9 md:w-24 min-w-0 overflow-hidden text-center whitespace-nowrap <?= !empty($m['is_center']) ? 'text-amber-700' : '' ?>"><?= htmlspecialchars($m['name']) ?></span>
+                                            </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                        <?php endif; ?>
+                                    <?php endforeach; ?>
                                 </div>
-                                <?php endforeach; ?>
                             </div>
-                            <?php endif; ?>
-                        <?php endforeach; ?>
+                        </div>
                     </div>
+                    <p class="text-[10px] text-slate-400 mt-2">画像をタップでメンバー帳を表示</p>
                 </section>
                 <?php endif; ?>
 
@@ -440,6 +447,35 @@ if ($mainVideo !== null && !empty($mainVideo['media_key']) && ($mainVideo['platf
                 });
             }
         };
+
+        // フォーメーション全体をボックスに収める（はみ出す場合は全員の画像を等倍縮小、スクロールなし）
+        (function () {
+            var container = document.getElementById('formationContainer');
+            var scaler = document.getElementById('formationScaler');
+            var wrapper = document.getElementById('formationWrapper');
+            if (!container || !scaler || !wrapper) return;
+
+            function fitFormation() {
+                wrapper.style.transform = '';
+                wrapper.style.transformOrigin = '';
+                scaler.style.width = '';
+                scaler.style.height = '';
+                scaler.style.margin = '';
+                var cw = container.clientWidth || (container.parentElement && container.parentElement.clientWidth);
+                var nw = wrapper.scrollWidth;
+                var nh = wrapper.scrollHeight;
+                var scale = Math.min(1, cw / nw);
+                if (scale < 1) {
+                    wrapper.style.transform = 'scale(' + scale + ')';
+                    wrapper.style.transformOrigin = 'top center';
+                    scaler.style.width = (nw * scale) + 'px';
+                    scaler.style.height = (nh * scale) + 'px';
+                    scaler.style.margin = '0 auto';
+                }
+            }
+            fitFormation();
+            window.addEventListener('resize', fitFormation);
+        })();
 
         // フォーメーション名を枠に収まるようフォントサイズを縮小（改行・省略なし）
         document.querySelectorAll('.formation-name').forEach(function (el) {

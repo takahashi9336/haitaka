@@ -193,16 +193,31 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                             <h2 class="text-lg font-black text-slate-800 mb-1">登録プレビュー</h2>
                             <p class="text-xs text-slate-500">選択した動画の情報を確認し、カテゴリを設定して一括登録できます。</p>
                         </div>
-                        <div class="flex items-center gap-3">
-                            <select id="bulkCategory" class="h-10 border <?= $cardBorder ?> rounded-xl px-3 text-sm bg-slate-50">
-                                <option value="">（未選択）</option>
-                                <?php foreach ($categories as $key => $label): ?>
-                                    <option value="<?= htmlspecialchars($key) ?>"><?= htmlspecialchars($label) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                            <button id="btnApplyCategory" class="h-10 px-4 bg-slate-100 text-slate-600 text-xs font-bold rounded-full hover:bg-slate-200 transition">
-                                一括適用
-                            </button>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <div class="flex items-center gap-2">
+                                <label class="text-[10px] font-bold text-slate-500">カテゴリ</label>
+                                <select id="bulkCategory" class="h-10 border <?= $cardBorder ?> rounded-xl px-3 text-sm bg-slate-50">
+                                    <option value="">（未選択）</option>
+                                    <?php foreach ($categories as $key => $label): ?>
+                                        <option value="<?= htmlspecialchars($key) ?>"><?= htmlspecialchars($label) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <button id="btnApplyCategory" class="h-10 px-4 bg-slate-100 text-slate-600 text-xs font-bold rounded-full hover:bg-slate-200 transition">
+                                    一括適用
+                                </button>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <label class="text-[10px] font-bold text-slate-500">動画種類</label>
+                                <select id="bulkMediaType" class="h-10 border <?= $cardBorder ?> rounded-xl px-3 text-sm bg-slate-50">
+                                    <option value="">—</option>
+                                    <option value="video">動画</option>
+                                    <option value="short">Shorts</option>
+                                    <option value="live">LIVE</option>
+                                </select>
+                                <button id="btnApplyMediaType" class="h-10 px-4 bg-slate-100 text-slate-600 text-xs font-bold rounded-full hover:bg-slate-200 transition">
+                                    一括適用
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -706,6 +721,13 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         document.getElementById('btnApplyCategory').addEventListener('click', () => {
             const cat = document.getElementById('bulkCategory').value;
             registerItems.forEach(item => item.category = cat);
+            renderRegisterTable();
+        });
+
+        // Bulk media type apply
+        document.getElementById('btnApplyMediaType').addEventListener('click', () => {
+            const mt = document.getElementById('bulkMediaType').value;
+            registerItems.forEach(item => item.media_type = mt || null);
             renderRegisterTable();
         });
 

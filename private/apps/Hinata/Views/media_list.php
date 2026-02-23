@@ -236,6 +236,17 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                             </div>
                             <?php endif; ?>
                             <div class="flex flex-wrap items-center gap-4">
+                                <!-- プラットフォームフィルター -->
+                                <div class="flex items-center gap-2">
+                                    <label class="text-xs font-bold text-slate-600">プラットフォーム:</label>
+                                    <select id="filterPlatform" class="h-9 border border-sky-100 rounded-lg px-3 text-xs outline-none bg-slate-50">
+                                        <option value="">すべて</option>
+                                        <option value="youtube">YouTube</option>
+                                        <option value="instagram">Instagram</option>
+                                        <option value="tiktok">TikTok</option>
+                                    </select>
+                                </div>
+
                                 <!-- カテゴリフィルター -->
                                 <div class="flex items-center gap-2">
                                     <label class="text-xs font-bold text-slate-600">カテゴリ:</label>
@@ -336,6 +347,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         const mainScrollArea = document.getElementById('mainScrollArea');
         const loadingSpinner = document.getElementById('loadingSpinner');
         const scrollTrigger = document.getElementById('scrollTrigger');
+        const filterPlatform = document.getElementById('filterPlatform');
         const filterCategory = document.getElementById('filterCategory');
         const filterMember = document.getElementById('filterMember');
         const filterGeneration = document.getElementById('filterGeneration');
@@ -385,6 +397,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             scrollTrigger.innerHTML = '<div class="h-20"></div>';
             loadVideos();
         }
+        filterPlatform.addEventListener('change', onFilterChange);
         filterCategory.addEventListener('change', onFilterChange);
         filterMember.addEventListener('change', onFilterChange);
         filterGeneration.addEventListener('change', onFilterChange);
@@ -489,6 +502,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 const params = new URLSearchParams({
                     offset: offset,
                     limit: 25,
+                    platform: filterPlatform.value || '',
                     category: filterCategory.value,
                     sort: filterSort.value,
                     member_id: filterMember.value || '0',
