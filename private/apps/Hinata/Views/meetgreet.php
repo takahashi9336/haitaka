@@ -249,7 +249,10 @@ $dayNames = ['日','月','火','水','木','金','土'];
                     </div>
                     <!-- Step 1: テキスト入力 -->
                     <div id="importStep1">
-                        <label class="block text-[10px] font-bold text-slate-400 tracking-wider mb-2">forTUNE meetsの当選結果を貼り付け</label>
+                        <div class="flex items-center gap-2 mb-2">
+                            <label class="block text-[10px] font-bold text-slate-400 tracking-wider">forTUNE meetsの当選結果を貼り付け</label>
+                            <?php $guideKey = 'meetgreet_import'; require_once __DIR__ . '/../../../components/guide_display.php'; ?>
+                        </div>
                         <textarea id="importText" rows="8" class="w-full border border-slate-200 rounded-lg p-4 text-sm outline-none focus:ring-2 resize-y font-mono" style="focus:ring-color: var(--mg-theme);"
                                   placeholder="当選&#10;2026年2月21日(土)&#10;&#10;第１部&#10;&#10;髙橋未来虹&#10;&#10;9枚（9口）"></textarea>
                         <div class="flex items-center gap-2 mt-3">
