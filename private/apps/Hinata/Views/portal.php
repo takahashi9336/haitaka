@@ -272,28 +272,29 @@ function oshiImgSrc(?string $imageUrl): string {
                                                 <div id="oshiMainSongs" class="flex items-center gap-2 text-slate-600"><i class="fa-solid fa-music w-4 text-slate-400"></i>参加楽曲 <?= $mainOshi['song_count'] ?> 曲</div>
                                                 <?php endif; ?>
                                                 <?php
-                                                $mainNewItem = $oshiLatestItemByMember[$mainOshi['member_id']] ?? null;
+                                                $mainNewItems = $oshiLatestItemByMember[$mainOshi['member_id']] ?? [];
                                                 $hasAnyNewItems = !empty($oshiLatestItemByMember);
                                                 ?>
                                                 <?php if ($hasAnyNewItems): ?>
-                                                <div id="oshiMainNewItemWrap" class="pt-2<?= !$mainNewItem ? ' hidden' : '' ?>">
+                                                <div id="oshiMainNewItemWrap" class="pt-2<?= empty($mainNewItems) ? ' hidden' : '' ?>">
                                                     <p class="text-sm font-black text-slate-600 mb-1.5"><i class="fa-solid fa-bell text-amber-500 mr-1"></i>推しの新着</p>
-                                                    <div id="oshiMainNewItemContent" class="flex items-start gap-2 text-sm min-w-0 rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 cursor-pointer hover:border-amber-300 hover:bg-amber-50/50 transition">
-                                                        <?php if ($mainNewItem):
-                                                            $ni = $mainNewItem;
+                                                    <div id="oshiMainNewItemContent" class="space-y-1.5">
+                                                        <?php foreach ($mainNewItems as $ni):
                                                             $niType = $ni['type'] ?? '';
-                                                            $niIcon = ['blog' => 'fa-blog text-sky-500', 'news' => 'fa-newspaper text-rose-500', 'schedule' => 'fa-calendar text-violet-500', 'video' => 'fa-play text-red-500'][$niType] ?? 'fa-circle-info text-slate-400';
+                                                            $niIcon = ['blog' => 'fa-blog text-sky-500', 'news' => 'fa-newspaper text-rose-500', 'schedule' => 'fa-calendar text-violet-500', 'event' => 'fa-calendar text-violet-500', 'video' => 'fa-play text-red-500'][$niType] ?? 'fa-circle-info text-slate-400';
                                                             $niDate = !empty($ni['event_date']) ? date('n/j', strtotime($ni['event_date'])) : '';
                                                             $niUrl = !empty($ni['url']) ? $ni['url'] : null;
                                                         ?>
-                                                        <span class="text-xs text-slate-400 shrink-0"><?= $niDate ?></span>
-                                                        <i class="fa-solid <?= $niIcon ?> w-4 shrink-0 mt-0.5"></i>
-                                                        <?php if ($niUrl): ?>
-                                                        <a href="<?= htmlspecialchars($niUrl) ?>" target="_blank" rel="noopener" class="flex-1 min-w-0 text-slate-700 hover:text-amber-600 line-clamp-2 break-words" title="<?= htmlspecialchars($ni['title'] ?? '') ?>"><?= htmlspecialchars($ni['title'] ?? '') ?></a>
-                                                        <?php else: ?>
-                                                        <span class="flex-1 min-w-0 text-slate-700 line-clamp-2 break-words" title="<?= htmlspecialchars($ni['title'] ?? '') ?>"><?= htmlspecialchars($ni['title'] ?? '') ?></span>
-                                                        <?php endif; ?>
-                                                        <?php endif; ?>
+                                                        <div class="flex items-start gap-2 text-sm min-w-0 rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 hover:border-amber-300 hover:bg-amber-50/50 transition">
+                                                            <span class="text-xs text-slate-400 shrink-0"><?= $niDate ?></span>
+                                                            <i class="fa-solid <?= $niIcon ?> w-4 shrink-0 mt-0.5"></i>
+                                                            <?php if ($niUrl): ?>
+                                                            <a href="<?= htmlspecialchars($niUrl) ?>" target="_blank" rel="noopener" class="flex-1 min-w-0 text-slate-700 hover:text-amber-600 line-clamp-2 break-words" title="<?= htmlspecialchars($ni['title'] ?? '') ?>"><?= htmlspecialchars($ni['title'] ?? '') ?></a>
+                                                            <?php else: ?>
+                                                            <span class="flex-1 min-w-0 text-slate-700 line-clamp-2 break-words" title="<?= htmlspecialchars($ni['title'] ?? '') ?>"><?= htmlspecialchars($ni['title'] ?? '') ?></span>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                        <?php endforeach; ?>
                                                     </div>
                                                 </div>
                                                 <?php endif; ?>
@@ -515,18 +516,18 @@ function oshiImgSrc(?string $imageUrl): string {
                 </section>
                 <?php endif; ?>
 
-                <!-- 推しメンバーブログ -->
-                <?php if (!empty($oshiBlogPosts)): ?>
+                <!-- 最新ブログ（全メンバー対象） -->
+                <?php if (!empty($latestBlogPosts)): ?>
                 <section class="mb-10">
                     <div class="flex items-center gap-2 mb-3">
                         <i class="fa-solid fa-pen-fancy text-pink-500"></i>
-                        <h2 class="text-sm font-bold text-slate-700">推しの最新ブログ</h2>
-                        <span class="text-[10px] text-slate-400 ml-auto"><?= count($oshiBlogPosts) ?> 件</span>
+                        <h2 class="text-sm font-bold text-slate-700">最新ブログ</h2>
+                        <span class="text-[10px] text-slate-400 ml-auto"><?= count($latestBlogPosts) ?> 件</span>
                     </div>
                     <div class="yt-scroll-wrap">
                         <button class="yt-arrow left hidden" onclick="YtCarousel.scroll('blogCards', -1)"><i class="fa-solid fa-chevron-left text-sm"></i></button>
                         <div id="blogCards" class="yt-scroll">
-                            <?php foreach ($oshiBlogPosts as $bp): ?>
+                            <?php foreach ($latestBlogPosts as $bp): ?>
                             <a href="<?= htmlspecialchars($bp['detail_url']) ?>" target="_blank" class="blog-card block">
                                 <div class="aspect-[3/4] rounded-lg overflow-hidden bg-slate-100 mb-1.5 shadow-sm relative">
                                     <?php if ($bp['thumbnail_url']): ?>
@@ -745,17 +746,22 @@ function oshiImgSrc(?string $imageUrl): string {
             var wrap = el('oshiMainNewItemWrap');
             var content = el('oshiMainNewItemContent');
             if (wrap && content) {
-                var ni = this.newItemsByMember[d.member_id] || this.newItemsByMember[String(d.member_id)];
-                var icons = {blog:'fa-blog text-sky-500',news:'fa-newspaper text-rose-500',schedule:'fa-calendar text-violet-500',video:'fa-play text-red-500'};
-                var ic = (icons[ni && ni.type] || 'fa-circle-info text-slate-400');
-                if (ni && ni.title) {
+                var items = this.newItemsByMember[d.member_id] || this.newItemsByMember[String(d.member_id)];
+                if (!Array.isArray(items)) items = items ? [items] : [];
+                var icons = {blog:'fa-blog text-sky-500',news:'fa-newspaper text-rose-500',schedule:'fa-calendar text-violet-500',event:'fa-calendar text-violet-500',video:'fa-play text-red-500'};
+                var esc = function(s){ var d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; };
+                if (items.length > 0) {
                     wrap.classList.remove('hidden');
-                    var esc = function(s){ var d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; };
-                    var title = ni.title || '';
-                    var link = ni.url ? '<a href="'+esc(ni.url)+'" target="_blank" rel="noopener" class="flex-1 min-w-0 text-slate-700 hover:text-amber-600 line-clamp-2 break-words" title="'+esc(title)+'">'+esc(title)+'</a>' : '<span class="flex-1 min-w-0 text-slate-700 line-clamp-2 break-words" title="'+esc(title)+'">'+esc(title)+'</span>';
-                    var m = (ni.event_date || '').match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
-                    var date = m ? parseInt(m[2],10) + '/' + parseInt(m[3],10) : '';
-                    content.innerHTML = '<span class="text-xs text-slate-400 shrink-0">'+esc(date)+'</span><i class="fa-solid '+ic+' w-4 shrink-0 mt-0.5"></i>'+link;
+                    var html = '';
+                    items.forEach(function(ni) {
+                        var ic = icons[ni.type] || 'fa-circle-info text-slate-400';
+                        var title = ni.title || '';
+                        var link = ni.url ? '<a href="'+esc(ni.url)+'" target="_blank" rel="noopener" class="flex-1 min-w-0 text-slate-700 hover:text-amber-600 line-clamp-2 break-words" title="'+esc(title)+'">'+esc(title)+'</a>' : '<span class="flex-1 min-w-0 text-slate-700 line-clamp-2 break-words" title="'+esc(title)+'">'+esc(title)+'</span>';
+                        var m = (ni.event_date || '').match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+                        var date = m ? parseInt(m[2],10) + '/' + parseInt(m[3],10) : '';
+                        html += '<div class="flex items-start gap-2 text-sm min-w-0 rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 hover:border-amber-300 hover:bg-amber-50/50 transition"><span class="text-xs text-slate-400 shrink-0">'+esc(date)+'</span><i class="fa-solid '+ic+' w-4 shrink-0 mt-0.5"></i>'+link+'</div>';
+                    });
+                    content.innerHTML = html;
                 } else {
                     wrap.classList.add('hidden');
                 }

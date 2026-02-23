@@ -31,8 +31,8 @@ class MediaAssetModel extends BaseModel {
         $url = trim($url);
         if ($url === '') return null;
 
-        // YouTube
-        if (preg_match('%(?:youtube(?:-nocookie)?\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?)/|.*[?&]v=)|youtu\.be/)([^"&?/ ]{11})%i', $url, $match)) {
+        // YouTube (watch, embed, youtu.be, shorts)
+        if (preg_match('%(?:youtube(?:-nocookie)?\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?)/|shorts/|.*[?&]v=)|youtu\.be/)([^"&?/ ]{11})%i', $url, $match)) {
             return [
                 'platform'  => 'youtube',
                 'media_key' => $match[1],

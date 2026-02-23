@@ -176,11 +176,12 @@ class FavoriteModel extends BaseModel {
     }
 
     /**
-     * 推しメンバーごとの最新1件を取得（ブログ・ニュース・スケジュール・動画）
-     * @param int $days 直近何日分を新着とするか
-     * @return array [member_id => [type, title, event_date, url, member_name], ...]
+     * 推しメンバーごとの最新N件を取得（タイムラインと同じロジックで同期）
+     * ブログ・ニュース・スケジュール(翌日以前)・イベント(翌日以前)・動画
+     * @param int $limitPerMember メンバーあたりの件数
+     * @return array [member_id => [[type, title, event_date, url, member_name], ...], ...]
      */
-    public function getOshiLatestItemPerMember(array $memberIds, int $days = 7): array {
+    public function getOshiLatestItemPerMember(array $memberIds, int $limitPerMember = 3): array {
         if (empty($memberIds)) return [];
 
         $placeholders = implode(',', array_fill(0, count($memberIds), '?'));
@@ -188,17 +189,22 @@ class FavoriteModel extends BaseModel {
         $unions[] = "SELECT 'blog' as type, bp.title, bp.published_at as event_date, bp.detail_url as url, bp.member_id, m.name as member_name
                      FROM hn_blog_posts bp
                      JOIN hn_members m ON m.id = bp.member_id
-                     WHERE bp.member_id IN ($placeholders) AND bp.published_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)";
+                     WHERE bp.member_id IN ($placeholders)";
         $unions[] = "SELECT 'news' as type, n.title, n.published_date as event_date, n.detail_url as url, nm.member_id, m.name as member_name
                      FROM hn_news n
                      JOIN hn_news_members nm ON nm.news_id = n.id
                      JOIN hn_members m ON m.id = nm.member_id
-                     WHERE nm.member_id IN ($placeholders) AND n.published_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)";
+                     WHERE nm.member_id IN ($placeholders)";
         $unions[] = "SELECT 'schedule' as type, s.title, s.schedule_date as event_date, s.detail_url as url, sm.member_id, m.name as member_name
                      FROM hn_schedule s
                      JOIN hn_schedule_members sm ON sm.schedule_id = s.id
                      JOIN hn_members m ON m.id = sm.member_id
-                     WHERE sm.member_id IN ($placeholders) AND s.schedule_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY)";
+                     WHERE sm.member_id IN ($placeholders) AND s.schedule_date <= CURDATE()";
+        $unions[] = "SELECT 'event' as type, e.event_name as title, e.event_date as event_date, NULL as url, em.member_id, m.name as member_name
+                     FROM hn_events e
+                     JOIN hn_event_members em ON em.event_id = e.id
+                     JOIN hn_members m ON m.id = em.member_id
+                     WHERE em.member_id IN ($placeholders) AND e.event_date <= CURDATE()";
         $unions[] = "SELECT 'video' as type, COALESCE(ma.title, '動画') as title, COALESCE(ma.upload_date, ma.created_at) as event_date,
                             CASE ma.platform
                                 WHEN 'tiktok' THEN CONCAT('https://www.tiktok.com/', COALESCE(NULLIF(TRIM(ma.sub_key), ''), '@user'), '/video/', ma.media_key)
@@ -210,14 +216,9 @@ class FavoriteModel extends BaseModel {
                      JOIN hn_media_metadata hmeta ON hmeta.id = mm.media_meta_id
                      JOIN com_media_assets ma ON ma.id = hmeta.asset_id
                      JOIN hn_members m ON m.id = mm.member_id
-                     WHERE mm.member_id IN ($placeholders) AND (ma.upload_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY) OR ma.created_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY))";
+                     WHERE mm.member_id IN ($placeholders)";
 
-        $params = array_merge(
-            $memberIds, [$days],
-            $memberIds, [$days],
-            $memberIds, [$days],
-            $memberIds, [$days], [$days]
-        );
+        $params = array_merge($memberIds, $memberIds, $memberIds, $memberIds, $memberIds);
         $sql = "SELECT * FROM (" . implode(" UNION ALL ", $unions) . ") combined
                 ORDER BY event_date DESC";
         $stmt = $this->pdo->prepare($sql);
@@ -228,7 +229,10 @@ class FavoriteModel extends BaseModel {
         foreach ($rows as $row) {
             $mid = (int)$row['member_id'];
             if (!isset($result[$mid])) {
-                $result[$mid] = $row;
+                $result[$mid] = [];
+            }
+            if (count($result[$mid]) < $limitPerMember) {
+                $result[$mid][] = $row;
             }
         }
         return $result;

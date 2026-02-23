@@ -111,7 +111,7 @@ class OshiController {
         } catch (\Exception $e) {}
         try {
             $scheduleModel = new ScheduleModel();
-            $memberSchedule = $scheduleModel->getUpcomingByMember($memberId, 10);
+            $memberSchedule = $scheduleModel->getUpcomingByMember($memberId, 5);
         } catch (\Exception $e) {}
 
         // ユーザ固有のプロフィール画像

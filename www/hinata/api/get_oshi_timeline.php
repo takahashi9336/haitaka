@@ -44,20 +44,20 @@ try {
                  WHERE nm.member_id = :mid_news";
     $params['mid_news'] = $memberId;
 
-    // スケジュール
+    // スケジュール（翌日以前＝今日・過去のみ、予定で埋まらないよう）
     $unions[] = "SELECT 'schedule' as type, s.id, s.title, NULL as thumbnail_url,
                         s.schedule_date as event_date, s.detail_url as url, s.category as extra
                  FROM hn_schedule s
                  JOIN hn_schedule_members sm ON sm.schedule_id = s.id
-                 WHERE sm.member_id = :mid_sched";
+                 WHERE sm.member_id = :mid_sched AND s.schedule_date <= CURDATE()";
     $params['mid_sched'] = $memberId;
 
-    // イベント
+    // イベント（翌日以前）
     $unions[] = "SELECT 'event' as type, e.id, e.event_name as title, NULL as thumbnail_url,
                         e.event_date as event_date, NULL as url, e.event_place as extra
                  FROM hn_events e
                  JOIN hn_event_members em ON em.event_id = e.id
-                 WHERE em.member_id = :mid_event";
+                 WHERE em.member_id = :mid_event AND e.event_date <= CURDATE()";
     $params['mid_event'] = $memberId;
 
     // 動画（モーダル再生用に media_key, platform, sub_key, category, description を含む）

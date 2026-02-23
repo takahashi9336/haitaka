@@ -44,7 +44,7 @@ class HinataController {
         try {
             $oshiMemberIds = array_column($oshiSummary, 'member_id');
             if (!empty($oshiMemberIds)) {
-                $oshiLatestItemByMember = $favModel->getOshiLatestItemPerMember($oshiMemberIds, 7);
+                $oshiLatestItemByMember = $favModel->getOshiLatestItemPerMember($oshiMemberIds, 3);
             }
         } catch (\Exception $e) {
             // テーブル未作成時は空配列のまま
@@ -61,14 +61,11 @@ class HinataController {
             $todayMeetGreetSlots = $mgModel->getSlotsByDate($today);
         }
 
-        // 推しメンバーの最新ブログ
-        $oshiBlogPosts = [];
+        // 最新ブログ（メンバー全員対象、ポカ含む）
+        $latestBlogPosts = [];
         try {
-            $oshiMemberIds = array_column($oshiSummary, 'member_id');
-            if (!empty($oshiMemberIds)) {
-                $blogModel = new BlogModel();
-                $oshiBlogPosts = $blogModel->getLatestForOshi($oshiMemberIds, 10);
-            }
+            $blogModel = new BlogModel();
+            $latestBlogPosts = $blogModel->getLatestAll(10);
         } catch (\Exception $e) {
             // テーブル未作成時は空配列のまま
         }

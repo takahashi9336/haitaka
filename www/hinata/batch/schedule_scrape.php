@@ -50,6 +50,10 @@ foreach ($offsets as $offset) {
         $scheduleId = $model->getIdByCode($item['schedule_code']);
         if ($scheduleId) {
             $memberIds = $model->detectMembers($item['title'], $nameMap);
+            if (empty($memberIds) && !empty($item['detail_url']) && str_contains($item['detail_url'], '/media/detail/')) {
+                usleep(300000); // 詳細取得前に0.3秒待機（サーバー負荷軽減）
+                $memberIds = $scraper->fetchDetailMemberIds($item['detail_url'], $nameMap);
+            }
             $model->setMembers($scheduleId, $memberIds);
             if (!empty($memberIds)) {
                 $stats['members_linked']++;

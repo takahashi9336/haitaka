@@ -173,8 +173,11 @@ class ScheduleScraper
         $date = sprintf('%s-%02d-%s', $year, (int)$month, $day);
         $detailUrl = str_contains($href, 'http') ? $href : self::BASE_URL . $href;
 
+        // 同一 detail が複数日にまたがる場合（ラジオ等）でも日付ごとに別レコードにする
+        $scheduleCodeWithDate = $scheduleCode . '_' . $date;
+
         return [
-            'schedule_code' => $scheduleCode,
+            'schedule_code' => $scheduleCodeWithDate,
             'schedule_date' => $date,
             'category'      => $category,
             'time_text'     => $timeText,
@@ -202,5 +205,42 @@ class ScheduleScraper
             return null;
         }
         return $html;
+    }
+
+    /**
+     * 詳細ページからメンバーを取得（一覧のタイトルにメンバー名が無い場合の補完用）
+     * @param string $detailUrl 詳細ページURL
+     * @param array $nameMap 正規化名 => member_id のマップ
+     * @return int[] member_id の配列
+     */
+    public function fetchDetailMemberIds(string $detailUrl, array $nameMap): array
+    {
+        $url = str_contains($detailUrl, 'http') ? $detailUrl : self::BASE_URL . $detailUrl;
+        $html = $this->fetch($url);
+        if ($html === null || $html === '') return [];
+
+        $doc = new \DOMDocument();
+        libxml_use_internal_errors(true);
+        $doc->loadHTML(mb_convert_encoding($html, 'HTML-ENTITIES', 'UTF-8'));
+        libxml_clear_errors();
+
+        $xpath = new \DOMXPath($doc);
+        // メインコンテンツ内のartistリンクに限定（ヘッダーナビのメンバー一覧を除外）
+        $links = $xpath->query("//*[contains(@class, 'l-maincontents') or contains(@class, 'p-media')]//a[contains(@href, '/artist/')]");
+        if (!$links || $links->length === 0) {
+            $links = $xpath->query("//a[contains(@href, '/artist/')]");
+        }
+        if (!$links || $links->length === 0) return [];
+
+        $ids = [];
+        foreach ($links as $a) {
+            $name = trim($a->textContent ?? '');
+            if ($name === '') continue;
+            $normalized = str_replace([' ', '　'], '', $name);
+            if (isset($nameMap[$normalized])) {
+                $ids[] = $nameMap[$normalized];
+            }
+        }
+        return array_unique($ids);
     }
 }

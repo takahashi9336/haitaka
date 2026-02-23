@@ -140,7 +140,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                         <div id="ytUrlPanel" class="<?= $youtubeConfigured ? 'hidden' : '' ?>">
                             <div class="mb-4">
                                 <label class="block text-xs font-bold text-slate-600 mb-2">YouTube URL（1行1URL）</label>
-                                <textarea id="ytUrlTextarea" rows="6" placeholder="https://www.youtube.com/watch?v=xxxxx&#10;https://youtu.be/yyyyy&#10;..." class="w-full border <?= $cardBorder ?> rounded-xl px-4 py-3 text-sm bg-slate-50 font-mono"></textarea>
+                                <textarea id="ytUrlTextarea" rows="6" placeholder="https://www.youtube.com/watch?v=xxxxx&#10;https://youtu.be/yyyyy&#10;https://www.youtube.com/shorts/zzzzz&#10;..." class="w-full border <?= $cardBorder ?> rounded-xl px-4 py-3 text-sm bg-slate-50 font-mono"></textarea>
                             </div>
                             <button id="ytBtnFetchUrl" class="h-10 px-5 bg-red-500 text-white text-xs font-bold rounded-full hover:bg-red-600 transition">
                                 <i class="fa-solid fa-download mr-1"></i> 情報取得

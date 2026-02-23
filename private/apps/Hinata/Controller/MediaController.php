@@ -1159,7 +1159,7 @@ class MediaController {
      * POST: { urls: ["url1", "url2", ...] }
      */
     public function fetchOembed(): void {
-        header('Content-Type: application/json');
+        header('Content-Type: application/json; charset=utf-8');
         try {
             $auth = new Auth();
             if (!$auth->check() || !$auth->isHinataAdmin()) {
@@ -1264,9 +1264,9 @@ class MediaController {
                 ];
             }
 
-            echo json_encode(['status' => 'success', 'data' => $results]);
+            echo json_encode(['status' => 'success', 'data' => $results], JSON_UNESCAPED_UNICODE);
         } catch (\Exception $e) {
-            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
         }
     }
 
@@ -1275,7 +1275,7 @@ class MediaController {
      * POST: { items: [ { url, title, category, platform, media_key, sub_key, thumbnail_url }, ... ] }
      */
     public function bulkRegister(): void {
-        header('Content-Type: application/json');
+        header('Content-Type: application/json; charset=utf-8');
         try {
             $auth = new Auth();
             if (!$auth->check() || !$auth->isHinataAdmin()) {
@@ -1283,7 +1283,9 @@ class MediaController {
                 return;
             }
 
-            $input = json_decode(file_get_contents('php://input'), true) ?: [];
+            $raw = file_get_contents('php://input');
+            $raw = mb_convert_encoding($raw ?: '{}', 'UTF-8', 'UTF-8'); // 不正なUTF-8を除去
+            $input = json_decode($raw, true) ?: [];
             $items = $input['items'] ?? [];
             if (empty($items)) {
                 echo json_encode(['status' => 'error', 'message' => '登録するデータがありません']);
@@ -1312,14 +1314,18 @@ class MediaController {
                     continue;
                 }
 
+                $description = $item['description'] ?? null;
+                if ($description !== null && $description !== '') {
+                    $description = (string) mb_convert_encoding($description, 'UTF-8', 'UTF-8');
+                }
                 $assetId = $mediaModel->findOrCreateAsset(
                     $platform,
                     $mediaKey,
                     $item['sub_key'] ?? null,
-                    $title,
+                    (string) $title,
                     $item['thumbnail_url'] ?? null,
                     !empty($item['published_at']) ? date('Y-m-d H:i:s', strtotime($item['published_at'])) : null,
-                    $item['description'] ?? null,
+                    $description === '' ? null : $description,
                     $item['media_type'] ?? null
                 );
 
@@ -1357,12 +1363,12 @@ class MediaController {
                 'skipped' => $skipped,
                 'auto_linked' => $autoLinkedCount,
                 'message' => $msg,
-            ]);
+            ], JSON_UNESCAPED_UNICODE);
         } catch (\Exception $e) {
             if (isset($pdo) && $pdo->inTransaction()) {
                 $pdo->rollBack();
             }
-            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
         }
     }
 

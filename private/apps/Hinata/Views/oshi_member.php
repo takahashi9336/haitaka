@@ -278,7 +278,6 @@ if (!empty($member['birth_date'])) {
                         <div class="flex items-center gap-2 mb-3">
                             <i class="fa-solid fa-play-circle text-slate-500"></i>
                             <h3 class="text-xs font-black text-slate-500 tracking-wider">動画</h3>
-                            <a href="/hinata/media_list.php?member_id=<?= $member['id'] ?>" class="text-[10px] font-bold text-slate-400 hover:text-slate-600 ml-auto">すべて見る <i class="fa-solid fa-arrow-right"></i></a>
                         </div>
                         <div class="flex gap-1 mb-3">
                             <?php foreach ($videoTabs as $ti => $vt): ?>
@@ -320,6 +319,9 @@ if (!empty($member['birth_date'])) {
                             </div>
                         </div>
                         <?php endforeach; ?>
+                        <div class="mt-3 text-right">
+                            <a href="/hinata/media_list.php?member_id=<?= $member['id'] ?>" class="text-[10px] font-bold text-slate-400 hover:text-slate-600 inline-flex items-center gap-1">すべて見る <i class="fa-solid fa-arrow-right"></i></a>
+                        </div>
                     </section>
                     <?php endif; ?>
 
