@@ -26,7 +26,6 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         @media (max-width: 768px) {
             .sidebar { position: fixed; transform: translateX(-100%); z-index: 100; height: 100%; width: 240px !important; }
             .sidebar.mobile-open { transform: translateX(0); }
-            .sidebar.mobile-open .nav-text, .sidebar.mobile-open .logo-text, .sidebar.mobile-open .user-info { display: inline !important; }
         }
         .poster-placeholder { background: linear-gradient(135deg, #e2e8f0, #cbd5e1); }
         .edit-row { transition: background-color 0.12s; }

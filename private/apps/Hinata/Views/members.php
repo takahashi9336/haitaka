@@ -27,7 +27,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         @media (max-width: 768px) {
             .sidebar { position: fixed; transform: translateX(-100%); z-index: 100; height: 100%; width: 240px !important; }
             .sidebar.mobile-open { transform: translateX(0); }
-            .sidebar.mobile-open .nav-text, .sidebar.mobile-open .logo-text, .sidebar.mobile-open .user-info { display: inline !important; }
+            
         }
         .member-card { transition: all 0.3s ease; }
         .member-card:hover { transform: translateY(-2px); }

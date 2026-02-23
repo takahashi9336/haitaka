@@ -51,7 +51,6 @@ if (!empty($movie['credits'])) {
         @media (max-width: 768px) {
             .sidebar { position: fixed; transform: translateX(-100%); z-index: 100; height: 100%; width: 240px !important; }
             .sidebar.mobile-open { transform: translateX(0); }
-            .sidebar.mobile-open .nav-text, .sidebar.mobile-open .logo-text, .sidebar.mobile-open .user-info { display: inline !important; }
         }
         .star-rating .star { cursor: pointer; transition: color 0.15s; }
         .star-rating .star:hover, .star-rating .star.filled { color: #f59e0b; }

@@ -159,12 +159,24 @@ $inactiveClass = "text-slate-500 hover:bg-slate-50 transition";
                 </p>
             </div>
             <div class="ml-auto flex items-center">
-                <a href="/users_settings/" class="text-slate-400 hover:text-indigo-600 p-2" title="設定"><i class="fa-solid fa-gear"></i></a>
-                <a href="/logout.php" class="text-slate-400 hover:text-red-500 p-2" title="ログアウト"><i class="fa-solid fa-right-from-bracket"></i></a>
+                <a href="/users_settings/" class="text-slate-400 hover:text-indigo-600 min-w-[44px] min-h-[44px] flex items-center justify-center" title="設定"><i class="fa-solid fa-gear"></i></a>
+                <a href="/logout.php" class="text-slate-400 hover:text-red-500 min-w-[44px] min-h-[44px] flex items-center justify-center" title="ログアウト"><i class="fa-solid fa-right-from-bracket"></i></a>
             </div>
         </div>
     </div>
 </aside>
+<div id="sidebarBackdrop" class="fixed top-0 right-0 bottom-0 left-[240px] z-[99] opacity-0 pointer-events-none transition-opacity duration-200 md:!hidden" aria-hidden="true" role="presentation"
+    style="background:rgba(0,0,0,0.25);"
+></div>
+<style>
+@media (max-width: 768px) {
+    #sidebar.mobile-open ~ #sidebarBackdrop { opacity: 1; pointer-events: auto; }
+    #sidebar { touch-action: manipulation; -webkit-tap-highlight-color: transparent; transform: translate3d(-100%, 0, 0); }
+    #sidebar.mobile-open { transform: translate3d(0, 0, 0); }
+    #sidebar .nav-item { min-height: 44px; }
+    #sidebar nav a { min-height: 36px; display: flex; align-items: center; }
+}
+</style>
 <div id="app-toast" aria-live="polite" style="position:fixed;top:1.5rem;left:50%;transform:translateX(-50%);z-index:99999;padding:0.75rem 1.25rem;border-radius:0.75rem;background:#fff;color:#334155;font-size:0.875rem;font-weight:500;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);border:1px solid #f1f5f9;pointer-events:none;transition:opacity 0.3s;opacity:0;"></div>
 <script>
 (function() {
@@ -202,13 +214,18 @@ $inactiveClass = "text-slate-500 hover:bg-slate-50 transition";
     }, { passive: true });
     
     document.addEventListener('touchend', (e) => {
-        if (!isSwiping) {
+        if (!isSwiping || !e.changedTouches?.length) {
             startX = 0;
             currentX = 0;
+            isSwiping = false;
             return;
         }
-        const deltaX = currentX - startX;
+        // タップのみで touchmove が発火しない場合、currentX は更新されないため
+        // touchend の changedTouches から終了座標を取得する（重要：スマホの誤検知防止）
+        const endX = e.changedTouches[0].clientX;
+        const deltaX = endX - startX;
         const isSidebarOpen = sidebar.classList.contains('mobile-open');
+        // 実際にスワイプした場合のみ処理（タップと区別）
         if (!isSidebarOpen && startX <= getEdgeThreshold() && deltaX > swipeThreshold) {
             openSidebar();
         } else if (isSidebarOpen && deltaX < -swipeThreshold) {

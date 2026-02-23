@@ -30,7 +30,6 @@ $totalMins = $totalRuntime % 60;
         @media (max-width: 768px) {
             .sidebar { position: fixed; transform: translateX(-100%); z-index: 100; height: 100%; width: 240px !important; }
             .sidebar.mobile-open { transform: translateX(0); }
-            .sidebar.mobile-open .nav-text, .sidebar.mobile-open .logo-text, .sidebar.mobile-open .user-info { display: inline !important; }
         }
         .gacha-card { transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
         .gacha-card.spinning { transform: rotateY(360deg) scale(0.9); }
