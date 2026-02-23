@@ -306,10 +306,10 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                                         </button>
                                     </div>
                                     <div class="flex items-center gap-1">
-                                        <button id="btnCardSizeNormal" class="h-9 px-2 bg-sky-500 text-white rounded-lg text-[11px] font-bold transition min-w-[52px]">
-                                            標準
+                                        <button id="btnCardSizeNormal" class="h-9 px-2 bg-slate-100 text-slate-600 rounded-lg text-[11px] font-bold transition min-w-[52px]">
+                                            大きめ
                                         </button>
-                                        <button id="btnCardSizeSmall" class="h-9 px-2 bg-slate-100 text-slate-600 rounded-lg text-[11px] font-bold transition min-w-[52px]">
+                                        <button id="btnCardSizeSmall" class="h-9 px-2 bg-sky-500 text-white rounded-lg text-[11px] font-bold transition min-w-[52px]">
                                             小さめ
                                         </button>
                                     </div>
@@ -362,7 +362,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         let currentRotation = 0;
         let hasMore = true;
         let currentView = 'grid'; // 'grid' or 'list'
-        let currentCardSize = 'normal'; // 'normal' or 'small'
+        let currentCardSize = 'small'; // 'normal'(大きめ) or 'small'(小さめ) デフォルトは小さめ
         let currentMediaType = ''; // '' | 'video' | 'short' | 'live'
         let renderedCategoryHeaders = new Set(); // メンバー/期別絞り込み時のカテゴリ帯用
         // カテゴリ表示順（その他は常に最後）
@@ -374,7 +374,8 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             filterMember.value = urlParams.get('member_id');
         }
 
-        // 初回ロード
+        // 初回ロード（デフォルト小さめのレイアウトを適用）
+        updateVideoContainerLayout();
         loadVideos();
 
         // 無限スクロール監視

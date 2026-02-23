@@ -249,8 +249,8 @@ function oshiImgSrc(?string $imageUrl): string {
                                     $mainLevel = (int)$mainOshi['level'];
                                     $mainLabel = FavoriteModel::LEVEL_LABELS[$mainLevel] ?? '';
                                 ?>
-                                <div class="flex gap-5 h-full">
-                                    <div class="w-36 md:w-44 rounded-xl overflow-hidden bg-slate-100 shrink-0 shadow-md self-stretch">
+                                <div class="flex flex-col md:flex-row gap-4 md:gap-5 h-full">
+                                    <div class="w-36 h-36 md:w-44 md:h-auto rounded-xl overflow-hidden bg-slate-100 shrink-0 shadow-md mx-auto md:mx-0 md:self-stretch">
                                         <?php if ($mainOshi['image_url']): ?>
                                         <img id="oshiMainImg" src="<?= oshiImgSrc($mainOshi['image_url']) ?>" class="w-full h-full object-cover" alt="">
                                         <?php else: ?>
