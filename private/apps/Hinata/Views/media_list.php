@@ -262,10 +262,11 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                                 <div class="flex items-center gap-2">
                                     <label class="text-xs font-bold text-slate-600">メンバー:</label>
                                     <select id="filterMember" class="h-9 border border-sky-100 rounded-lg px-3 text-xs outline-none bg-slate-50 min-w-[140px]">
-                                        <option value="">すべて</option>
-                                        <?php foreach ($members as $m): ?>
-                                            <option value="<?= (int)$m['id'] ?>"><?= htmlspecialchars($m['name']) ?><?= !empty($m['is_active']) ? '' : ' (卒)' ?></option>
-                                        <?php endforeach; ?>
+                                        <?php
+                                        $memberSelectBlankLabel = 'すべて';
+                                        $memberSelectShowGraduate = true;
+                                        require __DIR__ . '/partials/member_select_options.php';
+                                        ?>
                                     </select>
                                 </div>
 

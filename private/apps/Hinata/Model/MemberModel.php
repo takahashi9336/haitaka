@@ -2,6 +2,7 @@
 
 namespace App\Hinata\Model;
 
+use App\Hinata\Helper\MemberGroupHelper;
 use Core\BaseModel;
 
 /**
@@ -92,7 +93,7 @@ class MemberModel extends BaseModel {
                 LEFT JOIN hn_colors c1 ON m.color_id1 = c1.id
                 LEFT JOIN hn_colors c2 ON m.color_id2 = c2.id
                 LEFT JOIN hn_favorites f ON f.member_id = m.id AND f.user_id = :uid_fav
-                ORDER BY m.is_active DESC, m.generation ASC, m.kana ASC";
+                ORDER BY (m.id = " . MemberGroupHelper::POKA_MEMBER_ID . ") ASC, m.is_active DESC, m.generation ASC, m.kana ASC";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute(['uid_fav' => $this->userId]);
         $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
@@ -118,7 +119,7 @@ class MemberModel extends BaseModel {
                 LEFT JOIN hn_colors c2 ON m.color_id2 = c2.id
                 LEFT JOIN hn_favorites f ON f.member_id = m.id AND f.user_id = :uid_fav
                 WHERE m.is_active = 1
-                ORDER BY favorite_level DESC, m.generation ASC, m.kana ASC";
+                ORDER BY (m.id = " . MemberGroupHelper::POKA_MEMBER_ID . ") ASC, favorite_level DESC, m.generation ASC, m.kana ASC";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute(['uid_fav' => $this->userId]);
         return $stmt->fetchAll();
@@ -132,7 +133,7 @@ class MemberModel extends BaseModel {
                 FROM {$this->table} m
                 LEFT JOIN hn_colors c1 ON m.color_id1 = c1.id
                 LEFT JOIN hn_colors c2 ON m.color_id2 = c2.id
-                ORDER BY m.is_active DESC, m.generation ASC, m.kana ASC";
+                ORDER BY (m.id = " . MemberGroupHelper::POKA_MEMBER_ID . ") ASC, m.is_active DESC, m.generation ASC, m.kana ASC";
         $rows = $this->pdo->query($sql)->fetchAll(\PDO::FETCH_ASSOC);
         $ids = array_column($rows, 'id');
         $imagesMap = $this->getMemberImagesMap($ids);

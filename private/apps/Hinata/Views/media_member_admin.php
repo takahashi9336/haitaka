@@ -14,6 +14,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
     <title>動画・メンバー紐付け管理 - 日向坂ポータル</title>
     <?php require_once __DIR__ . '/../../../components/head_favicon.php'; ?>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/assets/js/hinata-member-groups.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+JP:wght@400;700&display=swap');
@@ -384,19 +385,13 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         function renderMemberCheckboxes() {
             const ids = checkedMemberIds;
             const membersToShow = showGraduates ? allMembers : allMembers.filter(m => m.is_active);
-            const byGen = {};
-            membersToShow.forEach(m => {
-                const gen = m.generation || 0;
-                if (!byGen[gen]) byGen[gen] = [];
-                byGen[gen].push(m);
-            });
-            const genOrder = Object.keys(byGen).sort((a, b) => Number(a) - Number(b));
-            if (genOrder.length === 0) {
+            const grouped = HinataMemberGroups.group(membersToShow);
+            if (grouped.order.length === 0 && grouped.graduates.length === 0) {
                 memberCheckboxList.innerHTML = '<p class="text-slate-400 text-sm py-4">メンバーが登録されていません</p>';
                 return;
             }
-            memberCheckboxList.innerHTML = genOrder.map(gen => {
-                const members = (byGen[gen] || []).sort((a, b) => (a.kana || a.name).localeCompare(b.kana || b.name, 'ja'));
+            let html = grouped.order.map(gen => {
+                const members = (grouped.active[gen] || []).sort((a, b) => (a.kana || a.name).localeCompare(b.kana || b.name, 'ja'));
                 const memberIds = members.map(m => m.id);
                 const allChecked = memberIds.every(id => ids.has(id));
                 const items = members.map(m => {
@@ -413,7 +408,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 return `
                     <div class="gen-group" data-gen="${gen}">
                         <div class="flex items-center justify-between mb-2 pb-1 border-b border-sky-100">
-                            <h4 class="text-xs font-black text-sky-600 tracking-wider">${gen}期生</h4>
+                            <h4 class="text-xs font-black text-sky-600 tracking-wider">${HinataMemberGroups.getGenLabel(gen)}</h4>
                             <label class="flex items-center gap-2 cursor-pointer text-[11px] font-bold text-sky-600 hover:text-sky-700">
                                 <input type="checkbox" class="gen-all-cb rounded border-sky-200 text-sky-500" data-gen="${gen}"${allChecked ? ' checked' : ''}>
                                 期別でまとめて選択
@@ -423,6 +418,29 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                     </div>
                 `;
             }).join('');
+            if (grouped.graduates.length > 0) {
+                const gradIds = grouped.graduates.map(m => m.id);
+                const allGradChecked = gradIds.every(id => ids.has(id));
+                const gradItems = grouped.graduates.map(m => {
+                    const checked = ids.has(m.id) ? ' checked' : '';
+                    const gradBadge = ' <span class="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">卒業</span>';
+                    return `<label class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-sky-50 cursor-pointer transition">
+                        <input type="checkbox" class="member-cb member-cb-gen-graduated rounded border-sky-200 text-sky-500 focus:ring-sky-300" value="${m.id}" data-gen="graduated" data-active="0"${checked}>
+                        <span class="text-sm font-bold text-slate-800">${escapeHtml(m.name)}</span>${gradBadge}
+                    </label>`;
+                }).join('');
+                html += `<div class="gen-group mt-4 pt-4 border-t border-slate-200" data-gen="graduated">
+                    <div class="flex items-center justify-between mb-2 pb-1 border-b border-sky-100">
+                        <h4 class="text-xs font-black text-slate-500 tracking-wider">卒業生</h4>
+                        <label class="flex items-center gap-2 cursor-pointer text-[11px] font-bold text-sky-600 hover:text-sky-700">
+                            <input type="checkbox" class="gen-all-cb rounded border-sky-200 text-sky-500" data-gen="graduated"${allGradChecked ? ' checked' : ''}>
+                            まとめて選択
+                        </label>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">${gradItems}</div>
+                </div>`;
+            }
+            memberCheckboxList.innerHTML = html;
             memberCheckboxList.querySelectorAll('.gen-all-cb').forEach(cb => {
                 cb.addEventListener('change', () => {
                     const gen = cb.getAttribute('data-gen');

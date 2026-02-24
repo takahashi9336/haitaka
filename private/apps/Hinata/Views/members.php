@@ -110,6 +110,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
 
     <script src="/assets/js/core.js?v=2"></script>
     <script src="/assets/js/hinata-member-modal.js?v=<?= time() ?>"></script>
+    <script src="/assets/js/hinata-member-groups.js"></script>
     <script>
         const IS_ADMIN = <?= in_array(($user['role'] ?? ''), ['admin', 'hinata_admin'], true) ? 'true' : 'false' ?>;
         HinataMemberModal.init({ detailApiUrl: '/hinata/members.php', imgCacheBust: '<?= time() ?>', isAdmin: IS_ADMIN });
@@ -121,10 +122,9 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         let currentSortOrder = 'generation';
         let isAscending = true; // true: 昇順, false: 降順
         
-        // メンバーデータをJavaScript配列として保持
         const membersData = <?= json_encode($members, JSON_UNESCAPED_UNICODE) ?>;
         const IMG_CACHE_BUST = '?v=<?= time() ?>';
-        const POKA_MEMBER_ID = 99;  // ポカ（マスコット）は最後の帯に表示
+        const POKA_MEMBER_ID = HinataMemberGroups.POKA_MEMBER_ID;
 
         function changeSortOrder() {
             const select = document.getElementById('sortSelect');
@@ -210,35 +210,21 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             gridContainer.innerHTML = '';
             
             if (currentSortOrder === 'generation') {
-                // 期生順の場合はグルーピング表示（ポカid=99は専用帯で最後に表示）
-                const generations = {};
-                sorted.forEach(m => {
-                    if (m.id === POKA_MEMBER_ID) {
-                        if (!generations['poka']) generations['poka'] = [];
-                        generations['poka'].push(m);
-                    } else {
-                        const k = String(m.generation);
-                        if (!generations[k]) generations[k] = [];
-                        generations[k].push(m);
-                    }
-                });
-                
-                // 期生グループの順序を昇順・降順で制御（ポカは常に最後）
-                const regularKeys = Object.keys(generations).filter(k => k !== 'poka').sort((a, b) => {
-                    return isAscending ? (Number(a) - Number(b)) : (Number(b) - Number(a));
-                });
-                const genKeys = generations['poka'] ? [...regularKeys, 'poka'] : regularKeys;
-                
-                genKeys.forEach(gen => {
+                const grouped = HinataMemberGroups.group(sorted);
+                grouped.order.forEach(gen => {
                     const genHeader = document.createElement('div');
                     genHeader.className = 'col-span-full mt-6 mb-3 pb-2 border-b-2 border-sky-200';
-                    genHeader.innerHTML = `<h2 class="text-lg font-black text-sky-600">${gen === 'poka' ? 'ポカ' : gen + '期生'}</h2>`;
+                    genHeader.innerHTML = `<h2 class="text-lg font-black text-sky-600">${HinataMemberGroups.getGenLabel(gen)}</h2>`;
                     gridContainer.appendChild(genHeader);
-                    
-                    generations[gen].forEach(m => {
-                        gridContainer.appendChild(createMemberCard(m));
-                    });
+                    (grouped.active[gen] || []).forEach(m => gridContainer.appendChild(createMemberCard(m)));
                 });
+                if (grouped.graduates.length > 0) {
+                    const gradHeader = document.createElement('div');
+                    gradHeader.className = 'col-span-full mt-6 mb-3 pb-2 border-b-2 border-slate-200';
+                    gradHeader.innerHTML = '<h2 class="text-lg font-black text-slate-500">卒業生</h2>';
+                    gridContainer.appendChild(gradHeader);
+                    grouped.graduates.forEach(m => gridContainer.appendChild(createMemberCard(m)));
+                }
             } else {
                 // その他のソート順は通常表示
                 sorted.forEach(m => {
@@ -296,7 +282,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
 
             const info = document.createElement('div');
             info.className = 'space-y-1';
-            const genLabel = (m.id === POKA_MEMBER_ID) ? 'ポカ' : (m.generation + '期生');
+            const genLabel = HinataMemberGroups.getGenLabel(m.id === POKA_MEMBER_ID ? 'poka' : m.generation);
             info.innerHTML = `
                 <span class="text-[9px] font-black text-sky-400 tracking-wider">${genLabel}</span>
                 <h3 class="font-black text-slate-800 text-base">${m.name}</h3>
@@ -313,34 +299,21 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             tbody.querySelectorAll('tr').forEach(tr => tr.remove());
             
             if (currentSortOrder === 'generation') {
-                // 期生順の場合はグルーピング表示（ポカid=99は専用帯で最後に表示）
-                const generations = {};
-                members.forEach(m => {
-                    if (m.id === POKA_MEMBER_ID) {
-                        if (!generations['poka']) generations['poka'] = [];
-                        generations['poka'].push(m);
-                    } else {
-                        const k = String(m.generation);
-                        if (!generations[k]) generations[k] = [];
-                        generations[k].push(m);
-                    }
-                });
-                
-                const regularKeys = Object.keys(generations).filter(k => k !== 'poka').sort((a, b) => {
-                    return isAscending ? (Number(a) - Number(b)) : (Number(b) - Number(a));
-                });
-                const genKeys = generations['poka'] ? [...regularKeys, 'poka'] : regularKeys;
-                
-                genKeys.forEach(gen => {
+                const grouped = HinataMemberGroups.group(members);
+                grouped.order.forEach(gen => {
                     const headerRow = document.createElement('tr');
                     headerRow.className = 'border-t border-slate-100 bg-slate-50/60';
-                    headerRow.innerHTML = `<td colspan="5" class="px-3 py-2 text-[11px] font-bold text-slate-500 tracking-wider">${gen === 'poka' ? 'ポカ' : gen + '期生'}</td>`;
+                    headerRow.innerHTML = `<td colspan="5" class="px-3 py-2 text-[11px] font-bold text-slate-500 tracking-wider">${HinataMemberGroups.getGenLabel(gen)}</td>`;
                     tbody.appendChild(headerRow);
-                    
-                    generations[gen].forEach(m => {
-                        tbody.appendChild(createMemberRow(m));
-                    });
+                    (grouped.active[gen] || []).forEach(m => tbody.appendChild(createMemberRow(m)));
                 });
+                if (grouped.graduates.length > 0) {
+                    const gradHeaderRow = document.createElement('tr');
+                    gradHeaderRow.className = 'border-t border-slate-100 bg-slate-100/60';
+                    gradHeaderRow.innerHTML = '<td colspan="5" class="px-3 py-2 text-[11px] font-bold text-slate-500 tracking-wider">卒業生</td>';
+                    tbody.appendChild(gradHeaderRow);
+                    grouped.graduates.forEach(m => tbody.appendChild(createMemberRow(m)));
+                }
             } else {
                 members.forEach(m => {
                     tbody.appendChild(createMemberRow(m));
@@ -394,7 +367,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                         return fm[fl] ? '<span class="ml-1.5 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-black '+fm[fl].c+'"><i class="'+fm[fl].i+'"></i></span>' : '';
                     })()}
                 </td>
-                <td class="px-3 py-2 text-slate-600 whitespace-nowrap">${m.id === POKA_MEMBER_ID ? 'ポカ' : (m.generation + '期')}</td>
+                <td class="px-3 py-2 text-slate-600 whitespace-nowrap">${HinataMemberGroups.getGenLabel(m.id === POKA_MEMBER_ID ? 'poka' : m.generation).replace('期生','期')}</td>
                 <td class="px-3 py-2">
                     <div class="flex items-center gap-1 flex-wrap">
                         ${penlightCell(m.color1, m.color1_name)}

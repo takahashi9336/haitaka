@@ -223,10 +223,7 @@ $dayNames = ['日','月','火','水','木','金','土'];
                         <div>
                             <label class="block text-[10px] font-bold text-slate-400 tracking-wider mb-1">メンバー <span class="text-red-500">*</span></label>
                             <select id="manualMember" class="w-full h-10 border border-slate-200 rounded-lg px-3 text-sm outline-none focus:ring-2" style="focus:ring-color: var(--mg-theme);" required>
-                                <option value="">選択</option>
-                                <?php foreach ($members as $m): ?>
-                                <option value="<?= (int)$m['id'] ?>"><?= htmlspecialchars($m['name']) ?></option>
-                                <?php endforeach; ?>
+                                <?php require __DIR__ . '/partials/member_select_options.php'; ?>
                             </select>
                         </div>
                         <div class="grid grid-cols-2 gap-3">

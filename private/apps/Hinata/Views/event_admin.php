@@ -5,6 +5,7 @@
  */
 $appKey = 'hinata';
 require_once __DIR__ . '/../../../components/theme_from_session.php';
+use App\Hinata\Helper\MemberGroupHelper;
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -97,10 +98,29 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                                     <label class="flex items-center gap-1 cursor-pointer font-bold text-sm"><input type="radio" name="cast_type" value="group" checked onchange="toggleMemberSelect()"> 全員</label>
                                     <label class="flex items-center gap-1 cursor-pointer font-bold text-sm"><input type="radio" name="cast_type" value="individual" onchange="toggleMemberSelect()"> 個別</label>
                                 </div>
-                                <div id="memberSelectArea" class="hidden grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto p-4 border border-slate-100 rounded-xl bg-slate-50/50">
-                                    <?php foreach ($members as $m): ?>
-                                    <label class="flex items-center gap-2 text-xs font-bold text-slate-600"><input type="checkbox" name="member_ids[]" value="<?= $m['id'] ?>" class="w-4 h-4 rounded <?= $cardIconText ?>"<?= $isThemeHex ? ' style="accent-color: var(--hinata-theme)"' : '' ?>> <?= htmlspecialchars($m['name']) ?></label>
+                                <div id="memberSelectArea" class="hidden max-h-48 overflow-y-auto p-4 border border-slate-100 rounded-xl bg-slate-50/50 space-y-3">
+                                    <?php $eventGrouped = MemberGroupHelper::group($members); ?>
+                                    <?php foreach ($eventGrouped['order'] as $g): ?>
+                                    <?php if (empty($eventGrouped['active'][$g])) continue; ?>
+                                    <div>
+                                        <p class="text-[10px] font-black text-slate-400 mb-1.5 tracking-wider"><?= htmlspecialchars(MemberGroupHelper::getGenLabel($g)) ?></p>
+                                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                        <?php foreach ($eventGrouped['active'][$g] as $m): ?>
+                                        <label class="flex items-center gap-2 text-xs font-bold text-slate-600"><input type="checkbox" name="member_ids[]" value="<?= $m['id'] ?>" class="w-4 h-4 rounded <?= $cardIconText ?>"<?= $isThemeHex ? ' style="accent-color: var(--hinata-theme)"' : '' ?>> <?= htmlspecialchars($m['name']) ?></label>
+                                        <?php endforeach; ?>
+                                        </div>
+                                    </div>
                                     <?php endforeach; ?>
+                                    <?php if (!empty($eventGrouped['graduates'])): ?>
+                                    <div>
+                                        <p class="text-[10px] font-black text-slate-400 mb-1.5 tracking-wider border-t border-slate-100 pt-3 mt-2">卒業生</p>
+                                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                        <?php foreach ($eventGrouped['graduates'] as $m): ?>
+                                        <label class="flex items-center gap-2 text-xs font-bold text-slate-600"><input type="checkbox" name="member_ids[]" value="<?= $m['id'] ?>" class="w-4 h-4 rounded <?= $cardIconText ?>"<?= $isThemeHex ? ' style="accent-color: var(--hinata-theme)"' : '' ?>> <?= htmlspecialchars($m['name']) ?></label>
+                                        <?php endforeach; ?>
+                                        </div>
+                                    </div>
+                                    <?php endif; ?>
                                 </div>
                             </div>
 

@@ -93,14 +93,16 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                             <button type="button" id="cancelEdit" class="hidden text-[10px] text-red-400 font-bold bg-red-50 px-2 py-0.5 rounded">キャンセル</button>
                         </div>
                         <select name="member_id" id="form_member_id" required class="w-full h-11 border border-slate-100 rounded-lg px-4 text-sm bg-slate-50 outline-none focus:ring-2 <?= $isThemeHex ? 'focus:ring-[var(--hinata-theme)]' : 'focus:ring-' . $themeTailwind . '-100' ?> transition-all">
-                            <option value="">メンバーを選択</option>
-                            <?php if(!empty($members)): foreach ($members as $m): ?>
-                                <?php $favLevel = (int)($m['favorite_level'] ?? 0); ?>
-                                <option value="<?= $m['id'] ?>">
-                                    <?= $favLevel >= 2 ? '❤️ ' : ($favLevel === 1 ? '⭐ ' : '') ?>
-                                    <?= htmlspecialchars($m['name']) ?>
-                                </option>
-                            <?php endforeach; endif; ?>
+                            <?php
+                            $memberSelectBlankLabel = 'メンバーを選択';
+                            $memberSelectFormatOption = function($m) {
+                                $favLevel = (int)($m['favorite_level'] ?? 0);
+                                $prefix = $favLevel >= 2 ? '❤️ ' : ($favLevel === 1 ? '⭐ ' : '');
+                                return $prefix . htmlspecialchars($m['name'] ?? '');
+                            };
+                            if (!empty($members)) require __DIR__ . '/partials/member_select_options.php';
+                            else echo '<option value="">メンバーを選択</option>';
+                            ?>
                         </select>
                         <textarea name="content" id="form_content" required placeholder="何を話す？" class="w-full border border-slate-100 rounded-lg p-4 text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-sky-100 min-h-[80px] transition-all"></textarea>
                         <button type="submit" id="submitBtn" class="w-full bg-sky-500 text-white h-12 rounded-lg font-bold shadow-lg shadow-sky-200 active:scale-95 transition-transform">

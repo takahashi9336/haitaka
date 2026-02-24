@@ -564,7 +564,7 @@ class MediaController {
                 FROM hn_media_members hmm
                 JOIN hn_members m ON hmm.member_id = m.id
                 WHERE hmm.media_meta_id = :meta_id
-                ORDER BY m.generation ASC, m.kana ASC
+                ORDER BY (m.id = 99) ASC, m.generation ASC, m.kana ASC
             ");
             $stmt->execute(['meta_id' => $metaId]);
             echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
@@ -1301,7 +1301,7 @@ class MediaController {
             $skipped = 0;
             $autoLinkedCount = 0;
 
-            $allMembers = $pdo->query("SELECT id, name, kana FROM hn_members ORDER BY id")->fetchAll(\PDO::FETCH_ASSOC);
+            $allMembers = $pdo->query("SELECT id, name, kana FROM hn_members ORDER BY (id = 99) ASC, id ASC")->fetchAll(\PDO::FETCH_ASSOC);
 
             foreach ($items as $item) {
                 $platform = $item['platform'] ?? '';

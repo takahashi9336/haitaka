@@ -147,10 +147,10 @@ $allMembersJson = json_encode(array_map(function ($m) {
                             <div class="min-w-[140px]">
                                 <label class="block text-[10px] font-bold text-slate-500 mb-1">メンバー</label>
                                 <select id="addMemberId" class="w-full h-10 border <?= $cardBorder ?> rounded-lg px-3 text-sm bg-white">
-                                    <option value="">選択</option>
-                                    <?php foreach ($allMembers as $m): ?>
-                                    <option value="<?= (int)$m['id'] ?>"><?= htmlspecialchars($m['name']) ?></option>
-                                    <?php endforeach; ?>
+                                    <?php
+                                    $members = $allMembers;
+                                    require __DIR__ . '/partials/member_select_options.php';
+                                    ?>
                                 </select>
                             </div>
                             <div class="w-20">
@@ -292,6 +292,7 @@ $allMembersJson = json_encode(array_map(function ($m) {
     </main>
 
     <script src="/assets/js/core.js?v=3"></script>
+    <script src="/assets/js/hinata-member-groups.js"></script>
     <script>
 (function () {
     const songId = <?= (int)$songId ?>;
@@ -533,35 +534,25 @@ $allMembersJson = json_encode(array_map(function ($m) {
         if (btnAddRow4Wrapper) btnAddRow4Wrapper.classList.toggle('hidden', showRow4);
         if (btnAddRow5Wrapper) btnAddRow5Wrapper.classList.toggle('hidden', !showRow4 || showRow5);
 
-        // 非参加メンバー（期別）
+        // 非参加メンバー（期別・卒業生は下）
         if (formationNonParticipants) {
             formationNonParticipants.innerHTML = '';
             const inFormationIds = new Set(Object.keys(formationMap).map(function (mid) { return parseInt(mid, 10); }));
-            const groups = {};
-            allMembers.forEach(function (m) {
-                if (!showGraduates && !m.is_active) return;
-                if (inFormationIds.has(m.id)) return;
-                const gen = m.generation || 0;
-                if (!groups[gen]) groups[gen] = [];
-                groups[gen].push(m);
+            const available = allMembers.filter(function (m) {
+                if (!showGraduates && !m.is_active) return false;
+                return !inFormationIds.has(m.id);
             });
-            const genKeys = Object.keys(groups).map(function (g) { return parseInt(g, 10); }).sort(function (a, b) { return a - b; });
-            if (genKeys.length === 0) {
+            const grouped = HinataMemberGroups.group(available);
+            if (grouped.order.length === 0 && grouped.graduates.length === 0) {
                 const p = document.createElement('p');
                 p.className = 'text-xs text-slate-400 px-1 py-0.5';
                 p.textContent = '非参加メンバーはいません。';
                 formationNonParticipants.appendChild(p);
             } else {
-                genKeys.forEach(function (gen) {
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'mb-2';
-                    const title = document.createElement('p');
-                    title.className = 'text-[11px] font-bold text-slate-500 mb-1';
-                    title.textContent = gen ? (gen + '期生') : '期未設定';
-                    wrapper.appendChild(title);
+                function renderMemberChips(members) {
                     const row = document.createElement('div');
                     row.className = 'flex flex-wrap gap-0.5';
-                        groups[gen].forEach(function (m) {
+                    members.forEach(function (m) {
                         const chip = document.createElement('div');
                         chip.className = 'formation-member-chip formation-draggable';
                         chip.draggable = true;
@@ -592,9 +583,30 @@ $allMembersJson = json_encode(array_map(function ($m) {
                         chip.appendChild(nameEl);
                         row.appendChild(chip);
                     });
-                    wrapper.appendChild(row);
+                    return row;
+                }
+                grouped.order.forEach(function (gen) {
+                    const members = grouped.active[gen] || [];
+                    if (members.length === 0) return;
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'mb-2';
+                    const title = document.createElement('p');
+                    title.className = 'text-[11px] font-bold text-slate-500 mb-1';
+                    title.textContent = HinataMemberGroups.getGenLabel(gen);
+                    wrapper.appendChild(title);
+                    wrapper.appendChild(renderMemberChips(members));
                     formationNonParticipants.appendChild(wrapper);
                 });
+                if (grouped.graduates.length > 0) {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'mb-2 mt-2 pt-2 border-t border-slate-200';
+                    const title = document.createElement('p');
+                    title.className = 'text-[11px] font-bold text-slate-500 mb-1';
+                    title.textContent = '卒業生';
+                    wrapper.appendChild(title);
+                    wrapper.appendChild(renderMemberChips(grouped.graduates));
+                    formationNonParticipants.appendChild(wrapper);
+                }
             }
         }
     }

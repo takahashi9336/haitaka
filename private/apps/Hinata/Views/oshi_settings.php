@@ -5,6 +5,7 @@
  */
 $appKey = 'hinata';
 require_once __DIR__ . '/../../../components/theme_from_session.php';
+use App\Hinata\Helper\MemberGroupHelper;
 
 use App\Hinata\Model\FavoriteModel;
 $levelLabels = FavoriteModel::LEVEL_LABELS;
@@ -102,8 +103,13 @@ $levelLabels = FavoriteModel::LEVEL_LABELS;
                 <!-- メンバー一覧 -->
                 <section>
                     <h2 class="text-sm font-black text-slate-500 mb-4 tracking-wider"><i class="fa-solid fa-users mr-2"></i>メンバー一覧</h2>
-                    <div class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3">
-                        <?php foreach ($members as $m):
+                    <?php $oshiGrouped = MemberGroupHelper::group($members); ?>
+                    <?php foreach ($oshiGrouped['order'] as $g): ?>
+                    <?php if (empty($oshiGrouped['active'][$g])) continue; ?>
+                    <div class="mb-4">
+                        <p class="text-[10px] font-black text-slate-400 mb-2 tracking-wider border-b border-slate-100 pb-1"><?= htmlspecialchars(MemberGroupHelper::getGenLabel($g)) ?></p>
+                        <div class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3">
+                        <?php foreach ($oshiGrouped['active'][$g] as $m):
                             $favLevel = (int)($m['favorite_level'] ?? 0);
                             $levelLabel = $levelLabels[$favLevel] ?? '';
                             $ringClass = '';
@@ -145,7 +151,55 @@ $levelLabels = FavoriteModel::LEVEL_LABELS;
                             </div>
                         </div>
                         <?php endforeach; ?>
+                        </div>
                     </div>
+                    <?php endforeach; ?>
+                    <?php if (!empty($oshiGrouped['graduates'])): ?>
+                    <div class="mb-4">
+                        <p class="text-[10px] font-black text-slate-400 mb-2 tracking-wider border-b border-slate-100 pb-1">卒業生</p>
+                        <div class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3">
+                        <?php foreach ($oshiGrouped['graduates'] as $m):
+                            $favLevel = (int)($m['favorite_level'] ?? 0);
+                            $levelLabel = $levelLabels[$favLevel] ?? '';
+                            $ringClass = '';
+                            if ($favLevel === 9) $ringClass = 'ring-2 ring-amber-400';
+                            elseif ($favLevel === 8) $ringClass = 'ring-2 ring-pink-400';
+                            elseif ($favLevel === 7) $ringClass = 'ring-2 ring-rose-300';
+                            elseif ($favLevel === 1) $ringClass = 'ring-2 ring-amber-200';
+                        ?>
+                        <div class="member-grid-card bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden text-center p-2 opacity-60 <?= $ringClass ?>" data-member-id="<?= $m['id'] ?>" data-current-level="<?= $favLevel ?>">
+                            <div class="w-14 h-14 mx-auto rounded-full overflow-hidden bg-slate-100 mb-2">
+                                <?php $imgs = $m['images'] ?? []; $imgUrl = $imgs[0] ?? $m['image_url'] ?? null; ?>
+                                <?php if ($imgUrl): ?>
+                                <img src="/assets/img/members/<?= htmlspecialchars($imgUrl) ?>" class="w-full h-full object-cover" alt="" loading="lazy">
+                                <?php else: ?>
+                                <div class="w-full h-full flex items-center justify-center text-slate-300"><i class="fa-solid fa-user"></i></div>
+                                <?php endif; ?>
+                            </div>
+                            <p class="text-[10px] font-bold text-slate-700 leading-tight mb-1"><?= htmlspecialchars($m['name']) ?></p>
+                            <?php if ($levelLabel): ?>
+                            <span class="text-[8px] font-black px-1.5 py-0.5 rounded-full
+                                <?php if ($favLevel === 9): ?> bg-amber-100 text-amber-600
+                                <?php elseif ($favLevel === 8): ?> bg-pink-100 text-pink-600
+                                <?php elseif ($favLevel === 7): ?> bg-rose-100 text-rose-500
+                                <?php elseif ($favLevel === 1): ?> bg-amber-50 text-amber-500
+                                <?php endif; ?>
+                            "><?= $levelLabel ?></span>
+                            <?php endif; ?>
+                            <div class="mt-2">
+                                <select onchange="OshiSettings.setLevel(<?= $m['id'] ?>, parseInt(this.value))" class="w-full text-[10px] border border-slate-200 rounded-lg py-1 px-1 text-slate-600 bg-white">
+                                    <option value="0" <?= $favLevel === 0 ? 'selected' : '' ?>>--</option>
+                                    <option value="9" <?= $favLevel === 9 ? 'selected' : '' ?>>最推し</option>
+                                    <option value="8" <?= $favLevel === 8 ? 'selected' : '' ?>>2推し</option>
+                                    <option value="7" <?= $favLevel === 7 ? 'selected' : '' ?>>3推し</option>
+                                    <option value="1" <?= $favLevel === 1 ? 'selected' : '' ?>>気になる</option>
+                                </select>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                 </section>
 
             </div>

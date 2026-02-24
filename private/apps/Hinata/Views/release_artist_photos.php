@@ -5,6 +5,7 @@
  */
 $appKey = 'hinata';
 require_once __DIR__ . '/../../../components/theme_from_session.php';
+use App\Hinata\Helper\MemberGroupHelper;
 $releaseId = (int)$release['id'];
 ?>
 <!DOCTYPE html>
@@ -57,8 +58,14 @@ $releaseId = (int)$release['id'];
                 <section class="bg-white rounded-2xl border <?= $cardBorder ?> shadow-sm p-5">
                     <h3 class="text-sm font-black text-slate-700 mb-3">メンバー別アーティスト写真</h3>
                     <p class="text-xs text-slate-500 mb-3">URLを直接入力するか、ファイルを選択してアップロードできます。未設定のメンバーはメンバー登録の画像が使われます。</p>
-                    <form id="artistPhotosForm" class="space-y-3">
-                        <?php foreach ($members as $m): ?>
+                    <form id="artistPhotosForm" class="space-y-4">
+                        <?php $photoGrouped = MemberGroupHelper::group($members); ?>
+                        <?php foreach ($photoGrouped['order'] as $g): ?>
+                        <?php if (empty($photoGrouped['active'][$g])) continue; ?>
+                        <div>
+                            <p class="text-[10px] font-black text-slate-400 mb-2 tracking-wider border-b border-slate-100 pb-1"><?= htmlspecialchars(MemberGroupHelper::getGenLabel($g)) ?></p>
+                        <div class="space-y-3">
+                        <?php foreach ($photoGrouped['active'][$g] as $m): ?>
                         <?php $mid = (int)$m['id']; $currentUrl = $imageMap[$mid] ?? ''; ?>
                         <div class="flex items-center gap-3 flex-wrap member-row" data-member-id="<?= $mid ?>">
                             <?php $avatarUrl = $currentUrl !== '' ? $currentUrl : ($m['image_url'] ?? ''); ?>
@@ -84,6 +91,42 @@ $releaseId = (int)$release['id'];
                             </div>
                         </div>
                         <?php endforeach; ?>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                        <?php if (!empty($photoGrouped['graduates'])): ?>
+                        <div class="border-t border-slate-200 pt-4">
+                            <p class="text-[10px] font-black text-slate-400 mb-2 tracking-wider border-b border-slate-100 pb-1">卒業生</p>
+                            <div class="space-y-3">
+                        <?php foreach ($photoGrouped['graduates'] as $m): ?>
+                        <?php $mid = (int)$m['id']; $currentUrl = $imageMap[$mid] ?? ''; ?>
+                        <div class="flex items-center gap-3 flex-wrap member-row" data-member-id="<?= $mid ?>">
+                            <?php $avatarUrl = $currentUrl !== '' ? $currentUrl : ($m['image_url'] ?? ''); ?>
+                            <div class="w-10 h-10 shrink-0 rounded-full bg-slate-100 overflow-hidden flex items-center justify-center member-default-avatar">
+                                <?php if ($avatarUrl !== ''): ?>
+                                <img src="<?= htmlspecialchars($avatarUrl) ?>" alt="" class="w-full h-full object-cover">
+                                <?php else: ?>
+                                <i class="fa-solid fa-user text-slate-400 text-sm"></i>
+                                <?php endif; ?>
+                            </div>
+                            <div class="min-w-[100px] shrink-0">
+                                <span class="text-sm font-bold text-slate-700"><?= htmlspecialchars($m['name']) ?></span>
+                            </div>
+                            <div class="flex-1 min-w-0 flex flex-wrap items-center gap-2">
+                                <input type="hidden" name="members[][member_id]" value="<?= $mid ?>">
+                                <input type="text" name="members[][image_url]" value="<?= htmlspecialchars($currentUrl) ?>"
+                                    placeholder="画像URL"
+                                    class="member-image-url flex-1 min-w-[140px] h-10 border <?= $cardBorder ?> rounded-lg px-3 text-sm">
+                                <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" class="hidden member-file-input" data-member-id="<?= $mid ?>">
+                                <button type="button" class="member-upload-btn h-10 px-3 rounded-lg border <?= $cardBorder ?> bg-white text-xs font-bold text-slate-600 hover:bg-slate-50 transition shrink-0">
+                                    <i class="fa-solid fa-upload mr-1"></i>ファイルを選択
+                                </button>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
                     </form>
                     <div class="mt-4 flex justify-end">
                         <button type="button" id="saveBtn" class="px-4 py-2 rounded-lg font-bold text-white <?= $cardIconBg ?> hover:opacity-90 transition"<?= isset($cardIconStyle) && $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>><i class="fa-solid fa-save mr-1"></i>保存</button>

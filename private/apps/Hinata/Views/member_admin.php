@@ -5,6 +5,7 @@
  */
 $appKey = 'hinata';
 require_once __DIR__ . '/../../../components/theme_from_session.php';
+use App\Hinata\Helper\MemberGroupHelper;
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -152,17 +153,39 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
 
                 <div class="space-y-4">
                     <section class="bg-white p-6 rounded-xl border border-sky-50 shadow-sm overflow-hidden">
-                        <div class="space-y-1 max-h-[600px] overflow-y-auto custom-scroll pr-2">
-                            <?php foreach ($members as $m): ?>
-                            <div onclick='selectMember(<?= json_encode($m, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>)' class="p-2 rounded-lg hover:bg-sky-50 cursor-pointer flex items-center gap-3 transition-all border border-transparent hover:border-sky-100 <?= $m['is_active'] ? '' : 'opacity-40' ?>">
-                                <?php if($m['image_url']): ?>
-                                    <img src="/assets/img/members/<?= $m['image_url'] ?>?v=<?= time() ?>" class="w-10 h-10 rounded-xl object-cover">
-                                <?php else: ?>
-                                    <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-300"><?= $m['generation'] ?></div>
-                                <?php endif; ?>
-                                <span class="text-sm font-bold text-slate-700"><?= htmlspecialchars($m['name']) ?></span>
+                        <div class="space-y-2 max-h-[600px] overflow-y-auto custom-scroll pr-2">
+                            <?php $adminGrouped = MemberGroupHelper::group($members); ?>
+                            <?php foreach ($adminGrouped['order'] as $g): ?>
+                            <?php if (empty($adminGrouped['active'][$g])) continue; ?>
+                            <div>
+                                <p class="text-[10px] font-black text-slate-400 mb-1 tracking-wider"><?= htmlspecialchars(MemberGroupHelper::getGenLabel($g)) ?></p>
+                                <?php foreach ($adminGrouped['active'][$g] as $m): ?>
+                                <div onclick='selectMember(<?= json_encode($m, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>)' class="p-2 rounded-lg hover:bg-sky-50 cursor-pointer flex items-center gap-3 transition-all border border-transparent hover:border-sky-100">
+                                    <?php if($m['image_url']): ?>
+                                        <img src="/assets/img/members/<?= $m['image_url'] ?>?v=<?= time() ?>" class="w-10 h-10 rounded-xl object-cover">
+                                    <?php else: ?>
+                                        <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-300"><?= $m['generation'] ?></div>
+                                    <?php endif; ?>
+                                    <span class="text-sm font-bold text-slate-700"><?= htmlspecialchars($m['name']) ?></span>
+                                </div>
+                                <?php endforeach; ?>
                             </div>
                             <?php endforeach; ?>
+                            <?php if (!empty($adminGrouped['graduates'])): ?>
+                            <div class="border-t border-slate-100 pt-2 mt-2">
+                                <p class="text-[10px] font-black text-slate-400 mb-1 tracking-wider">卒業生</p>
+                                <?php foreach ($adminGrouped['graduates'] as $m): ?>
+                                <div onclick='selectMember(<?= json_encode($m, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>)' class="p-2 rounded-lg hover:bg-sky-50 cursor-pointer flex items-center gap-3 transition-all border border-transparent hover:border-sky-100 opacity-60">
+                                    <?php if($m['image_url']): ?>
+                                        <img src="/assets/img/members/<?= $m['image_url'] ?>?v=<?= time() ?>" class="w-10 h-10 rounded-xl object-cover">
+                                    <?php else: ?>
+                                        <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-300"><?= $m['generation'] ?></div>
+                                    <?php endif; ?>
+                                    <span class="text-sm font-bold text-slate-700"><?= htmlspecialchars($m['name']) ?></span>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <?php endif; ?>
                         </div>
                     </section>
 
