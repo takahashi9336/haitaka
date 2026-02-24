@@ -2,6 +2,7 @@ import json
 import subprocess
 import sys
 import urllib.parse
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -11,6 +12,24 @@ import urllib.error
 
 CONFIG_DIR = Path.home() / ".hinata_tiktok_client"
 CONFIG_PATH = CONFIG_DIR / "config.json"
+
+
+def should_run_now() -> bool:
+    """
+    9:00, 12:00, 15:00, 18:00, 21:00, 24:00（=翌日0:00）だけ実行する。
+    タスクスケジューラは毎時起動想定。
+    """
+    now = datetime.now()
+    h = now.hour
+
+    # 24:00 相当（翌日0:00）
+    if h == 0:
+        return True
+
+    if not (9 <= h < 24):
+        return False
+
+    return (h - 9) % 3 == 0
 
 
 def load_config() -> Dict[str, Any]:
@@ -131,6 +150,10 @@ def post_to_hinata(endpoint: str, token: str, account: str, urls: List[str]) -> 
 
 
 def main(argv: List[str]) -> int:
+    if not should_run_now():
+        print("skip: outside 9-24 3-hour schedule")
+        return 0
+
     cfg = load_config()
 
     # カスタムURLスキームで起動された場合: 第一引数にURLが入る前提

@@ -584,14 +584,25 @@ function oshiImgSrc(?string $imageUrl): string {
                 </section>
 
                 <!-- X 公式 (インライン) -->
-                <div class="flex items-center gap-3 bg-white rounded-lg border <?= $cardBorder ?> shadow-sm px-4 py-3 mb-10">
-                    <i class="fa-brands fa-x-twitter text-lg text-slate-600"></i>
-                    <span class="text-xs font-bold text-slate-700">日向坂46</span>
-                    <span class="text-[10px] text-slate-400">@hinatazaka46</span>
-                    <a href="https://x.com/hinatazaka46" target="_blank" rel="noopener"
-                       class="ml-auto shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 text-white rounded-full text-[10px] font-bold hover:bg-slate-700 transition">
-                        <i class="fa-brands fa-x-twitter text-[8px]"></i>ポストを見る
-                    </a>
+                <div class="flex flex-col gap-2 mb-10">
+                    <div class="flex items-center gap-3 bg-white rounded-lg border <?= $cardBorder ?> shadow-sm px-4 py-3">
+                        <i class="fa-brands fa-x-twitter text-lg text-slate-600"></i>
+                        <span class="text-xs font-bold text-slate-700">日向坂46</span>
+                        <span class="text-[10px] text-slate-400">@hinatazaka46</span>
+                        <a href="https://x.com/hinatazaka46" target="_blank" rel="noopener"
+                           class="ml-auto shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 text-white rounded-full text-[10px] font-bold hover:bg-slate-700 transition">
+                            <i class="fa-brands fa-x-twitter text-[8px]"></i>ポストを見る
+                        </a>
+                    </div>
+                    <div class="flex items-center gap-3 bg-white rounded-lg border <?= $cardBorder ?> shadow-sm px-4 py-3">
+                        <i class="fa-brands fa-instagram text-lg text-slate-600"></i>
+                        <span class="text-xs font-bold text-slate-700">日向坂46</span>
+                        <span class="text-[10px] text-slate-400">@hinatazaka46</span>
+                        <a href="https://www.instagram.com/hinatazaka46/" target="_blank" rel="noopener"
+                           class="ml-auto shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500 text-white rounded-full text-[10px] font-bold hover:brightness-110 transition">
+                            <i class="fa-brands fa-instagram text-[8px]"></i>Instagramを見る
+                        </a>
+                    </div>
                 </div>
 
                 <!-- アプリ -->
