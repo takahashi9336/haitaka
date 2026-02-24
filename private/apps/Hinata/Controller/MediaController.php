@@ -189,6 +189,19 @@ class MediaController {
         $memberModel = new \App\Hinata\Model\MemberModel();
         $categories = $this->getMediaCategories();
         $members = $memberModel->getAllWithColors();
+
+        // 楽曲選択用にリリース＋収録曲一覧を取得（media_song_admin と同様の構造）
+        $releaseModel = new \App\Hinata\Model\ReleaseModel();
+        $releases = $releaseModel->getAllReleases();
+        $releasesWithSongs = [];
+        foreach ($releases as $r) {
+            $full = $releaseModel->getReleaseWithSongs((int)$r['id']);
+            if ($full && !empty($full['songs'])) {
+                $releasesWithSongs[] = $full;
+            }
+        }
+        $trackTypesDisplay = \App\Hinata\Model\SongModel::TRACK_TYPES_DISPLAY;
+
         $user = $_SESSION['user'];
         require_once __DIR__ . '/../Views/media_member_admin.php';
     }
@@ -650,6 +663,77 @@ class MediaController {
             $stmt->execute(['meta_id' => $metaId]);
             $song = $stmt->fetch(\PDO::FETCH_ASSOC);
             echo json_encode(['status' => 'success', 'data' => $song ?: null]);
+        } catch (\Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * 動画に紐づく「楽曲メンバー（hn_song_members）」を取得し、動画側の紐付けに利用するためのAPI
+     * GET: ?meta_id=123
+     *
+     * 戻り値:
+     *  - song: 楽曲情報（紐付けが無い場合は null）
+     *  - members: 楽曲メンバー一覧（member_id, name など）
+     */
+    public function getSongMembersForMedia(): void {
+        header('Content-Type: application/json');
+        try {
+            $auth = new Auth();
+            if (!$auth->check() || !$auth->isHinataAdmin()) {
+                echo json_encode(['status' => 'error', 'message' => '権限がありません']);
+                return;
+            }
+            $metaId = (int)($_GET['meta_id'] ?? 0);
+            if (!$metaId) {
+                echo json_encode(['status' => 'error', 'message' => 'meta_id required']);
+                return;
+            }
+
+            $pdo = Database::connect();
+
+            // まず、この動画に紐づく楽曲を1件取得（既存の getMediaLinkedSong と同等の条件）
+            $stmt = $pdo->prepare("
+                SELECT s.id, s.release_id, s.title, s.track_type, s.track_number,
+                       r.title as release_title, r.release_number
+                FROM hn_song_media_links l
+                JOIN hn_songs s ON s.id = l.song_id
+                JOIN hn_releases r ON s.release_id = r.id
+                WHERE l.media_meta_id = :meta_id
+                LIMIT 1
+            ");
+            $stmt->execute(['meta_id' => $metaId]);
+            $song = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+            if (!$song) {
+                echo json_encode([
+                    'status' => 'success',
+                    'song' => null,
+                    'members' => [],
+                ]);
+                return;
+            }
+
+            // 楽曲メンバー一覧を取得（hn_song_members + hn_members）
+            $songMemberModel = new \App\Hinata\Model\SongMemberModel();
+            $rows = $songMemberModel->getBySongIdWithNames((int)$song['id']);
+
+            $members = array_map(static function (array $row): array {
+                return [
+                    'member_id' => (int)$row['member_id'],
+                    'name' => $row['name'] ?? '',
+                    'is_center' => isset($row['is_center']) ? (int)$row['is_center'] : 0,
+                    'row_number' => $row['row_number'] !== null ? (int)$row['row_number'] : null,
+                    'position' => $row['position'] !== null ? (int)$row['position'] : null,
+                    'part_description' => $row['part_description'] ?? null,
+                ];
+            }, $rows);
+
+            echo json_encode([
+                'status' => 'success',
+                'song' => $song,
+                'members' => $members,
+            ]);
         } catch (\Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
         }

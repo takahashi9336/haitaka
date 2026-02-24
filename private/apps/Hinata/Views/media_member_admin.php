@@ -183,8 +183,20 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                         </div>
                     </div>
                     <div class="flex-1 overflow-y-auto p-4 md:p-6">
-                        <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
-                            <h3 class="text-sm font-bold text-slate-700">出演メンバーを選択（チェックボックス）</h3>
+                        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+                            <div class="flex flex-col gap-1">
+                                <h3 class="text-sm font-bold text-slate-700">出演メンバーを選択（チェックボックス）</h3>
+                                <div class="flex items-center gap-2 text-[11px] text-slate-500">
+                                    <span class="inline-flex items-center gap-1">
+                                        <i class="fa-solid fa-music text-sky-500"></i>
+                                        <span id="linkedSongInfo" class="font-bold">紐づく楽曲: なし</span>
+                                    </span>
+                                    <button id="btnReflectSongMembers" type="button" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500 text-white font-bold hover:bg-emerald-600 text-[11px] shadow-sm">
+                                        <i class="fa-solid fa-users-line"></i>
+                                        <span>楽曲メンバーから反映</span>
+                                    </button>
+                                </div>
+                            </div>
                             <div class="flex items-center gap-3">
                                 <label class="flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-lg border border-sky-200 bg-sky-50 text-xs font-bold text-sky-600 hover:bg-sky-100 transition">
                                     <input type="checkbox" id="selectAllActive" class="rounded border-sky-200 text-sky-500">
@@ -215,6 +227,81 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
 
     <?php include __DIR__ . '/../../../components/video_modal.php'; ?>
 
+    <!-- 楽曲選択モーダル（リリース→楽曲ツリー） -->
+    <div id="songSelectModal" class="fixed inset-0 bg-black/40 flex items-center justify-center z-40 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-5xl w-full mx-4 max-h-[80vh] flex flex-col overflow-hidden">
+            <div class="px-5 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/80 backdrop-blur-sm">
+                <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-full flex items-center justify-center bg-sky-500 text-white text-xs">
+                        <i class="fa-solid fa-music"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-slate-500 leading-tight">楽曲を選択して動画に紐づけ</p>
+                        <p class="text-[11px] text-slate-400 leading-tight">リリース → 楽曲を選ぶと、その楽曲メンバーを動画に反映します</p>
+                    </div>
+                </div>
+                <button id="btnCloseSongModal" type="button" class="text-slate-400 hover:text-slate-600 text-lg px-2">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="px-5 pt-3 pb-4 border-b border-slate-100">
+                <input type="text" id="songModalSearch" placeholder="リリース名・楽曲名・種別で絞り込み..." class="w-full h-9 px-3 border <?= $cardBorder ?> rounded-lg text-xs outline-none focus:ring-2 <?= $isThemeHex ? 'focus:ring-[var(--hinata-theme)]' : 'focus:ring-' . $themeTailwind . '-200' ?>">
+            </div>
+            <div class="flex-1 flex flex-col md:flex-row min-h-0">
+                <div class="md:w-1/2 border-r <?= $cardBorder ?> bg-slate-50/60 min-h-[180px] max-h-[60vh] overflow-y-auto" id="songModalReleaseList">
+                    <?php foreach ($releasesWithSongs as $rel): ?>
+                        <div class="song-modal-release border-b border-slate-100" data-release-title="<?= htmlspecialchars($rel['title'] ?? '') ?>" data-release-number="<?= htmlspecialchars($rel['release_number'] ?? '') ?>">
+                            <button type="button" class="w-full text-left px-4 py-3 hover:bg-sky-50 flex items-center justify-between gap-2 song-modal-release-toggle">
+                                <div>
+                                    <p class="text-[11px] font-bold text-sky-600">
+                                        <?= htmlspecialchars($rel['release_number'] ?? '') ?> <?= htmlspecialchars($rel['title'] ?? '') ?>
+                                    </p>
+                                    <p class="text-[10px] text-slate-400">
+                                        <?= htmlspecialchars(\App\Hinata\Model\ReleaseModel::RELEASE_TYPES[$rel['release_type']] ?? $rel['release_type'] ?? '') ?>
+                                        <?php if (!empty($rel['release_date'])): ?>
+                                            ・<?= htmlspecialchars($rel['release_date']) ?>
+                                        <?php endif; ?>
+                                    </p>
+                                </div>
+                                <i class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
+                            </button>
+                            <div class="song-modal-release-songs border-t border-slate-100 hidden">
+                                <?php foreach ($rel['songs'] as $s): ?>
+                                    <div class="flex items-center justify-between gap-2 px-5 py-2 hover:bg-sky-50 song-modal-song-row"
+                                         data-song-title="<?= htmlspecialchars($s['title'] ?? '') ?>"
+                                         data-track-type="<?= htmlspecialchars(($trackTypesDisplay[$s['track_type'] ?? ''] ?? $s['track_type'] ?? '')) ?>">
+                                        <div class="min-w-0">
+                                            <p class="text-xs font-bold text-slate-800 truncate">
+                                                <?= htmlspecialchars($s['title'] ?? '') ?>
+                                                <?php $tt = $trackTypesDisplay[$s['track_type'] ?? ''] ?? $s['track_type'] ?? ''; if ($tt): ?>
+                                                    <span class="text-[10px] text-slate-500">(<?= htmlspecialchars($tt) ?>)</span>
+                                                <?php endif; ?>
+                                            </p>
+                                        </div>
+                                        <button type="button"
+                                                class="song-modal-link-btn shrink-0 h-7 px-3 rounded-full text-[11px] font-bold bg-sky-500 hover:bg-sky-600 text-white transition"
+                                                data-song-id="<?= (int)$s['id'] ?>">
+                                            この曲を選ぶ
+                                        </button>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                    <?php if (empty($releasesWithSongs)): ?>
+                        <p class="text-xs text-slate-400 px-4 py-3">楽曲データが登録されていません。</p>
+                    <?php endif; ?>
+                </div>
+                <div class="md:w-1/2 min-h-[180px] max-h-[60vh] overflow-y-auto bg-white hidden md:flex items-center justify-center text-xs text-slate-400" id="songModalHint">
+                    <div class="px-6 py-4 text-center">
+                        <p class="font-bold mb-1">左からリリースを選択し、楽曲をクリックしてください。</p>
+                        <p>選択した楽曲のメンバー構成が、この動画の出演メンバー候補として反映されます。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         const videoList = document.getElementById('videoList');
         const noSelection = document.getElementById('noSelection');
@@ -226,6 +313,13 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         const btnSearch = document.getElementById('btnSearch');
         const filterUnlinkedOnly = document.getElementById('filterUnlinkedOnly');
         const memberCheckboxList = document.getElementById('memberCheckboxList');
+        const btnReflectSongMembers = document.getElementById('btnReflectSongMembers');
+        const linkedSongInfo = document.getElementById('linkedSongInfo');
+        const songSelectModal = document.getElementById('songSelectModal');
+        const btnCloseSongModal = document.getElementById('btnCloseSongModal');
+        const songModalSearch = document.getElementById('songModalSearch');
+        const songModalReleaseList = document.getElementById('songModalReleaseList');
+        const songModalHint = document.getElementById('songModalHint');
         const btnSave = document.getElementById('btnSave');
 
         let selectedMetaId = null;
@@ -342,6 +436,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             noSelection.classList.add('hidden');
             selectionPanel.classList.remove('hidden');
             await loadLinkedMembers();
+            await loadLinkedSongForInfo();
             // スマホではメンバー選択エリアが見えるようにスクロール
             if (window.innerWidth < 768) {
                 setTimeout(() => {
@@ -357,6 +452,34 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             const linkedIds = (json.status === 'success' && json.data) ? json.data.map(m => m.id) : [];
             checkedMemberIds = new Set(linkedIds.map(Number));
             renderMemberCheckboxes();
+        }
+
+        async function loadLinkedSongForInfo() {
+            if (!selectedMetaId || !linkedSongInfo) return;
+            try {
+                const res = await fetch(`/hinata/api/get_song_members_for_media.php?meta_id=${selectedMetaId}`);
+                const json = await res.json();
+                if (json.status !== 'success') {
+                    linkedSongInfo.textContent = '紐づく楽曲: 取得エラー';
+                    return;
+                }
+                const song = json.song;
+                if (!song) {
+                    linkedSongInfo.textContent = '紐づく楽曲: なし';
+                } else {
+                    const labelParts = [];
+                    if (song.release_number) {
+                        labelParts.push(song.release_number);
+                    }
+                    if (song.release_title) {
+                        labelParts.push(song.release_title);
+                    }
+                    const head = labelParts.length > 0 ? labelParts.join(' ') + ' / ' : '';
+                    linkedSongInfo.textContent = '紐づく楽曲: ' + head + (song.title || '');
+                }
+            } catch (e) {
+                linkedSongInfo.textContent = '紐づく楽曲: 取得エラー';
+            }
         }
 
         document.getElementById('toggleGraduates').addEventListener('change', (e) => {
@@ -479,6 +602,154 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
 
         function getCheckedMemberIds() {
             return Array.from(checkedMemberIds);
+        }
+
+        async function fetchAndApplySongMembers() {
+            if (!selectedMetaId) {
+                showToast('動画を選択してください');
+                return;
+            }
+            const res = await fetch(`/hinata/api/get_song_members_for_media.php?meta_id=${selectedMetaId}`);
+            const json = await res.json();
+            if (json.status !== 'success') {
+                alert('楽曲メンバー取得エラー: ' + (json.message || ''));
+                return;
+            }
+            const members = Array.isArray(json.members) ? json.members : [];
+            if (members.length === 0) {
+                showToast('この動画には紐づく楽曲メンバーがありません');
+                return;
+            }
+            let added = 0;
+            members.forEach(m => {
+                const mid = Number(m.member_id);
+                if (!checkedMemberIds.has(mid)) {
+                    added++;
+                }
+                checkedMemberIds.add(mid);
+            });
+            renderMemberCheckboxes();
+            showToast(`楽曲メンバー ${members.length}人を反映しました（新規追加 ${added}人）`);
+        }
+
+        function openSongSelectModal() {
+            if (!songSelectModal) return;
+            songSelectModal.classList.remove('hidden');
+            if (songModalHint && window.innerWidth >= 768) {
+                songModalHint.classList.remove('hidden');
+            }
+        }
+
+        function closeSongSelectModal() {
+            if (!songSelectModal) return;
+            songSelectModal.classList.add('hidden');
+        }
+
+        if (btnCloseSongModal) {
+            btnCloseSongModal.addEventListener('click', closeSongSelectModal);
+        }
+        if (songSelectModal) {
+            songSelectModal.addEventListener('click', (e) => {
+                if (e.target === songSelectModal) {
+                    closeSongSelectModal();
+                }
+            });
+        }
+
+        if (songModalSearch && songModalReleaseList) {
+            songModalSearch.addEventListener('input', () => {
+                const q = songModalSearch.value.trim().toLowerCase();
+                songModalReleaseList.querySelectorAll('.song-modal-release').forEach(group => {
+                    const releaseTitle = (group.getAttribute('data-release-title') || '').toLowerCase();
+                    const releaseNumber = (group.getAttribute('data-release-number') || '').toLowerCase();
+                    let hasVisible = false;
+                    group.querySelectorAll('.song-modal-song-row').forEach(row => {
+                        const songTitle = (row.getAttribute('data-song-title') || '').toLowerCase();
+                        const trackType = (row.getAttribute('data-track-type') || '').toLowerCase();
+                        const match = !q || releaseTitle.includes(q) || releaseNumber.includes(q) || songTitle.includes(q) || trackType.includes(q);
+                        row.style.display = match ? '' : 'none';
+                        if (match) hasVisible = true;
+                    });
+                    group.style.display = hasVisible ? '' : 'none';
+                });
+            });
+
+            songModalReleaseList.addEventListener('click', (e) => {
+                const toggle = e.target.closest('.song-modal-release-toggle');
+                if (toggle) {
+                    const parent = toggle.closest('.song-modal-release');
+                    const body = parent ? parent.querySelector('.song-modal-release-songs') : null;
+                    if (body) {
+                        body.classList.toggle('hidden');
+                        if (songModalHint) {
+                            songModalHint.classList.add('hidden');
+                        }
+                    }
+                    return;
+                }
+                const linkBtn = e.target.closest('.song-modal-link-btn');
+                if (linkBtn) {
+                    const songId = parseInt(linkBtn.getAttribute('data-song-id') || '0', 10);
+                    if (!songId || !selectedMetaId) return;
+                    (async () => {
+                        try {
+                            const res = await fetch('/hinata/api/save_media_song_link.php', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ meta_id: selectedMetaId, song_id: songId })
+                            });
+                            const json = await res.json();
+                            if (json.status !== 'success') {
+                                alert('楽曲リンク保存エラー: ' + (json.message || ''));
+                                return;
+                            }
+                            closeSongSelectModal();
+                            await loadLinkedSongForInfo();
+                            await fetchAndApplySongMembers();
+                        } catch (err) {
+                            alert('楽曲リンク保存中にエラーが発生しました: ' + err.message);
+                        }
+                    })();
+                }
+            });
+        }
+
+        if (btnReflectSongMembers) {
+            btnReflectSongMembers.addEventListener('click', async () => {
+                if (!selectedMetaId) {
+                    showToast('動画を選択してください');
+                    return;
+                }
+                try {
+                    const res = await fetch(`/hinata/api/get_song_members_for_media.php?meta_id=${selectedMetaId}`);
+                    const json = await res.json();
+                    if (json.status !== 'success') {
+                        alert('楽曲メンバー取得エラー: ' + (json.message || ''));
+                        return;
+                    }
+                    if (!json.song) {
+                        openSongSelectModal();
+                        return;
+                    }
+                    const members = Array.isArray(json.members) ? json.members : [];
+                    if (members.length === 0) {
+                        showToast('この動画には紐づく楽曲メンバーがありません');
+                        return;
+                    }
+                    let added = 0;
+                    members.forEach(m => {
+                        const mid = Number(m.member_id);
+                        if (!checkedMemberIds.has(mid)) {
+                            added++;
+                        }
+                        checkedMemberIds.add(mid);
+                    });
+                    renderMemberCheckboxes();
+                    showToast(`楽曲メンバー ${members.length}人を反映しました（新規追加 ${added}人）`);
+                } catch (e) {
+                    alert('楽曲メンバー取得中にエラーが発生しました: ' + e.message);
+                }
+            });
         }
 
         document.getElementById('btnToggleSelectedDesc').addEventListener('click', function (e) {
