@@ -366,7 +366,10 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         });
 
         document.getElementById('selectAllActive').addEventListener('change', (e) => {
-            const activeIds = allMembers.filter(m => m.is_active).map(m => m.id);
+            // 現役一括選択時、ポカ（マスコット）は含めない
+            const activeIds = allMembers
+                .filter(m => m.is_active && m.id !== HinataMemberGroups.POKA_MEMBER_ID)
+                .map(m => m.id);
             if (e.target.checked) {
                 activeIds.forEach(id => checkedMemberIds.add(id));
             } else {

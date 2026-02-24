@@ -175,6 +175,23 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                                 TikTok oEmbed APIにより、<strong>タイトル・サムネイル・投稿者を自動取得</strong>できます（APIキー不要）。
                             </p>
                         </div>
+                        <!-- Windowsクライアント連携ボタン -->
+                        <div class="bg-slate-900 text-slate-50 rounded-xl p-4 mb-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                            <div>
+                                <p class="text-xs font-bold tracking-wide uppercase text-slate-400 mb-1">TikTok クライアント連携</p>
+                                <p class="text-xs text-slate-200">
+                                    Windowsクライアントアプリ経由で、<strong>指定アカウントの最新動画URLを自動取得して登録</strong>します。<br>
+                                    事前にPC側にTikTokクライアントとカスタムURLスキーム（<code>hinata-tiktok://</code>）を設定しておいてください。
+                                </p>
+                            </div>
+                            <div class="flex gap-2">
+                                <a href="hinata-tiktok://run?account=hinatazakanews&amp;limit=10"
+                                   class="inline-flex items-center justify-center px-4 py-2 text-xs font-bold rounded-full bg-emerald-400 text-slate-900 hover:bg-emerald-300 transition">
+                                    <i class="fa-brands fa-tiktok mr-1"></i>
+                                    TikTokクライアントで最新10件を取り込む
+                                </a>
+                            </div>
+                        </div>
                         <div class="mb-4">
                             <label class="block text-xs font-bold text-slate-600 mb-2">TikTok URL（1行1URL）</label>
                             <textarea id="ttUrlTextarea" rows="6" placeholder="https://www.tiktok.com/@hinatazaka46/video/1234567890&#10;..." class="w-full border <?= $cardBorder ?> rounded-xl px-4 py-3 text-sm bg-slate-50 font-mono"></textarea>
