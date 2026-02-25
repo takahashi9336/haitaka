@@ -40,6 +40,7 @@ def load_config() -> Dict[str, Any]:
             "hinata_endpoint": "https://example.com/hinata/batch/tiktok_client_import",
             "token": "kj3hF8s9sdf0a9sdf0as9df",
             "yt_dlp_path": "yt-dlp",
+            "ignore_schedule": False,
         }
     try:
         with CONFIG_PATH.open("r", encoding="utf-8") as f:
@@ -51,6 +52,7 @@ def load_config() -> Dict[str, Any]:
             "hinata_endpoint": "https://example.com/hinata/batch/tiktok_client_import",
             "token": "kj3hF8s9sdf0a9sdf0as9df",
             "yt_dlp_path": "yt-dlp",
+            "ignore_schedule": False,
         }
 
 
@@ -64,6 +66,7 @@ def parse_custom_url(url: str) -> Dict[str, Any]:
     """
     カスタムURLスキーム（例: hinata-tiktok://run?account=...&limit=10）からパラメータを取得。
     通常のコマンドライン引数でも上書き可能にしておく。
+    force=1 で時間帯チェックを無視（メンテナンス用）。
     """
     result: Dict[str, Any] = {}
     try:
@@ -76,6 +79,9 @@ def parse_custom_url(url: str) -> Dict[str, Any]:
                 result["limit"] = int(query["limit"][0])
             except ValueError:
                 pass
+        if "force" in query and query["force"]:
+            v = str(query["force"][0]).lower()
+            result["ignore_schedule"] = v in ("1", "true", "yes")
     except Exception:
         pass
     return result
@@ -150,10 +156,6 @@ def post_to_hinata(endpoint: str, token: str, account: str, urls: List[str]) -> 
 
 
 def main(argv: List[str]) -> int:
-    if not should_run_now():
-        print("skip: outside 9-24 3-hour schedule")
-        return 0
-
     cfg = load_config()
 
     # カスタムURLスキームで起動された場合: 第一引数にURLが入る前提
@@ -162,14 +164,23 @@ def main(argv: List[str]) -> int:
         cfg.update(override)
 
     # コマンドライン引数での上書き（簡易）
+    force_run = False
     for arg in argv[1:]:
-        if arg.startswith("--account="):
+        if arg == "--force":
+            force_run = True
+        elif arg.startswith("--account="):
             cfg["tiktok_account"] = arg.split("=", 1)[1]
         elif arg.startswith("--limit="):
             try:
                 cfg["limit"] = int(arg.split("=", 1)[1])
             except ValueError:
                 pass
+
+    # 時間帯チェック（--force または config の ignore_schedule で無効化可能・メンテナンス用）
+    if not (force_run or cfg.get("ignore_schedule")):
+        if not should_run_now():
+            print("skip: outside 9-24 3-hour schedule")
+            return 0
 
     # 必須設定チェック
     account = cfg.get("tiktok_account", "")

@@ -153,6 +153,12 @@ $inactiveClass = "text-slate-500 hover:bg-slate-50 transition";
                         管理者
                     <?php elseif (($user['role'] ?? '') === 'hinata_admin'): ?>
                         日向坂管理者
+                    <?php elseif (($user['role'] ?? '') === 'movie'): ?>
+                        映画のみ
+                    <?php elseif (($user['role'] ?? '') === 'hinata_movie'): ?>
+                        日向坂＋映画
+                    <?php elseif (($user['role'] ?? '') === 'hinata'): ?>
+                        日向坂のみ
                     <?php else: ?>
                         一般ユーザー
                     <?php endif; ?>

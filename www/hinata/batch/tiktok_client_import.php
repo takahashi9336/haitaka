@@ -153,10 +153,11 @@ function import_tiktok_urls(array $urls, ?string $defaultCategory = null): array
                 continue;
             }
 
-            // TikTok oEmbed からタイトル・公開日時を取得
+            // TikTok oEmbed からタイトル・公開日時・サムネイルURLを取得
             $oembed = fetch_tiktok_oembed($url);
             $title = $url;
             $uploadDate = null;
+            $thumbnailUrl = null;
             if ($oembed) {
                 if (!empty($oembed['title'])) {
                     $title = (string)$oembed['title'];
@@ -167,6 +168,13 @@ function import_tiktok_urls(array $urls, ?string $defaultCategory = null): array
                         $uploadDate = date('Y-m-d H:i:s', $ts);
                     }
                 }
+                if (!empty($oembed['thumbnail_url'])) {
+                    $thumbnailUrl = download_and_save_thumbnail(
+                        (string)$oembed['thumbnail_url'],
+                        'tiktok',
+                        (string)($parsed['media_key'] ?? '')
+                    );
+                }
             }
 
             // 既存ロジックと同様に findOrCreateAsset / findOrCreateMetadata を使う
@@ -175,7 +183,7 @@ function import_tiktok_urls(array $urls, ?string $defaultCategory = null): array
                 $parsed['media_key'],
                 $parsed['sub_key'],
                 $title,        // oEmbed から取得したタイトル（なければURL）
-                null,          // サムネイルは別バッチで取得
+                $thumbnailUrl, // oEmbed から取得したサムネイル（サーバ保存済みURL）
                 $uploadDate,   // oEmbed から取得した公開日時（あれば）
                 null,          // description
                 'short'        // TikTokはショート動画扱い
@@ -299,6 +307,61 @@ function extract_tiktok_timestamp(string $videoId): ?string
     $timestamp = $id >> 32;
     if ($timestamp < 1420070400 || $timestamp > 2524608000) return null;
     return date('Y-m-d\TH:i:s\Z', $timestamp);
+}
+
+/**
+ * 外部URLからサムネイル画像をダウンロードし、サーバに保存する。
+ * MediaController::downloadAndSaveThumbnail 相当。
+ *
+ * @return string|null 保存した場合のローカルURL (/uploads/thumbnails/...)、失敗時は null
+ */
+function download_and_save_thumbnail(string $externalUrl, string $platform, string $mediaKey): ?string
+{
+    $url = trim($externalUrl);
+    if ($url === '' || !preg_match('#^https?://#i', $url)) {
+        return null;
+    }
+    if (str_starts_with($url, '/')) {
+        return $url;
+    }
+
+    $ctx = stream_context_create([
+        'http' => [
+            'method'        => 'GET',
+            'timeout'       => 15,
+            'ignore_errors' => true,
+            'header'        => "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\r\nReferer: https://www.tiktok.com/\r\n",
+        ],
+    ]);
+    $data = @file_get_contents($url, false, $ctx);
+    if ($data === false || strlen($data) < 100) {
+        return null;
+    }
+
+    $ext = 'jpg';
+    $finfo = new \finfo(FILEINFO_MIME_TYPE);
+    $mime = $finfo->buffer($data);
+    $allowed = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp', 'image/gif' => 'gif'];
+    if (isset($allowed[$mime])) {
+        $ext = $allowed[$mime];
+    }
+
+    $baseDir = dirname(__DIR__, 3) . '/www/uploads/thumbnails/';
+    if (!is_dir($baseDir)) {
+        if (!@mkdir($baseDir, 0755, true)) {
+            return null;
+        }
+    }
+
+    $safeKey = preg_replace('/[^a-zA-Z0-9_-]/', '_', substr($mediaKey, 0, 64));
+    $filename = 'thumb_' . $platform . '_' . $safeKey . '_' . time() . '.' . $ext;
+    $path = $baseDir . $filename;
+
+    if (!file_put_contents($path, $data)) {
+        return null;
+    }
+
+    return '/uploads/thumbnails/' . $filename;
 }
 
 /**

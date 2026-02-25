@@ -84,9 +84,10 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                                 <?php foreach ($allUsers as $u): ?>
                                 <tr class="hover:bg-slate-50/50 transition-colors">
                                     <td class="px-6 py-4 font-bold text-slate-700"><?= htmlspecialchars($u['id_name']) ?></td>
-                                    <td class="px-6 py-4 text-xs font-bold tracking-wider text-slate-500"><?= $u['role'] === 'admin' ? '管理者' : 'ユーザー' ?></td>
+                                    <td class="px-6 py-4 text-xs font-bold tracking-wider text-slate-500"><?= htmlspecialchars($roleKeyToName[$u['role']] ?? $u['role']) ?></td>
                                     <td class="px-6 py-4 text-right">
-                                        <button type="button" onclick="openResetModal(<?= (int)$u['id'] ?>, <?= json_encode($u['id_name'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>)" class="text-[10px] font-black tracking-wider px-3 py-1.5 rounded-lg transition-colors <?= $isThemeHex ? 'admin-link-btn' : $cardIconText . ' bg-' . $themeTailwind . '-50 hover:bg-' . $themeTailwind . '-100' ?>">リセット</button>
+                                        <button type="button" class="btn-role-change text-[10px] font-black tracking-wider px-3 py-1.5 rounded-lg transition-colors <?= $isThemeHex ? 'admin-link-btn' : $cardIconText . ' bg-' . $themeTailwind . '-50 hover:bg-' . $themeTailwind . '-100' ?>" data-user-id="<?= (int)$u['id'] ?>" data-id-name="<?= htmlspecialchars($u['id_name'], ENT_QUOTES, 'UTF-8') ?>" data-role="<?= htmlspecialchars($u['role'] ?? '', ENT_QUOTES, 'UTF-8') ?>">ロール変更</button>
+                                        <button type="button" onclick="openResetModal(<?= (int)$u['id'] ?>, <?= htmlspecialchars(json_encode($u['id_name']), ENT_QUOTES, 'UTF-8') ?>)" class="text-[10px] font-black tracking-wider px-3 py-1.5 rounded-lg transition-colors <?= $isThemeHex ? 'admin-link-btn' : $cardIconText . ' bg-' . $themeTailwind . '-50 hover:bg-' . $themeTailwind . '-100' ?>">リセット</button>
                                     </td>
                                 </tr>
                                 <?php endforeach; ?>
@@ -137,6 +138,36 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         </div>
     </div>
 
+    <!-- ロール変更モーダル -->
+    <div id="roleModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm" aria-modal="true">
+        <div class="flex min-h-full items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 md:p-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-lg font-bold text-slate-800">ロールを変更</h2>
+                    <button type="button" onclick="document.getElementById('roleModal').classList.add('hidden')" class="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+                <p class="text-sm text-slate-500 mb-4"><span id="roleTargetName" class="font-bold text-slate-700"></span> の権限（ロール）を変更します。</p>
+                <form id="formRole" class="space-y-4">
+                    <input type="hidden" name="target_id" id="roleTargetId">
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 tracking-wider mb-1">権限（ロール）</label>
+                        <select name="role" id="roleSelect" class="w-full border border-slate-200 rounded-xl h-12 px-4 text-sm bg-slate-50 focus:bg-white focus:ring-2 <?= $isThemeHex ? 'admin-focus' : 'focus:ring-' . $themeTailwind . '-100' ?> outline-none transition-all">
+                            <?php foreach ($roles as $r): ?>
+                            <option value="<?= htmlspecialchars($r['role_key']) ?>"><?= htmlspecialchars($r['name']) ?> (<?= htmlspecialchars($r['role_key']) ?>)</option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="flex gap-3 pt-2">
+                        <button type="submit" class="flex-1 <?= $isThemeHex ? 'admin-btn-primary' : $btnBgClass ?> text-white text-xs font-black tracking-wider h-12 rounded-xl transition-all"<?= $btnBgStyle ? ' style="' . htmlspecialchars($btnBgStyle) . '"' : '' ?>>変更する</button>
+                        <button type="button" onclick="document.getElementById('roleModal').classList.add('hidden')" class="px-6 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold h-12 rounded-xl transition-all">キャンセル</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- パスワードリセットモーダル -->
     <div id="resetModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm" aria-modal="true">
         <div class="flex min-h-full items-center justify-center p-4">
@@ -180,6 +211,31 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 alert('エラー: ' + (res.message || '登録に失敗しました'));
             }
         };
+
+        document.querySelectorAll('.btn-role-change').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const userId = this.dataset.userId;
+                const idName = this.dataset.idName || '';
+                const currentRole = this.dataset.role || 'user';
+                document.getElementById('roleTargetId').value = userId;
+                document.getElementById('roleTargetName').textContent = idName;
+                document.getElementById('roleSelect').value = currentRole;
+                document.getElementById('roleModal').classList.remove('hidden');
+            });
+        });
+        document.getElementById('formRole').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const targetId = document.getElementById('roleTargetId').value;
+            const role = document.getElementById('roleSelect').value;
+            const res = await App.post('/users_settings/api/admin_update_role.php', { target_id: targetId, role: role });
+            if (res.status === 'success') {
+                alert('ロールを変更しました。対象ユーザーは次回ログイン時に新しい権限が反映されます。');
+                document.getElementById('roleModal').classList.add('hidden');
+                location.reload();
+            } else {
+                alert('エラー: ' + (res.message || '変更に失敗しました'));
+            }
+        });
 
         function openResetModal(userId, idName) {
             document.getElementById('resetTargetId').value = userId;

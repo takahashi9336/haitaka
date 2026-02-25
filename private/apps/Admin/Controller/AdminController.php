@@ -28,6 +28,10 @@ class AdminController {
         $allUsers = $userModel->getAllUsers();
         $roleModel = new RoleModel();
         $roles = $roleModel->getAll();
+        $roleKeyToName = [];
+        foreach ($roles as $r) {
+            $roleKeyToName[$r['role_key']] = $r['name'];
+        }
         require_once __DIR__ . '/../Views/users.php';
     }
 

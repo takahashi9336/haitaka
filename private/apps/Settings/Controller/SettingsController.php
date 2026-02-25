@@ -4,6 +4,8 @@ namespace App\Settings\Controller;
 
 use Core\Auth;
 use Core\UserModel;
+use Core\RoleModel;
+use Core\SessionManager;
 
 class SettingsController {
     
@@ -111,5 +113,46 @@ class SettingsController {
         } else {
             echo json_encode(['status' => 'error', 'message' => '作成失敗']);
         }
+    }
+
+    public function adminUpdateRole(): void {
+        header('Content-Type: application/json');
+        $auth = new Auth();
+        if (!$auth->check() || !$auth->isAdmin()) {
+            echo json_encode(['status' => 'error', 'message' => '権限なし']);
+            exit;
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $targetId = (int)($input['target_id'] ?? 0);
+        $role = trim($input['role'] ?? '');
+
+        if (!$targetId || !$role) {
+            echo json_encode(['status' => 'error', 'message' => '入力不足']);
+            return;
+        }
+
+        $roleModel = new RoleModel();
+        $roleRow = $roleModel->getByRoleKey($role);
+        if (!$roleRow) {
+            echo json_encode(['status' => 'error', 'message' => '存在しないロールです']);
+            return;
+        }
+
+        $userModel = new UserModel();
+        $target = $userModel->findById($targetId);
+        if (!$target) {
+            echo json_encode(['status' => 'error', 'message' => 'ユーザーが見つかりません']);
+            return;
+        }
+
+        if ($target['id'] === $_SESSION['user']['id']) {
+            echo json_encode(['status' => 'error', 'message' => '自分自身のロールはここでは変更できません']);
+            return;
+        }
+
+        $userModel->updateRole($targetId, $role);
+        SessionManager::invalidateSessionsForUser($targetId);
+        echo json_encode(['status' => 'success']);
     }
 }

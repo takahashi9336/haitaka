@@ -55,4 +55,13 @@ class SessionManager implements \SessionHandlerInterface {
         $db->exec("DELETE FROM sys_sessions");
         return true;
     }
+
+    /**
+     * 指定ユーザーのセッションのみ破棄
+     */
+    public static function invalidateSessionsForUser(int $userId): bool {
+        $db = Database::connect();
+        $stmt = $db->prepare("DELETE FROM sys_sessions WHERE user_id = :uid");
+        return $stmt->execute(['uid' => $userId]);
+    }
 }

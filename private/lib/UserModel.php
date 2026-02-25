@@ -19,6 +19,15 @@ class UserModel extends BaseModel {
     }
 
     /**
+     * ロール更新
+     */
+    public function updateRole(int $userId, string $role): bool {
+        $sql = "UPDATE {$this->table} SET role = :role, updated_at = NOW() WHERE id = :id";
+        $stmt = $this->pdo->prepare($sql);
+        return $stmt->execute(['role' => $role, 'id' => $userId]);
+    }
+
+    /**
      * パスワード更新
      */
     public function updatePassword(int $userId, string $newHash): bool {
