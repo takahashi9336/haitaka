@@ -1,0 +1,7 @@
+{
+  "tiktok_account": "hinatazakanews",
+  "limit": 10,
+  "hinata_endpoint": "https://haitaka.sakura.ne.jp/hinata/batch/tiktok_client_import",
+  "token": "kj3hF8s9sdf0a9sdf0as9df",
+  "yt_dlp_path": "C:\\Users\\staka\\AppData\\Local\\Programs\\Python\\Python311\\Scripts\\yt-dlp.exe"
+}

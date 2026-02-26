@@ -10,8 +10,38 @@ import urllib.request
 import urllib.error
 
 
-CONFIG_DIR = Path.home() / ".hinata_tiktok_client"
-CONFIG_PATH = CONFIG_DIR / "config.json"
+def _get_config_path() -> Path:
+    """
+    設定ファイルのパスを解決する。
+    1. スクリプトと同じフォルダの config.json があればそれを優先（タスクスケジューラ SYSTEM 実行時用）
+    2. なければ ~/.hinata_tiktok_client/config.json
+    """
+    script_dir = Path(__file__).resolve().parent
+    script_config = script_dir / "config.json"
+    if script_config.exists():
+        return script_config
+    return Path.home() / ".hinata_tiktok_client" / "config.json"
+
+
+def _get_config_dir() -> Path:
+    """設定ファイルのディレクトリ（保存用）。_get_config_path() の親ディレクトリ"""
+    return _get_config_path().parent
+
+
+def _get_log_path() -> Path:
+    """ログファイルのパス（スクリプトと同じフォルダ）"""
+    return Path(__file__).resolve().parent / "tiktok_client.log"
+
+
+def _log(msg: str) -> None:
+    """同階層の tiktok_client.log にタイムスタンプ付きで追記"""
+    try:
+        log_path = _get_log_path()
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with log_path.open("a", encoding="utf-8") as f:
+            f.write(f"{ts} {msg}\n")
+    except Exception:
+        pass
 
 
 def should_run_now() -> bool:
@@ -33,7 +63,8 @@ def should_run_now() -> bool:
 
 
 def load_config() -> Dict[str, Any]:
-    if not CONFIG_PATH.exists():
+    config_path = _get_config_path()
+    if not config_path.exists():
         return {
             "tiktok_account": "",
             "limit": 10,
@@ -43,7 +74,7 @@ def load_config() -> Dict[str, Any]:
             "ignore_schedule": False,
         }
     try:
-        with CONFIG_PATH.open("r", encoding="utf-8") as f:
+        with config_path.open("r", encoding="utf-8") as f:
             return json.load(f)
     except Exception:
         return {
@@ -57,8 +88,10 @@ def load_config() -> Dict[str, Any]:
 
 
 def save_config(cfg: Dict[str, Any]) -> None:
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    with CONFIG_PATH.open("w", encoding="utf-8") as f:
+    config_dir = _get_config_dir()
+    config_path = _get_config_path()
+    config_dir.mkdir(parents=True, exist_ok=True)
+    with config_path.open("w", encoding="utf-8") as f:
         json.dump(cfg, f, ensure_ascii=False, indent=2)
 
 
@@ -156,6 +189,7 @@ def post_to_hinata(endpoint: str, token: str, account: str, urls: List[str]) -> 
 
 
 def main(argv: List[str]) -> int:
+    _log("started")
     cfg = load_config()
 
     # カスタムURLスキームで起動された場合: 第一引数にURLが入る前提
@@ -179,6 +213,8 @@ def main(argv: List[str]) -> int:
     # 時間帯チェック（--force または config の ignore_schedule で無効化可能・メンテナンス用）
     if not (force_run or cfg.get("ignore_schedule")):
         if not should_run_now():
+            _log("skip: outside 9-24 3-hour schedule")
+            _log("completed exit=0 (skipped)")
             print("skip: outside 9-24 3-hour schedule")
             return 0
 
@@ -190,14 +226,20 @@ def main(argv: List[str]) -> int:
     yt_dlp_path = cfg.get("yt_dlp_path", "yt-dlp")
 
     if not endpoint or not token:
-        print("ERROR: hinata_endpoint または token が未設定です。", file=sys.stderr)
-        print(f"設定ファイルを編集してください: {CONFIG_PATH}", file=sys.stderr)
+        msg = "ERROR: hinata_endpoint または token が未設定です"
+        _log(msg)
+        _log("completed exit=1")
+        print(msg, file=sys.stderr)
+        print(f"設定ファイルを編集してください: {_get_config_path()}", file=sys.stderr)
         save_config(cfg)
         return 1
 
     if not account:
-        print("ERROR: tiktok_account が未設定です。", file=sys.stderr)
-        print(f"設定ファイルを編集してください: {CONFIG_PATH}", file=sys.stderr)
+        msg = "ERROR: tiktok_account が未設定です"
+        _log(msg)
+        _log("completed exit=1")
+        print(msg, file=sys.stderr)
+        print(f"設定ファイルを編集してください: {_get_config_path()}", file=sys.stderr)
         save_config(cfg)
         return 1
 
@@ -205,15 +247,25 @@ def main(argv: List[str]) -> int:
     save_config(cfg)
 
     try:
+        _log("running yt-dlp...")
         urls = run_yt_dlp(yt_dlp_path, account, limit)
         if not urls:
+            _log("WARNING: yt-dlp からURLが取得できませんでした")
+            _log("completed exit=1")
             print("WARNING: yt-dlp からURLが取得できませんでした。", file=sys.stderr)
             return 1
+        _log(f"取得URL件数: {len(urls)}")
         print(f"取得URL件数: {len(urls)}")
         resp = post_to_hinata(endpoint, token, account, urls)
-        print("Hinata response:", json.dumps(resp, ensure_ascii=False, indent=2))
-        return 0 if resp.get("status") == "success" else 1
+        resp_summary = json.dumps(resp, ensure_ascii=False)
+        _log(f"Hinata response: {resp_summary}")
+        print("Hinata response:", resp_summary)
+        success = resp.get("status") == "success"
+        _log(f"completed exit={0 if success else 1}")
+        return 0 if success else 1
     except Exception as e:
+        _log(f"ERROR: {e}")
+        _log("completed exit=1")
         print(f"ERROR: {e}", file=sys.stderr)
         return 1
 
