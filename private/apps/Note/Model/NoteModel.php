@@ -32,6 +32,20 @@ class NoteModel extends BaseModel {
     }
 
     /**
+     * アーカイブ済みメモを取得（ピン留め優先、作成日時降順）
+     */
+    public function getArchivedNotes(): array {
+        $sql = "SELECT " . implode(', ', $this->fields) . " 
+                FROM {$this->table} 
+                WHERE user_id = :uid AND status = 'archived'
+                ORDER BY is_pinned DESC, created_at DESC";
+        
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(['uid' => $this->userId]);
+        return $stmt->fetchAll();
+    }
+
+    /**
      * メモ作成（タイトル自動生成機能付き）
      * タイトルが空の場合、本文の先頭30文字を自動でタイトルに設定
      */

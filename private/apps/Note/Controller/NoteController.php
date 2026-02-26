@@ -22,10 +22,12 @@ class NoteController {
         try {
             $noteModel = new NoteModel();
             $notes = $noteModel->getActiveNotes();
+            $archivedNotes = $noteModel->getArchivedNotes();
         } catch (\Exception $e) {
             // テーブルが存在しない場合など、エラーが発生した場合は空配列を返す
             Logger::errorWithContext('Note error', $e);
             $notes = [];
+            $archivedNotes = [];
         }
         
         $user = $_SESSION['user'];
@@ -69,10 +71,13 @@ class NoteController {
             $result = $noteModel->createNote($noteData);
             
             if ($result) {
+                $id = (int) $noteModel->lastInsertId();
+                $note = $noteModel->find($id);
                 echo json_encode([
                     'status' => 'success',
                     'message' => 'メモを保存しました',
-                    'id' => $noteModel->lastInsertId()
+                    'id' => $id,
+                    'note' => $note ?: null
                 ], JSON_UNESCAPED_UNICODE);
             } else {
                 throw new \Exception('メモの保存に失敗しました');

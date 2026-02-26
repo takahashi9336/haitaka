@@ -15,6 +15,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         :root { --note-theme: <?= htmlspecialchars($themePrimaryHex) ?>; }
         .note-theme-btn { background-color: var(--note-theme); }
         .note-theme-btn:hover { filter: brightness(1.08); }
+        .note-theme-btn.saved { background-color: #22c55e !important; }
         .note-theme-link, .note-theme-text { color: var(--note-theme); }
         .note-theme-focus:focus { --tw-ring-color: var(--note-theme); }
         .focus\:border-note-theme:focus { border-color: var(--note-theme); }
@@ -223,73 +224,19 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                     </div>
                 </div>
 
-                <?php if (empty($notes)): ?>
-                    <div class="text-center py-16">
-                        <div class="w-20 h-20 bg-slate-100 rounded-xl flex items-center justify-center mx-auto mb-6">
-                            <i class="fa-solid fa-lightbulb text-4xl text-slate-300"></i>
-                        </div>
-                        <h3 class="text-xl font-bold text-slate-800 mb-2">メモがありません</h3>
+                <!-- タブ: アクティブ / アーカイブ -->
+                <div class="mb-4 flex gap-2 border-b border-slate-200">
+                    <button id="tabActive" class="tab-btn px-4 py-2 text-sm font-bold border-b-2 border-[var(--note-theme)] text-[var(--note-theme)]" data-tab="active">アクティブ</button>
+                    <button id="tabArchived" class="tab-btn px-4 py-2 text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-600" data-tab="archived">アーカイブ</button>
+                </div>
+
+                <div id="notesEmptyState" class="text-center py-16 hidden">
+                    <div class="w-20 h-20 bg-slate-100 rounded-xl flex items-center justify-center mx-auto mb-6">
+                        <i class="fa-solid fa-lightbulb text-4xl text-slate-300"></i>
                     </div>
-                <?php else: ?>
-                    <div class="notes-grid">
-                        <?php foreach ($notes as $note): ?>
-                            <div class="note-card bg-white rounded-lg border border-slate-100 shadow-sm overflow-hidden cursor-pointer" 
-                                 style="background-color: <?= htmlspecialchars($note['bg_color']) ?>;"
-                                 data-note-id="<?= $note['id'] ?>"
-                                 onclick="NoteManager.showDetailModal(<?= $note['id'] ?>, event)">
-                                <div class="p-4">
-                                    <?php if ($note['is_pinned']): ?>
-                                        <div class="flex justify-end mb-1.5">
-                                            <i class="fa-solid fa-thumbtack note-theme-text text-xs"></i>
-                                        </div>
-                                    <?php endif; ?>
-                                    
-                                    <?php if (!empty($note['title'])): ?>
-                                        <h3 class="font-bold text-slate-800 mb-2 text-base"><?= htmlspecialchars($note['title']) ?></h3>
-                                    <?php endif; ?>
-                                    
-                                    <div class="note-content text-slate-700 text-sm mb-3"><?php
-                                        $raw = (string)($note['content'] ?? '');
-                                        $raw = preg_replace('/\r\n|\r/u', "\n", $raw);
-                                        $raw = preg_replace('/\n{2,}/u', "\n", $raw);
-                                        $raw = trim($raw);
-                                        echo htmlspecialchars($raw, ENT_QUOTES, 'UTF-8');
-                                    ?></div>
-                                    
-                                    <div class="text-xs text-slate-400 mb-3">
-                                        <?= \Core\Utils\DateUtil::format($note['created_at'], 'Y/m/d H:i') ?>
-                                    </div>
-                                    
-                                    <div class="note-actions flex items-center justify-between pt-2.5 border-t border-slate-200">
-                                        <button onclick="NoteManager.togglePin(<?= $note['id'] ?>)" 
-                                                class="p-2 text-slate-500 hover-note-theme transition rounded-lg hover:bg-slate-50"
-                                                title="ピン留め">
-                                            <i class="fa-solid fa-thumbtack text-sm"></i>
-                                        </button>
-                                        
-                                        <button onclick="NoteManager.showColorPicker(<?= $note['id'] ?>)" 
-                                                class="p-2 text-slate-500 hover:text-blue-500 transition rounded-lg hover:bg-slate-50"
-                                                title="色を変更">
-                                            <i class="fa-solid fa-palette text-sm"></i>
-                                        </button>
-                                        
-                                        <button onclick="event.stopPropagation(); NoteManager.showDetailModal(<?= $note['id'] ?>)" 
-                                                class="p-2 text-slate-500 hover:text-green-500 transition rounded-lg hover:bg-slate-50"
-                                                title="編集">
-                                            <i class="fa-solid fa-pen text-sm"></i>
-                                        </button>
-                                        
-                                        <button onclick="event.stopPropagation(); NoteManager.deleteNote(<?= $note['id'] ?>)" 
-                                                class="p-2 text-slate-500 hover:text-red-500 transition rounded-lg hover:bg-slate-50"
-                                                title="削除">
-                                            <i class="fa-solid fa-trash text-sm"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                <?php endif; ?>
+                    <h3 class="text-xl font-bold text-slate-800 mb-2">メモがありません</h3>
+                </div>
+                <div id="notesGrid" class="notes-grid"></div>
             </div>
         </div>
     </main>
@@ -334,6 +281,16 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                                 <i class="fa-solid fa-palette"></i>
                             </button>
                             
+                            <button id="detailArchiveBtn" onclick="NoteManager.archiveNoteFromDetail()" 
+                                    class="p-2 text-slate-500 hover:text-amber-600 transition rounded-lg hover:bg-slate-50 hidden"
+                                    title="アーカイブ">
+                                <i class="fa-solid fa-box-archive"></i>
+                            </button>
+                            <button id="detailRestoreBtn" onclick="NoteManager.restoreNoteFromDetail()" 
+                                    class="p-2 text-slate-500 hover:text-green-600 transition rounded-lg hover:bg-slate-50 hidden"
+                                    title="復元">
+                                <i class="fa-solid fa-box-open"></i>
+                            </button>
                             <button onclick="NoteManager.deleteNoteFromDetail()" 
                                     class="p-2 text-slate-500 hover:text-red-500 transition rounded-lg hover:bg-slate-50"
                                     title="削除">
@@ -373,74 +330,136 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             ta.style.height = Math.max(40, Math.min(ta.scrollHeight, 400)) + 'px';
         }
 
-        // クイックメモ機能
-        const QuickMemo = {
-            input: null,
-            titleInput: null,
-            actions: null,
+        function escapeHtml(s) {
+            if (s == null) return '';
+            const div = document.createElement('div');
+            div.textContent = s;
+            return div.innerHTML;
+        }
 
-            init() {
-                this.input = document.getElementById('quickMemoInput');
-                this.titleInput = document.getElementById('quickMemoTitle');
-                this.actions = document.getElementById('quickMemoActions');
-                
-                if (this.input) {
-                    this.input.addEventListener('focus', () => {
-                        this.actions.classList.remove('opacity-0');
-                        this.actions.classList.add('opacity-100');
-                    });
-                    
-                    this.input.addEventListener('input', () => autoResizeTextarea(this.input));
-                    this.input.addEventListener('focus', () => autoResizeTextarea(this.input));
-                    
-                    this.input.addEventListener('blur', () => {
-                        setTimeout(() => {
-                            if (!this.input.value.trim() && (!this.titleInput || !this.titleInput.value.trim())) {
-                                this.actions.classList.remove('opacity-100');
-                                this.actions.classList.add('opacity-0');
-                            }
-                        }, 200);
-                    });
-                }
-            },
+        function formatNoteDate(s) {
+            if (!s) return '';
+            return String(s).replace(/-/g, '/').substring(0, 16);
+        }
 
-            async save(event) {
-                const title = this.titleInput ? this.titleInput.value.trim() : '';
-                const content = this.input.value.trim();
-                
-                if (!content) {
-                    alert('メモの内容を入力してください');
-                    return;
-                }
-
-                try {
-                    const result = await App.post('/note/api/save.php', { title: title, content: content });
-
-                    if (result && result.status === 'success') {
-                        location.reload();
-                    } else {
-                        console.error('API Error Response:', result);
-                        alert('エラー: ' + (result && result.message ? result.message : '保存に失敗しました'));
-                    }
-                } catch (error) {
-                    console.error('Save error:', error);
-                    alert('保存中にエラーが発生しました');
-                }
-            }
-        };
+        function normalizeNoteContent(raw) {
+            if (!raw) return '';
+            return String(raw).replace(/\r\n|\r/g, '\n').replace(/\n{2,}/g, '\n').trim();
+        }
 
         const NoteManager = {
             currentNoteId: null,
-            notes: <?= json_encode($notes) ?>,
+            currentViewMode: 'active',
+            viewMode: 'active',
+            notes: <?= json_encode($notes ?? []) ?>,
+            archivedNotes: <?= json_encode($archivedNotes ?? []) ?>,
+
+            getNote(noteId) {
+                return this.notes.find(n => n.id == noteId) || this.archivedNotes.find(n => n.id == noteId);
+            },
+
+            renderNoteCard(note, viewMode) {
+                const raw = normalizeNoteContent(note.content);
+                const contentEscaped = escapeHtml(raw);
+                const titleEscaped = escapeHtml(note.title || '');
+                const dateStr = formatNoteDate(note.created_at);
+                const bgColor = escapeHtml(note.bg_color || '#ffffff');
+                const pinHtml = note.is_pinned ? '<div class="flex justify-end mb-1.5"><i class="fa-solid fa-thumbtack note-theme-text text-xs"></i></div>' : '';
+                const titleHtml = note.title ? '<h3 class="font-bold text-slate-800 mb-2 text-base">' + titleEscaped + '</h3>' : '';
+
+                let actionsHtml = '';
+                if (viewMode === 'active') {
+                    actionsHtml = '<button data-action="pin" data-id="' + note.id + '" class="p-2 text-slate-500 hover-note-theme transition rounded-lg hover:bg-slate-50" title="ピン留め"><i class="fa-solid fa-thumbtack text-sm"></i></button>' +
+                        '<button data-action="color" data-id="' + note.id + '" class="p-2 text-slate-500 hover:text-blue-500 transition rounded-lg hover:bg-slate-50" title="色を変更"><i class="fa-solid fa-palette text-sm"></i></button>' +
+                        '<button data-action="edit" data-id="' + note.id + '" class="p-2 text-slate-500 hover:text-green-500 transition rounded-lg hover:bg-slate-50" title="編集"><i class="fa-solid fa-pen text-sm"></i></button>' +
+                        '<button data-action="archive" data-id="' + note.id + '" class="p-2 text-slate-500 hover:text-amber-600 transition rounded-lg hover:bg-slate-50" title="アーカイブ"><i class="fa-solid fa-box-archive text-sm"></i></button>' +
+                        '<button data-action="delete" data-id="' + note.id + '" class="p-2 text-slate-500 hover:text-red-500 transition rounded-lg hover:bg-slate-50" title="削除"><i class="fa-solid fa-trash text-sm"></i></button>';
+                } else {
+                    actionsHtml = '<button data-action="restore" data-id="' + note.id + '" class="p-2 text-slate-500 hover:text-green-600 transition rounded-lg hover:bg-slate-50" title="復元"><i class="fa-solid fa-box-open text-sm"></i></button>' +
+                        '<button data-action="edit" data-id="' + note.id + '" class="p-2 text-slate-500 hover:text-green-500 transition rounded-lg hover:bg-slate-50" title="編集"><i class="fa-solid fa-pen text-sm"></i></button>' +
+                        '<button data-action="delete" data-id="' + note.id + '" class="p-2 text-slate-500 hover:text-red-500 transition rounded-lg hover:bg-slate-50" title="削除"><i class="fa-solid fa-trash text-sm"></i></button>';
+                }
+
+                return '<div class="note-card bg-white rounded-lg border border-slate-100 shadow-sm overflow-hidden cursor-pointer" style="background-color:' + bgColor + ';" data-note-id="' + note.id + '">' +
+                    '<div class="p-4">' + pinHtml + titleHtml +
+                    '<div class="note-content text-slate-700 text-sm mb-3">' + contentEscaped + '</div>' +
+                    '<div class="text-xs text-slate-400 mb-3">' + dateStr + '</div>' +
+                    '<div class="note-actions flex items-center justify-between pt-2.5 border-t border-slate-200">' + actionsHtml + '</div>' +
+                    '</div></div>';
+            },
+
+            renderNotesGrid() {
+                const grid = document.getElementById('notesGrid');
+                const emptyState = document.getElementById('notesEmptyState');
+                const list = this.viewMode === 'active' ? this.notes : this.archivedNotes;
+
+                if (list.length === 0) {
+                    grid.innerHTML = '';
+                    emptyState.classList.remove('hidden');
+                    return;
+                }
+                emptyState.classList.add('hidden');
+                grid.innerHTML = list.map(n => this.renderNoteCard(n, this.viewMode)).join('');
+
+                grid.querySelectorAll('.note-card').forEach(card => {
+                    card.addEventListener('click', (e) => {
+                        if (e.target.closest('[data-action]')) return;
+                        const id = parseInt(card.dataset.noteId, 10);
+                        NoteManager.showDetailModal(id, e);
+                    });
+                });
+                grid.querySelectorAll('[data-action]').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const action = btn.dataset.action;
+                        const id = parseInt(btn.dataset.id, 10);
+                        if (action === 'pin') NoteManager.togglePin(id);
+                        else if (action === 'color') NoteManager.showColorPickerCard(id);
+                        else if (action === 'edit') NoteManager.showDetailModal(id, e);
+                        else if (action === 'archive') NoteManager.archiveNote(id);
+                        else if (action === 'restore') NoteManager.restoreNote(id);
+                        else if (action === 'delete') NoteManager.deleteNote(id);
+                    });
+                });
+            },
+
+            showColorPickerCard(noteId) {
+                this.showDetailModal(noteId, null);
+                setTimeout(() => NoteManager.toggleColorPicker({ stopPropagation: () => {} }), 100);
+            },
+
+            switchTab(tab) {
+                this.viewMode = tab;
+                document.querySelectorAll('.tab-btn').forEach(b => {
+                    const isActive = b.dataset.tab === tab;
+                    b.classList.toggle('border-[var(--note-theme)]', isActive);
+                    b.classList.toggle('text-[var(--note-theme)]', isActive);
+                    b.classList.toggle('border-transparent', !isActive);
+                    b.classList.toggle('text-slate-400', !isActive);
+                });
+                this.renderNotesGrid();
+            },
+
+            updateNoteInList(note) {
+                const idx = this.notes.findIndex(n => n.id == note.id);
+                if (idx >= 0) this.notes[idx] = { ...this.notes[idx], ...note };
+                const aidx = this.archivedNotes.findIndex(n => n.id == note.id);
+                if (aidx >= 0) this.archivedNotes[aidx] = { ...this.archivedNotes[aidx], ...note };
+            },
+
+            removeNoteFromList(noteId) {
+                this.notes = this.notes.filter(n => n.id != noteId);
+                this.archivedNotes = this.archivedNotes.filter(n => n.id != noteId);
+            },
 
             async togglePin(noteId) {
                 try {
                     const result = await App.post('/note/api/toggle_pin.php', { id: noteId });
                     if (result.status === 'success') {
-                        location.reload();
-                    } else {
-                        alert('エラー: ' + (result.message || 'ピン留めに失敗しました'));
-                    }
+                        const note = this.getNote(noteId);
+                        if (note) this.updateNoteInList({ ...note, is_pinned: note.is_pinned ? 0 : 1 });
+                        this.renderNotesGrid();
+                    } else alert('エラー: ' + (result.message || 'ピン留めに失敗しました'));
                 } catch (error) {
                     console.error('Pin toggle error:', error);
                     alert('エラーが発生しました');
@@ -450,199 +469,123 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             toggleColorPicker(event) {
                 event.stopPropagation();
                 const picker = document.getElementById('inlineColorPicker');
-                const isActive = picker.classList.contains('active');
-                
-                if (isActive) {
-                    picker.classList.remove('active');
-                } else {
-                    picker.classList.add('active');
-                    this.updateColorPickerSelection();
-                }
+                if (picker.classList.contains('active')) picker.classList.remove('active');
+                else { picker.classList.add('active'); this.updateColorPickerSelection(); }
             },
 
             closeColorPicker() {
-                const picker = document.getElementById('inlineColorPicker');
-                picker.classList.remove('active');
+                document.getElementById('inlineColorPicker').classList.remove('active');
             },
 
             updateColorPickerSelection() {
                 const currentColor = document.getElementById('detailModalContent').style.backgroundColor || '#ffffff';
-                const swatches = document.querySelectorAll('.color-swatch');
-                
-                swatches.forEach(swatch => {
-                    const swatchColor = swatch.dataset.color;
-                    // RGBからHEXへの変換、または直接比較
-                    if (this.compareColors(currentColor, swatchColor)) {
-                        swatch.classList.add('selected');
-                    } else {
-                        swatch.classList.remove('selected');
-                    }
+                document.querySelectorAll('.color-swatch').forEach(swatch => {
+                    swatch.classList.toggle('selected', this.compareColors(currentColor, swatch.dataset.color));
                 });
             },
 
-            compareColors(color1, color2) {
-                // 簡易的な色比較
-                const normalize = (c) => {
-                    if (c.startsWith('rgb')) {
-                        const values = c.match(/\d+/g);
-                        return '#' + values.map(v => parseInt(v).toString(16).padStart(2, '0')).join('');
-                    }
-                    return c.toLowerCase();
-                };
-                return normalize(color1) === normalize(color2);
+            compareColors(c1, c2) {
+                const n = (c) => c.startsWith('rgb') ? '#' + c.match(/\d+/g).map(v => parseInt(v).toString(16).padStart(2, '0')).join('') : c.toLowerCase();
+                return n(c1) === n(c2);
             },
 
             async changeColorInline(color) {
                 if (!this.currentNoteId) return;
-
+                const modalContent = document.getElementById('detailModalContent');
+                modalContent.style.backgroundColor = color;
+                this.updateColorPickerSelection();
                 try {
-                    // 即座にUIを更新
-                    const modalContent = document.getElementById('detailModalContent');
-                    modalContent.style.backgroundColor = color;
-                    
-                    // 選択状態を更新
-                    this.updateColorPickerSelection();
-
-                    // APIで保存
-                    const result = await App.post('/note/api/update.php', { 
-                        id: this.currentNoteId,
-                        bg_color: color 
-                    });
-                    
-                    if (result.status !== 'success') {
-                        // エラー時は元に戻す
-                        console.error('Color change failed:', result);
-                        alert('色の変更に失敗しました');
-                    }
-                } catch (error) {
-                    console.error('Color change error:', error);
-                }
-            },
-
-            showEditModal(noteId) {
-                const note = this.notes.find(n => n.id == noteId);
-                if (!note) return;
-
-                document.getElementById('editNoteId').value = noteId;
-                document.getElementById('editTitle').value = note.title || '';
-                document.getElementById('editContent').value = note.content || '';
-                document.getElementById('editModal').classList.remove('hidden');
-            },
-
-            closeEditModal() {
-                document.getElementById('editModal').classList.add('hidden');
-                document.getElementById('editNoteId').value = '';
-                document.getElementById('editTitle').value = '';
-                document.getElementById('editContent').value = '';
-            },
-
-            async saveEdit() {
-                const noteId = document.getElementById('editNoteId').value;
-                const title = document.getElementById('editTitle').value.trim();
-                const content = document.getElementById('editContent').value.trim();
-
-                if (!content) {
-                    alert('内容を入力してください');
-                    return;
-                }
-
-                try {
-                    const result = await App.post('/note/api/update.php', { 
-                        id: noteId,
-                        title: title,
-                        content: content
-                    });
+                    const result = await App.post('/note/api/update.php', { id: this.currentNoteId, bg_color: color });
                     if (result.status === 'success') {
-                        this.closeEditModal();
-                        location.reload();
-                    } else {
-                        alert('エラー: ' + (result.message || '更新に失敗しました'));
-                    }
-                } catch (error) {
-                    console.error('Update error:', error);
-                    alert('エラーが発生しました');
-                }
+                        const note = this.getNote(this.currentNoteId);
+                        if (note) this.updateNoteInList({ ...note, bg_color: color });
+                        const card = document.querySelector('.note-card[data-note-id="' + this.currentNoteId + '"]');
+                        if (card) card.style.backgroundColor = color;
+                    } else alert('色の変更に失敗しました');
+                } catch (e) { console.error(e); }
             },
 
             async deleteNote(noteId) {
-                if (!confirm('このメモを削除してもよろしいですか?')) {
-                    return;
-                }
-
+                if (!confirm('このメモを削除してもよろしいですか?')) return;
                 try {
                     const result = await App.post('/note/api/delete.php', { id: noteId });
                     if (result.status === 'success') {
-                        location.reload();
-                    } else {
-                        alert('エラー: ' + (result.message || '削除に失敗しました'));
-                    }
+                        this.removeNoteFromList(noteId);
+                        this.renderNotesGrid();
+                        if (this.currentNoteId == noteId) this.closeDetailModal();
+                    } else alert('エラー: ' + (result.message || '削除に失敗しました'));
                 } catch (error) {
                     console.error('Delete error:', error);
                     alert('エラーが発生しました');
                 }
             },
 
-            // 詳細モーダル関連
-            showDetailModal(noteId, sourceEvent) {
-                const note = this.notes.find(n => n.id == noteId);
-                if (!note) return;
+            async archiveNote(noteId) {
+                try {
+                    const result = await App.post('/note/api/update.php', { id: noteId, status: 'archived' });
+                    if (result.status === 'success') {
+                        const note = this.getNote(noteId);
+                        if (note) {
+                            this.notes = this.notes.filter(n => n.id != noteId);
+                            this.archivedNotes = [{ ...note, status: 'archived' }, ...this.archivedNotes];
+                        }
+                        this.renderNotesGrid();
+                        if (this.currentNoteId == noteId) this.closeDetailModal();
+                    } else alert('エラー: ' + (result.message || 'アーカイブに失敗しました'));
+                } catch (e) { console.error(e); alert('エラーが発生しました'); }
+            },
 
+            async restoreNote(noteId) {
+                try {
+                    const result = await App.post('/note/api/update.php', { id: noteId, status: 'active' });
+                    if (result.status === 'success') {
+                        const note = this.getNote(noteId);
+                        if (note) {
+                            this.archivedNotes = this.archivedNotes.filter(n => n.id != noteId);
+                            this.notes = [{ ...note, status: 'active' }, ...this.notes];
+                        }
+                        this.renderNotesGrid();
+                        if (this.currentNoteId == noteId) this.closeDetailModal();
+                    } else alert('エラー: ' + (result.message || '復元に失敗しました'));
+                } catch (e) { console.error(e); alert('エラーが発生しました'); }
+            },
+
+            showDetailModal(noteId, sourceEvent) {
+                const note = this.getNote(noteId);
+                if (!note) return;
                 this.currentNoteId = noteId;
+                this.currentViewMode = this.viewMode;
+
                 document.getElementById('detailNoteId').value = noteId;
                 document.getElementById('detailTitle').value = note.title || '';
                 const detailContent = document.getElementById('detailContent');
                 detailContent.value = note.content || '';
                 autoResizeTextarea(detailContent);
-                document.getElementById('detailTimestamp').textContent = 
-                    '作成: ' + note.created_at + (note.updated_at !== note.created_at ? ' / 更新: ' + note.updated_at : '');
-                
-                // ピン留めボタンの状態を反映
+                document.getElementById('detailTimestamp').textContent = '作成: ' + note.created_at + (note.updated_at !== note.created_at ? ' / 更新: ' + note.updated_at : '');
+
                 const pinBtn = document.getElementById('detailPinBtn');
-                if (note.is_pinned) {
-                    pinBtn.classList.add('note-theme-text');
-                } else {
-                    pinBtn.classList.remove('note-theme-text');
-                }
-                
+                pinBtn.classList.toggle('note-theme-text', !!note.is_pinned);
+                document.getElementById('detailArchiveBtn').classList.toggle('hidden', this.viewMode !== 'active');
+                document.getElementById('detailRestoreBtn').classList.toggle('hidden', this.viewMode !== 'archived');
+
                 const modal = document.getElementById('detailModal');
                 const modalContent = document.getElementById('detailModalContent');
-                
-                // メモの背景色を適用
                 modalContent.style.backgroundColor = note.bg_color || '#ffffff';
-                
-                // クリック位置から画面中央までの移動距離を計算
+
                 if (sourceEvent && sourceEvent.currentTarget) {
                     const rect = sourceEvent.currentTarget.getBoundingClientRect();
-                    const clickX = rect.left + rect.width / 2;
-                    const clickY = rect.top + rect.height / 2;
-                    const centerX = window.innerWidth / 2;
-                    const centerY = window.innerHeight / 2;
-                    const translateX = clickX - centerX;
-                    const translateY = clickY - centerY;
-                    
-                    modalContent.style.setProperty('--modal-translate-x', `${translateX}px`);
-                    modalContent.style.setProperty('--modal-translate-y', `${translateY}px`);
+                    const clickX = rect.left + rect.width / 2, clickY = rect.top + rect.height / 2;
+                    modalContent.style.setProperty('--modal-translate-x', (clickX - window.innerWidth / 2) + 'px');
+                    modalContent.style.setProperty('--modal-translate-y', (clickY - window.innerHeight / 2) + 'px');
                 }
-                
-                // カラーピッカーを非表示にリセット
                 this.closeColorPicker();
-                
                 modal.classList.remove('hidden', 'modal-closing');
                 modal.classList.add('active', 'modal-opening');
-                
-                // モーダル外クリックでカラーピッカーを閉じる
                 modal.onclick = (e) => {
-                    if (e.target === modal) {
-                        this.closeDetailModal();
-                    } else if (!e.target.closest('#inlineColorPicker') && !e.target.closest('#colorPickerToggleBtn')) {
-                        this.closeColorPicker();
-                    }
+                    if (e.target === modal) this.closeDetailModal();
+                    else if (!e.target.closest('#inlineColorPicker') && !e.target.closest('#colorPickerToggleBtn')) this.closeColorPicker();
                 };
-                
-                // アニメーション完了後にクラスを削除
-                setTimeout(() => {
-                    modal.classList.remove('modal-opening');
-                }, 400);
+                setTimeout(() => modal.classList.remove('modal-opening'), 400);
             },
 
             closeDetailModal() {
@@ -650,14 +593,10 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 this.closeColorPicker();
                 modal.classList.remove('modal-opening');
                 modal.classList.add('modal-closing');
-                
-                // アニメーション完了後にモーダルを非表示
                 setTimeout(() => {
                     modal.classList.remove('active', 'modal-closing');
                     modal.classList.add('hidden');
                     this.currentNoteId = null;
-                    // ページをリロードして変更を反映
-                    location.reload();
                 }, 250);
             },
 
@@ -665,65 +604,102 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 const noteId = document.getElementById('detailNoteId').value;
                 const title = document.getElementById('detailTitle').value.trim();
                 const content = document.getElementById('detailContent').value.trim();
-
-                if (!content) {
-                    alert('内容を入力してください');
-                    return;
-                }
-
+                if (!content) { alert('内容を入力してください'); return; }
                 try {
-                    const result = await App.post('/note/api/update.php', { 
-                        id: noteId,
-                        title: title,
-                        content: content
-                    });
+                    const result = await App.post('/note/api/update.php', { id: noteId, title, content });
                     if (result.status === 'success') {
-                        location.reload();
-                    } else {
-                        alert('エラー: ' + (result.message || '更新に失敗しました'));
-                    }
-                } catch (error) {
-                    console.error('Update error:', error);
-                    alert('エラーが発生しました');
-                }
+                        const note = this.getNote(parseInt(noteId, 10));
+                        if (note) this.updateNoteInList({ ...note, title, content });
+                        this.renderNotesGrid();
+                        this.closeDetailModal();
+                    } else alert('エラー: ' + (result.message || '更新に失敗しました'));
+                } catch (e) { console.error(e); alert('エラーが発生しました'); }
             },
 
             async togglePinFromDetail() {
-                const noteId = this.currentNoteId;
-                await this.togglePin(noteId);
+                await this.togglePin(this.currentNoteId);
+                const note = this.getNote(this.currentNoteId);
+                if (note) {
+                    document.getElementById('detailPinBtn').classList.toggle('note-theme-text', !!note.is_pinned);
+                }
             },
 
-            showColorPickerFromDetail() {
-                this.showColorPicker(this.currentNoteId);
+            async archiveNoteFromDetail() {
+                await this.archiveNote(this.currentNoteId);
+            },
+
+            async restoreNoteFromDetail() {
+                await this.restoreNote(this.currentNoteId);
             },
 
             async deleteNoteFromDetail() {
-                const noteId = this.currentNoteId;
-                if (!confirm('このメモを削除してもよろしいですか?')) {
-                    return;
-                }
+                await this.deleteNote(this.currentNoteId);
+            }
+        };
 
+        const QuickMemo = {
+            input: null,
+            titleInput: null,
+            actions: null,
+
+            init() {
+                this.input = document.getElementById('quickMemoInput');
+                this.titleInput = document.getElementById('quickMemoTitle');
+                this.actions = document.getElementById('quickMemoActions');
+                if (this.input) {
+                    this.input.addEventListener('focus', () => { this.actions.classList.remove('opacity-0'); this.actions.classList.add('opacity-100'); });
+                    this.input.addEventListener('input', () => autoResizeTextarea(this.input));
+                    this.input.addEventListener('blur', () => {
+                        setTimeout(() => {
+                            if (!this.input.value.trim() && (!this.titleInput || !this.titleInput.value.trim()))
+                                this.actions.classList.remove('opacity-100'), this.actions.classList.add('opacity-0');
+                        }, 200);
+                    });
+                }
+            },
+
+            clearInput() {
+                this.input.value = '';
+                if (this.titleInput) this.titleInput.value = '';
+                this.input.style.height = 'auto';
+                this.input.blur();
+                this.actions.classList.remove('opacity-100');
+                this.actions.classList.add('opacity-0');
+            },
+
+            async save(event) {
+                const title = this.titleInput ? this.titleInput.value.trim() : '';
+                const content = this.input.value.trim();
+                if (!content) { alert('メモの内容を入力してください'); return; }
+                const btn = event?.target || document.getElementById('quickMemoSaveBtn');
                 try {
-                    const result = await App.post('/note/api/delete.php', { id: noteId });
-                    if (result.status === 'success') {
-                        this.closeDetailModal();
-                        location.reload();
-                    } else {
-                        alert('エラー: ' + (result.message || '削除に失敗しました'));
-                    }
+                    const result = await App.post('/note/api/save.php', { title, content });
+                    if (result && result.status === 'success') {
+                        this.clearInput();
+                        if (btn) {
+                            const orig = btn.innerHTML;
+                            btn.innerHTML = '<i class="fa-solid fa-check mr-2"></i> 保存しました';
+                            btn.classList.add('saved');
+                            setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('saved'); }, 2000);
+                        }
+                        if (result.note && NoteManager.viewMode === 'active') {
+                            NoteManager.notes = [result.note, ...NoteManager.notes];
+                            NoteManager.renderNotesGrid();
+                        }
+                    } else alert('エラー: ' + (result?.message || '保存に失敗しました'));
                 } catch (error) {
-                    console.error('Delete error:', error);
-                    alert('エラーが発生しました');
+                    console.error('Save error:', error);
+                    alert('保存中にエラーが発生しました');
                 }
             }
         };
 
         document.addEventListener('DOMContentLoaded', () => {
             QuickMemo.init();
-            const detailContent = document.getElementById('detailContent');
-            if (detailContent) {
-                detailContent.addEventListener('input', () => autoResizeTextarea(detailContent));
-            }
+            document.getElementById('detailContent')?.addEventListener('input', () => autoResizeTextarea(document.getElementById('detailContent')));
+            document.getElementById('tabActive').addEventListener('click', () => NoteManager.switchTab('active'));
+            document.getElementById('tabArchived').addEventListener('click', () => NoteManager.switchTab('archived'));
+            NoteManager.renderNotesGrid();
         });
     </script>
 </body>
