@@ -14,6 +14,21 @@ $auth = new Auth();
 if (!$auth->check()) { header('Location: /login.php'); exit; }
 $user = $_SESSION['user'];
 
+// restricted ロールでダッシュボードが許可されていない場合は default_route へリダイレクト
+if (($user['sidebar_mode'] ?? '') === 'restricted') {
+    $hasDashboard = false;
+    foreach ($user['apps'] ?? [] as $app) {
+        if (($app['app_key'] ?? '') === 'dashboard') {
+            $hasDashboard = true;
+            break;
+        }
+    }
+    if (!$hasDashboard) {
+        header('Location: ' . ($user['default_route'] ?? '/hinata/'));
+        exit;
+    }
+}
+
 $taskModel = new TaskModel();
 $activeTasks = $taskModel->getActiveTasks();
 $activeTasksCount = count($activeTasks);
