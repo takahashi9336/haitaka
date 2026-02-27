@@ -62,19 +62,21 @@ $allCategories = [
         .vm-btn:hover { background: #f1f5f9; color: #64748b; }
         .vm-btn.active { background: var(--hinata-theme); color: white; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
 
-        /* Mini Calendar */
-        .cal-day { min-height: 38px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; border-radius: 8px; transition: background 0.15s; }
+        /* Calendar: shared day cell */
+        .cal-day { min-height: 34px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; border-radius: 6px; transition: background 0.15s; }
         .cal-day:hover { background: #f1f5f9; }
-        .cal-day.other-month { opacity: 0.25; }
-        .cal-day.other-month:hover { opacity: 0.45; }
-        .cal-day .day-num { width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 12px; font-weight: 700; line-height: 1; }
+        .cal-day.other-month { opacity: 0.2; }
+        .cal-day .day-num { width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 11px; font-weight: 700; line-height: 1; }
         .cal-day.today .day-num { background: var(--hinata-theme); color: white; }
         .cal-day.selected { background: #e0f2fe; }
         .cal-day.today.selected .day-num { box-shadow: 0 0 0 2px white, 0 0 0 4px var(--hinata-theme); }
-        @media (max-width: 768px) {
-            .cal-grid-wrap.collapsed { max-height: 46px; overflow: hidden; transition: max-height 0.3s ease; }
-            .cal-grid-wrap.expanded { max-height: 300px; transition: max-height 0.3s ease; }
-        }
+        /* Desktop: 3-month sidebar */
+        .cal-sidebar { width: 240px; }
+        .cal-sidebar .cal-day { min-height: 30px; }
+        .cal-sidebar .cal-day .day-num { width: 22px; height: 22px; font-size: 10px; }
+        /* Mobile: collapsible single month with swipe */
+        .cal-mobile-wrap { overflow: hidden; transition: max-height 0.3s ease; }
+        .cal-mobile-grid { transition: transform 0.3s ease; }
 
         /* Timeline View */
         .tl-line { position: absolute; left: 50%; width: 2px; top: 0; bottom: 0; background: #e2e8f0; transform: translateX(-50%); }
@@ -147,41 +149,51 @@ $allCategories = [
         </header>
 
         <!-- ========== VIEW 1: Calendar + List ========== -->
-        <div id="view-calendar" class="flex-1 flex flex-col min-h-0">
-            <div id="miniCalWrap" class="bg-white border-b <?= $cardBorder ?> shrink-0 px-4 pt-3 pb-1">
-                <div class="max-w-sm mx-auto">
-                    <div class="flex items-center justify-between mb-2">
-                        <button onclick="MiniCal.nav(-1)" class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center transition"><i class="fa-solid fa-chevron-left text-slate-400 text-xs"></i></button>
-                        <button onclick="MiniCal.goToday()" id="calTitle" class="text-sm font-black text-slate-700 tracking-tight hover:text-slate-500 transition cursor-pointer"></button>
-                        <button onclick="MiniCal.nav(1)" class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center transition"><i class="fa-solid fa-chevron-right text-slate-400 text-xs"></i></button>
+        <div id="view-calendar" class="flex-1 flex flex-col md:flex-row min-h-0">
+            <!-- Desktop: 3-month sidebar -->
+            <div id="calSidebar" class="cal-sidebar hidden md:flex flex-col bg-white border-r border-slate-100 shrink-0 overflow-y-auto custom-scroll">
+                <div class="sticky top-0 z-[2] bg-white border-b border-slate-50 px-3 py-2 flex items-center justify-between">
+                    <button onclick="MiniCal.nav(-1)" class="w-6 h-6 rounded-full hover:bg-slate-100 flex items-center justify-center"><i class="fa-solid fa-chevron-left text-slate-400 text-[10px]"></i></button>
+                    <button onclick="MiniCal.goToday()" class="text-[10px] font-black text-slate-500 hover:text-slate-700 tracking-wider transition">TODAY</button>
+                    <button onclick="MiniCal.nav(1)" class="w-6 h-6 rounded-full hover:bg-slate-100 flex items-center justify-center"><i class="fa-solid fa-chevron-right text-slate-400 text-[10px]"></i></button>
+                </div>
+                <div id="calSideContent" class="p-3 space-y-4"></div>
+            </div>
+
+            <!-- Mobile: swipeable single-month calendar -->
+            <div id="miniCalMobile" class="md:hidden bg-white border-b <?= $cardBorder ?> shrink-0">
+                <div class="px-3 pt-2 pb-0">
+                    <div class="flex items-center justify-between mb-1">
+                        <button onclick="MiniCal.nav(-1)" class="w-7 h-7 rounded-full hover:bg-slate-100 flex items-center justify-center"><i class="fa-solid fa-chevron-left text-slate-400 text-xs"></i></button>
+                        <button onclick="MiniCal.goToday()" id="calTitle" class="text-xs font-black text-slate-700 tracking-tight hover:text-slate-500 transition cursor-pointer"></button>
+                        <button onclick="MiniCal.nav(1)" class="w-7 h-7 rounded-full hover:bg-slate-100 flex items-center justify-center"><i class="fa-solid fa-chevron-right text-slate-400 text-xs"></i></button>
                     </div>
-                    <div class="grid grid-cols-7 text-center mb-0.5">
-                        <?php foreach (['日','月','火','水','木','金','土'] as $di => $dn): ?>
-                        <span class="text-[10px] font-bold <?= $di === 0 ? 'text-red-400' : ($di === 6 ? 'text-blue-400' : 'text-slate-400') ?>"><?= $dn ?></span>
-                        <?php endforeach; ?>
-                    </div>
-                    <div id="calGridWrap" class="cal-grid-wrap expanded">
-                        <div id="calGrid" class="grid grid-cols-7"></div>
+                    <div id="calDowHeader" class="grid grid-cols-7 text-center mb-0.5"></div>
+                    <div id="calMobileWrap" class="cal-mobile-wrap">
+                        <div id="calMobileGrid" class="cal-mobile-grid grid grid-cols-7"></div>
                     </div>
                 </div>
-                <button id="calToggle" class="md:hidden w-full flex items-center justify-center py-1 text-slate-300 hover:text-slate-500 transition">
-                    <i class="fa-solid fa-chevron-up text-[10px]"></i>
+                <button id="calToggle" class="w-full flex items-center justify-center py-0.5 text-slate-300 hover:text-slate-500 transition">
+                    <i class="fa-solid fa-chevron-down text-[10px]"></i>
                 </button>
             </div>
-            <div class="bg-white border-b <?= $cardBorder ?> px-4 py-2 shrink-0">
-                <div class="flex gap-1.5 overflow-x-auto pb-0.5" style="scrollbar-width:none; -webkit-overflow-scrolling:touch;">
-                    <?php foreach ($allCategories as $fc): ?>
-                    <button onclick="filterCategory(<?= $fc['id'] ?>)" data-filter-cat="<?= $fc['id'] ?>"
-                        class="filter-chip shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border transition <?= $fc['id'] === 0 ? 'text-white border-transparent' : 'text-slate-500 bg-white border-slate-200 hover:border-slate-300' ?>"
-                        <?= $fc['id'] === 0 ? 'style="background:var(--hinata-theme);"' : '' ?>>
-                        <i class="fa-solid <?= $fc['icon'] ?> text-[8px]" <?= $fc['id'] !== 0 ? 'style="color:' . $fc['color'] . ';"' : '' ?>></i>
-                        <?= htmlspecialchars($fc['name']) ?>
-                    </button>
-                    <?php endforeach; ?>
+
+            <!-- Right content area: filters + event list -->
+            <div class="flex-1 flex flex-col min-h-0 min-w-0">
+                <div class="bg-white border-b <?= $cardBorder ?> px-4 py-2 shrink-0">
+                    <div class="flex gap-1.5 overflow-x-auto pb-0.5" style="scrollbar-width:none; -webkit-overflow-scrolling:touch;">
+                        <?php foreach ($allCategories as $fc): ?>
+                        <button onclick="filterCategory(<?= $fc['id'] ?>)" data-filter-cat="<?= $fc['id'] ?>"
+                            class="filter-chip shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border transition <?= $fc['id'] === 0 ? 'text-white border-transparent' : 'text-slate-500 bg-white border-slate-200 hover:border-slate-300' ?>"
+                            <?= $fc['id'] === 0 ? 'style="background:var(--hinata-theme);"' : '' ?>>
+                            <i class="fa-solid <?= $fc['icon'] ?> text-[8px]" <?= $fc['id'] !== 0 ? 'style="color:' . $fc['color'] . ';"' : '' ?>></i>
+                            <?= htmlspecialchars($fc['name']) ?>
+                        </button>
+                        <?php endforeach; ?>
+                    </div>
                 </div>
-            </div>
-            <div class="flex-1 overflow-y-auto custom-scroll" id="mainScroll">
-                <div id="eventListContainer" class="p-4 md:p-8 space-y-3 max-w-4xl mx-auto">
+                <div class="flex-1 overflow-y-auto custom-scroll" id="mainScroll">
+                    <div id="eventListContainer" class="p-4 md:p-8 space-y-3 max-w-4xl mx-auto">
                     <?php if (empty($events)): ?>
                     <div class="text-center py-20 bg-white rounded-[2.5rem] border <?= $cardBorder ?> shadow-sm">
                         <i class="fa-solid fa-calendar-xmark text-4xl text-slate-200 mb-4"></i>
@@ -329,6 +341,7 @@ $allCategories = [
                     <?php endif; ?>
                 </div>
             </div>
+            </div>
         </div>
 
         <!-- ========== VIEW 2: Timeline ========== -->
@@ -396,8 +409,10 @@ $allCategories = [
             currentViewMode = mode;
             ['calendar','timeline','dashboard','master'].forEach(function(v) {
                 var el = document.getElementById('view-' + v);
-                if (el) el.classList.toggle('hidden', v !== mode);
+                if (!el) return;
+                if (v === mode) { el.classList.remove('hidden'); } else { el.classList.add('hidden'); }
             });
+            if (mode === 'calendar') MiniCal.render();
             document.querySelectorAll('[data-vm]').forEach(function(btn) {
                 btn.classList.toggle('active', btn.dataset.vm === mode);
             });
@@ -762,6 +777,8 @@ $allCategories = [
         // ===== Mini Calendar (View 1) =====
         var MiniCal = {
             currentYear: 0, currentMonth: 0, selectedDate: null, eventDots: {}, allEventDots: {},
+            mobileCollapsed: true,
+
             buildDots: function(events) {
                 var dots = {};
                 for (var i = 0; i < events.length; i++) {
@@ -776,29 +793,110 @@ $allCategories = [
             rebuildDots: function(catId) {
                 this.eventDots = catId === 0 ? this.allEventDots : this.buildDots(rawEvents.filter(function(e) { return parseInt(e.category) === catId; }));
             },
-            render: function() {
-                var y = this.currentYear, m = this.currentMonth;
-                document.getElementById('calTitle').textContent = y + '年 ' + (m + 1) + '月';
+
+            dowHeaderHtml: function(fontSize) {
+                var days = ['日','月','火','水','木','金','土'];
+                var h = '<div class="grid grid-cols-7 text-center mb-0.5">';
+                for (var i = 0; i < 7; i++) {
+                    var c = i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-slate-400';
+                    h += '<span class="' + fontSize + ' font-bold ' + c + '">' + days[i] + '</span>';
+                }
+                return h + '</div>';
+            },
+
+            renderMonthGrid: function(y, m) {
                 var firstDay = new Date(y, m, 1).getDay(), daysInMonth = new Date(y, m + 1, 0).getDate(), daysInPrev = new Date(y, m, 0).getDate();
                 var todayStr = _todayStr();
                 var html = '', totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7;
                 for (var i = 0; i < totalCells; i++) {
                     var dayNum, dateStr, isOther = false;
-                    if (i < firstDay) { dayNum = daysInPrev - firstDay + 1 + i; var pm = m === 0 ? 11 : m-1, py = m === 0 ? y-1 : y; dateStr = py + '-' + String(pm+1).padStart(2,'0') + '-' + String(dayNum).padStart(2,'0'); isOther = true; }
-                    else if (i - firstDay >= daysInMonth) { dayNum = i - firstDay - daysInMonth + 1; var nm2 = m === 11 ? 0 : m+1, ny2 = m === 11 ? y+1 : y; dateStr = ny2 + '-' + String(nm2+1).padStart(2,'0') + '-' + String(dayNum).padStart(2,'0'); isOther = true; }
-                    else { dayNum = i - firstDay + 1; dateStr = y + '-' + String(m+1).padStart(2,'0') + '-' + String(dayNum).padStart(2,'0'); }
+                    if (i < firstDay) { dayNum = daysInPrev - firstDay + 1 + i; var pm = m === 0 ? 11 : m - 1, py = m === 0 ? y - 1 : y; dateStr = py + '-' + String(pm + 1).padStart(2, '0') + '-' + String(dayNum).padStart(2, '0'); isOther = true; }
+                    else if (i - firstDay >= daysInMonth) { dayNum = i - firstDay - daysInMonth + 1; var nm2 = m === 11 ? 0 : m + 1, ny2 = m === 11 ? y + 1 : y; dateStr = ny2 + '-' + String(nm2 + 1).padStart(2, '0') + '-' + String(dayNum).padStart(2, '0'); isOther = true; }
+                    else { dayNum = i - firstDay + 1; dateStr = y + '-' + String(m + 1).padStart(2, '0') + '-' + String(dayNum).padStart(2, '0'); }
                     var cls = 'cal-day'; if (isOther) cls += ' other-month'; if (dateStr === todayStr) cls += ' today'; if (dateStr === this.selectedDate) cls += ' selected';
                     var dow = i % 7, numCls = dow === 0 && !isOther ? ' text-red-500' : dow === 6 && !isOther ? ' text-blue-500' : ' text-slate-700';
-                    var dots = this.eventDots[dateStr]; var dotsHtml = '<div class="flex justify-center gap-0.5 h-1.5 mt-0.5">';
+                    var dots = this.eventDots[dateStr], dotsHtml = '<div class="flex justify-center gap-0.5 h-1.5 mt-0.5">';
                     if (dots) { for (var dd = 0; dd < dots.length; dd++) dotsHtml += '<span class="w-1.5 h-1.5 rounded-full" style="background:' + dots[dd] + ';"></span>'; }
                     dotsHtml += '</div>';
                     html += '<div class="' + cls + '" data-cal-date="' + dateStr + '" onclick="MiniCal.onDayClick(\'' + dateStr + '\')"><span class="day-num' + numCls + '">' + dayNum + '</span>' + dotsHtml + '</div>';
                 }
-                document.getElementById('calGrid').innerHTML = html;
+                return html;
             },
-            nav: function(dir) { this.currentMonth += dir; if (this.currentMonth > 11) { this.currentMonth = 0; this.currentYear++; } if (this.currentMonth < 0) { this.currentMonth = 11; this.currentYear--; } this.render(); },
-            goToday: function() { var now = new Date(); this.currentYear = now.getFullYear(); this.currentMonth = now.getMonth(); this.selectedDate = null; this.render(); scrollToToday(); },
-            selectDate: function(dateStr) { this.selectedDate = dateStr; var d = new Date(dateStr + 'T00:00:00'); if (d.getFullYear() !== this.currentYear || d.getMonth() !== this.currentMonth) { this.currentYear = d.getFullYear(); this.currentMonth = d.getMonth(); } this.render(); },
+
+            renderMobile: function() {
+                var y = this.currentYear, m = this.currentMonth;
+                var titleEl = document.getElementById('calTitle');
+                if (titleEl) titleEl.textContent = y + '年 ' + (m + 1) + '月';
+                var dowEl = document.getElementById('calDowHeader');
+                if (dowEl && !dowEl.hasChildNodes()) {
+                    var days = ['日','月','火','水','木','金','土'];
+                    var dh = '';
+                    for (var i = 0; i < 7; i++) {
+                        var c = i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-slate-400';
+                        dh += '<span class="text-[10px] font-bold ' + c + '">' + days[i] + '</span>';
+                    }
+                    dowEl.innerHTML = dh;
+                }
+                var grid = document.getElementById('calMobileGrid');
+                if (grid) grid.innerHTML = this.renderMonthGrid(y, m);
+                this.updateMobileCollapse();
+            },
+
+            renderDesktop: function() {
+                var container = document.getElementById('calSideContent');
+                if (!container || container.offsetParent === null) return;
+                var html = '';
+                for (var offset = 0; offset < 3; offset++) {
+                    var d = new Date(this.currentYear, this.currentMonth + offset, 1);
+                    var sy = d.getFullYear(), sm = d.getMonth();
+                    html += '<div class="mb-1">';
+                    html += '<div class="text-[10px] font-black text-slate-500 text-center mb-1 tracking-wider">' + sy + '年 ' + (sm + 1) + '月</div>';
+                    html += this.dowHeaderHtml('text-[9px]');
+                    html += '<div class="grid grid-cols-7" id="calSideGrid' + offset + '">' + this.renderMonthGrid(sy, sm) + '</div>';
+                    html += '</div>';
+                }
+                container.innerHTML = html;
+            },
+
+            updateMobileCollapse: function() {
+                var wrap = document.getElementById('calMobileWrap');
+                var grid = document.getElementById('calMobileGrid');
+                if (!wrap || !grid) return;
+                if (this.mobileCollapsed) {
+                    var todayCell = grid.querySelector('.cal-day.today');
+                    var rowIdx = 0;
+                    if (todayCell) {
+                        var cells = Array.from(grid.children);
+                        rowIdx = Math.floor(cells.indexOf(todayCell) / 7);
+                    }
+                    wrap.style.maxHeight = '34px';
+                    grid.style.transform = 'translateY(-' + (rowIdx * 34) + 'px)';
+                } else {
+                    wrap.style.maxHeight = (grid.scrollHeight + 4) + 'px';
+                    grid.style.transform = '';
+                }
+            },
+
+            render: function() { this.renderMobile(); this.renderDesktop(); },
+
+            nav: function(dir) {
+                this.currentMonth += dir;
+                if (this.currentMonth > 11) { this.currentMonth = 0; this.currentYear++; }
+                if (this.currentMonth < 0) { this.currentMonth = 11; this.currentYear--; }
+                this.render();
+            },
+            goToday: function() {
+                var now = new Date(); this.currentYear = now.getFullYear(); this.currentMonth = now.getMonth();
+                this.selectedDate = null; this.render(); scrollToToday();
+            },
+            selectDate: function(dateStr) {
+                this.selectedDate = dateStr;
+                var d = new Date(dateStr + 'T00:00:00');
+                if (d.getFullYear() !== this.currentYear || d.getMonth() !== this.currentMonth) {
+                    this.currentYear = d.getFullYear(); this.currentMonth = d.getMonth();
+                }
+                this.render();
+            },
             onDayClick: function(dateStr) {
                 this.selectDate(dateStr);
                 var cards = document.querySelectorAll('#eventListContainer [data-date]');
@@ -810,9 +908,18 @@ $allCategories = [
                 var scrollTop = scroll.scrollTop + 80; var visibleDate = null;
                 for (var i = 0; i < cards.length; i++) { if (cards[i].style.display === 'none') continue; if (cards[i].offsetTop <= scrollTop) visibleDate = cards[i].dataset.date; else break; }
                 if (!visibleDate && cards.length > 0) { for (var j = 0; j < cards.length; j++) { if (cards[j].style.display !== 'none') { visibleDate = cards[j].dataset.date; break; } } }
-                if (visibleDate) { var d = new Date(visibleDate + 'T00:00:00'); if (d.getFullYear() !== this.currentYear || d.getMonth() !== this.currentMonth) { this.currentYear = d.getFullYear(); this.currentMonth = d.getMonth(); this.render(); } }
+                if (visibleDate) {
+                    var d = new Date(visibleDate + 'T00:00:00');
+                    if (d.getFullYear() !== this.currentYear || d.getMonth() !== this.currentMonth) {
+                        this.currentYear = d.getFullYear(); this.currentMonth = d.getMonth(); this.render();
+                    }
+                }
             },
-            init: function() { var now = new Date(); this.currentYear = now.getFullYear(); this.currentMonth = now.getMonth(); this.allEventDots = this.buildDots(rawEvents); this.eventDots = this.allEventDots; this.render(); }
+            init: function() {
+                var now = new Date(); this.currentYear = now.getFullYear(); this.currentMonth = now.getMonth();
+                this.allEventDots = this.buildDots(rawEvents); this.eventDots = this.allEventDots;
+                this.render();
+            }
         };
 
         // ---- Toggle Detail (calendar+list accordion) ----
@@ -866,12 +973,35 @@ $allCategories = [
             _scrollTimer = setTimeout(function() { MiniCal.syncFromScroll(); }, 150);
         }, { passive: true });
 
-        var calExpanded = true;
+        // Mobile calendar toggle
         document.getElementById('calToggle').onclick = function() {
-            var wrap = document.getElementById('calGridWrap'); calExpanded = !calExpanded;
-            wrap.classList.toggle('collapsed', !calExpanded); wrap.classList.toggle('expanded', calExpanded);
-            this.querySelector('i').classList.toggle('fa-chevron-up', calExpanded); this.querySelector('i').classList.toggle('fa-chevron-down', !calExpanded);
+            MiniCal.mobileCollapsed = !MiniCal.mobileCollapsed;
+            MiniCal.updateMobileCollapse();
+            var icon = this.querySelector('i');
+            icon.classList.toggle('fa-chevron-down', MiniCal.mobileCollapsed);
+            icon.classList.toggle('fa-chevron-up', !MiniCal.mobileCollapsed);
         };
+
+        // Mobile swipe on calendar
+        (function() {
+            var el = document.getElementById('miniCalMobile');
+            if (!el) return;
+            var startX = 0, startY = 0, swiping = false;
+            el.addEventListener('touchstart', function(e) {
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+                swiping = true;
+            }, { passive: true });
+            el.addEventListener('touchend', function(e) {
+                if (!swiping) return;
+                swiping = false;
+                var dx = e.changedTouches[0].clientX - startX;
+                var dy = e.changedTouches[0].clientY - startY;
+                if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+                    MiniCal.nav(dx < 0 ? 1 : -1);
+                }
+            }, { passive: true });
+        })();
 
         document.addEventListener('DOMContentLoaded', function() {
             MiniCal.init();
