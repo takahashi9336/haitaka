@@ -49,6 +49,8 @@ class EventController {
             $attendedEventIds = $setlistModel->getAttendedEventIds();
         } catch (\Exception $e) {}
 
+        $nextEvent = $eventModel->getNextEvent();
+
         $user = $_SESSION['user'];
         require_once __DIR__ . '/../Views/event_index.php';
     }
