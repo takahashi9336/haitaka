@@ -68,6 +68,12 @@ function oshiImgSrc(?string $imageUrl): string {
         .yt-arrow.left { left: -4px; }
         .yt-arrow.right { right: -4px; }
         .yt-arrow.hidden { display: none; }
+        /* TikTokカルーセル（ショート動画用縦長カード） */
+        .tk-scroll { display: flex; flex-wrap: nowrap; overflow-x: auto; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; scrollbar-width: none; gap: 12px; padding-bottom: 8px; }
+        .tk-scroll::-webkit-scrollbar { display: none; }
+        .tk-card { flex: 0 0 140px; transition: transform 0.2s ease; cursor: pointer; }
+        @media (min-width: 768px) { .tk-card { flex: 0 0 160px; } }
+        .tk-card:hover { transform: translateY(-4px); }
         .blog-card { flex: 0 0 130px; transition: transform 0.2s ease; }
         @media (min-width: 768px) { .blog-card { flex: 0 0 150px; } }
         .blog-card:hover { transform: translateY(-3px); }
@@ -583,6 +589,28 @@ function oshiImgSrc(?string $imageUrl): string {
                     <?php endforeach; ?>
                 </section>
 
+                <!-- TikTok -->
+                <section class="mb-10">
+                    <div class="flex items-center gap-2 mb-3">
+                        <i class="fa-brands fa-tiktok text-slate-800"></i>
+                        <h2 class="text-sm font-bold text-slate-700">TikTok</h2>
+                    </div>
+                    <div class="yt-scroll-wrap">
+                        <button class="yt-arrow left hidden" onclick="TkCarousel.scroll('tkCards', -1)"><i class="fa-solid fa-chevron-left text-sm"></i></button>
+                        <div id="tkLoading" class="tk-scroll">
+                            <?php for ($i = 0; $i < 8; $i++): ?>
+                            <div class="tk-card skeleton-card">
+                                <div class="aspect-[9/16] bg-slate-200 rounded-lg mb-2"></div>
+                                <div class="h-3 bg-slate-200 rounded w-3/4 mb-1"></div>
+                                <div class="h-2.5 bg-slate-100 rounded w-1/2"></div>
+                            </div>
+                            <?php endfor; ?>
+                        </div>
+                        <div id="tkCards" class="tk-scroll hidden"></div>
+                        <button class="yt-arrow right" onclick="TkCarousel.scroll('tkCards', 1)"><i class="fa-solid fa-chevron-right text-sm"></i></button>
+                    </div>
+                </section>
+
                 <!-- X 公式 (インライン) -->
                 <div class="flex flex-col gap-2 mb-10">
                     <div class="flex items-center gap-3 bg-white rounded-lg border <?= $cardBorder ?> shadow-sm px-4 py-3">
@@ -853,6 +881,77 @@ function oshiImgSrc(?string $imageUrl): string {
         }
     };
 
+    // TikTokカルーセル
+    var TkCarousel = {
+        videos: [],
+        esc: function(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; },
+        scroll: function(cardsId, dir) {
+            var el = document.getElementById(cardsId);
+            if (!el) return;
+            var cardW = el.querySelector('.tk-card') ? el.querySelector('.tk-card').offsetWidth : 160;
+            el.scrollBy({ left: dir * (cardW + 12) * 2, behavior: 'smooth' });
+        },
+        updateArrows: function(cardsId) {
+            var el = document.getElementById(cardsId);
+            if (!el) return;
+            var wrap = el.closest('.yt-scroll-wrap');
+            if (!wrap) return;
+            var leftBtn = wrap.querySelector('.yt-arrow.left');
+            var rightBtn = wrap.querySelector('.yt-arrow.right');
+            if (!leftBtn || !rightBtn) return;
+            var update = function() {
+                leftBtn.classList.toggle('hidden', el.scrollLeft <= 4);
+                rightBtn.classList.toggle('hidden', el.scrollLeft + el.clientWidth >= el.scrollWidth - 4);
+            };
+            el.addEventListener('scroll', update, { passive: true });
+            update();
+        },
+        renderCard: function(v) {
+            var thumb = v.thumbnail_url || '';
+            var title = this.esc(v.title || '');
+            var date = v.upload_date ? v.upload_date.substring(0, 10) : '';
+            var idx = YtCarousel.videos.length;
+            YtCarousel.videos.push({
+                media_key: v.media_key, platform: 'tiktok', title: v.title || '',
+                category: '', upload_date: v.upload_date || '', thumbnail_url: thumb, description: v.description || '', sub_key: v.sub_key || ''
+            });
+            var thumbHtml = thumb
+                ? '<img src="' + thumb + '" class="w-full h-full object-cover" loading="lazy" alt="">'
+                : '<div class="w-full h-full flex items-center justify-center"><i class="fa-brands fa-tiktok text-3xl text-slate-300"></i></div>';
+            return '<div class="tk-card" onclick="openPortalVideo(' + idx + ', event)">' +
+                '<div class="aspect-[9/16] rounded-lg overflow-hidden bg-slate-200 mb-2 shadow-sm relative group">' +
+                thumbHtml +
+                '<div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition flex items-center justify-center"><i class="fa-solid fa-play text-white text-xl opacity-0 group-hover:opacity-100 transition drop-shadow-lg"></i></div>' +
+                '</div>' +
+                '<h3 class="text-xs font-bold text-slate-700 line-clamp-2 leading-snug mb-0.5">' + title + '</h3>' +
+                '<p class="text-[10px] text-slate-400">' + date + '</p></div>';
+        },
+        load: function() {
+            var cardsEl = document.getElementById('tkCards');
+            var loadingEl = document.getElementById('tkLoading');
+            if (!cardsEl) return;
+            var self = this;
+            fetch('/hinata/api/tiktok_latest.php')
+                .then(function(r) { return r.json(); })
+                .then(function(res) {
+                    if (res.status === 'success' && res.data && res.data.length > 0) {
+                        cardsEl.innerHTML = res.data.map(function(v) { return self.renderCard(v); }).join('');
+                        if (loadingEl) loadingEl.classList.add('hidden');
+                        cardsEl.classList.remove('hidden');
+                        self.updateArrows('tkCards');
+                    } else {
+                        if (loadingEl) loadingEl.innerHTML = '<p class="text-xs text-slate-400 py-4">動画を取得できませんでした</p>';
+                    }
+                })
+                .catch(function() {
+                    if (loadingEl) loadingEl.innerHTML = '<p class="text-xs text-slate-400 py-4">動画の読み込みに失敗しました</p>';
+                });
+        },
+        init: function() {
+            this.load();
+        }
+    };
+
     function openPortalVideo(idx, ev) {
         var video = YtCarousel.videos[idx];
         if (!video) return;
@@ -914,6 +1013,7 @@ function oshiImgSrc(?string $imageUrl): string {
 
     document.addEventListener('DOMContentLoaded', function() {
         YtCarousel.init();
+        TkCarousel.init();
         YtCarousel.updateArrows('blogCards');
         YtCarousel.updateArrows('releaseMvCards');
     });
