@@ -652,22 +652,35 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
         };
 
         const SearchModal = {
+            currentQuery: '',
+            currentPage: 0,
+            totalPages: 0,
+            isLoading: false,
+            _observer: null,
+
             open() {
                 document.getElementById('searchOverlay').classList.add('active');
                 setTimeout(() => document.getElementById('searchInput').focus(), 100);
             },
             close() {
+                this._destroyObserver();
                 document.getElementById('searchOverlay').classList.remove('active');
             },
             async search() {
                 const query = document.getElementById('searchInput').value.trim();
                 if (!query) return;
 
+                this.currentQuery = query;
+                this.currentPage = 1;
+                this.totalPages = 0;
+                this.isLoading = true;
+                this._destroyObserver();
+
                 const container = document.getElementById('searchResults');
                 container.innerHTML = '<div class="text-center py-8"><i class="fa-solid fa-spinner fa-spin text-2xl text-slate-300"></i></div>';
 
                 try {
-                    const res = await fetch(`/movie/api/search.php?q=${encodeURIComponent(query)}`);
+                    const res = await fetch(`/movie/api/search.php?q=${encodeURIComponent(query)}&page=1`);
                     const json = await res.json();
 
                     const manualHtml = this.renderManualAdd(query);
@@ -678,16 +691,67 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                     }
 
                     const movies = json.data.results || [];
+                    this.totalPages = json.data.total_pages || 1;
                     if (movies.length === 0) {
                         container.innerHTML = '<div class="text-center py-6 text-slate-400 text-sm">TMDBで見つかりませんでした</div>' + manualHtml;
                         return;
                     }
 
-                    container.innerHTML = movies.map(m => this.renderResult(m)).join('') + manualHtml;
+                    const listHtml = movies.map(m => this.renderResult(m)).join('');
+                    const sentinelHtml = this.currentPage < this.totalPages
+                        ? '<div id="searchResultsSentinel" class="flex items-center justify-center py-4 text-slate-400 text-xs gap-2"><i class="fa-solid fa-angles-down text-[10px]"></i>スクロールで続きを表示</div>'
+                        : '';
+                    container.innerHTML = `<div id="searchResultsList">${listHtml}</div>${sentinelHtml}${manualHtml}`;
+                    this._initObserver();
                 } catch (e) {
                     console.error(e);
                     container.innerHTML = '<div class="text-center py-8 text-red-500 text-sm">検索中にエラーが発生しました</div>';
+                } finally {
+                    this.isLoading = false;
                 }
+            },
+            async loadMore() {
+                if (this.isLoading || this.currentPage >= this.totalPages) return;
+                this.isLoading = true;
+                this.currentPage++;
+
+                const sentinel = document.getElementById('searchResultsSentinel');
+                if (sentinel) sentinel.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-slate-300"></i>';
+
+                try {
+                    const res = await fetch(`/movie/api/search.php?q=${encodeURIComponent(this.currentQuery)}&page=${this.currentPage}`);
+                    const json = await res.json();
+                    if (json.status === 'success') {
+                        const movies = json.data.results || [];
+                        const listEl = document.getElementById('searchResultsList');
+                        if (listEl) listEl.insertAdjacentHTML('beforeend', movies.map(m => this.renderResult(m)).join(''));
+                    }
+                    if (this.currentPage >= this.totalPages) {
+                        if (sentinel) sentinel.remove();
+                        this._destroyObserver();
+                    } else if (sentinel) {
+                        sentinel.innerHTML = '<i class="fa-solid fa-angles-down text-[10px]"></i>スクロールで続きを表示';
+                    }
+                } catch (e) {
+                    console.error(e);
+                    if (sentinel) sentinel.innerHTML = '<span class="text-red-400">読み込みエラー</span>';
+                    this.currentPage--;
+                } finally {
+                    this.isLoading = false;
+                }
+            },
+            _initObserver() {
+                this._destroyObserver();
+                const sentinel = document.getElementById('searchResultsSentinel');
+                if (!sentinel) return;
+                const container = document.getElementById('searchResults');
+                this._observer = new IntersectionObserver((entries) => {
+                    if (entries[0].isIntersecting) this.loadMore();
+                }, { root: container, threshold: 0.1 });
+                this._observer.observe(sentinel);
+            },
+            _destroyObserver() {
+                if (this._observer) { this._observer.disconnect(); this._observer = null; }
             },
             renderManualAdd(query) {
                 const escaped = this.escapeHtml(query);

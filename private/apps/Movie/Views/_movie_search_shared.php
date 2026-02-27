@@ -5,7 +5,7 @@
 </div>
 
 <!-- 映画プレビューモーダル -->
-<div id="moviePreview" class="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-200" onclick="MoviePreview.close()">
+<div id="moviePreview" class="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-200" onclick="event.stopPropagation(); MoviePreview.close()">
     <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
         <div id="moviePreviewContent" class="p-6"></div>
     </div>
@@ -246,6 +246,12 @@ const MovieSearch = {
     resultsId: null,
     wrapperId: null,
     onAddedCallback: null,
+    currentQuery: '',
+    currentPage: 0,
+    totalPages: 0,
+    totalResults: 0,
+    isLoading: false,
+    _observer: null,
 
     init(config) {
         this.inputId = config.inputId;
@@ -267,11 +273,19 @@ const MovieSearch = {
         const input = document.getElementById(this.inputId);
         const query = input?.value.trim();
         if (!query) return;
+
+        this.currentQuery = query;
+        this.currentPage = 1;
+        this.totalPages = 0;
+        this.totalResults = 0;
+        this.isLoading = true;
+        this._destroyObserver();
+
         const container = document.getElementById(this.resultsId);
         container.classList.remove('hidden');
         container.innerHTML = '<div class="text-center py-6"><i class="fa-solid fa-spinner fa-spin text-xl text-slate-300"></i></div>';
         try {
-            const res = await fetch(`/movie/api/search.php?q=${encodeURIComponent(query)}`);
+            const res = await fetch(`/movie/api/search.php?q=${encodeURIComponent(query)}&page=1`);
             const json = await res.json();
             const manualHtml = this.renderManualAdd(query);
             if (json.status !== 'success') {
@@ -279,16 +293,76 @@ const MovieSearch = {
                 return;
             }
             const movies = json.data.results || [];
+            this.totalPages = json.data.total_pages || 1;
+            this.totalResults = json.data.total_results || 0;
             if (movies.length === 0) {
                 container.innerHTML = '<div class="text-center py-4 text-slate-400 text-sm">TMDBで見つかりませんでした</div>' + manualHtml;
                 return;
             }
-            movies.slice(0, 10).forEach(m => MoviePreview.storeMovie(m));
-            container.innerHTML = movies.slice(0, 10).map(m => this.renderResult(m)).join('') + manualHtml;
+            movies.forEach(m => MoviePreview.storeMovie(m));
+            const searchPageLink = `/movie/search.php?q=${encodeURIComponent(query)}`;
+            const headerHtml = this.totalResults > movies.length
+                ? `<div class="flex items-center justify-between px-4 py-2 bg-slate-50 border-b border-slate-100 rounded-t-xl"><span class="text-[11px] text-slate-400">${this.totalResults.toLocaleString()} 件ヒット</span><a href="${searchPageLink}" class="text-[11px] font-bold mv-theme-text hover:underline">すべての検索結果を見る <i class="fa-solid fa-arrow-right text-[9px] ml-0.5"></i></a></div>`
+                : '';
+            const listHtml = movies.map(m => this.renderResult(m)).join('');
+            const sentinelHtml = this.currentPage < this.totalPages
+                ? `<div id="${this.resultsId}_sentinel" class="flex items-center justify-center py-3 text-slate-400 text-xs gap-2"><i class="fa-solid fa-angles-down text-[10px]"></i>スクロールで続きを表示</div>`
+                : '';
+            container.innerHTML = `${headerHtml}<div id="${this.resultsId}_list">${listHtml}</div>${sentinelHtml}${manualHtml}`;
+            this._initObserver();
         } catch (e) {
             console.error(e);
             container.innerHTML = '<div class="text-center py-6 text-red-500 text-sm">エラーが発生しました</div>';
+        } finally {
+            this.isLoading = false;
         }
+    },
+
+    async loadMore() {
+        if (this.isLoading || this.currentPage >= this.totalPages) return;
+        this.isLoading = true;
+        this.currentPage++;
+
+        const sentinel = document.getElementById(`${this.resultsId}_sentinel`);
+        if (sentinel) sentinel.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-slate-300"></i>';
+
+        try {
+            const res = await fetch(`/movie/api/search.php?q=${encodeURIComponent(this.currentQuery)}&page=${this.currentPage}`);
+            const json = await res.json();
+            if (json.status === 'success') {
+                const movies = json.data.results || [];
+                movies.forEach(m => MoviePreview.storeMovie(m));
+                const listEl = document.getElementById(`${this.resultsId}_list`);
+                if (listEl) listEl.insertAdjacentHTML('beforeend', movies.map(m => this.renderResult(m)).join(''));
+            }
+            if (this.currentPage >= this.totalPages) {
+                if (sentinel) sentinel.remove();
+                this._destroyObserver();
+            } else if (sentinel) {
+                sentinel.innerHTML = '<i class="fa-solid fa-angles-down text-[10px]"></i>スクロールで続きを表示';
+            }
+        } catch (e) {
+            console.error(e);
+            if (sentinel) sentinel.innerHTML = '<span class="text-red-400">読み込みエラー</span>';
+            this.currentPage--;
+        } finally {
+            this.isLoading = false;
+        }
+    },
+
+    _initObserver() {
+        this._destroyObserver();
+        const sentinel = document.getElementById(`${this.resultsId}_sentinel`);
+        if (!sentinel) return;
+        const container = document.getElementById(this.resultsId);
+        this._observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) this.loadMore();
+        }, { root: container, threshold: 0.1 });
+        this._observer.observe(sentinel);
+    },
+
+    _destroyObserver() {
+        if (this._observer) { this._observer.disconnect(); this._observer = null; }
     },
 
     renderManualAdd(query) {
@@ -389,6 +463,7 @@ const MovieSearch = {
     },
 
     closeResults() {
+        this._destroyObserver();
         const el = document.getElementById(this.resultsId);
         if (el) el.classList.add('hidden');
     }

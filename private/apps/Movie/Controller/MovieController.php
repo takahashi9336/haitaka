@@ -214,6 +214,21 @@ class MovieController {
     }
 
     /**
+     * 映画検索結果ページ
+     */
+    public function searchPage(): void {
+        $auth = new Auth();
+        $auth->requireLogin();
+
+        $query = $_GET['q'] ?? '';
+
+        $tmdb = new TmdbApiClient();
+        $tmdbConfigured = $tmdb->isConfigured();
+
+        require_once __DIR__ . '/../Views/movie_search.php';
+    }
+
+    /**
      * 映画一覧画面
      */
     public function index(): void {
