@@ -71,9 +71,9 @@ $allCategories = [
         .cal-day.selected { background: #e0f2fe; }
         .cal-day.today.selected .day-num { box-shadow: 0 0 0 2px white, 0 0 0 4px var(--hinata-theme); }
         /* Desktop: 3-month sidebar */
-        .cal-sidebar { width: 240px; }
-        .cal-sidebar .cal-day { min-height: 30px; }
-        .cal-sidebar .cal-day .day-num { width: 22px; height: 22px; font-size: 10px; }
+        .cal-sidebar { width: 340px; }
+        .cal-sidebar .cal-day { min-height: 40px; }
+        .cal-sidebar .cal-day .day-num { width: 30px; height: 30px; font-size: 13px; }
         /* Mobile: collapsible single month with swipe */
         .cal-mobile-wrap { overflow: hidden; transition: max-height 0.3s ease; }
         .cal-mobile-grid { transition: transform 0.3s ease; }
@@ -152,12 +152,12 @@ $allCategories = [
         <div id="view-calendar" class="flex-1 flex flex-col md:flex-row min-h-0">
             <!-- Desktop: 3-month sidebar -->
             <div id="calSidebar" class="cal-sidebar hidden md:flex flex-col bg-white border-r border-slate-100 shrink-0 overflow-y-auto custom-scroll">
-                <div class="sticky top-0 z-[2] bg-white border-b border-slate-50 px-3 py-2 flex items-center justify-between">
-                    <button onclick="MiniCal.nav(-1)" class="w-6 h-6 rounded-full hover:bg-slate-100 flex items-center justify-center"><i class="fa-solid fa-chevron-left text-slate-400 text-[10px]"></i></button>
-                    <button onclick="MiniCal.goToday()" class="text-[10px] font-black text-slate-500 hover:text-slate-700 tracking-wider transition">TODAY</button>
-                    <button onclick="MiniCal.nav(1)" class="w-6 h-6 rounded-full hover:bg-slate-100 flex items-center justify-center"><i class="fa-solid fa-chevron-right text-slate-400 text-[10px]"></i></button>
+                <div class="sticky top-0 z-[2] bg-white border-b border-slate-50 px-5 py-3 flex items-center justify-between">
+                    <button onclick="MiniCal.nav(-1)" class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center"><i class="fa-solid fa-chevron-left text-slate-400 text-sm"></i></button>
+                    <button onclick="MiniCal.goToday()" class="text-sm font-black text-slate-500 hover:text-slate-700 tracking-wider transition">TODAY</button>
+                    <button onclick="MiniCal.nav(1)" class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center"><i class="fa-solid fa-chevron-right text-slate-400 text-sm"></i></button>
                 </div>
-                <div id="calSideContent" class="p-3 space-y-4"></div>
+                <div id="calSideContent" class="p-5 space-y-6"></div>
             </div>
 
             <!-- Mobile: swipeable single-month calendar -->
@@ -181,7 +181,7 @@ $allCategories = [
             <!-- Right content area: filters + event list -->
             <div class="flex-1 flex flex-col min-h-0 min-w-0">
                 <div class="bg-white border-b <?= $cardBorder ?> px-4 py-2 shrink-0">
-                    <div class="flex gap-1.5 overflow-x-auto pb-0.5" style="scrollbar-width:none; -webkit-overflow-scrolling:touch;">
+                    <div class="flex justify-center gap-1.5 overflow-x-auto pb-0.5" style="scrollbar-width:none; -webkit-overflow-scrolling:touch;">
                         <?php foreach ($allCategories as $fc): ?>
                         <button onclick="filterCategory(<?= $fc['id'] ?>)" data-filter-cat="<?= $fc['id'] ?>"
                             class="filter-chip shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border transition <?= $fc['id'] === 0 ? 'text-white border-transparent' : 'text-slate-500 bg-white border-slate-200 hover:border-slate-300' ?>"
@@ -849,9 +849,9 @@ $allCategories = [
                 for (var offset = 0; offset < 3; offset++) {
                     var d = new Date(this.currentYear, this.currentMonth + offset, 1);
                     var sy = d.getFullYear(), sm = d.getMonth();
-                    html += '<div class="mb-1">';
-                    html += '<div class="text-[10px] font-black text-slate-500 text-center mb-1 tracking-wider">' + sy + '年 ' + (sm + 1) + '月</div>';
-                    html += this.dowHeaderHtml('text-[9px]');
+                    html += '<div class="mb-3">';
+                    html += '<div class="text-sm font-black text-slate-600 text-center mb-2 tracking-wider">' + sy + '年 ' + (sm + 1) + '月</div>';
+                    html += this.dowHeaderHtml('text-xs');
                     html += '<div class="grid grid-cols-7" id="calSideGrid' + offset + '">' + this.renderMonthGrid(sy, sm) + '</div>';
                     html += '</div>';
                 }
