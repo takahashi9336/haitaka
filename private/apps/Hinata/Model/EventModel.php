@@ -77,4 +77,19 @@ class EventModel extends BaseModel {
                 ORDER BY event_date ASC";
         return $this->pdo->query($sql)->fetchAll();
     }
+
+    public function saveUserStatus(int $eventId, int $status): void {
+        $userId = $_SESSION['user']['id'] ?? 0;
+        $sql = "INSERT INTO hn_user_events_status (user_id, event_id, status)
+                VALUES (:uid, :eid, :st)
+                ON DUPLICATE KEY UPDATE status = VALUES(status)";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(['uid' => $userId, 'eid' => $eventId, 'st' => $status]);
+    }
+
+    public function deleteUserStatus(int $eventId): void {
+        $userId = $_SESSION['user']['id'] ?? 0;
+        $this->pdo->prepare("DELETE FROM hn_user_events_status WHERE user_id = ? AND event_id = ?")
+                  ->execute([$userId, $eventId]);
+    }
 }
