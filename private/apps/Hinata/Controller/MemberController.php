@@ -3,6 +3,7 @@
 namespace App\Hinata\Controller;
 
 use App\Hinata\Model\MemberModel;
+use App\Hinata\Model\MemberActivityModel;
 use Core\Auth;
 use Core\Database;
 use Core\MediaAssetModel;
@@ -30,12 +31,16 @@ class MemberController {
 
     public function admin(): void {
         $auth = new Auth();
-        // 日向坂ポータル管理者（admin / hinata_admin）のみ
         $auth->requireHinataAdmin('/hinata/');
         
         $model = new MemberModel();
         $members = $model->getAllWithColors();
         $colors = $model->getColorMaster();
+
+        $activityModel = new MemberActivityModel();
+        $activitiesByMember = $activityModel->getAllGroupedByMember(false);
+        $activityCategories = MemberActivityModel::CATEGORIES;
+
         $user = $_SESSION['user'];
         require_once __DIR__ . '/../Views/member_admin.php';
     }
@@ -257,6 +262,96 @@ class MemberController {
                 $model->update((int)$row['id'], $data);
             }
             Logger::info("hn_members update_basic_bulk count=" . count($input['items']) . " by=" . ($_SESSION['user']['id_name'] ?? 'guest'));
+            echo json_encode(['status' => 'success']);
+        } catch (\Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * メンバー個人活動の保存（新規/更新）
+     */
+    public function saveActivity(): void {
+        header('Content-Type: application/json');
+        try {
+            $memberId = (int)($_POST['member_id'] ?? 0);
+            if (!$memberId) throw new \Exception('member_id missing');
+
+            $model = new MemberActivityModel();
+            $activityId = (int)($_POST['activity_id'] ?? 0);
+
+            $docRoot = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
+            $uploadDir = ($docRoot !== '' ? $docRoot . '/' : __DIR__ . '/../../../../www/') . 'assets/img/activities/';
+            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+
+            $imageUrl = $_POST['image_existing'] ?? null;
+            if (!empty($_FILES['activity_image']['name']) && $_FILES['activity_image']['error'] === UPLOAD_ERR_OK) {
+                $file = $_FILES['activity_image'];
+                $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+                $allowedExt = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+                if (!in_array($ext, $allowedExt, true)) {
+                    throw new \Exception('対応形式は jpg, png, gif, webp です');
+                }
+                $newFileName = "activity_{$memberId}_" . time() . ".{$ext}";
+                if (!move_uploaded_file($file['tmp_name'], $uploadDir . $newFileName)) {
+                    throw new \Exception('画像の保存に失敗しました');
+                }
+                if ($imageUrl && $imageUrl !== $newFileName && file_exists($uploadDir . $imageUrl)) {
+                    @unlink($uploadDir . $imageUrl);
+                }
+                $imageUrl = $newFileName;
+            }
+
+            $data = [
+                'member_id'   => $memberId,
+                'category'    => $_POST['category'] ?? 'other',
+                'title'       => $_POST['title'] ?? '',
+                'description' => $_POST['description'] ?? '',
+                'url'         => $_POST['url'] ?? '',
+                'url_label'   => $_POST['url_label'] ?? '',
+                'image_url'   => $imageUrl,
+                'is_active'   => (int)($_POST['is_active'] ?? 1),
+                'sort_order'  => (int)($_POST['sort_order'] ?? 0),
+                'start_date'  => !empty($_POST['start_date']) ? $_POST['start_date'] : null,
+                'end_date'    => !empty($_POST['end_date']) ? $_POST['end_date'] : null,
+            ];
+
+            if ($activityId > 0) {
+                $data['id'] = $activityId;
+            }
+
+            $savedId = $model->saveActivity($data);
+            Logger::info("hn_member_activities save id={$savedId} member={$memberId} by=" . ($_SESSION['user']['id_name'] ?? 'guest'));
+            echo json_encode(['status' => 'success', 'id' => $savedId]);
+        } catch (\Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * メンバー個人活動の削除
+     */
+    public function deleteActivity(): void {
+        header('Content-Type: application/json');
+        try {
+            $input = json_decode(file_get_contents('php://input'), true);
+            $id = (int)($input['id'] ?? 0);
+            if (!$id) throw new \Exception('id missing');
+
+            $model = new MemberActivityModel();
+            $activity = $model->find($id);
+
+            if ($activity && !empty($activity['image_url'])) {
+                $docRoot = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\');
+                $uploadDir = ($docRoot !== '' ? $docRoot . '/' : __DIR__ . '/../../../../www/') . 'assets/img/activities/';
+                $imgPath = $uploadDir . $activity['image_url'];
+                if (file_exists($imgPath)) {
+                    @unlink($imgPath);
+                }
+            }
+
+            $model->delete($id);
+            Logger::info("hn_member_activities delete id={$id} by=" . ($_SESSION['user']['id_name'] ?? 'guest'));
             echo json_encode(['status' => 'success']);
         } catch (\Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);

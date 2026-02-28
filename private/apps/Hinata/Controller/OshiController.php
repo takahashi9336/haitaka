@@ -4,6 +4,7 @@ namespace App\Hinata\Controller;
 
 use App\Hinata\Model\FavoriteModel;
 use App\Hinata\Model\MemberModel;
+use App\Hinata\Model\MemberActivityModel;
 use App\Hinata\Model\NetaModel;
 use App\Hinata\Model\SongModel;
 use App\Hinata\Model\EventModel;
@@ -112,6 +113,14 @@ class OshiController {
         try {
             $scheduleModel = new ScheduleModel();
             $memberSchedule = $scheduleModel->getUpcomingByMember($memberId, 5);
+        } catch (\Exception $e) {}
+
+        // 個人活動
+        $memberActivities = [];
+        $activityCategories = MemberActivityModel::CATEGORIES;
+        try {
+            $activityModel = new MemberActivityModel();
+            $memberActivities = $activityModel->getByMember($memberId, true);
         } catch (\Exception $e) {}
 
         // ユーザ固有のプロフィール画像

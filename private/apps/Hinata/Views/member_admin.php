@@ -148,6 +148,90 @@ use App\Hinata\Helper\MemberGroupHelper;
 
                             <button type="submit" class="w-full bg-slate-800 text-white h-14 rounded-lg font-black text-sm shadow-xl hover:bg-slate-900 transition-all">メンバー情報を保存</button>
                         </form>
+
+                        <!-- 個人活動セクション（メンバー選択後に表示） -->
+                        <div id="activitySection" class="mt-8 opacity-30 pointer-events-none transition-opacity">
+                            <div class="border-t border-slate-200 pt-6">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="flex items-center gap-2">
+                                        <i class="fa-solid fa-briefcase text-indigo-500"></i>
+                                        <h3 class="text-sm font-black text-slate-700 tracking-tight">個人活動</h3>
+                                    </div>
+                                    <button type="button" onclick="ActivityAdmin.showForm()" class="text-[10px] font-bold text-indigo-500 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-full transition">
+                                        <i class="fa-solid fa-plus mr-1"></i>活動を追加
+                                    </button>
+                                </div>
+                                <div id="activityList" class="space-y-3 mb-4"></div>
+
+                                <!-- 活動 追加/編集フォーム -->
+                                <div id="activityFormWrap" class="hidden bg-indigo-50/50 border border-indigo-100 rounded-xl p-5 space-y-4">
+                                    <input type="hidden" id="act_id" value="">
+                                    <input type="hidden" id="act_image_existing" value="">
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="block text-[10px] font-black text-slate-400 mb-1 tracking-wider">カテゴリ</label>
+                                            <select id="act_category" class="w-full h-10 border border-slate-200 rounded-lg px-3 text-xs outline-none bg-white">
+                                                <?php foreach ($activityCategories as $catKey => $cat): ?>
+                                                <option value="<?= $catKey ?>"><?= htmlspecialchars($cat['label']) ?></option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-black text-slate-400 mb-1 tracking-wider">表示順</label>
+                                            <input type="number" id="act_sort_order" value="0" min="0" max="99" class="w-full h-10 border border-slate-200 rounded-lg px-3 text-xs outline-none bg-white">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-black text-slate-400 mb-1 tracking-wider">活動名 *</label>
+                                        <input type="text" id="act_title" required class="w-full h-10 border border-slate-200 rounded-lg px-3 text-xs outline-none bg-white" placeholder="例：ほっとひといき">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-black text-slate-400 mb-1 tracking-wider">説明</label>
+                                        <textarea id="act_description" rows="2" class="w-full border border-slate-200 rounded-lg p-3 text-xs outline-none bg-white" placeholder="番組概要など..."></textarea>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="block text-[10px] font-black text-slate-400 mb-1 tracking-wider">誘導先URL</label>
+                                            <input type="url" id="act_url" class="w-full h-10 border border-slate-200 rounded-lg px-3 text-xs outline-none bg-white" placeholder="https://...">
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-black text-slate-400 mb-1 tracking-wider">ボタンラベル</label>
+                                            <input type="text" id="act_url_label" class="w-full h-10 border border-slate-200 rounded-lg px-3 text-xs outline-none bg-white" placeholder="例：ポッドキャストを聴く">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-black text-slate-400 mb-1 tracking-wider">サムネイル画像</label>
+                                        <div class="flex items-center gap-3">
+                                            <div id="act_img_preview" class="w-14 h-14 rounded-lg bg-white border border-slate-200 overflow-hidden flex items-center justify-center text-slate-300 shrink-0">
+                                                <i class="fa-solid fa-image text-lg"></i>
+                                            </div>
+                                            <input type="file" id="act_image_file" accept="image/*" class="text-[10px]">
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="block text-[10px] font-black text-slate-400 mb-1 tracking-wider">開始日</label>
+                                            <input type="date" id="act_start_date" class="w-full h-10 border border-slate-200 rounded-lg px-3 text-xs outline-none bg-white">
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-black text-slate-400 mb-1 tracking-wider">終了日</label>
+                                            <input type="date" id="act_end_date" class="w-full h-10 border border-slate-200 rounded-lg px-3 text-xs outline-none bg-white">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-black text-slate-400 mb-1 tracking-wider">表示状態</label>
+                                        <select id="act_is_active" class="w-full h-10 border border-slate-200 rounded-lg px-3 text-xs outline-none bg-white">
+                                            <option value="1">表示</option>
+                                            <option value="0">非表示</option>
+                                        </select>
+                                    </div>
+                                    <div class="flex gap-2 pt-2">
+                                        <button type="button" onclick="ActivityAdmin.save()" class="flex-1 bg-indigo-600 text-white h-10 rounded-lg font-bold text-xs hover:bg-indigo-700 transition">保存</button>
+                                        <button type="button" onclick="ActivityAdmin.hideForm()" class="px-4 h-10 rounded-lg text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition">キャンセル</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </section>
                 </div>
 
@@ -369,6 +453,10 @@ use App\Hinata\Helper\MemberGroupHelper;
             } else {
                 mainPreview.innerHTML = '<i class="fa-solid fa-camera text-2xl"></i>';
             }
+
+            if (typeof ActivityAdmin !== 'undefined') {
+                ActivityAdmin.loadForMember(m.id);
+            }
         }
 
         document.getElementById('memberForm').onsubmit = async (e) => {
@@ -449,6 +537,144 @@ use App\Hinata\Helper\MemberGroupHelper;
                 alert('一括保存が完了しました。');
             } else {
                 alert('一括保存に失敗しました: ' + res.message);
+            }
+        };
+
+        const ACTIVITIES_BY_MEMBER = <?= json_encode($activitiesByMember, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        const ACTIVITY_CATEGORIES = <?= json_encode($activityCategories, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        const ACT_IMG_BASE = '/assets/img/activities/';
+
+        var ActivityAdmin = {
+            currentMemberId: null,
+
+            loadForMember: function(memberId) {
+                this.currentMemberId = memberId;
+                var section = document.getElementById('activitySection');
+                section.classList.remove('opacity-30', 'pointer-events-none');
+                this.hideForm();
+                this.renderList(ACTIVITIES_BY_MEMBER[memberId] || []);
+            },
+
+            renderList: function(activities) {
+                var list = document.getElementById('activityList');
+                if (!activities.length) {
+                    list.innerHTML = '<p class="text-xs text-slate-400 text-center py-3">登録された活動はありません</p>';
+                    return;
+                }
+                var html = '';
+                activities.forEach(function(a) {
+                    var cat = ACTIVITY_CATEGORIES[a.category] || ACTIVITY_CATEGORIES['other'];
+                    var inactive = a.is_active == 0 ? ' opacity-50' : '';
+                    html += '<div class="flex items-center gap-3 bg-white rounded-xl border border-slate-200 p-3 group' + inactive + '">';
+                    if (a.image_url) {
+                        html += '<img src="' + ACT_IMG_BASE + a.image_url + '" class="w-10 h-10 rounded-lg object-cover shrink-0">';
+                    } else {
+                        html += '<div class="w-10 h-10 rounded-lg ' + cat.bg + ' flex items-center justify-center shrink-0"><i class="' + cat.icon + ' ' + cat.color + ' text-sm"></i></div>';
+                    }
+                    html += '<div class="flex-1 min-w-0">';
+                    html += '<div class="flex items-center gap-1.5">';
+                    html += '<span class="text-[8px] font-bold px-1.5 py-0.5 rounded ' + cat.pill + '">' + cat.label + '</span>';
+                    if (a.is_active == 0) html += '<span class="text-[8px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">非表示</span>';
+                    html += '</div>';
+                    html += '<p class="text-xs font-bold text-slate-700 truncate mt-0.5">' + (a.title || '') + '</p>';
+                    if (a.url) html += '<p class="text-[10px] text-slate-400 truncate">' + a.url + '</p>';
+                    html += '</div>';
+                    html += '<div class="flex gap-1 opacity-0 group-hover:opacity-100 transition shrink-0">';
+                    html += '<button onclick="ActivityAdmin.edit(' + a.id + ')" class="w-7 h-7 rounded-full bg-slate-100 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 flex items-center justify-center transition text-[10px]"><i class="fa-solid fa-pen"></i></button>';
+                    html += '<button onclick="ActivityAdmin.remove(' + a.id + ')" class="w-7 h-7 rounded-full bg-slate-100 text-slate-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition text-[10px]"><i class="fa-solid fa-trash"></i></button>';
+                    html += '</div>';
+                    html += '</div>';
+                });
+                list.innerHTML = html;
+            },
+
+            showForm: function(activity) {
+                var wrap = document.getElementById('activityFormWrap');
+                wrap.classList.remove('hidden');
+                document.getElementById('act_id').value = activity ? activity.id : '';
+                document.getElementById('act_category').value = activity ? activity.category : 'radio';
+                document.getElementById('act_title').value = activity ? (activity.title || '') : '';
+                document.getElementById('act_description').value = activity ? (activity.description || '') : '';
+                document.getElementById('act_url').value = activity ? (activity.url || '') : '';
+                document.getElementById('act_url_label').value = activity ? (activity.url_label || '') : '';
+                document.getElementById('act_sort_order').value = activity ? (activity.sort_order || 0) : 0;
+                document.getElementById('act_start_date').value = activity ? (activity.start_date || '') : '';
+                document.getElementById('act_end_date').value = activity ? (activity.end_date || '') : '';
+                document.getElementById('act_is_active').value = activity ? activity.is_active : '1';
+                document.getElementById('act_image_existing').value = activity ? (activity.image_url || '') : '';
+                document.getElementById('act_image_file').value = '';
+
+                var preview = document.getElementById('act_img_preview');
+                if (activity && activity.image_url) {
+                    preview.innerHTML = '<img src="' + ACT_IMG_BASE + activity.image_url + '" class="w-full h-full object-cover">';
+                } else {
+                    preview.innerHTML = '<i class="fa-solid fa-image text-lg"></i>';
+                }
+                wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            },
+
+            hideForm: function() {
+                document.getElementById('activityFormWrap').classList.add('hidden');
+            },
+
+            edit: function(id) {
+                var activities = ACTIVITIES_BY_MEMBER[this.currentMemberId] || [];
+                var activity = activities.find(function(a) { return a.id == id; });
+                if (activity) this.showForm(activity);
+            },
+
+            save: async function() {
+                var title = document.getElementById('act_title').value.trim();
+                if (!title) { alert('活動名を入力してください'); return; }
+
+                var fd = new FormData();
+                fd.append('member_id', this.currentMemberId);
+                var actId = document.getElementById('act_id').value;
+                if (actId) fd.append('activity_id', actId);
+                fd.append('category', document.getElementById('act_category').value);
+                fd.append('title', title);
+                fd.append('description', document.getElementById('act_description').value);
+                fd.append('url', document.getElementById('act_url').value);
+                fd.append('url_label', document.getElementById('act_url_label').value);
+                fd.append('sort_order', document.getElementById('act_sort_order').value);
+                fd.append('start_date', document.getElementById('act_start_date').value);
+                fd.append('end_date', document.getElementById('act_end_date').value);
+                fd.append('is_active', document.getElementById('act_is_active').value);
+                fd.append('image_existing', document.getElementById('act_image_existing').value);
+
+                var fileInput = document.getElementById('act_image_file');
+                if (fileInput.files.length > 0) {
+                    fd.append('activity_image', fileInput.files[0]);
+                }
+
+                var res = await fetch('/hinata/api/save_member_activity.php', { method: 'POST', body: fd }).then(function(r) { return r.json(); });
+                if (res.status === 'success') {
+                    location.reload();
+                } else {
+                    alert('保存エラー: ' + (res.message || ''));
+                }
+            },
+
+            remove: async function(id) {
+                if (!confirm('この活動を削除しますか？')) return;
+                var res = await fetch('/hinata/api/delete_member_activity.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: id })
+                }).then(function(r) { return r.json(); });
+                if (res.status === 'success') {
+                    location.reload();
+                } else {
+                    alert('削除エラー: ' + (res.message || ''));
+                }
+            }
+        };
+
+        document.getElementById('act_image_file').onchange = function(e) {
+            var file = e.target.files[0];
+            var preview = document.getElementById('act_img_preview');
+            if (file) {
+                preview.innerHTML = '<img src="' + URL.createObjectURL(file) + '" class="w-full h-full object-cover">';
             }
         };
 

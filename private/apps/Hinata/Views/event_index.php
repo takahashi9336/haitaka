@@ -1048,9 +1048,16 @@ $allCategories = [
             var detail = document.getElementById('detail-' + id), arrow = document.getElementById('arrow-' + id), card = document.getElementById('event-card-' + id);
             if (!detail) return;
             var isOpen = detail.classList.contains('open');
+            var clickedDate = card ? card.dataset.date : '';
             if (!isOpen) {
-                document.querySelectorAll('.detail-panel.open').forEach(function(p) { p.style.maxHeight = '0'; p.classList.remove('open'); var a = p.closest('[data-event-id]'); if (a) { var ar = a.querySelector('.fa-chevron-down'); if (ar) ar.style.transform = 'rotate(0deg)'; } });
-                document.querySelectorAll('[data-event-id]').forEach(function(c) { c.classList.remove('bg-yellow-50', 'border-yellow-300'); c.classList.add('bg-white', 'border-sky-50'); });
+                document.querySelectorAll('.detail-panel.open').forEach(function(p) {
+                    var parentCard = p.closest('[data-event-id]');
+                    if (parentCard && parentCard.dataset.date !== clickedDate) {
+                        p.style.maxHeight = '0'; p.classList.remove('open');
+                        var ar = parentCard.querySelector('.fa-chevron-down'); if (ar) ar.style.transform = 'rotate(0deg)';
+                        parentCard.classList.remove('bg-yellow-50', 'border-yellow-300'); parentCard.classList.add('bg-white', 'border-sky-50');
+                    }
+                });
                 detail.style.maxHeight = detail.scrollHeight + 'px'; detail.classList.add('open');
                 if (arrow) arrow.style.transform = 'rotate(180deg)';
                 if (card) { card.classList.add('bg-yellow-50', 'border-yellow-300'); card.classList.remove('bg-white', 'border-sky-50'); }

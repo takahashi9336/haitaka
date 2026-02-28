@@ -175,6 +175,52 @@ if (!empty($member['birth_date'])) {
                         </div>
                     </section>
 
+                    <!-- 個人活動 -->
+                    <?php if (!empty($memberActivities)): ?>
+                    <section>
+                        <div class="flex items-center gap-2 mb-3">
+                            <i class="fa-solid fa-briefcase text-indigo-500"></i>
+                            <h3 class="text-xs font-black text-slate-500 tracking-wider">個人活動</h3>
+                            <span class="text-[10px] text-slate-400 ml-auto"><?= count($memberActivities) ?> 件</span>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <?php foreach ($memberActivities as $act):
+                                $catInfo = $activityCategories[$act['category']] ?? $activityCategories['other'];
+                            ?>
+                            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition group flex">
+                                <?php if (!empty($act['image_url'])): ?>
+                                <div class="w-24 md:w-28 shrink-0 bg-slate-100">
+                                    <img src="/assets/img/activities/<?= htmlspecialchars($act['image_url']) ?>" class="w-full h-full object-cover" loading="lazy" alt="">
+                                </div>
+                                <?php endif; ?>
+                                <div class="flex-1 min-w-0 p-4">
+                                    <div class="flex items-center gap-1.5 mb-1.5">
+                                        <span class="inline-flex items-center gap-1 text-[8px] font-bold px-1.5 py-0.5 rounded <?= $catInfo['pill'] ?>">
+                                            <i class="<?= $catInfo['icon'] ?> text-[7px]"></i><?= htmlspecialchars($catInfo['label']) ?>
+                                        </span>
+                                        <?php if (!empty($act['start_date'])): ?>
+                                        <span class="text-[9px] text-slate-400"><?= date('Y/m', strtotime($act['start_date'])) ?>〜<?= !empty($act['end_date']) ? date('Y/m', strtotime($act['end_date'])) : '' ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <h4 class="text-sm font-bold text-slate-700 leading-snug mb-1"><?= htmlspecialchars($act['title']) ?></h4>
+                                    <?php if (!empty($act['description'])): ?>
+                                    <p class="text-[11px] text-slate-500 line-clamp-2 leading-relaxed mb-2"><?= htmlspecialchars($act['description']) ?></p>
+                                    <?php endif; ?>
+                                    <?php if (!empty($act['url'])): ?>
+                                    <a href="<?= htmlspecialchars($act['url']) ?>" target="_blank" rel="noopener"
+                                       class="inline-flex items-center gap-1.5 text-[10px] font-bold text-white px-3 py-1.5 rounded-full bg-indigo-500 hover:bg-indigo-600 transition shadow-sm">
+                                        <i class="<?= $catInfo['icon'] ?> text-[9px]"></i>
+                                        <?= htmlspecialchars($act['url_label'] ?: '詳しく見る') ?>
+                                        <i class="fa-solid fa-arrow-right text-[8px]"></i>
+                                    </a>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </section>
+                    <?php endif; ?>
+
                     <!-- 最新ブログ (画像カルーセル) -->
                     <?php if (!empty($memberBlogPosts)): ?>
                     <section class="rec-section">
