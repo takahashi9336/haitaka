@@ -1399,6 +1399,9 @@ class MediaController {
                     continue;
                 }
 
+                $title = mb_substr($title, 0, 255);
+
+
                 $description = $item['description'] ?? null;
                 if ($description !== null && $description !== '') {
                     $description = (string) mb_convert_encoding($description, 'UTF-8', 'UTF-8');
@@ -1408,9 +1411,9 @@ class MediaController {
                 // TikTok/Instagram: 外部URLのサムネイルをサーバに保存（ホットリンク対策）
                 if ($thumbnailUrl && preg_match('#^https?://#i', $thumbnailUrl)) {
                     if (in_array(strtolower($platform), ['tiktok', 'instagram'], true)) {
-                        $saved = $this->downloadAndSaveThumbnail($thumbnailUrl, strtolower($platform), $mediaKey);
-                        if ($saved) {
-                            $thumbnailUrl = $saved;
+                        $localThumbUrl = $this->downloadAndSaveThumbnail($thumbnailUrl, strtolower($platform), $mediaKey);
+                        if ($localThumbUrl) {
+                            $thumbnailUrl = $localThumbUrl;
                         }
                     }
                 }

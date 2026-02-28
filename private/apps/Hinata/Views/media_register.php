@@ -575,11 +575,17 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 </button>`;
 
             container.querySelector('.url-add-to-register').addEventListener('click', () => {
+                const countBefore = registerItems.length;
                 addUrlResultsToRegister(container);
-                container.innerHTML = '';
-                container.classList.add('hidden');
-                const textarea = container.parentElement.querySelector('textarea');
-                if (textarea) textarea.value = '';
+                const added = registerItems.length - countBefore;
+                if (added > 0) {
+                    container.innerHTML = '';
+                    container.classList.add('hidden');
+                    const textarea = container.parentElement.querySelector('textarea');
+                    if (textarea) textarea.value = '';
+                } else {
+                    alert('追加できる動画がありません（すべて登録済み、またはタイトル未入力です）');
+                }
             });
 
             container.querySelectorAll('.url-result-thumb-upload').forEach(input => {
@@ -602,7 +608,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                     platform: data.platform,
                     media_key: data.media_key,
                     sub_key: data.sub_key || null,
-                    title: title,
+                    title: title.substring(0, 255),
                     description: desc,
                     thumbnail_url: data.thumbnail_url || '',
                     author_name: data.author_name || '',
@@ -629,7 +635,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                     platform: 'youtube',
                     media_key: v.video_id,
                     sub_key: null,
-                    title: v.title,
+                    title: (v.title || '').substring(0, 255),
                     description: v.description || '',
                     thumbnail_url: v.thumbnail_url || '',
                     author_name: v.channel_title || '',
@@ -710,8 +716,9 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
 
             // Title / category change listeners
             tbody.querySelectorAll('.reg-title-input').forEach(input => {
+                input.setAttribute('maxlength', '255');
                 input.addEventListener('change', () => {
-                    registerItems[input.dataset.idx].title = input.value.trim();
+                    registerItems[input.dataset.idx].title = input.value.trim().substring(0, 255);
                 });
             });
             tbody.querySelectorAll('.reg-media-type-select').forEach(sel => {
