@@ -65,11 +65,10 @@ use App\Hinata\Helper\MemberGroupHelper;
                                 </div>
                             </div>
 
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <!-- カテゴリ欄を復活 -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
                                     <label class="block text-[10px] font-black text-slate-400 mb-1 tracking-wider">カテゴリ</label>
-                                    <select name="category" id="f_category" class="w-full h-12 border border-slate-100 rounded-lg px-4 text-sm bg-slate-50 outline-none">
+                                    <select name="category" id="f_category" class="w-full h-12 border border-slate-100 rounded-lg px-4 text-sm bg-slate-50 outline-none" onchange="toggleMgRounds()">
                                         <option value="1">LIVE / ライブ</option>
                                         <option value="2">ミーグリ</option>
                                         <option value="3">リアルミーグリ</option>
@@ -78,6 +77,10 @@ use App\Hinata\Helper\MemberGroupHelper;
                                         <option value="6">スペイベ</option>
                                         <option value="99">その他</option>
                                     </select>
+                                </div>
+                                <div id="mgRoundsWrap" class="hidden">
+                                    <label class="block text-[10px] font-black text-slate-400 mb-1 tracking-wider">部数</label>
+                                    <input type="number" name="mg_rounds" id="f_mg_rounds" min="1" max="30" value="6" class="w-full h-12 border border-slate-100 rounded-lg px-4 text-sm outline-none" placeholder="例: 6">
                                 </div>
                                 <div>
                                     <label class="block text-[10px] font-black text-slate-400 mb-1 tracking-wider">会場・場所</label>
@@ -155,11 +158,17 @@ use App\Hinata\Helper\MemberGroupHelper;
             const isInd = document.querySelector('input[name="cast_type"]:checked').value === 'individual';
             document.getElementById('memberSelectArea').classList.toggle('hidden', !isInd);
         }
+        function toggleMgRounds() {
+            const cat = parseInt(document.getElementById('f_category').value);
+            document.getElementById('mgRoundsWrap').classList.toggle('hidden', cat !== 2 && cat !== 3);
+        }
         function editEvent(ev) {
             document.getElementById('event_id').value = ev.id;
             document.getElementById('f_name').value = ev.event_name;
             document.getElementById('f_date').value = ev.event_date;
-            document.getElementById('f_category').value = ev.category; // カテゴリ反映
+            document.getElementById('f_category').value = ev.category;
+            document.getElementById('f_mg_rounds').value = ev.mg_rounds || 6;
+            toggleMgRounds();
             document.getElementById('f_place').value = ev.event_place || '';
             document.getElementById('f_info').value = ev.event_info || '';
             document.getElementById('f_url').value = ev.event_url || '';
@@ -175,6 +184,10 @@ use App\Hinata\Helper\MemberGroupHelper;
             const formData = new FormData(e.target);
             const data = Object.fromEntries(formData.entries());
             data.member_ids = Array.from(formData.getAll('member_ids[]'));
+            const cat = parseInt(data.category);
+            if (cat !== 2 && cat !== 3) {
+                data.mg_rounds = '';
+            }
             const res = await App.post('api/save_event.php', data);
             if (res.status === 'success') location.reload(); else alert('エラー: ' + res.message);
         };

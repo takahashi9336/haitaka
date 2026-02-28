@@ -316,12 +316,17 @@ $allCategories = [
                                                     <?php $slotColor = $slot['color1'] ?? '#94a3b8'; ?>
                                                     <span class="font-bold" style="color: <?= htmlspecialchars($slotColor) ?>;"><?= htmlspecialchars($slot['member_name'] ?? $slot['member_name_raw'] ?? '不明') ?></span>
                                                 </div>
-                                                <div class="shrink-0 font-bold text-slate-600"><?= (int)$slot['ticket_count'] ?><span class="text-[10px] text-slate-400">枚</span></div>
+                                                <div class="shrink-0 font-bold text-slate-600"><?= isset($ticketUsedSums[(int)$slot['id']]) ? $ticketUsedSums[(int)$slot['id']] : (int)($slot['ticket_count'] ?? 0) ?><span class="text-[10px] text-slate-400">枚</span></div>
                                                 <?php if (!empty($slot['report'])): ?><i class="fa-solid fa-pen-to-square text-emerald-400 text-[10px] shrink-0" title="レポあり"></i><?php endif; ?>
                                             </div>
                                             <?php endforeach; ?>
                                         </div>
                                     </div>
+                                <?php endif; ?>
+                                <?php if (in_array((int)$e['category'], [2, 3])): ?>
+                                    <a href="/hinata/meetgreet_report.php?event_id=<?= (int)$e['id'] ?>" class="text-[10px] font-bold text-white px-4 py-2 rounded-full transition inline-flex items-center gap-2 hover:opacity-90" style="background: var(--hinata-theme);">
+                                        <i class="fa-solid fa-pen-to-square"></i>レポを書く
+                                    </a>
                                 <?php endif; ?>
                                 <?php if (!empty($e['event_info'])): ?>
                                     <div class="text-xs text-slate-600 bg-white p-4 rounded-xl border border-slate-100 shadow-sm whitespace-pre-wrap"><?= htmlspecialchars($e['event_info']) ?></div>
@@ -393,6 +398,7 @@ $allCategories = [
         var dowNames = ['日','月','火','水','木','金','土'];
         var rawEvents = <?= json_encode($events, JSON_UNESCAPED_UNICODE) ?>;
         var eventSlotsData = <?= json_encode($eventSlots ?? [], JSON_UNESCAPED_UNICODE) ?>;
+        var ticketUsedSums = <?= json_encode($ticketUsedSums ?? [], JSON_UNESCAPED_UNICODE) ?>;
         var attendedIds = <?= json_encode($attendedEventIds ?? [], JSON_UNESCAPED_UNICODE) ?>;
         var currentViewMode = 'calendar';
         var activeFilter = 0;
@@ -465,10 +471,15 @@ $allCategories = [
                     h += '<div class="px-4 py-2 flex items-center gap-4 text-xs">';
                     h += '<div class="w-20 shrink-0"><span class="font-bold text-slate-700">' + _esc(sl.slot_name) + '</span></div>';
                     h += '<div class="flex-1 min-w-0"><span class="font-bold" style="color:' + (sl.color1 || '#94a3b8') + '">' + _esc(sl.member_name || sl.member_name_raw || '不明') + '</span></div>';
-                    h += '<div class="shrink-0 font-bold text-slate-600">' + parseInt(sl.ticket_count) + '<span class="text-[10px] text-slate-400">枚</span></div>';
+                    var _tc = (ticketUsedSums[sl.id] !== undefined) ? parseInt(ticketUsedSums[sl.id]) : (parseInt(sl.ticket_count) || 0);
+                    h += '<div class="shrink-0 font-bold text-slate-600">' + _tc + '<span class="text-[10px] text-slate-400">枚</span></div>';
                     h += '</div>';
                 }
                 h += '</div></div>';
+            }
+
+            if (parseInt(e.category) === 2 || parseInt(e.category) === 3) {
+                h += '<a href="/hinata/meetgreet_report.php?event_id=' + e.id + '" class="text-[10px] font-bold text-white px-4 py-2 rounded-full transition inline-flex items-center gap-2 hover:opacity-90" style="background:var(--hinata-theme)"><i class="fa-solid fa-pen-to-square"></i>レポを書く</a>';
             }
 
             if (e.event_info) h += '<div class="text-xs text-slate-600 bg-white p-4 rounded-xl border border-slate-100 shadow-sm whitespace-pre-wrap">' + _esc(e.event_info) + '</div>';

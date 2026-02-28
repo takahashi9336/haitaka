@@ -127,6 +127,12 @@ function oshiImgSrc(?string $imageUrl): string {
                                 ?>
                             </p>
                         </div>
+                        <?php if ($days === 0 && in_array((int)($nextEvent['category'] ?? 0), [2, 3])): ?>
+                        <a href="/hinata/meetgreet_report.php?event_id=<?= (int)$nextEvent['id'] ?>"
+                           class="inline-flex items-center gap-1 text-[10px] font-bold text-white px-3 py-1.5 rounded-full transition active:scale-95 shrink-0 <?= $headerIconBg ?>"<?= $isThemeHex ? ' style="background: ' . htmlspecialchars($themePrimary) . ';"' : '' ?>>
+                            <i class="fa-solid fa-pen-to-square"></i>レポを書く
+                        </a>
+                        <?php endif; ?>
                         <a href="/hinata/events.php" class="hidden md:inline-flex items-center justify-center w-8 h-8 rounded-full border <?= $cardBorder ?> <?= $cardIconText ?> hover:opacity-80 transition"<?= $isThemeHex ? ' style="color: ' . htmlspecialchars($themePrimary) . ';"' : '' ?>>
                             <i class="fa-solid fa-chevron-right text-xs"></i>
                         </a>
@@ -229,9 +235,14 @@ function oshiImgSrc(?string $imageUrl): string {
                                         <?php endif; ?>
                                     </p>
                                 </div>
-                                <?php if (!empty($slot['report'])): ?>
-                                <span class="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full"><i class="fa-solid fa-check mr-0.5"></i>レポ済</span>
-                                <?php endif; ?>
+                                <div class="flex items-center gap-1.5 shrink-0">
+                                    <?php if (!empty($slot['report'])): ?>
+                                    <span class="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full"><i class="fa-solid fa-check mr-0.5"></i>メモ</span>
+                                    <?php endif; ?>
+                                    <a href="/hinata/meetgreet_report.php?slot_id=<?= (int)$slot['id'] ?>" class="text-[9px] font-bold text-amber-600 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded-full transition">
+                                        <i class="fa-solid fa-pen-to-square mr-0.5"></i>レポ
+                                    </a>
+                                </div>
                             </div>
                             <?php endforeach; ?>
                         </div>
@@ -654,6 +665,14 @@ function oshiImgSrc(?string $imageUrl): string {
                             <div class="w-16 h-16 md:w-12 md:h-12 rounded-lg flex items-center justify-center mb-2 md:mb-6 transition-colors card-icon <?= $cardIconBg ?> <?= $cardIconText ?> <?= $cardIconHover ?>"><i class="fa-solid fa-ticket text-2xl md:text-base"></i></div>
                             <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-4 text-center md:text-left">ミーグリ予定</h3>
                             <p class="hidden md:block text-sm text-slate-400 leading-relaxed">ミーグリの予定管理とレポを記録します。</p>
+                        </div>
+                    </a>
+                    <a href="/hinata/meetgreet_report.php" class="app-card hinata-portal-card group relative bg-white rounded-xl border <?= $cardBorder ?> shadow-sm overflow-hidden flex flex-col items-center justify-center p-4 md:p-8 md:block">
+                        <div class="hidden md:block absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform card-deco <?= $cardDeco ?>"><i class="fa-solid fa-pen-to-square text-6xl"></i></div>
+                        <div class="relative z-10 flex flex-col items-center md:block">
+                            <div class="w-16 h-16 md:w-12 md:h-12 rounded-lg flex items-center justify-center mb-2 md:mb-6 transition-colors card-icon <?= $cardIconBg ?> <?= $cardIconText ?> <?= $cardIconHover ?>"><i class="fa-solid fa-pen-to-square text-2xl md:text-base"></i></div>
+                            <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-4 text-center md:text-left">レポ登録</h3>
+                            <p class="hidden md:block text-sm text-slate-400 leading-relaxed">ミーグリのレポをチャット形式で記録します。</p>
                         </div>
                     </a>
                     <a href="/hinata/events.php" class="app-card hinata-portal-card group relative bg-white rounded-xl border <?= $cardBorder ?> shadow-sm overflow-hidden flex flex-col items-center justify-center p-4 md:p-8 md:block">

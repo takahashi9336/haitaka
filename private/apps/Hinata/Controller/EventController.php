@@ -4,6 +4,7 @@ namespace App\Hinata\Controller;
 
 use App\Hinata\Model\EventModel;
 use App\Hinata\Model\MeetGreetModel;
+use App\Hinata\Model\MeetGreetReportModel;
 use App\Hinata\Model\MemberModel;
 use App\Hinata\Model\SetlistModel;
 use Core\Auth;
@@ -42,6 +43,15 @@ class EventController {
                 }
             }
         }
+
+        $allSlotIds = [];
+        foreach ($eventSlots as $slots) {
+            foreach ($slots as $s) {
+                $allSlotIds[] = (int)$s['id'];
+            }
+        }
+        $reportModel = new MeetGreetReportModel();
+        $ticketUsedSums = $reportModel->sumTicketUsedBySlotIds($allSlotIds);
 
         $attendedEventIds = [];
         try {
@@ -82,10 +92,16 @@ class EventController {
             $pdo = Database::connect();
             $pdo->beginTransaction();
 
+            $cat = (int)($input['category'] ?? 0);
+            $mgRounds = ($cat === 2 || $cat === 3) && !empty($input['mg_rounds'])
+                ? (int)$input['mg_rounds']
+                : null;
+
             $eventData = [
                 'event_name'  => $input['event_name'],
                 'event_date'  => $input['event_date'],
                 'category'    => $input['category'],
+                'mg_rounds'   => $mgRounds,
                 'event_place' => $input['event_place'] ?? '',
                 'event_info'  => $input['event_info'] ?? '',
                 'event_url'   => $input['event_url'] ?? '',

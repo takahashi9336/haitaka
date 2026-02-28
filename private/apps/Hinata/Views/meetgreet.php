@@ -75,7 +75,12 @@ $dayNames = ['日','月','火','水','木','金','土'];
                         $dateLabel = $dt->format('Y年n月j日') . "（{$dow}）";
                         $isPast = $date < $today;
                         $isOpen = ($date === $firstFuture);
-                        $totalTickets = array_sum(array_column($slots, 'ticket_count'));
+                        $totalTickets = 0;
+                        foreach ($slots as $_s) {
+                            $totalTickets += isset($ticketUsedSums[(int)$_s['id']])
+                                ? $ticketUsedSums[(int)$_s['id']]
+                                : (int)($_s['ticket_count'] ?? 0);
+                        }
                         $hasReport = false;
                         $linkedEventName = null;
                         foreach ($slots as $s) {
@@ -133,35 +138,26 @@ $dayNames = ['日','月','火','水','木','金','土'];
                                         <?php endif; ?>
                                     </div>
                                     <div class="col-span-2 text-center">
-                                        <span class="text-sm font-bold text-slate-600"><?= (int)$slot['ticket_count'] ?><span class="text-[10px] text-slate-400">枚</span></span>
+                                        <span class="text-sm font-bold text-slate-600"><?= isset($ticketUsedSums[(int)$slot['id']]) ? $ticketUsedSums[(int)$slot['id']] : (int)($slot['ticket_count'] ?? 0) ?><span class="text-[10px] text-slate-400">枚</span></span>
                                     </div>
                                     <div class="col-span-3 flex items-center justify-end gap-2">
-                                        <button onclick="MG.openReport(<?= $slot['id'] ?>)" class="text-[10px] font-bold px-2 py-1 rounded-md transition <?= !empty($slot['report']) ? 'text-white' : 'text-slate-500 bg-slate-100 hover:bg-slate-200' ?>"
-                                                <?= !empty($slot['report']) ? 'style="background: var(--mg-theme);"' : '' ?>>
-                                            <i class="fa-solid fa-pen-to-square mr-0.5"></i><?= !empty($slot['report']) ? 'レポ' : 'レポを書く' ?>
-                                        </button>
+                                        <?php
+                                            $rc = $reportCounts[(int)$slot['id']] ?? 0;
+                                            $hasMemo = !empty($slot['report']);
+                                            $hasAny = $rc > 0 || $hasMemo;
+                                            $label = '';
+                                            if ($rc > 0 && $hasMemo) $label = "レポ {$rc}件+メモ";
+                                            elseif ($rc > 0) $label = "レポ {$rc}件";
+                                            elseif ($hasMemo) $label = 'メモあり';
+                                            else $label = 'レポを書く';
+                                        ?>
+                                        <a href="/hinata/meetgreet_report.php?slot_id=<?= $slot['id'] ?>" class="text-[10px] font-bold px-2 py-1 rounded-md transition <?= $hasAny ? 'text-white' : 'text-slate-500 bg-slate-100 hover:bg-slate-200' ?>"
+                                           <?= $hasAny ? 'style="background: var(--mg-theme);"' : '' ?>>
+                                            <i class="fa-solid fa-<?= $hasAny ? 'pen-to-square' : 'comments' ?> mr-0.5"></i><?= $label ?>
+                                        </a>
                                         <button onclick="MG.deleteSlot(<?= $slot['id'] ?>)" class="text-slate-300 hover:text-red-400 p-1 transition" title="削除">
                                             <i class="fa-solid fa-trash-can text-xs"></i>
                                         </button>
-                                    </div>
-                                </div>
-
-                                <!-- レポ表示エリア -->
-                                <?php if (!empty($slot['report'])): ?>
-                                <div id="report-display-<?= $slot['id'] ?>" class="px-5 pb-3">
-                                    <div class="bg-slate-50 border border-slate-100 rounded-lg p-3 text-xs text-slate-600 leading-relaxed">
-                                        <?= nl2br(htmlspecialchars($slot['report'])) ?>
-                                    </div>
-                                </div>
-                                <?php endif; ?>
-
-                                <!-- レポ編集エリア（非表示） -->
-                                <div id="report-edit-<?= $slot['id'] ?>" class="px-5 pb-3 hidden">
-                                    <textarea id="report-textarea-<?= $slot['id'] ?>" class="report-area w-full border border-slate-200 rounded-lg p-3 text-xs outline-none focus:ring-2 resize-y" style="focus:ring-color: var(--mg-theme);"
-                                              placeholder="レポ・メモを記入..."><?= htmlspecialchars($slot['report'] ?? '') ?></textarea>
-                                    <div class="flex justify-end gap-2 mt-2">
-                                        <button onclick="MG.cancelReport(<?= $slot['id'] ?>)" class="text-[10px] font-bold text-slate-400 px-3 py-1.5 rounded-md hover:bg-slate-100 transition">キャンセル</button>
-                                        <button onclick="MG.saveReport(<?= $slot['id'] ?>)" class="text-[10px] font-bold text-white px-3 py-1.5 rounded-md transition" style="background: var(--mg-theme);">保存</button>
                                     </div>
                                 </div>
                             </div>

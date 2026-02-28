@@ -11,7 +11,7 @@ use Core\BaseModel;
 class EventModel extends BaseModel {
     protected string $table = 'hn_events';
     protected array $fields = [
-        'id', 'event_name', 'event_date', 'category', 'event_place', 'event_info', 'event_url',
+        'id', 'event_name', 'event_date', 'category', 'mg_rounds', 'event_place', 'event_info', 'event_url',
         'updated_at', 'update_user'
     ];
 
@@ -47,7 +47,7 @@ class EventModel extends BaseModel {
      * 指定日付のMG/RMGイベントを検索（カテゴリ 2 or 3）
      */
     public function findMgEventsByDate(string $date): array {
-        $sql = "SELECT id, event_name, event_date, category
+        $sql = "SELECT id, event_name, event_date, category, mg_rounds
                 FROM {$this->table}
                 WHERE event_date = :d AND category IN (2, 3)
                 ORDER BY id ASC";
@@ -60,7 +60,7 @@ class EventModel extends BaseModel {
      * MG/RMGイベント一覧（インポート時のマッチング用、今後3ヶ月分）
      */
     public function getMgEventsForMatching(): array {
-        $sql = "SELECT id, event_name, event_date, category
+        $sql = "SELECT id, event_name, event_date, category, mg_rounds
                 FROM {$this->table}
                 WHERE category IN (2, 3)
                   AND event_date >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
