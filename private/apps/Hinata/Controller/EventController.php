@@ -122,14 +122,9 @@ class EventController {
                     );
 
                     if ($assetId) {
-                        // 任意：イベント用メタデータも保持しておく（後続機能拡張を見越して）
-                        $metaId = $mediaModel->findOrCreateMetadata(
-                            $assetId,
-                            'Event',
-                            $input['event_date'] ?? null
-                        );
+                        $mediaModel->findOrCreateMetadata($assetId, 'Event');
 
-                        // イベントとメディアアセットの紐付け（movie_id は com_media_assets.id として扱う）
+                        $pdo->prepare("DELETE FROM hn_event_movies WHERE event_id = ?")->execute([$eventId]);
                         $stmt = $pdo->prepare("INSERT INTO hn_event_movies (event_id, movie_id) VALUES (?, ?)");
                         $stmt->execute([$eventId, $assetId]);
                     }
