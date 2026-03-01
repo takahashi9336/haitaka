@@ -53,6 +53,13 @@ $memberImage = $memberImage ?? $member['image_url'] ?? null;
             color: #64748b;
             border-radius: 12px;
         }
+        .bubble-self-thought {
+            background: color-mix(in srgb, var(--mg-theme) 8%, white);
+            border: 1px dashed color-mix(in srgb, var(--mg-theme) 30%, white);
+            border-radius: 16px 2px 16px 16px;
+            font-style: italic;
+            color: #64748b;
+        }
 
         .msg-row { transition: background-color 0.15s; }
         .msg-row:hover .msg-actions { opacity: 1; }
@@ -194,11 +201,12 @@ $memberImage = $memberImage ?? $member['image_url'] ?? null;
                         <!-- 入力エリア -->
                         <div class="border-t border-slate-100 px-4 py-3 input-area">
                             <div class="flex items-center gap-1 mb-2">
-                                <button class="sender-btn text-[10px] px-2.5 py-1 rounded-full border active" data-report="<?= $rId ?>" data-type="member" onclick="MGR.setSender(<?= $rId ?>,'member')" style="border-color: var(--member-color); color: var(--member-color); background: color-mix(in srgb, var(--member-color) 10%, white);">
+                                <button class="sender-btn text-[9px] px-2 py-1 rounded-full border active" data-report="<?= $rId ?>" data-type="member" onclick="MGR.setSender(<?= $rId ?>,'member')" style="border-color: var(--member-color); color: var(--member-color); background: color-mix(in srgb, var(--member-color) 10%, white);">
                                     <?= htmlspecialchars(mb_substr($memberName, 0, 4)) ?>
                                 </button>
-                                <button class="sender-btn text-[10px] px-2.5 py-1 rounded-full border border-slate-200 text-slate-400" data-report="<?= $rId ?>" data-type="self" onclick="MGR.setSender(<?= $rId ?>,'self')">自分</button>
-                                <button class="sender-btn text-[10px] px-2.5 py-1 rounded-full border border-slate-200 text-slate-400" data-report="<?= $rId ?>" data-type="narration" onclick="MGR.setSender(<?= $rId ?>,'narration')">ナレーション</button>
+                                <button class="sender-btn text-[9px] px-2 py-1 rounded-full border border-slate-200 text-slate-400" data-report="<?= $rId ?>" data-type="self" onclick="MGR.setSender(<?= $rId ?>,'self')">自分</button>
+                                <button class="sender-btn text-[9px] px-2 py-1 rounded-full border border-slate-200 text-slate-400" data-report="<?= $rId ?>" data-type="self_thought" onclick="MGR.setSender(<?= $rId ?>,'self_thought')">内心</button>
+                                <button class="sender-btn text-[9px] px-2 py-1 rounded-full border border-slate-200 text-slate-400" data-report="<?= $rId ?>" data-type="narration" onclick="MGR.setSender(<?= $rId ?>,'narration')">ナレ</button>
                                 <button id="insertToggle-<?= $rId ?>" onclick="MGR.toggleInsertMode(<?= $rId ?>)" class="ml-auto text-[10px] px-2.5 py-1 rounded-full border border-slate-200 text-slate-400 hover:text-slate-600 transition capture-hide" title="途中に挿入">
                                     <i class="fa-solid fa-arrow-down-short-wide mr-0.5"></i>挿入
                                 </button>
@@ -289,6 +297,7 @@ $memberImage = $memberImage ?? $member['image_url'] ?? null;
                         <select id="editMsgSender" class="w-full h-10 border border-slate-200 rounded-lg px-3 text-sm outline-none focus:ring-2" style="--tw-ring-color: var(--mg-theme);">
                             <option value="member"><?= htmlspecialchars($memberName) ?></option>
                             <option value="self">自分</option>
+                            <option value="self_thought">内心</option>
                             <option value="narration">ナレーション</option>
                         </select>
                     </div>
@@ -440,8 +449,10 @@ $memberImage = $memberImage ?? $member['image_url'] ?? null;
                         : `<div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0" style="background:${MEMBER_COLOR};">${esc(MEMBER_NAME.charAt(0))}</div>`;
                     chatHtml += `<div class="flex items-start gap-2">${av}<div class="max-w-[75%]"><div class="bubble-member px-3 py-2 text-sm leading-relaxed text-slate-700">${content}</div></div></div>`;
                 } else if (msg.sender_type === 'self') {
-                    const nickHtml = nickname ? `<span class="text-[10px] text-slate-400 mr-1">${esc(nickname)}</span>` : '';
-                    chatHtml += `<div class="flex items-start gap-2 justify-end"><div class="max-w-[75%]"><div class="bubble-self px-3 py-2 text-sm leading-relaxed">${content}</div></div><div class="flex flex-col items-center gap-0.5 shrink-0">${nickHtml}</div></div>`;
+                    const nickHtml = nickname ? `<span class="block text-right text-[10px] text-slate-400 mb-0.5">${esc(nickname)}</span>` : '';
+                    chatHtml += `<div class="flex items-start gap-2 justify-end"><div class="max-w-[75%]">${nickHtml}<div class="bubble-self px-3 py-2 text-sm leading-relaxed">${content}</div></div></div>`;
+                } else if (msg.sender_type === 'self_thought') {
+                    chatHtml += `<div class="flex items-start gap-2 justify-end"><div class="max-w-[75%]"><div class="bubble-self-thought px-3 py-2 text-sm leading-relaxed">${content}</div></div></div>`;
                 } else {
                     chatHtml += `<div class="flex justify-center"><div class="bubble-narration px-4 py-1.5 text-xs text-center">${content}</div></div>`;
                 }
@@ -481,11 +492,12 @@ $memberImage = $memberImage ?? $member['image_url'] ?? null;
             btns.forEach(btn => {
                 const isActive = btn.dataset.type === type;
                 btn.classList.toggle('active', isActive);
-                if (btn.dataset.type === 'member') {
+                const t = btn.dataset.type;
+                if (t === 'member') {
                     btn.style.borderColor = isActive ? MEMBER_COLOR : '#e2e8f0';
                     btn.style.color = isActive ? MEMBER_COLOR : '#94a3b8';
                     btn.style.background = isActive ? `color-mix(in srgb, ${MEMBER_COLOR} 10%, white)` : '';
-                } else if (btn.dataset.type === 'self') {
+                } else if (t === 'self' || t === 'self_thought') {
                     btn.style.borderColor = isActive ? 'var(--mg-theme)' : '#e2e8f0';
                     btn.style.color = isActive ? 'var(--mg-theme)' : '#94a3b8';
                     btn.style.background = isActive ? 'color-mix(in srgb, var(--mg-theme) 10%, white)' : '';
@@ -639,15 +651,16 @@ $memberImage = $memberImage ?? $member['image_url'] ?? null;
                 </div>`;
             }
             if (msg.sender_type === 'self') {
-                const nickHtml = nickname ? `<span class="text-[10px] text-slate-400 mr-1">${esc(nickname)}</span>` : '';
+                const nickHtml = nickname ? `<span class="block text-right text-[10px] text-slate-400 mb-0.5">${esc(nickname)}</span>` : '';
                 return `<div class="msg-row flex items-start gap-2 justify-end cursor-pointer" onclick="MGR.openEditMsg(${reportId},${idx})">
                     <div class="msg-actions self-center"><i class="fa-solid fa-pen text-[10px] text-slate-300"></i></div>
-                    <div class="max-w-[75%]">
-                        <div class="bubble-self px-3 py-2 text-sm leading-relaxed">${content}</div>
-                    </div>
-                    <div class="flex flex-col items-center gap-0.5 shrink-0">
-                        ${nickHtml}
-                    </div>
+                    <div class="max-w-[75%]">${nickHtml}<div class="bubble-self px-3 py-2 text-sm leading-relaxed">${content}</div></div>
+                </div>`;
+            }
+            if (msg.sender_type === 'self_thought') {
+                return `<div class="msg-row flex items-start gap-2 justify-end cursor-pointer" onclick="MGR.openEditMsg(${reportId},${idx})">
+                    <div class="msg-actions self-center"><i class="fa-solid fa-pen text-[10px] text-slate-300"></i></div>
+                    <div class="max-w-[75%]"><div class="bubble-self-thought px-3 py-2 text-sm leading-relaxed">${content}</div></div>
                 </div>`;
             }
             // narration
@@ -820,12 +833,20 @@ function renderMessage(array $msg, string $memberName, ?string $memberImage, str
     }
 
     if ($msg['sender_type'] === 'self') {
-        $nickHtml = $nickname ? '<span class="text-[10px] text-slate-400 mr-1">' . htmlspecialchars($nickname) . '</span>' : '';
+        $nickHtml = $nickname ? '<span class="block text-right text-[10px] text-slate-400 mb-0.5">' . htmlspecialchars($nickname) . '</span>' : '';
         return <<<HTML
         <div class="msg-row flex items-start gap-2 justify-end cursor-pointer" onclick="MGR.openEditMsg({$reportId},{$idx})">
             <div class="msg-actions self-center"><i class="fa-solid fa-pen text-[10px] text-slate-300"></i></div>
-            <div class="max-w-[75%]"><div class="bubble-self px-3 py-2 text-sm leading-relaxed">{$content}</div></div>
-            <div class="flex flex-col items-center gap-0.5 shrink-0">{$nickHtml}</div>
+            <div class="max-w-[75%]">{$nickHtml}<div class="bubble-self px-3 py-2 text-sm leading-relaxed">{$content}</div></div>
+        </div>
+        HTML;
+    }
+
+    if ($msg['sender_type'] === 'self_thought') {
+        return <<<HTML
+        <div class="msg-row flex items-start gap-2 justify-end cursor-pointer" onclick="MGR.openEditMsg({$reportId},{$idx})">
+            <div class="msg-actions self-center"><i class="fa-solid fa-pen text-[10px] text-slate-300"></i></div>
+            <div class="max-w-[75%]"><div class="bubble-self-thought px-3 py-2 text-sm leading-relaxed">{$content}</div></div>
         </div>
         HTML;
     }
