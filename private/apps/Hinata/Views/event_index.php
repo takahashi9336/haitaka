@@ -272,12 +272,6 @@ $allCategories = [
                                         <div class="flex items-center gap-2 mb-1">
                                             <i class="fa-solid <?= $cat['icon'] ?> text-[8px]" style="color: <?= $cat['color'] ?>;"></i>
                                             <span class="text-[9px] font-black text-slate-400 tracking-wider"><?= htmlspecialchars($cat['name']) ?></span>
-                                            <?php if (in_array((int)$e['category'], [2, 3]) && !empty($e['my_status'])):
-                                                $badgeDefs = [1 => ['l' => '参加予定','c' => '#10b981'], 4 => ['l' => '当選','c' => '#0ea5e9'], 5 => ['l' => '落選','c' => '#f43f5e'], 3 => ['l' => '検討中','c' => '#f59e0b'], 2 => ['l' => '不参加','c' => '#94a3b8']];
-                                                $bd = $badgeDefs[(int)$e['my_status']] ?? null;
-                                                if ($bd): ?>
-                                            <span id="status-badge-<?= $e['id'] ?>" class="text-[8px] font-bold text-white px-1.5 py-0.5 rounded-full leading-none" style="background:<?= $bd['c'] ?>;"><?= $bd['l'] ?></span>
-                                            <?php endif; endif; ?>
                                             <span class="text-[10px] font-bold text-slate-400"><?= $time ?></span>
                                         </div>
                                         <h3 class="font-black text-slate-800 text-sm md:text-base truncate"><?= htmlspecialchars($e['event_name']) ?></h3>
@@ -330,29 +324,6 @@ $allCategories = [
                                     </div>
                                 <?php endif; ?>
                                 <?php if (in_array((int)$e['category'], [2, 3])): ?>
-                                    <?php $myStatus = (int)($e['my_status'] ?? 0); ?>
-                                    <div class="flex flex-wrap items-center gap-1.5" id="status-chips-<?= $e['id'] ?>">
-                                        <span class="text-[9px] font-black text-slate-400 tracking-wider mr-1">参戦予定</span>
-                                        <?php
-                                        $statusDefs = [
-                                            1 => ['label' => '参加予定', 'color' => '#10b981', 'icon' => 'fa-circle-check'],
-                                            4 => ['label' => '当選',     'color' => '#0ea5e9', 'icon' => 'fa-trophy'],
-                                            5 => ['label' => '落選',     'color' => '#f43f5e', 'icon' => 'fa-circle-xmark'],
-                                            3 => ['label' => '検討中',   'color' => '#f59e0b', 'icon' => 'fa-clock'],
-                                            2 => ['label' => '不参加',   'color' => '#94a3b8', 'icon' => 'fa-ban'],
-                                        ];
-                                        foreach ($statusDefs as $stVal => $stDef):
-                                            $isActive = $myStatus === $stVal;
-                                        ?>
-                                        <button onclick="toggleEventStatus(<?= $e['id'] ?>, <?= $stVal ?>, this)"
-                                            class="es-chip text-[10px] font-bold px-2.5 py-1 rounded-full border transition flex items-center gap-1 <?= $isActive ? 'text-white border-transparent' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300' ?>"
-                                            <?= $isActive ? 'style="background:' . $stDef['color'] . ';"' : '' ?>
-                                            data-st="<?= $stVal ?>">
-                                            <i class="fa-solid <?= $stDef['icon'] ?> text-[8px]"></i>
-                                            <span><?= $stDef['label'] ?></span>
-                                        </button>
-                                        <?php endforeach; ?>
-                                    </div>
                                     <a href="/hinata/meetgreet_report.php?event_id=<?= (int)$e['id'] ?>" class="text-[10px] font-bold text-white px-4 py-2 rounded-full transition inline-flex items-center gap-2 hover:opacity-90" style="background: var(--hinata-theme);">
                                         <i class="fa-solid fa-pen-to-square"></i>レポを書く
                                     </a>
@@ -588,7 +559,6 @@ $allCategories = [
             }
 
             if (parseInt(e.category) === 2 || parseInt(e.category) === 3) {
-                h += renderStatusChipsHtml(e);
                 h += '<a href="/hinata/meetgreet_report.php?event_id=' + e.id + '" class="text-[10px] font-bold text-white px-4 py-2 rounded-full transition inline-flex items-center gap-2 hover:opacity-90" style="background:var(--hinata-theme)"><i class="fa-solid fa-pen-to-square"></i>レポを書く</a>';
             }
 

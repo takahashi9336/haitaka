@@ -138,15 +138,17 @@ class MeetGreetController {
         $eventId = (int)($_GET['event_id'] ?? 0);
 
         $memberModel = new MemberModel();
-        $members = $memberModel->getActiveMembersWithColors();
 
         if (!$slotId) {
+            $members = $memberModel->getAllMembersWithColors();
             $eventModel = new EventModel();
             $eventData = $eventId ? $eventModel->find($eventId) : null;
-            $mgEvents = $eventModel->getMgEventsForMatching();
+            $mgEvents = $eventModel->getAllMgEvents();
             require_once __DIR__ . '/../Views/meetgreet_report_new.php';
             return;
         }
+
+        $members = $memberModel->getActiveMembersWithColors();
 
         $slotModel = new MeetGreetModel();
         $slot = $slotModel->find($slotId);

@@ -25,6 +25,20 @@ class RoleAppModel {
     /**
      * ロールのアプリ割り当てを一括保存（既存は削除してから挿入）
      */
+    /**
+     * 親アプリを許可している restricted ロールに、子アプリも自動許可する
+     */
+    public function grantToRolesWithParent(int $childAppId, int $parentId): void {
+        $sql = "INSERT IGNORE INTO {$this->table} (role_id, app_id, sort_order)
+                SELECT ra.role_id, :child, COALESCE(MAX(ra.sort_order), 0) + 1
+                FROM {$this->table} ra
+                JOIN sys_roles sr ON sr.id = ra.role_id AND sr.sidebar_mode = 'restricted'
+                WHERE ra.app_id = :parent
+                GROUP BY ra.role_id";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(['child' => $childAppId, 'parent' => $parentId]);
+    }
+
     public function setForRole(int $roleId, array $appIdsWithOrder = []): bool {
         $this->pdo->beginTransaction();
         try {

@@ -105,6 +105,22 @@ class MeetGreetModel extends BaseModel {
     }
 
     /**
+     * 指定日付のスロット全件を指定イベントに紐づけ
+     */
+    public function linkSlotsToEvent(string $eventDate, int $eventId): int {
+        $sql = "UPDATE {$this->table}
+                SET event_id = :event_id
+                WHERE user_id = :uid AND event_date = :event_date";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([
+            'event_id'   => $eventId,
+            'uid'        => $this->userId,
+            'event_date' => $eventDate,
+        ]);
+        return $stmt->rowCount();
+    }
+
+    /**
      * 指定日付のスロットを全削除
      */
     public function deleteByDate(string $eventDate): bool {

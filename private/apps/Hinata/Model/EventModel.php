@@ -57,14 +57,25 @@ class EventModel extends BaseModel {
     }
 
     /**
-     * MG/RMGイベント一覧（インポート時のマッチング用、今後3ヶ月分）
+     * MG/RMGイベント一覧（過去1年〜未来6ヶ月、インポートマッチング用）
      */
     public function getMgEventsForMatching(): array {
         $sql = "SELECT id, event_name, event_date, category, mg_rounds
                 FROM {$this->table}
                 WHERE category IN (2, 3)
-                  AND event_date >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
+                  AND event_date >= DATE_SUB(NOW(), INTERVAL 1 YEAR)
                   AND event_date <= DATE_ADD(NOW(), INTERVAL 6 MONTH)
+                ORDER BY event_date ASC";
+        return $this->pdo->query($sql)->fetchAll();
+    }
+
+    /**
+     * MG/RMGイベント全件（レポ作成画面用、日付制限なし）
+     */
+    public function getAllMgEvents(): array {
+        $sql = "SELECT id, event_name, event_date, category, mg_rounds
+                FROM {$this->table}
+                WHERE category IN (2, 3)
                 ORDER BY event_date ASC";
         return $this->pdo->query($sql)->fetchAll();
     }

@@ -88,7 +88,7 @@ class AppModel {
         return (bool)$stmt->fetch();
     }
 
-    public function create(array $data): bool {
+    public function create(array $data): int|false {
         $cols = ['app_key','name','parent_id','route_prefix','path','icon_class','theme_primary','theme_light','default_route','description','is_system','sort_order','is_visible','admin_only'];
         $filtered = array_intersect_key($data, array_flip($cols));
         $filtered['parent_id'] = $filtered['parent_id'] ?? null;
@@ -98,7 +98,8 @@ class AppModel {
         $filtered['is_system'] = (int)($filtered['is_system'] ?? 0);
         $keys = array_keys($filtered);
         $sql = "INSERT INTO {$this->table} (" . implode(',', $keys) . ") VALUES (:" . implode(',:', $keys) . ")";
-        return $this->pdo->prepare($sql)->execute($filtered);
+        $ok = $this->pdo->prepare($sql)->execute($filtered);
+        return $ok ? (int)$this->pdo->lastInsertId() : false;
     }
 
     public function update(int $id, array $data): bool {

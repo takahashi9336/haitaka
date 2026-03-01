@@ -45,10 +45,11 @@ class AdminController {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $action = $_POST['action'] ?? '';
             if ($action === 'create') {
-                $appModel->create([
+                $parentId = !empty($_POST['parent_id']) ? (int)$_POST['parent_id'] : null;
+                $newId = $appModel->create([
                     'app_key' => $_POST['app_key'] ?? '',
                     'name' => $_POST['name'] ?? '',
-                    'parent_id' => !empty($_POST['parent_id']) ? (int)$_POST['parent_id'] : null,
+                    'parent_id' => $parentId,
                     'route_prefix' => $_POST['route_prefix'] ?? '',
                     'path' => $_POST['path'] ?? null,
                     'icon_class' => $_POST['icon_class'] ?? null,
@@ -61,6 +62,10 @@ class AdminController {
                     'is_visible' => isset($_POST['is_visible']) ? 1 : 0,
                     'admin_only' => isset($_POST['admin_only']) ? 1 : 0,
                 ]);
+                if ($newId && $parentId) {
+                    $roleAppModel = new RoleAppModel();
+                    $roleAppModel->grantToRolesWithParent($newId, $parentId);
+                }
                 SessionManager::invalidateAllSessions();
             } elseif ($action === 'update' && isset($_POST['id'])) {
                 $appModel->update((int)$_POST['id'], [

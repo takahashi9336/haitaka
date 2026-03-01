@@ -108,6 +108,20 @@ $dayNames = ['日','月','火','水','木','金','土'];
                         </div>
 
                         <div id="content-<?= $date ?>" class="border-t border-slate-100 <?= $isOpen ? '' : 'hidden' ?>">
+                            <?php if (!$linkedEventName): ?>
+                            <div class="px-5 py-2 bg-amber-50 border-b border-amber-100 flex items-center gap-2" id="link-bar-<?= $date ?>">
+                                <button onclick="MG.showLinkSelect('<?= $date ?>')" class="text-[11px] font-bold text-amber-600 hover:text-amber-800 transition" id="link-btn-<?= $date ?>">
+                                    <i class="fa-solid fa-link mr-1"></i>イベントを紐づける
+                                </button>
+                                <div id="link-select-wrap-<?= $date ?>" class="hidden flex-1 flex items-center gap-2">
+                                    <select id="link-select-<?= $date ?>" class="flex-1 text-xs border border-amber-300 rounded px-2 py-1 bg-white">
+                                        <option value="">-- イベント選択 --</option>
+                                    </select>
+                                    <button onclick="MG.submitLink('<?= $date ?>')" class="text-[10px] font-bold text-white bg-emerald-500 hover:bg-emerald-600 rounded px-3 py-1 transition">紐づけ</button>
+                                    <button onclick="MG.cancelLink('<?= $date ?>')" class="text-[10px] text-slate-400 hover:text-slate-600 transition">キャンセル</button>
+                                </div>
+                            </div>
+                            <?php endif; ?>
                             <!-- テーブルヘッダ -->
                             <div class="grid grid-cols-12 gap-2 px-5 py-2 bg-slate-50 text-[10px] font-bold text-slate-400 tracking-wider">
                                 <div class="col-span-3">時間帯</div>
@@ -375,6 +389,60 @@ $dayNames = ['日','月','火','水','木','金','土'];
                 location.reload();
             } else {
                 App.toast('削除に失敗しました');
+            }
+        },
+
+        // --- イベント紐づけ ---
+        showLinkSelect(date) {
+            const btn = document.getElementById('link-btn-' + date);
+            const wrap = document.getElementById('link-select-wrap-' + date);
+            const sel = document.getElementById('link-select-' + date);
+            if (!btn || !wrap || !sel) return;
+            btn.classList.add('hidden');
+            wrap.classList.remove('hidden');
+            sel.innerHTML = '<option value="">-- イベント選択 --</option>';
+            const candidates = mgEvents.filter(e => e.event_date === date);
+            const others = mgEvents.filter(e => e.event_date !== date);
+            if (candidates.length) {
+                const og = document.createElement('optgroup');
+                og.label = '同日のイベント';
+                candidates.forEach(e => {
+                    const o = document.createElement('option');
+                    o.value = e.id;
+                    o.textContent = `${e.event_date} ${e.event_name}`;
+                    og.appendChild(o);
+                });
+                sel.appendChild(og);
+            }
+            if (others.length) {
+                const og2 = document.createElement('optgroup');
+                og2.label = 'その他のMGイベント';
+                others.forEach(e => {
+                    const o = document.createElement('option');
+                    o.value = e.id;
+                    o.textContent = `${e.event_date} ${e.event_name}`;
+                    og2.appendChild(o);
+                });
+                sel.appendChild(og2);
+            }
+        },
+
+        cancelLink(date) {
+            const btn = document.getElementById('link-btn-' + date);
+            const wrap = document.getElementById('link-select-wrap-' + date);
+            if (btn) btn.classList.remove('hidden');
+            if (wrap) wrap.classList.add('hidden');
+        },
+
+        async submitLink(date) {
+            const sel = document.getElementById('link-select-' + date);
+            if (!sel || !sel.value) { App.toast('イベントを選択してください'); return; }
+            const res = await App.post('/hinata/api/meetgreet_link_event.php', { date, event_id: parseInt(sel.value) });
+            if (res.status === 'success') {
+                App.toast('イベントを紐づけました');
+                location.reload();
+            } else {
+                App.toast(res.message || '紐づけに失敗しました');
             }
         },
 
