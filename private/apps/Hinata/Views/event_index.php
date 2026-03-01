@@ -322,7 +322,7 @@ $allCategories = [
                                                     <?php $slotColor = $slot['color1'] ?? '#94a3b8'; ?>
                                                     <span class="font-bold" style="color: <?= htmlspecialchars($slotColor) ?>;"><?= htmlspecialchars($slot['member_name'] ?? $slot['member_name_raw'] ?? '不明') ?></span>
                                                 </div>
-                                                <div class="shrink-0 font-bold text-slate-600"><?= isset($ticketUsedSums[(int)$slot['id']]) ? $ticketUsedSums[(int)$slot['id']] : (int)($slot['ticket_count'] ?? 0) ?><span class="text-[10px] text-slate-400">枚</span></div>
+                                                <div class="shrink-0 font-bold text-slate-600"><?= (int)($slot['ticket_count'] ?? 0) ?><span class="text-[10px] text-slate-400">枚</span></div>
                                                 <?php if (!empty($slot['report'])): ?><i class="fa-solid fa-pen-to-square text-emerald-400 text-[10px] shrink-0" title="レポあり"></i><?php endif; ?>
                                             </div>
                                             <?php endforeach; ?>
@@ -580,7 +580,7 @@ $allCategories = [
                     h += '<div class="px-4 py-2 flex items-center gap-4 text-xs">';
                     h += '<div class="w-20 shrink-0"><span class="font-bold text-slate-700">' + _esc(sl.slot_name) + '</span></div>';
                     h += '<div class="flex-1 min-w-0"><span class="font-bold" style="color:' + (sl.color1 || '#94a3b8') + '">' + _esc(sl.member_name || sl.member_name_raw || '不明') + '</span></div>';
-                    var _tc = (ticketUsedSums[sl.id] !== undefined) ? parseInt(ticketUsedSums[sl.id]) : (parseInt(sl.ticket_count) || 0);
+                    var _tc = parseInt(sl.ticket_count) || 0;
                     h += '<div class="shrink-0 font-bold text-slate-600">' + _tc + '<span class="text-[10px] text-slate-400">枚</span></div>';
                     h += '</div>';
                 }

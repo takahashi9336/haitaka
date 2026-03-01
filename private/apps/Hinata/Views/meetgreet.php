@@ -77,9 +77,7 @@ $dayNames = ['日','月','火','水','木','金','土'];
                         $isOpen = ($date === $firstFuture);
                         $totalTickets = 0;
                         foreach ($slots as $_s) {
-                            $totalTickets += isset($ticketUsedSums[(int)$_s['id']])
-                                ? $ticketUsedSums[(int)$_s['id']]
-                                : (int)($_s['ticket_count'] ?? 0);
+                            $totalTickets += (int)($_s['ticket_count'] ?? 0);
                         }
                         $hasReport = false;
                         $linkedEventName = null;
@@ -138,7 +136,7 @@ $dayNames = ['日','月','火','水','木','金','土'];
                                         <?php endif; ?>
                                     </div>
                                     <div class="col-span-2 text-center">
-                                        <span class="text-sm font-bold text-slate-600"><?= isset($ticketUsedSums[(int)$slot['id']]) ? $ticketUsedSums[(int)$slot['id']] : (int)($slot['ticket_count'] ?? 0) ?><span class="text-[10px] text-slate-400">枚</span></span>
+                                        <span class="text-sm font-bold text-slate-600"><?= (int)($slot['ticket_count'] ?? 0) ?><span class="text-[10px] text-slate-400">枚</span></span>
                                     </div>
                                     <div class="col-span-3 flex items-center justify-end gap-2">
                                         <?php
