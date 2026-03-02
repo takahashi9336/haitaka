@@ -14,6 +14,9 @@ foreach ($oshiSummary as $o) {
 }
 $hasOshi = !empty($oshiSummary);
 
+$releaseIsNew = !empty($latestRelease['release_date'])
+    && (strtotime($latestRelease['release_date']) >= strtotime('-60 days'));
+
 function oshiImgSrc(?string $imageUrl): string {
     if (!$imageUrl) return '';
     return str_starts_with($imageUrl, '/') ? htmlspecialchars($imageUrl) : '/assets/img/members/' . htmlspecialchars($imageUrl);
@@ -401,10 +404,8 @@ function oshiImgSrc(?string $imageUrl): string {
                 <?php endif; ?>
 
                 <!-- 最新リリース情報 -->
-                <?php if ($latestRelease):
-                    $releaseIsNew = !empty($latestRelease['release_date'])
-                        && (strtotime($latestRelease['release_date']) >= strtotime('-90 days'));
-                ?>
+                <?php ob_start(); ?>
+                <?php if ($latestRelease): ?>
                 <section class="mb-10">
                     <div class="flex items-center gap-2 mb-3">
                         <i class="fa-solid fa-compact-disc text-violet-500"></i>
@@ -533,6 +534,8 @@ function oshiImgSrc(?string $imageUrl): string {
                     </div>
                 </section>
                 <?php endif; ?>
+                <?php $releaseHtml = ob_get_clean(); ?>
+                <?php if ($releaseIsNew) echo $releaseHtml; ?>
 
                 <!-- 最新ブログ（全メンバー対象） -->
                 <?php if (!empty($latestBlogPosts)): ?>
@@ -643,6 +646,8 @@ function oshiImgSrc(?string $imageUrl): string {
                         </a>
                     </div>
                 </div>
+
+                <?php if (!$releaseIsNew) echo $releaseHtml; ?>
 
                 <!-- アプリ -->
                 <section class="mb-10">
