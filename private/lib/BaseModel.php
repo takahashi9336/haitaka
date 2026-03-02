@@ -19,6 +19,9 @@ abstract class BaseModel {
      */
     protected bool $isUserIsolated = true;
 
+    /** DB保存時に暗号化するフィールド名（サブクラスで宣言） */
+    protected array $encryptedFields = [];
+
     public function __construct() {
         $this->pdo = Database::connect();
         $this->userId = $_SESSION['user']['id'] ?? null;
@@ -26,6 +29,28 @@ abstract class BaseModel {
 
     protected function filterFields(array $data): array {
         return array_intersect_key($data, array_flip($this->fields));
+    }
+
+    protected function encryptFields(array $data): array {
+        foreach ($this->encryptedFields as $field) {
+            if (array_key_exists($field, $data) && $data[$field] !== null && $data[$field] !== '') {
+                $data[$field] = Encryption::encrypt($data[$field]);
+            }
+        }
+        return $data;
+    }
+
+    protected function decryptRow(array $row): array {
+        foreach ($this->encryptedFields as $field) {
+            if (isset($row[$field])) {
+                $row[$field] = Encryption::decrypt($row[$field]);
+            }
+        }
+        return $row;
+    }
+
+    protected function decryptRows(array $rows): array {
+        return array_map(fn(array $row) => $this->decryptRow($row), $rows);
     }
 
     /**
@@ -40,7 +65,7 @@ abstract class BaseModel {
         }
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
-        return $stmt->fetchAll();
+        return $this->decryptRows($stmt->fetchAll());
     }
 
     /**
@@ -55,11 +80,13 @@ abstract class BaseModel {
         }
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
-        return $stmt->fetch() ?: null;
+        $row = $stmt->fetch();
+        return $row ? $this->decryptRow($row) : null;
     }
 
     public function create(array $data): bool {
         $filtered = $this->filterFields($data);
+        $filtered = $this->encryptFields($filtered);
         if ($this->isUserIsolated) {
             $filtered['user_id'] = $this->userId;
         }
@@ -72,6 +99,7 @@ abstract class BaseModel {
     public function update($id, array $data): bool {
         $filtered = $this->filterFields($data);
         if (empty($filtered)) return false;
+        $filtered = $this->encryptFields($filtered);
         $sets = [];
         foreach (array_keys($filtered) as $key) { $sets[] = "{$key} = :{$key}"; }
         $sql = "UPDATE {$this->table} SET " . implode(', ', $sets) . " WHERE id = :target_id";

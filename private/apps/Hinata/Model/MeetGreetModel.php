@@ -11,6 +11,7 @@ class MeetGreetModel extends BaseModel {
         'member_id', 'member_name_raw', 'ticket_count', 'report',
         'created_at', 'updated_at'
     ];
+    protected array $encryptedFields = ['report'];
 
     /**
      * 日付ごとにグループ化したスロット一覧を取得
@@ -30,7 +31,7 @@ class MeetGreetModel extends BaseModel {
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute(['uid' => $this->userId]);
-        $rows = $stmt->fetchAll();
+        $rows = $this->decryptRows($stmt->fetchAll());
 
         $grouped = [];
         foreach ($rows as $row) {
@@ -84,7 +85,7 @@ class MeetGreetModel extends BaseModel {
                 ORDER BY s.start_time ASC, s.slot_name ASC";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute(['uid' => $this->userId, 'event_id' => $eventId]);
-        return $stmt->fetchAll();
+        return $this->decryptRows($stmt->fetchAll());
     }
 
     /**
@@ -101,7 +102,7 @@ class MeetGreetModel extends BaseModel {
                 ORDER BY s.start_time ASC, s.slot_name ASC";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute(['uid' => $this->userId, 'event_date' => $eventDate]);
-        return $stmt->fetchAll();
+        return $this->decryptRows($stmt->fetchAll());
     }
 
     /**

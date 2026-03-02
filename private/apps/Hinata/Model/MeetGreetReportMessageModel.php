@@ -10,6 +10,7 @@ class MeetGreetReportMessageModel extends BaseModel {
         'id', 'user_id', 'report_id', 'sender_type', 'content',
         'sort_order', 'created_at', 'updated_at'
     ];
+    protected array $encryptedFields = ['content'];
 
     /**
      * レポIDに紐づくメッセージ一覧を取得
@@ -20,7 +21,7 @@ class MeetGreetReportMessageModel extends BaseModel {
                 ORDER BY sort_order ASC, id ASC";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute(['report_id' => $reportId, 'uid' => $this->userId]);
-        return $stmt->fetchAll();
+        return $this->decryptRows($stmt->fetchAll());
     }
 
     /**
@@ -47,7 +48,7 @@ class MeetGreetReportMessageModel extends BaseModel {
                 'uid'         => $this->userId,
                 'report_id'   => $reportId,
                 'sender_type' => $msg['sender_type'] ?? 'self',
-                'content'     => $msg['content'] ?? '',
+                'content'     => \Core\Encryption::encrypt($msg['content'] ?? ''),
                 'sort_order'  => $msg['sort_order'] ?? $i,
             ]);
             $count++;
@@ -69,6 +70,8 @@ class MeetGreetReportMessageModel extends BaseModel {
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
         $rows = $stmt->fetchAll();
+
+        $rows = $this->decryptRows($rows);
 
         $grouped = [];
         foreach ($rows as $row) {

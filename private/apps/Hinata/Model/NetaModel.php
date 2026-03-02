@@ -10,6 +10,7 @@ use Core\BaseModel;
 class NetaModel extends BaseModel {
     protected string $table = 'hn_neta';
     protected array $fields = ['id', 'user_id', 'member_id', 'content', 'memo', 'status', 'created_at', 'updated_at'];
+    protected array $encryptedFields = ['content', 'memo'];
 
     /**
      * メンバーごとにグループ化したネタ一覧を取得
@@ -29,6 +30,8 @@ class NetaModel extends BaseModel {
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute(['uid_fav' => $this->userId, 'uid_neta' => $this->userId]);
         $rows = $stmt->fetchAll();
+
+        $rows = $this->decryptRows($rows);
 
         $grouped = [];
         foreach ($rows as $row) {

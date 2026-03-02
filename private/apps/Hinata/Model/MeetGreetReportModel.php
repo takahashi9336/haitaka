@@ -10,6 +10,7 @@ class MeetGreetReportModel extends BaseModel {
         'id', 'user_id', 'slot_id', 'ticket_used', 'my_nickname',
         'sort_order', 'created_at', 'updated_at'
     ];
+    protected array $encryptedFields = ['my_nickname'];
 
     /**
      * スロットIDに紐づくレポ一覧を取得（メッセージ数付き）
@@ -23,7 +24,7 @@ class MeetGreetReportModel extends BaseModel {
                 ORDER BY r.sort_order ASC, r.id ASC";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute(['slot_id' => $slotId, 'uid' => $this->userId]);
-        return $stmt->fetchAll();
+        return $this->decryptRows($stmt->fetchAll());
     }
 
     /**
