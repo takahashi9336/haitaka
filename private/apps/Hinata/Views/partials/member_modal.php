@@ -69,6 +69,13 @@ $isAdmin = in_array(($user['role'] ?? ''), ['admin', 'hinata_admin'], true);
                         <p class="text-[9px] font-black text-sky-400 mb-1 tracking-wider">紹介文</p>
                         <p id="modalInfo" class="text-sm font-medium text-slate-600 leading-relaxed whitespace-pre-wrap"></p>
                     </div>
+                    <div>
+                        <a id="memberDetailPageBtn" href="#" class="h-12 bg-gradient-to-r from-sky-500 to-indigo-500 rounded-xl flex items-center justify-center px-4 gap-2 text-sm font-black text-white hover:from-sky-600 hover:to-indigo-600 transition-all shadow-md shadow-sky-200/50">メンバー詳細ページへ<i class="fa-solid fa-arrow-right text-xs ml-1"></i></a>
+                    </div>
+                    <div id="snsLinks" class="grid grid-cols-1 gap-2">
+                        <a id="blogBtn" href="#" target="_blank" class="h-12 bg-sky-50 rounded-xl flex items-center px-4 gap-3 text-xs font-black text-sky-600 border border-sky-100/50 hover:bg-sky-100 transition-all hidden"><i class="fa-solid fa-blog"></i> 公式ブログ</a>
+                        <a id="instaBtn" href="#" target="_blank" class="h-12 bg-pink-50 rounded-xl flex items-center px-4 gap-3 text-xs font-black text-pink-600 border border-pink-100/50 hover:bg-pink-100 transition-all hidden"><i class="fa-brands fa-instagram text-lg"></i> Instagram</a>
+                    </div>
                     <div id="penlightSection" class="hidden bg-white p-5 rounded-xl border border-slate-100/70">
                         <p class="text-[9px] font-black text-slate-400 mb-2 tracking-wider">サイリウムカラー</p>
                         <div class="flex items-center gap-3">
@@ -81,13 +88,6 @@ $isAdmin = in_array(($user['role'] ?? ''), ['admin', 'hinata_admin'], true);
                         <div class="bg-slate-50 p-3 rounded-lg border border-slate-100"><p class="text-[9px] font-black text-slate-400 mb-1 tracking-wider">身長</p><p id="modalHeight" class="text-base font-black text-slate-700">--</p></div>
                         <div class="bg-slate-50 p-3 rounded-lg border border-slate-100"><p class="text-[9px] font-black text-slate-400 mb-1 tracking-wider">生年月日</p><p id="modalBirth" class="text-base font-black text-slate-700">--</p></div>
                         <div class="bg-slate-50 p-3 rounded-lg border border-slate-100"><p class="text-[9px] font-black text-slate-400 mb-1 tracking-wider">出身地</p><p id="modalPlace" class="text-base font-black text-slate-700">--</p></div>
-                    </div>
-                    <div id="snsLinks" class="grid grid-cols-1 gap-2">
-                        <a id="blogBtn" href="#" target="_blank" class="h-12 bg-sky-50 rounded-xl flex items-center px-4 gap-3 text-xs font-black text-sky-600 border border-sky-100/50 hover:bg-sky-100 transition-all hidden"><i class="fa-solid fa-blog"></i> 公式ブログ</a>
-                        <a id="instaBtn" href="#" target="_blank" class="h-12 bg-pink-50 rounded-xl flex items-center px-4 gap-3 text-xs font-black text-pink-600 border border-pink-100/50 hover:bg-pink-100 transition-all hidden"><i class="fa-brands fa-instagram text-lg"></i> Instagram</a>
-                    </div>
-                    <div class="pb-10 md:pb-0">
-                        <a id="memberDetailPageBtn" href="#" class="h-12 bg-slate-800 rounded-xl flex items-center justify-center px-4 gap-2 text-xs font-black text-white hover:bg-slate-700 transition-all shadow-sm"><i class="fa-solid fa-arrow-right"></i>メンバー詳細ページへ</a>
                     </div>
                 </div>
             </div>

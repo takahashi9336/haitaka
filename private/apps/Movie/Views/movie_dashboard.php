@@ -99,66 +99,66 @@ $totalMins = $totalRuntime % 60;
             </div>
         </header>
 
-        <div class="flex-1 overflow-y-auto p-6 md:p-10">
+        <div class="flex-1 overflow-y-auto p-4 md:p-6 lg:p-10">
             <div class="max-w-6xl mx-auto">
 
                 <!-- ① スタッツカード -->
-                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                    <a href="/movie/list.php?tab=watched" class="stat-card bg-white rounded-xl border border-slate-100 shadow-sm p-5 hover:shadow-md hover:border-green-200 transition-all group block">
-                        <div class="flex items-center gap-3 mb-3">
-                            <div class="w-10 h-10 rounded-lg flex items-center justify-center bg-green-50 text-green-500">
-                                <i class="fa-solid fa-eye text-lg"></i>
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
+                    <a href="/movie/list.php?tab=watched" class="stat-card bg-white rounded-xl border border-slate-100 shadow-sm p-3 md:p-5 hover:shadow-md hover:border-green-200 transition-all group block">
+                        <div class="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
+                            <div class="w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center bg-green-50 text-green-500">
+                                <i class="fa-solid fa-eye text-sm md:text-lg"></i>
                             </div>
-                            <span class="text-xs font-bold text-slate-400">総鑑賞本数</span>
+                            <span class="text-[11px] md:text-xs font-bold text-slate-400">総鑑賞本数</span>
                             <i class="fa-solid fa-chevron-right text-slate-300 ml-auto text-xs opacity-0 group-hover:opacity-100 transition-opacity"></i>
                         </div>
-                        <div class="flex items-end gap-1.5">
-                            <span class="text-3xl font-black text-slate-800"><?= $watchedCount ?></span>
-                            <span class="text-sm font-bold text-slate-400 mb-0.5">本</span>
+                        <div class="flex items-end gap-1">
+                            <span class="text-2xl md:text-3xl font-black text-slate-800"><?= $watchedCount ?></span>
+                            <span class="text-xs md:text-sm font-bold text-slate-400 mb-0.5">本</span>
                         </div>
                     </a>
 
-                    <a href="/movie/list.php?tab=watched&filter=this_month" class="stat-card bg-white rounded-xl border border-slate-100 shadow-sm p-5 hover:shadow-md hover:border-blue-200 transition-all group block">
-                        <div class="flex items-center gap-3 mb-3">
-                            <div class="w-10 h-10 rounded-lg flex items-center justify-center bg-blue-50 text-blue-500">
-                                <i class="fa-solid fa-calendar-check text-lg"></i>
+                    <a href="/movie/list.php?tab=watched&filter=this_month" class="stat-card bg-white rounded-xl border border-slate-100 shadow-sm p-3 md:p-5 hover:shadow-md hover:border-blue-200 transition-all group block">
+                        <div class="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
+                            <div class="w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center bg-blue-50 text-blue-500">
+                                <i class="fa-solid fa-calendar-check text-sm md:text-lg"></i>
                             </div>
-                            <span class="text-xs font-bold text-slate-400">今月の鑑賞数</span>
+                            <span class="text-[11px] md:text-xs font-bold text-slate-400">今月の鑑賞数</span>
                             <i class="fa-solid fa-chevron-right text-slate-300 ml-auto text-xs opacity-0 group-hover:opacity-100 transition-opacity"></i>
                         </div>
-                        <div class="flex items-end gap-1.5">
-                            <span class="text-3xl font-black text-slate-800"><?= $thisMonthCount ?></span>
-                            <span class="text-sm font-bold text-slate-400 mb-0.5">本</span>
+                        <div class="flex items-end gap-1">
+                            <span class="text-2xl md:text-3xl font-black text-slate-800"><?= $thisMonthCount ?></span>
+                            <span class="text-xs md:text-sm font-bold text-slate-400 mb-0.5">本</span>
                         </div>
                     </a>
 
-                    <a href="/movie/list.php?tab=watchlist" class="stat-card bg-white rounded-xl border border-slate-100 shadow-sm p-5 hover:shadow-md hover:border-amber-200 transition-all group block">
-                        <div class="flex items-center gap-3 mb-3">
-                            <div class="w-10 h-10 rounded-lg flex items-center justify-center bg-amber-50 text-amber-500">
-                                <i class="fa-solid fa-bookmark text-lg"></i>
+                    <a href="/movie/list.php?tab=watchlist" class="stat-card bg-white rounded-xl border border-slate-100 shadow-sm p-3 md:p-5 hover:shadow-md hover:border-amber-200 transition-all group block">
+                        <div class="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
+                            <div class="w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center bg-amber-50 text-amber-500">
+                                <i class="fa-solid fa-bookmark text-sm md:text-lg"></i>
                             </div>
-                            <span class="text-xs font-bold text-slate-400">見たいリスト</span>
+                            <span class="text-[11px] md:text-xs font-bold text-slate-400">見たいリスト</span>
                             <i class="fa-solid fa-chevron-right text-slate-300 ml-auto text-xs opacity-0 group-hover:opacity-100 transition-opacity"></i>
                         </div>
-                        <div class="flex items-end gap-1.5">
-                            <span class="text-3xl font-black text-slate-800"><?= $watchlistCount ?></span>
-                            <span class="text-sm font-bold text-slate-400 mb-0.5">本</span>
+                        <div class="flex items-end gap-1">
+                            <span class="text-2xl md:text-3xl font-black text-slate-800"><?= $watchlistCount ?></span>
+                            <span class="text-xs md:text-sm font-bold text-slate-400 mb-0.5">本</span>
                         </div>
                     </a>
 
-                    <div class="stat-card bg-white rounded-xl border border-slate-100 shadow-sm p-5">
-                        <div class="flex items-center gap-3 mb-3">
-                            <div class="w-10 h-10 rounded-lg flex items-center justify-center bg-purple-50 text-purple-500">
-                                <i class="fa-solid fa-clock text-lg"></i>
+                    <div class="stat-card bg-white rounded-xl border border-slate-100 shadow-sm p-3 md:p-5">
+                        <div class="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
+                            <div class="w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center bg-purple-50 text-purple-500">
+                                <i class="fa-solid fa-clock text-sm md:text-lg"></i>
                             </div>
-                            <span class="text-xs font-bold text-slate-400">総視聴時間</span>
+                            <span class="text-[11px] md:text-xs font-bold text-slate-400">総視聴時間</span>
                         </div>
-                        <div class="flex items-end gap-1.5">
-                            <span class="text-3xl font-black text-slate-800"><?= $totalHours ?></span>
-                            <span class="text-sm font-bold text-slate-400 mb-0.5">時間</span>
+                        <div class="flex items-end gap-1">
+                            <span class="text-2xl md:text-3xl font-black text-slate-800"><?= $totalHours ?></span>
+                            <span class="text-xs md:text-sm font-bold text-slate-400 mb-0.5">時間</span>
                             <?php if ($totalMins > 0): ?>
-                            <span class="text-lg font-black text-slate-500"><?= $totalMins ?></span>
-                            <span class="text-xs font-bold text-slate-400 mb-0.5">分</span>
+                            <span class="text-base md:text-lg font-black text-slate-500"><?= $totalMins ?></span>
+                            <span class="text-[10px] md:text-xs font-bold text-slate-400 mb-0.5">分</span>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -166,10 +166,10 @@ $totalMins = $totalRuntime % 60;
 
                 <!-- TMDB検索ボックス -->
                 <?php if ($tmdbConfigured): ?>
-                <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-5 mb-8">
-                    <div class="flex items-center gap-2 mb-3">
-                        <div class="w-8 h-8 rounded-lg flex items-center justify-center bg-indigo-50 text-indigo-500">
-                            <i class="fa-solid fa-magnifying-glass text-sm"></i>
+                <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-4 md:p-5 mb-6 md:mb-8">
+                    <div class="flex items-center gap-2 mb-2 md:mb-3">
+                        <div class="w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center bg-indigo-50 text-indigo-500">
+                            <i class="fa-solid fa-magnifying-glass text-xs md:text-sm"></i>
                         </div>
                         <h2 class="text-sm font-bold text-slate-500">映画を探す</h2>
                     </div>
@@ -193,8 +193,8 @@ $totalMins = $totalRuntime % 60;
                 <?php endif; ?>
 
                 <!-- ② ガチャ -->
-                <div class="mb-8">
-                    <div class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 md:p-8 shadow-xl relative overflow-hidden">
+                <div class="mb-6 md:mb-8">
+                    <div class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-4 md:p-6 lg:p-8 shadow-xl relative overflow-hidden">
                         <div class="absolute top-0 right-0 w-48 h-48 bg-gradient-to-bl from-white/5 to-transparent rounded-bl-full"></div>
                         <div class="relative z-10">
                             <div class="flex items-center gap-2 mb-1">
@@ -202,14 +202,14 @@ $totalMins = $totalRuntime % 60;
                                 <h2 class="text-white font-black text-lg tracking-tight">次に観る映画ガチャ</h2>
                                 <span id="gachaLimit" class="ml-auto text-[10px] font-bold text-slate-500 bg-slate-700/80 px-2 py-0.5 rounded-full"></span>
                             </div>
-                            <p class="text-slate-400 text-xs mb-6">見たいリストからランダムに1作品をピックアップ！<span class="text-amber-400/70">（1日1回）</span></p>
+                            <p class="text-slate-400 text-xs mb-4 md:mb-6">見たいリストからランダムに1作品をピックアップ！<span class="text-amber-400/70">（1日1回）</span></p>
 
                             <?php if ($watchlistCount > 0): ?>
                             <!-- 未ガチャ状態 -->
                             <div id="gachaIdle" class="flex flex-col items-center py-4">
-                                <button onclick="Gacha.spin()" class="gacha-idle gacha-box-shine relative w-40 h-40 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl flex flex-col items-center justify-center shadow-2xl cursor-pointer hover:scale-105 transition-transform overflow-hidden mb-5">
-                                    <i class="fa-solid fa-dice text-5xl text-white/90 mb-2 drop-shadow"></i>
-                                    <span class="text-white font-black text-sm tracking-wide drop-shadow">タップでガチャ</span>
+                                <button onclick="Gacha.spin()" class="gacha-idle gacha-box-shine relative w-32 h-32 md:w-40 md:h-40 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl flex flex-col items-center justify-center shadow-2xl cursor-pointer hover:scale-105 transition-transform overflow-hidden mb-4 md:mb-5">
+                                    <i class="fa-solid fa-dice text-4xl md:text-5xl text-white/90 mb-1.5 md:mb-2 drop-shadow"></i>
+                                    <span class="text-white font-black text-xs md:text-sm tracking-wide drop-shadow">タップでガチャ</span>
                                 </button>
                                 <p class="text-slate-500 text-xs">見たいリスト <span class="text-amber-400 font-bold"><?= $watchlistCount ?></span> 本の中から運命の1本を...</p>
                             </div>

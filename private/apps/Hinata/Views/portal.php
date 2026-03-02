@@ -286,12 +286,8 @@ function oshiImgSrc(?string $imageUrl): string {
                                             <div id="oshiMainDetails" class="space-y-1.5 text-xs">
                                                 <a id="oshiMainBlog" href="<?= !empty($mainOshi['blog_url']) ? htmlspecialchars($mainOshi['blog_url']) : '#' ?>" target="_blank" class="flex items-center gap-2 text-sky-600 hover:text-sky-700<?= empty($mainOshi['blog_url']) ? ' hidden' : '' ?>"><i class="fa-solid fa-blog w-4"></i>公式ブログ</a>
                                                 <a id="oshiMainInsta" href="<?= !empty($mainOshi['insta_url']) ? htmlspecialchars($mainOshi['insta_url']) : '#' ?>" target="_blank" class="flex items-center gap-2 text-pink-600 hover:text-pink-700<?= empty($mainOshi['insta_url']) ? ' hidden' : '' ?>"><i class="fa-brands fa-instagram w-4"></i>Instagram</a>
-                                                <?php if (!empty($mainOshi['next_event'])): ?>
-                                                <div id="oshiMainEvent" class="flex items-center gap-2 text-slate-600"><i class="fa-solid fa-calendar w-4 text-slate-400"></i><?= htmlspecialchars($mainOshi['next_event']['event_name']) ?> (<?= htmlspecialchars($mainOshi['next_event']['event_date']) ?>)</div>
-                                                <?php endif; ?>
-                                                <?php if ($mainOshi['song_count'] > 0): ?>
-                                                <div id="oshiMainSongs" class="flex items-center gap-2 text-slate-600"><i class="fa-solid fa-music w-4 text-slate-400"></i>参加楽曲 <?= $mainOshi['song_count'] ?> 曲</div>
-                                                <?php endif; ?>
+                                                <div id="oshiMainEvent" class="flex items-center gap-2 text-slate-600"<?= empty($mainOshi['next_event']) ? ' style="display:none"' : '' ?>><?php if (!empty($mainOshi['next_event'])): ?><i class="fa-solid fa-calendar w-4 text-slate-400"></i><?= htmlspecialchars($mainOshi['next_event']['event_name']) ?> (<?= htmlspecialchars($mainOshi['next_event']['event_date']) ?>)<?php endif; ?></div>
+                                                <div id="oshiMainSongs" class="flex items-center gap-2 text-slate-600"<?= $mainOshi['song_count'] <= 0 ? ' style="display:none"' : '' ?>><?php if ($mainOshi['song_count'] > 0): ?><i class="fa-solid fa-music w-4 text-slate-400"></i>参加楽曲 <?= $mainOshi['song_count'] ?> 曲<?php endif; ?></div>
                                                 <?php
                                                 $mainNewItems = $oshiLatestItemByMember[$mainOshi['member_id']] ?? [];
                                                 $hasAnyNewItems = !empty($oshiLatestItemByMember);
@@ -794,6 +790,28 @@ function oshiImgSrc(?string $imageUrl): string {
             if (instaEl) {
                 if (d.insta_url) { instaEl.href = d.insta_url; instaEl.classList.remove('hidden'); }
                 else { instaEl.classList.add('hidden'); }
+            }
+
+            var eventEl = el('oshiMainEvent');
+            if (eventEl) {
+                if (d.next_event) {
+                    eventEl.innerHTML = '<i class="fa-solid fa-calendar w-4 text-slate-400"></i>' +
+                        (function(s){ var e=document.createElement('span'); e.textContent=s; return e.innerHTML; })(d.next_event.event_name) +
+                        ' (' + (function(s){ var e=document.createElement('span'); e.textContent=s; return e.innerHTML; })(d.next_event.event_date) + ')';
+                    eventEl.style.display = '';
+                } else {
+                    eventEl.style.display = 'none';
+                }
+            }
+
+            var songsEl = el('oshiMainSongs');
+            if (songsEl) {
+                if (d.song_count > 0) {
+                    songsEl.innerHTML = '<i class="fa-solid fa-music w-4 text-slate-400"></i>参加楽曲 ' + d.song_count + ' 曲';
+                    songsEl.style.display = '';
+                } else {
+                    songsEl.style.display = 'none';
+                }
             }
 
             document.querySelectorAll('.oshi-sub-card').forEach(function(card) {

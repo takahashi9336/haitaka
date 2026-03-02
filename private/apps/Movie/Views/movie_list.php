@@ -73,6 +73,9 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
         .filter-chip.active { background-color: var(--mv-theme); color: #fff; border-color: var(--mv-theme); }
         .filter-chip:not(.active):hover { border-color: var(--mv-theme); color: var(--mv-theme); }
         .tag-chip-card { font-size: 10px; padding: 1px 6px; border-radius: 9999px; }
+        @media (max-width: 767px) {
+            #listFilterChips.collapsed { max-height: 4.5rem; overflow: hidden; }
+        }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden text-slate-800 <?= $bodyBgClass ?>"<?= $bodyStyle ? ' style="' . htmlspecialchars($bodyStyle) . '"' : '' ?>>
@@ -136,16 +139,15 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
         <?php endif; ?>
 
         <!-- タブバー（固定）-->
-        <div class="bg-white/90 backdrop-blur-sm border-b border-slate-200 px-6 md:px-12 py-2 shrink-0 z-[5]">
-            <div class="max-w-7xl mx-auto flex items-center gap-6">
-                <button class="tab-btn text-sm font-bold py-2 <?= $tab === 'watchlist' ? 'active mv-theme-text' : 'text-slate-400 hover:text-slate-600' ?>"
+        <div class="bg-white/90 backdrop-blur-sm border-b border-slate-200 px-4 md:px-12 py-2 shrink-0 z-[5]">
+            <div class="max-w-7xl mx-auto flex flex-nowrap items-center gap-3 md:gap-6">
+                <button class="tab-btn text-sm font-bold py-2 whitespace-nowrap <?= $tab === 'watchlist' ? 'active mv-theme-text' : 'text-slate-400 hover:text-slate-600' ?>"
                         onclick="location.href='?tab=watchlist'">
-                    <i class="fa-solid fa-bookmark mr-1.5"></i>見たい                    <span class="ml-1 text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full"><?= $watchlistCount ?></span>
+                    <i class="fa-solid fa-bookmark mr-1"></i>見たい<span class="ml-1 text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full"><?= $watchlistCount ?></span>
                 </button>
-                <button class="tab-btn text-sm font-bold py-2 <?= $tab === 'watched' ? 'active mv-theme-text' : 'text-slate-400 hover:text-slate-600' ?>"
+                <button class="tab-btn text-sm font-bold py-2 whitespace-nowrap <?= $tab === 'watched' ? 'active mv-theme-text' : 'text-slate-400 hover:text-slate-600' ?>"
                         onclick="location.href='?tab=watched'">
-                    <i class="fa-solid fa-check-circle mr-1.5"></i>見た
-                    <span class="ml-1 text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full"><?= $watchedCount ?></span>
+                    <i class="fa-solid fa-check-circle mr-1"></i>見た<span class="ml-1 text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full"><?= $watchedCount ?></span>
                 </button>
 
                 <div class="ml-auto flex items-center gap-2">
@@ -158,7 +160,7 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                             <i class="fa-solid fa-list"></i>
                         </button>
                     </div>
-                    <select onchange="applySortOrder(this.value)" class="text-xs border border-slate-200 rounded-lg px-2 py-1.5 text-slate-500 focus:outline-none focus:ring-1 focus:ring-[var(--mv-theme)]">
+                    <select onchange="applySortOrder(this.value)" class="text-xs border border-slate-200 rounded-lg px-1.5 md:px-2 py-1.5 text-slate-500 focus:outline-none focus:ring-1 focus:ring-[var(--mv-theme)] max-w-[7rem] md:max-w-none">
                         <option value="created_at-DESC" <?= ($sort === 'created_at' && $order === 'DESC') ? 'selected' : '' ?>>追加日 (新しい順)</option>
                         <option value="created_at-ASC" <?= ($sort === 'created_at' && $order === 'ASC') ? 'selected' : '' ?>>追加日 (古い順)</option>
                         <option value="release_date-DESC" <?= ($sort === 'release_date' && $order === 'DESC') ? 'selected' : '' ?>>公開日 (新しい順)</option>
@@ -262,7 +264,7 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                         </button>
                     </div>
                     <?php if (!empty($allGenres) || !empty($allTags) || !empty($allProviders)): ?>
-                    <div class="flex flex-wrap gap-1.5 mt-2" id="listFilterChips">
+                    <div class="flex flex-wrap gap-1.5 mt-2 collapsed" id="listFilterChips">
                         <?php foreach ($allProviders as $prov): ?>
                         <button class="filter-chip provider-chip text-[11px] px-2.5 py-1 rounded-full border border-violet-300 text-violet-600 bg-violet-50/50"
                                 onclick="ListFilter.toggleChip(this, 'provider')"
@@ -285,6 +287,11 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                         </button>
                         <?php endforeach; ?>
                     </div>
+                    <button class="md:hidden text-[11px] text-slate-400 hover:text-slate-600 mt-1.5 transition" id="filterChipsToggle" onclick="(function(){
+                        var c = document.getElementById('listFilterChips'), b = document.getElementById('filterChipsToggle');
+                        if (c.classList.contains('collapsed')) { c.classList.remove('collapsed'); b.innerHTML = '<i class=\'fa-solid fa-chevron-up mr-0.5\'></i>閉じる'; }
+                        else { c.classList.add('collapsed'); b.innerHTML = '<i class=\'fa-solid fa-chevron-down mr-0.5\'></i>もっと見る'; }
+                    })()"><i class="fa-solid fa-chevron-down mr-0.5"></i>もっと見る</button>
                     <?php endif; ?>
                     <div class="hidden text-center py-8 text-slate-400 text-sm" id="listFilterNoResults">
                         <i class="fa-solid fa-search text-2xl mb-2 block"></i>
@@ -305,6 +312,7 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                         ?>
                         <div class="movie-card bg-white rounded-xl overflow-hidden shadow-sm border border-slate-100 cursor-pointer relative"
                              onclick="goDetail(<?= $mv['id'] ?>)"
+                             data-movie-id="<?= $mv['id'] ?>"
                              data-title="<?= htmlspecialchars(mb_strtolower($mv['title'])) ?>"
                              data-genres="<?= htmlspecialchars(implode(',', $mvGenres)) ?>"
                              data-tags="<?= htmlspecialchars(implode(',', $mvTags)) ?>"
@@ -777,9 +785,7 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                     if (result.status === 'success') {
                         App.toast(result.message);
                         this.close();
-                        if (status === currentTab) {
-                            location.reload();
-                        }
+                        updateTabCount(status, 1);
                     } else {
                         App.toast(result.message || '追加に失敗しました');
                     }
@@ -836,10 +842,7 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
 
                     if (result.status === 'success') {
                         App.toast(result.message);
-                        if (status === currentTab) {
-                            location.reload();
-                            return;
-                        }
+                        updateTabCount(status, 1);
                         const row = btn.closest('[data-tmdb-id]');
                         const actionDiv = row.querySelector('.flex.items-center.gap-2:last-child');
                         if (status === 'watchlist') {
@@ -901,7 +904,15 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                 if (result.status === 'success') {
                     App.toast('見たリストに移動しました');
                     this.close();
-                    location.reload();
+                    const card = document.querySelector(`.movie-card[data-movie-id="${id}"]`);
+                    if (card) {
+                        card.style.transition = 'opacity .3s, transform .3s';
+                        card.style.opacity = '0';
+                        card.style.transform = 'scale(.95)';
+                        setTimeout(() => card.remove(), 300);
+                    }
+                    updateTabCount('watchlist', -1);
+                    updateTabCount('watched', 1);
                 } else {
                     App.toast(result.message || '更新に失敗しました');
                 }
@@ -923,7 +934,6 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
             resultsId: 'inlineSearchResults',
             wrapperId: 'inlineSearchWrapper',
             onAdded(status, tmdbId) {
-                if (status === currentTab) { location.reload(); return; }
                 updateTabCount(status, 1);
             }
         });

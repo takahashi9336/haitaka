@@ -55,6 +55,7 @@ $isTimeout = isset($_GET['msg']) && $_GET['msg'] === 'timeout';
                     <div>
                         <label for="login-id_name" class="block text-[10px] font-black text-slate-400 tracking-wider mb-1">ユーザーID</label>
                         <input id="login-id_name" type="text" name="id_name" required autocomplete="off"
+                            value="<?= htmlspecialchars($_POST['id_name'] ?? '') ?>"
                             class="w-full border border-slate-200 rounded-xl h-12 px-4 text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-100 focus:border-indigo-200 outline-none transition-all"
                             placeholder="半角英数字">
                     </div>

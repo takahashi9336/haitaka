@@ -18,7 +18,7 @@
  *       "https://www.tiktok.com/@hinatazakanews/video/123...",
  *       "https://www.tiktok.com/@hinatazakanews/video/456..."
  *     ],
- *     "category": "Special"  // 任意、省略時は Special
+ *     "category": "Special"  // 任意、省略時は未設定(null)
  *   }
  *
  * CLI:
@@ -426,7 +426,7 @@ if ($isCli) {
         fwrite(STDERR, "Usage: php tiktok_client_import.php urls.txt [category]\n");
         exit(1);
     }
-    $category = $argv[2] ?? 'Special';
+    $category = $argv[2] ?? null;
     $lines = file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
     $stats = import_tiktok_urls($lines, $category);
     echo date('Y-m-d H:i:s') . " TikTok client import completed.\n";

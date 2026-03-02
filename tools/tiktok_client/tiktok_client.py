@@ -157,7 +157,6 @@ def post_to_hinata(endpoint: str, token: str, account: str, urls: List[str]) -> 
         "token": token,
         "account": account,
         "urls": urls,
-        "category": "Special",
     }
     data = json.dumps(body).encode("utf-8")
     req = urllib.request.Request(

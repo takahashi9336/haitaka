@@ -201,12 +201,18 @@ if ($mainVideo !== null && !empty($mainVideo['media_key']) && ($mainVideo['platf
                 <?php endif; ?>
 
                 <?php if (!empty($videosByCategory)): ?>
+                <?php
+                    $relatedVideoLimit = 5;
+                    $totalRelatedCount = 0;
+                    foreach ($categoryOrder as $_c) { $totalRelatedCount += count($videosByCategory[$_c] ?? []); }
+                    $relatedShownCount = 0;
+                ?>
                 <section class="bg-white rounded-2xl border <?= $cardBorder ?> shadow-sm p-5 song-detail-section">
                     <h3 class="text-[10px] font-black text-slate-400 tracking-wider mb-3">関連動画</h3>
                     <div class="space-y-4">
                         <?php foreach ($categoryOrder as $cat): ?>
                             <?php $videos = $videosByCategory[$cat] ?? []; if (empty($videos)) continue; ?>
-                            <div>
+                            <div<?= $relatedShownCount >= $relatedVideoLimit ? ' class="related-video-hidden hidden"' : '' ?>>
                                 <h4 class="text-xs font-bold text-slate-500 mb-2"><?= htmlspecialchars($cat !== '' ? $cat : 'その他') ?></h4>
                                 <div class="grid grid-cols-1 gap-3">
                                     <?php foreach ($videos as $v): ?>
@@ -221,9 +227,11 @@ if ($mainVideo !== null && !empty($mainVideo['media_key']) && ($mainVideo['platf
                                         $catLabel = $cat !== '' ? $cat : 'その他';
                                         static $relatedIndex = 0;
                                         $idx = $relatedIndex++;
+                                        $isHidden = $relatedShownCount >= $relatedVideoLimit;
+                                        $relatedShownCount++;
                                     ?>
                                     <div
-                                            class="flex gap-3 items-start group text-left w-full cursor-pointer related-video-item"
+                                            class="flex gap-3 items-start group text-left w-full cursor-pointer related-video-item<?= $isHidden ? ' related-video-hidden hidden' : '' ?>"
                                             data-embed-url="<?= htmlspecialchars($embedUrl) ?>"
                                             data-category="<?= htmlspecialchars($catLabel) ?>"
                                             data-title="<?= htmlspecialchars($v['title'] ?? '') ?>"
@@ -250,6 +258,20 @@ if ($mainVideo !== null && !empty($mainVideo['media_key']) && ($mainVideo['platf
                             </div>
                         <?php endforeach; ?>
                     </div>
+                    <?php if ($totalRelatedCount > $relatedVideoLimit): ?>
+                    <button type="button" id="relatedVideoToggle" class="mt-3 w-full text-center text-xs font-bold text-sky-600 hover:text-sky-700 py-2 rounded-lg hover:bg-sky-50 transition"
+                            onclick="(function(btn){
+                                var items = document.querySelectorAll('.related-video-hidden');
+                                var expanded = btn.dataset.expanded === '1';
+                                items.forEach(function(el){ el.classList.toggle('hidden', !expanded ? false : true); });
+                                btn.dataset.expanded = expanded ? '0' : '1';
+                                btn.innerHTML = expanded
+                                    ? '<i class=\'fa-solid fa-chevron-down mr-1\'></i>もっと見る（残り<?= $totalRelatedCount - $relatedVideoLimit ?>件）'
+                                    : '<i class=\'fa-solid fa-chevron-up mr-1\'></i>閉じる';
+                            })(this)">
+                        <i class="fa-solid fa-chevron-down mr-1"></i>もっと見る（残り<?= $totalRelatedCount - $relatedVideoLimit ?>件）
+                    </button>
+                    <?php endif; ?>
                 </section>
                 <?php endif; ?>
 
@@ -297,11 +319,11 @@ if ($mainVideo !== null && !empty($mainVideo['media_key']) && ($mainVideo['platf
                                         <div class="formation-row flex flex-nowrap justify-center gap-2 md:gap-5">
                                             <?php foreach ($formation[$key] as $m): ?>
                                             <?php $memberImg = ($releaseMemberImageMap[$m['member_id']] ?? null) ?: ($m['image_url'] ?? null); ?>
-                                            <div class="formation-member-cell flex flex-col items-center flex-none shrink-0 w-9 md:w-24 cursor-pointer hover:opacity-90 transition-opacity" data-member-id="<?= (int)$m['member_id'] ?>" role="button" tabindex="0" title="<?= htmlspecialchars($m['name']) ?>">
-                                                <div class="formation-member-img w-9 h-9 md:w-24 md:h-24 shrink-0 overflow-hidden rounded-lg <?= !empty($m['is_center']) ? 'ring-2 ring-amber-400' : '' ?>">
-                                                    <?php if (!empty($memberImg)): ?><img src="<?= htmlspecialchars($memberImg) ?>" alt="" class="w-full h-full object-cover object-top block"><?php else: ?><div class="w-full h-full bg-slate-200 flex items-center justify-center"><i class="fa-solid fa-user text-slate-400 text-[10px] md:text-base"></i></div><?php endif; ?>
+                                            <div class="formation-member-cell flex flex-col items-center flex-none shrink-0 w-14 md:w-24 cursor-pointer hover:opacity-90 transition-opacity" data-member-id="<?= (int)$m['member_id'] ?>" role="button" tabindex="0" title="<?= htmlspecialchars($m['name']) ?>">
+                                                <div class="formation-member-img w-14 h-14 md:w-24 md:h-24 shrink-0 overflow-hidden rounded-lg <?= !empty($m['is_center']) ? 'ring-2 ring-amber-400' : '' ?>">
+                                                    <?php if (!empty($memberImg)): ?><img src="<?= htmlspecialchars($memberImg) ?>" alt="" class="w-full h-full object-cover object-top block"><?php else: ?><div class="w-full h-full bg-slate-200 flex items-center justify-center"><i class="fa-solid fa-user text-slate-400 text-xs md:text-base"></i></div><?php endif; ?>
                                                 </div>
-                                                <span class="formation-name text-[9px] md:text-sm font-medium text-slate-600 mt-0.5 w-9 md:w-24 min-w-0 overflow-hidden text-center whitespace-nowrap <?= !empty($m['is_center']) ? 'text-amber-700' : '' ?>"><?= htmlspecialchars($m['name']) ?></span>
+                                                <span class="formation-name text-[10px] md:text-sm font-medium text-slate-600 mt-0.5 w-14 md:w-24 min-w-0 overflow-hidden text-center whitespace-nowrap <?= !empty($m['is_center']) ? 'text-amber-700' : '' ?>"><?= htmlspecialchars($m['name']) ?></span>
                                             </div>
                                             <?php endforeach; ?>
                                         </div>
