@@ -15,11 +15,10 @@ class TaskController {
         $auth = new Auth();
         $auth->requireLogin();
         $model = new TaskModel();
-        $tasks = $model->getActiveTasks();
+        $tasks = $model->getAllTasks();
         $catModel = new CategoryModel();
         $categories = $catModel->all();
         
-        // 日向坂イベントを取得
         $eventModel = new EventModel();
         $hinataEvents = $eventModel->getAllUpcomingEvents();
         
@@ -52,7 +51,9 @@ class TaskController {
                 'created_at'  => date('Y-m-d H:i:s'),
                 'updated_at'  => date('Y-m-d H:i:s')
             ]);
-            echo json_encode(['status' => 'success']);
+            $newId = (int)$taskModel->lastInsertId();
+            $task = $taskModel->getTaskWithCategory($newId);
+            echo json_encode(['status' => 'success', 'task' => $task]);
         } catch (\Exception $e) {
             Logger::error($e->getMessage());
             http_response_code(500);
@@ -67,26 +68,27 @@ class TaskController {
             if (!isset($input['id'])) throw new \Exception('Missing ID');
 
             $taskModel = new TaskModel();
-            $categoryId = $this->handleCategory($input);
-
-            // ステータスのみ更新（完了チェック用）か、全体更新（編集用）かを判定
             $updateData = [];
-            if (isset($input['status'])) {
-                $updateData['status'] = $input['status'];
-            } else {
+
+            if (isset($input['title'])) {
+                $categoryId = $this->handleCategory($input);
                 $updateData = [
                     'category_id' => $categoryId,
                     'title'       => $input['title'],
                     'description' => $input['description'] ?? '',
                     'priority'    => $input['priority'] ?? 2,
+                    'status'      => $input['status'] ?? 'todo',
                     'start_date'  => !empty($input['start_date']) ? $input['start_date'] : null,
                     'due_date'    => !empty($input['due_date']) ? $input['due_date'] : null,
                 ];
+            } elseif (isset($input['status'])) {
+                $updateData['status'] = $input['status'];
             }
             $updateData['updated_at'] = date('Y-m-d H:i:s');
 
             $taskModel->update($input['id'], $updateData);
-            echo json_encode(['status' => 'success']);
+            $task = $taskModel->getTaskWithCategory((int)$input['id']);
+            echo json_encode(['status' => 'success', 'task' => $task]);
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);

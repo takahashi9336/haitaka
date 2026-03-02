@@ -12,12 +12,15 @@ class CategoryModel extends BaseModel {
      * 名前でカテゴリを検索または新規作成してIDを返す
      */
     public function getOrCreate(string $name, string $color): int {
-        $sql = "SELECT id FROM {$this->table} WHERE user_id = :uid AND name = :name LIMIT 1";
+        $sql = "SELECT id, color FROM {$this->table} WHERE user_id = :uid AND name = :name LIMIT 1";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute(['uid' => $this->userId, 'name' => $name]);
         $row = $stmt->fetch();
 
         if ($row) {
+            if ($row['color'] !== $color) {
+                $this->update($row['id'], ['color' => $color]);
+            }
             return (int)$row['id'];
         }
 

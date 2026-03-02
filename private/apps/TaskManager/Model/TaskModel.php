@@ -12,7 +12,6 @@ class TaskModel extends BaseModel {
     ];
 
     public function getActiveTasks(): array {
-        // カテゴリ名を結合して取得。完了済み（status='done'）は除外
         $sql = "SELECT t.*, c.name as category_name, c.color as category_color 
                 FROM {$this->table} t
                 LEFT JOIN tm_categories c ON t.category_id = c.id
@@ -24,5 +23,27 @@ class TaskModel extends BaseModel {
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute(['uid' => $this->userId]);
         return $stmt->fetchAll();
+    }
+
+    public function getAllTasks(): array {
+        $sql = "SELECT t.*, c.name as category_name, c.color as category_color 
+                FROM {$this->table} t
+                LEFT JOIN tm_categories c ON t.category_id = c.id
+                WHERE t.user_id = :uid
+                ORDER BY t.priority DESC, t.due_date ASC";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(['uid' => $this->userId]);
+        return $stmt->fetchAll();
+    }
+
+    public function getTaskWithCategory(int $id): ?array {
+        $sql = "SELECT t.*, c.name as category_name, c.color as category_color 
+                FROM {$this->table} t
+                LEFT JOIN tm_categories c ON t.category_id = c.id
+                WHERE t.id = :id AND t.user_id = :uid LIMIT 1";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(['id' => $id, 'uid' => $this->userId]);
+        $row = $stmt->fetch();
+        return $row ?: null;
     }
 }
