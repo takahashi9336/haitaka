@@ -17,7 +17,7 @@ $topOshiUrl = $topOshi ? '/hinata/member.php?id=' . (int)$topOshi['member_id'] :
 ?>
 <script src="/assets/js/core.js?v=2"></script>
 <div id="hinata-utility-fab" class="fixed right-6 bottom-6 z-[9000]" aria-label="ユーティリティメニュー">
-    <div id="hinataFabOverlay" class="fixed inset-0 bg-black/20 z-[8999] hidden" aria-hidden="true"></div>
+    <div id="hinataFabOverlay" class="fixed inset-0 z-[8999] hidden transition-opacity duration-200" aria-hidden="true"></div>
     <div class="relative z-[9100]">
         <!-- ピル型＋吹き出し尾（画像アイコン方向に尾）・展開アニメーション -->
         <div id="hinataFabArc" class="absolute transition-opacity duration-200" data-state="closed" aria-hidden="true">
@@ -50,34 +50,36 @@ $topOshiUrl = $topOshi ? '/hinata/member.php?id=' . (int)$topOshi['member_id'] :
         </button>
     </div>
 
-    <!-- ミーグリネタ登録パネル -->
-    <div id="hinataFabNetaPanel" class="fixed right-6 bottom-24 left-4 md:left-auto md:max-w-sm hidden bg-white rounded-xl shadow-xl border border-slate-200 p-4 z-[9101]">
-        <div class="flex justify-between items-center mb-3">
+    <!-- ミーグリネタ登録パネル（下部配置・FABに被せて縦幅節約・表示アニメーション・ふんわりオレンジの枠） -->
+    <div id="hinataFabNetaPanel" class="hinata-neta-panel fixed right-6 bottom-2 left-4 md:left-auto md:max-w-sm bg-white rounded-xl border border-slate-200 p-3 z-[9101] transition-all duration-200 ease-out" data-state="closed" aria-hidden="true">
+        <div class="flex justify-between items-center mb-2">
             <span class="text-xs font-bold text-slate-500 tracking-wider">ミーグリネタ登録</span>
             <button type="button" id="hinataFabNetaClose" class="text-slate-400 hover:text-slate-600 p-1" aria-label="閉じる">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
-        <form id="hinataFabNetaForm" class="space-y-3">
-            <select name="member_id" id="hinataFabMemberId" required class="w-full h-10 border border-slate-200 rounded-lg px-3 text-sm outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-300">
-                <option value="">メンバーを選択</option>
-            </select>
-            <textarea name="content" id="hinataFabContent" required placeholder="何を話す？" rows="3" class="w-full border border-slate-200 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-sky-200 focus:border-slate-300 resize-none"></textarea>
-            <button type="submit" class="w-full bg-sky-500 text-white h-10 rounded-lg font-bold text-sm hover:bg-sky-600 transition">
-                ネタを追加
-            </button>
+        <form id="hinataFabNetaForm" class="space-y-2">
+            <div class="flex gap-2">
+                <select name="member_id" id="hinataFabMemberId" required class="flex-1 min-w-0 h-9 border border-slate-200 rounded-lg px-3 text-sm outline-none focus:ring-2 focus:ring-sky-200 focus:border-sky-300">
+                    <option value="">メンバーを選択</option>
+                </select>
+                <button type="submit" class="shrink-0 h-9 px-3 bg-sky-500 text-white rounded-lg font-bold text-sm hover:bg-sky-600 transition whitespace-nowrap">
+                    ネタを追加
+                </button>
+            </div>
+            <textarea name="content" id="hinataFabContent" required placeholder="何を話す？" rows="2" class="w-full border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-200 focus:border-slate-300 resize-none min-h-[52px]"></textarea>
         </form>
     </div>
 </div>
 
 <style>
-/* 極座標配置: FAB中心を原点に 90°左・45°左上・直上 */
+/* 極座標配置: FAB中心を原点に 90°左・45°左上・直上（画像アイコンから離す） */
 #hinataFabArc {
-    --fab-radius: 72px;
-    width: 200px;
-    height: 200px;
-    left: -60px;
-    top: -60px;
+    --fab-radius: 88px;
+    width: 220px;
+    height: 220px;
+    left: -70px;
+    top: -70px;
     overflow: visible;
     pointer-events: none;
 }
@@ -110,7 +112,7 @@ $topOshiUrl = $topOshi ? '/hinata/member.php?id=' . (int)$topOshi['member_id'] :
 }
 #hinataFabArc[data-state="open"] .hinata-fab-neta {
     opacity: 1;
-    transform: translate(calc(-50% - 51px), calc(-50% - 51px)) scale(1);
+    transform: translate(calc(-50% - 62px), calc(-50% - 62px)) scale(1);
     transition-delay: 50ms;
 }
 #hinataFabArc[data-state="open"] .hinata-fab-oshi {
@@ -155,6 +157,29 @@ $topOshiUrl = $topOshi ? '/hinata/member.php?id=' . (int)$topOshi['member_id'] :
     border-top-color: #e0f2fe;
     border-bottom: none;
 }
+
+/* ネタ登録パネル：ふんわりオレンジの枠（Apple Intelligence風のソフトグロー） */
+.hinata-neta-panel {
+    box-shadow:
+        0 4px 20px rgba(251, 146, 60, 0.15),
+        0 0 0 1px rgba(251, 146, 60, 0.12),
+        0 2px 8px rgba(0, 0, 0, 0.08);
+}
+/* ネタ登録パネル：表示アニメーション（下からスライド＋フェード） */
+#hinataFabNetaPanel[data-state="closed"] {
+    opacity: 0;
+    transform: translateY(12px);
+    pointer-events: none;
+}
+#hinataFabNetaPanel[data-state="open"] {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+/* メニュー／ネタパネル表示時はオーバーレイでスクロール透過（メインコンテンツをスクロール可能に） */
+#hinataFabOverlay.hinata-overlay-scroll-through {
+    pointer-events: none;
+}
 </style>
 
 <script>
@@ -175,21 +200,28 @@ document.addEventListener('DOMContentLoaded', function() {
         arc.setAttribute('data-state', isOpen ? 'closed' : 'open');
         arc.setAttribute('aria-hidden', isOpen ? 'true' : 'false');
         btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
-        if (isOpen) overlay.classList.add('hidden');
-        else overlay.classList.remove('hidden');
+        if (isOpen) {
+            overlay.classList.add('hidden');
+            overlay.classList.remove('hinata-overlay-scroll-through');
+        } else {
+            overlay.classList.remove('hidden');
+            overlay.classList.add('hinata-overlay-scroll-through');
+        }
     }
 
     function closeAll() {
         arc.setAttribute('data-state', 'closed');
         arc.setAttribute('aria-hidden', 'true');
-        netaPanel.classList.add('hidden');
+        netaPanel.setAttribute('data-state', 'closed');
+        netaPanel.setAttribute('aria-hidden', 'true');
         overlay.classList.add('hidden');
+        overlay.classList.remove('hinata-overlay-scroll-through');
         btn.setAttribute('aria-expanded', 'false');
     }
 
     btn.addEventListener('click', function(e) {
         e.stopPropagation();
-        if (netaPanel.classList.contains('hidden')) {
+        if (netaPanel.getAttribute('data-state') !== 'open') {
             toggleMenu();
         } else {
             closeAll();
@@ -203,15 +235,17 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             arc.setAttribute('data-state', 'closed');
             arc.setAttribute('aria-hidden', 'true');
-            overlay.classList.add('hidden');
+            overlay.classList.remove('hidden');
             btn.setAttribute('aria-expanded', 'false');
             openNetaPanel();
         });
     }
 
     function openNetaPanel() {
-        netaPanel.classList.remove('hidden');
+        netaPanel.setAttribute('data-state', 'open');
+        netaPanel.setAttribute('aria-hidden', 'false');
         overlay.classList.remove('hidden');
+        overlay.classList.add('hinata-overlay-scroll-through');
         if (memberSelect && memberSelect.options.length <= 1) loadMembers();
     }
 
