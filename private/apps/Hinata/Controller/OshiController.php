@@ -247,6 +247,12 @@ class OshiController {
                 ORDER BY FIELD(status, 'stock', 'done'), created_at DESC";
         $stmt = $pdo->prepare($sql);
         $stmt->execute(['uid' => $userId, 'mid' => $memberId]);
-        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        foreach ($rows as &$row) {
+            if (isset($row['content'])) $row['content'] = \Core\Encryption::decrypt($row['content']);
+            if (isset($row['memo']))    $row['memo']    = \Core\Encryption::decrypt($row['memo']);
+        }
+        return $rows;
     }
 }

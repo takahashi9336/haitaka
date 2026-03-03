@@ -252,3 +252,14 @@ $inactiveClass = "text-slate-500 hover:bg-slate-50 transition";
     });
 })();
 </script>
+<?php
+$isHinataPage = ($uri === '/hinata' || strpos($uri, '/hinata/') === 0);
+$showHinataUtility = (
+    isset($_SESSION['user']['id'])
+    && $isHinataPage
+    && strpos($uri, '_admin') === false
+    && in_array($user['role'] ?? '', ['admin', 'hinata_admin'], true)
+);
+if ($showHinataUtility) {
+    require __DIR__ . '/../apps/Hinata/Views/partials/hinata_utility_fab.php';
+}
