@@ -237,18 +237,25 @@ if (!empty($member['birth_date'])) {
                             <button class="rec-arrow left hidden" onclick="OshiRec.scroll('blogCards', -1)"><i class="fa-solid fa-chevron-left text-sm"></i></button>
                             <div id="blogCards" class="rec-scroll">
                                 <?php foreach ($memberBlogPosts as $bp): ?>
-                                <a href="<?= htmlspecialchars($bp['detail_url']) ?>" target="_blank" class="rec-card-portrait block">
-                                    <div class="aspect-[3/4] rounded-xl overflow-hidden bg-slate-100 mb-2 shadow-sm relative group">
-                                        <?php if ($bp['thumbnail_url']): ?>
-                                        <img src="<?= htmlspecialchars($bp['thumbnail_url']) ?>" class="w-full h-full object-cover" loading="lazy" alt="">
-                                        <?php else: ?>
-                                        <div class="w-full h-full flex items-center justify-center text-slate-300"><i class="fa-solid fa-pen-fancy text-3xl"></i></div>
-                                        <?php endif; ?>
-                                        <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition"></div>
-                                    </div>
-                                    <h4 class="text-[11px] font-bold text-slate-700 line-clamp-2 leading-snug mb-0.5"><?= htmlspecialchars($bp['title'] ?: '(無題)') ?></h4>
-                                    <p class="text-[10px] text-slate-400"><?= $bp['published_at'] ? date('m/d H:i', strtotime($bp['published_at'])) : '' ?></p>
-                                </a>
+                                <div class="rec-card-portrait block relative group">
+                                    <a href="<?= htmlspecialchars($bp['detail_url']) ?>" target="_blank" class="block">
+                                        <div class="aspect-[3/4] rounded-xl overflow-hidden bg-slate-100 mb-2 shadow-sm relative">
+                                            <?php if ($bp['thumbnail_url']): ?>
+                                            <img src="<?= htmlspecialchars($bp['thumbnail_url']) ?>" class="w-full h-full object-cover" loading="lazy" alt="">
+                                            <?php else: ?>
+                                            <div class="w-full h-full flex items-center justify-center text-slate-300"><i class="fa-solid fa-pen-fancy text-3xl"></i></div>
+                                            <?php endif; ?>
+                                            <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition"></div>
+                                        </div>
+                                        <h4 class="text-[11px] font-bold text-slate-700 line-clamp-2 leading-snug mb-0.5"><?= htmlspecialchars($bp['title'] ?: '(無題)') ?></h4>
+                                        <p class="text-[10px] text-slate-400"><?= $bp['published_at'] ? date('m/d H:i', strtotime($bp['published_at'])) : '' ?></p>
+                                    </a>
+                                    <?php if ($bp['thumbnail_url']): ?>
+                                    <button type="button" class="blog-download-btn absolute bottom-10 right-2 z-10 w-8 h-8 rounded-full bg-black/50 flex items-center justify-center text-white hover:bg-black/70 border-0 cursor-pointer" data-article-id="<?= (int)($bp['article_id'] ?? 0) ?>" data-post-id="<?= (int)($bp['id'] ?? 0) ?>" data-title="<?= htmlspecialchars($bp['title'] ?? '(無題)', ENT_QUOTES, 'UTF-8') ?>" title="画像を保存">
+                                        <i class="fa-solid fa-download text-xs"></i>
+                                    </button>
+                                    <?php endif; ?>
+                                </div>
                                 <?php endforeach; ?>
                             </div>
                             <button class="rec-arrow right" onclick="OshiRec.scroll('blogCards', 1)"><i class="fa-solid fa-chevron-right text-sm"></i></button>
@@ -545,6 +552,7 @@ if (!empty($member['birth_date'])) {
     </main>
 
     <?php include __DIR__ . '/../../../components/video_modal.php'; ?>
+    <?php include __DIR__ . '/../../../components/blog_image_modal.php'; ?>
 
     <script>
     function openOshiVideo(cardEl, ev) {

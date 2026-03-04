@@ -258,7 +258,6 @@ $showHinataUtility = (
     isset($_SESSION['user']['id'])
     && $isHinataPage
     && strpos($uri, '_admin') === false
-    && in_array($user['role'] ?? '', ['admin', 'hinata_admin'], true)
 );
 if ($showHinataUtility) {
     require __DIR__ . '/../apps/Hinata/Views/partials/hinata_utility_fab.php';
