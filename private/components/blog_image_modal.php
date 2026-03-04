@@ -19,7 +19,9 @@
     .blog-image-item.selected { ring: 2px solid; ring-color: rgb(14 165 233); }
     .blog-image-check-icon { opacity: 0; transition: opacity 0.2s; }
     .blog-image-item.selected .blog-image-check-icon { opacity: 1; }
-    .blog-image-item-mobile { cursor: default; }
+    .blog-image-item-mobile { cursor: pointer; }
+    #blogImageZoomOverlay { opacity: 0; transition: opacity 0.2s; }
+    #blogImageZoomOverlay.active { opacity: 1; }
 </style>
 
 <div id="blogImageModal" class="fixed inset-0 z-[100] hidden bg-slate-900/80 backdrop-blur-sm transition-all">
@@ -49,8 +51,14 @@
                 <i class="fa-solid fa-download mr-1"></i><span id="blogImageModalDownloadText">選択した画像をダウンロード</span>
             </button>
         </div>
-        <p id="blogImageModalMobileHint" class="hidden px-4 py-2 text-xs text-slate-500 border-t border-slate-100 shrink-0">画像を長押しで保存</p>
+        <p id="blogImageModalMobileHint" class="hidden px-4 py-2 text-xs text-slate-500 border-t border-slate-100 shrink-0">タップで拡大 / 長押しで保存</p>
     </div>
+</div>
+<div id="blogImageZoomOverlay" class="fixed inset-0 z-[110] hidden bg-black/90 flex items-center justify-center p-4" onclick="BlogImageZoom.close()">
+    <img id="blogImageZoomImg" src="" alt="" class="max-w-full max-h-full object-contain" onclick="event.stopPropagation()">
+    <button type="button" class="absolute top-4 right-4 w-12 h-12 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/30" onclick="event.stopPropagation(); BlogImageZoom.close();">
+        <i class="fa-solid fa-xmark text-xl"></i>
+    </button>
 </div>
 
 <script>
@@ -80,6 +88,7 @@
 
     function closeModal() {
         if (!modal) return;
+        BlogImageZoom.close();
         modal.classList.add('modal-closing');
         setTimeout(function() {
             modal.classList.remove('active', 'modal-closing');
@@ -124,6 +133,33 @@
         if (textEl) textEl.textContent = count > 0 ? '選択した画像をダウンロード (' + count + '枚)' : '選択した画像をダウンロード';
     }
 
+    var zoomOverlay = document.getElementById('blogImageZoomOverlay');
+    var zoomImg = document.getElementById('blogImageZoomImg');
+
+    window.BlogImageZoom = {
+        open: function(url) {
+            if (!zoomOverlay || !zoomImg) return;
+            zoomImg.src = url || '';
+            zoomOverlay.classList.remove('hidden');
+            zoomOverlay.offsetHeight;
+            zoomOverlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        },
+        close: function() {
+            if (!zoomOverlay) return;
+            zoomOverlay.classList.remove('active');
+            setTimeout(function() {
+                zoomOverlay.classList.add('hidden');
+                zoomImg.src = '';
+                document.body.style.overflow = '';
+        }, 200);
+    }
+};
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') BlogImageZoom.close();
+    });
+
     function triggerSingleDownload(url, idx) {
         var filename = 'blog_' + new Date().toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '_') + '_' + (idx + 1) + '.jpg';
         var a = document.createElement('a');
@@ -141,12 +177,16 @@
             if (isMobile) {
                 var wrap = document.createElement('div');
                 wrap.className = 'blog-image-item blog-image-item-mobile block rounded-lg overflow-hidden aspect-square bg-slate-100 relative';
+                wrap.dataset.url = url;
                 var img = document.createElement('img');
                 img.src = url;
                 img.alt = '';
                 img.className = 'w-full h-full object-cover';
                 img.loading = 'lazy';
                 wrap.appendChild(img);
+                wrap.addEventListener('click', function() {
+                    BlogImageZoom.open(url);
+                });
                 grid.appendChild(wrap);
             } else {
                 var wrap = document.createElement('label');
@@ -165,9 +205,21 @@
                 var checkIcon = document.createElement('span');
                 checkIcon.className = 'blog-image-check-icon absolute top-1 right-1 w-6 h-6 rounded-full bg-sky-500 text-white flex items-center justify-center';
                 checkIcon.innerHTML = '<i class="fa-solid fa-check text-xs"></i>';
+                var expandBtn = document.createElement('button');
+                expandBtn.type = 'button';
+                expandBtn.className = 'absolute bottom-1 left-1 w-7 h-7 rounded-full bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10';
+                expandBtn.innerHTML = '<i class="fa-solid fa-expand text-xs"></i>';
+                expandBtn.title = '拡大';
+                expandBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    BlogImageZoom.open(url);
+                });
+                wrap.classList.add('group');
                 wrap.appendChild(cb);
                 wrap.appendChild(img);
                 wrap.appendChild(checkIcon);
+                wrap.appendChild(expandBtn);
 
                 wrap.addEventListener('click', function(e) {
                     if (e.target === cb) return;
