@@ -19,10 +19,11 @@
     .blog-image-item.selected { ring: 2px solid; ring-color: rgb(14 165 233); }
     .blog-image-check-icon { opacity: 0; transition: opacity 0.2s; }
     .blog-image-item.selected .blog-image-check-icon { opacity: 1; }
+    .blog-image-item-mobile { cursor: default; }
 </style>
 
 <div id="blogImageModal" class="fixed inset-0 z-[100] hidden bg-slate-900/80 backdrop-blur-sm transition-all">
-    <div class="w-full max-w-3xl mx-4 max-h-[90vh] bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden" onclick="event.stopPropagation()">
+    <div class="w-full max-w-3xl md:max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-4 max-h-[90vh] bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden" onclick="event.stopPropagation()">
         <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200 shrink-0">
             <h3 id="blogImageModalTitle" class="text-sm font-bold text-slate-700 line-clamp-1 flex-1 mr-2"></h3>
             <button type="button" id="blogImageModalClose" class="w-9 h-9 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200 transition shrink-0">
@@ -37,9 +38,9 @@
             <div id="blogImageModalEmpty" class="hidden py-12 text-center text-slate-400 text-sm">
                 画像がありません
             </div>
-            <div id="blogImageModalGrid" class="hidden grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"></div>
+            <div id="blogImageModalGrid" class="hidden grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-2 gap-4"></div>
         </div>
-        <div class="flex items-center justify-between gap-2 px-4 py-3 border-t border-slate-200 bg-slate-50 shrink-0 flex-wrap">
+        <div id="blogImageModalFooter" class="flex items-center justify-between gap-2 px-4 py-3 border-t border-slate-200 bg-slate-50 shrink-0 flex-wrap">
             <div class="flex gap-2">
                 <button type="button" id="blogImageModalSelectAll" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-sky-100 text-sky-700 hover:bg-sky-200 transition hidden">全選択</button>
                 <button type="button" id="blogImageModalSelectNone" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-slate-200 text-slate-600 hover:bg-slate-300 transition hidden">選択解除</button>
@@ -48,6 +49,7 @@
                 <i class="fa-solid fa-download mr-1"></i><span id="blogImageModalDownloadText">選択した画像をダウンロード</span>
             </button>
         </div>
+        <p id="blogImageModalMobileHint" class="hidden px-4 py-2 text-xs text-slate-500 border-t border-slate-100 shrink-0">画像を長押しで保存</p>
     </div>
 </div>
 
@@ -63,9 +65,12 @@
     var selectNoneBtn = document.getElementById('blogImageModalSelectNone');
     var downloadBtn = document.getElementById('blogImageModalDownload');
     var closeBtn = document.getElementById('blogImageModalClose');
+    var footer = document.getElementById('blogImageModalFooter');
+    var mobileHint = document.getElementById('blogImageModalMobileHint');
 
     var currentArticleId = 0;
     var currentImages = [];
+    var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
     function esc(s) {
         var d = document.createElement('div');
@@ -89,6 +94,8 @@
         selectAllBtn.classList.add('hidden');
         selectNoneBtn.classList.add('hidden');
         downloadBtn.classList.add('hidden');
+        if (footer) footer.classList.add('hidden');
+        if (mobileHint) mobileHint.classList.add('hidden');
 
         if (state === 'loading') {
             loading.classList.remove('hidden');
@@ -97,61 +104,90 @@
         } else if (state === 'grid') {
             grid.classList.remove('hidden');
             if (currentImages.length > 0) {
-                selectAllBtn.classList.remove('hidden');
-                selectNoneBtn.classList.remove('hidden');
-                downloadBtn.classList.remove('hidden');
+                if (isMobile) {
+                    if (mobileHint) mobileHint.classList.remove('hidden');
+                } else {
+                    if (footer) footer.classList.remove('hidden');
+                    selectAllBtn.classList.remove('hidden');
+                    selectNoneBtn.classList.remove('hidden');
+                    downloadBtn.classList.remove('hidden');
+                }
             }
         }
     }
 
     function updateDownloadBtn() {
-        var count = grid ? grid.querySelectorAll('.blog-image-check:checked').length : 0;
+        if (!grid || isMobile) return;
+        var count = grid.querySelectorAll('.blog-image-check:checked').length;
         downloadBtn.disabled = count === 0;
         var textEl = document.getElementById('blogImageModalDownloadText');
         if (textEl) textEl.textContent = count > 0 ? '選択した画像をダウンロード (' + count + '枚)' : '選択した画像をダウンロード';
     }
 
+    function triggerSingleDownload(url, idx) {
+        var filename = 'blog_' + new Date().toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '_') + '_' + (idx + 1) + '.jpg';
+        var a = document.createElement('a');
+        a.href = '/hinata/api/download_blog_image.php?url=' + encodeURIComponent(url);
+        a.download = filename;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
     function renderGrid(images) {
         grid.innerHTML = '';
         images.forEach(function(url, idx) {
-            var wrap = document.createElement('label');
-            wrap.className = 'blog-image-item block rounded-lg overflow-hidden border-2 border-transparent aspect-square bg-slate-100 cursor-pointer relative';
-            wrap.dataset.url = url;
-            wrap.dataset.idx = String(idx);
-            var cb = document.createElement('input');
-            cb.type = 'checkbox';
-            cb.className = 'blog-image-check sr-only';
-            cb.dataset.url = url;
-            var img = document.createElement('img');
-            img.src = url;
-            img.alt = '';
-            img.className = 'w-full h-full object-cover';
-            img.loading = 'lazy';
-            var checkIcon = document.createElement('span');
-            checkIcon.className = 'blog-image-check-icon absolute top-1 right-1 w-6 h-6 rounded-full bg-sky-500 text-white flex items-center justify-center';
-            checkIcon.innerHTML = '<i class="fa-solid fa-check text-xs"></i>';
-            wrap.appendChild(cb);
-            wrap.appendChild(img);
-            wrap.appendChild(checkIcon);
+            if (isMobile) {
+                var wrap = document.createElement('div');
+                wrap.className = 'blog-image-item blog-image-item-mobile block rounded-lg overflow-hidden aspect-square bg-slate-100 relative';
+                var img = document.createElement('img');
+                img.src = url;
+                img.alt = '';
+                img.className = 'w-full h-full object-cover';
+                img.loading = 'lazy';
+                wrap.appendChild(img);
+                grid.appendChild(wrap);
+            } else {
+                var wrap = document.createElement('label');
+                wrap.className = 'blog-image-item block rounded-lg overflow-hidden border-2 border-transparent aspect-square bg-slate-100 cursor-pointer relative';
+                wrap.dataset.url = url;
+                wrap.dataset.idx = String(idx);
+                var cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.className = 'blog-image-check sr-only';
+                cb.dataset.url = url;
+                var img = document.createElement('img');
+                img.src = url;
+                img.alt = '';
+                img.className = 'w-full h-full object-cover';
+                img.loading = 'lazy';
+                var checkIcon = document.createElement('span');
+                checkIcon.className = 'blog-image-check-icon absolute top-1 right-1 w-6 h-6 rounded-full bg-sky-500 text-white flex items-center justify-center';
+                checkIcon.innerHTML = '<i class="fa-solid fa-check text-xs"></i>';
+                wrap.appendChild(cb);
+                wrap.appendChild(img);
+                wrap.appendChild(checkIcon);
 
-            wrap.addEventListener('click', function(e) {
-                if (e.target === cb) return;
-                e.preventDefault();
-                cb.checked = !cb.checked;
-                wrap.classList.toggle('selected', cb.checked);
-                wrap.classList.toggle('ring-2', cb.checked);
-                wrap.classList.toggle('ring-sky-500', cb.checked);
-                updateDownloadBtn();
-            });
+                wrap.addEventListener('click', function(e) {
+                    if (e.target === cb) return;
+                    e.preventDefault();
+                    cb.checked = !cb.checked;
+                    wrap.classList.toggle('selected', cb.checked);
+                    wrap.classList.toggle('ring-2', cb.checked);
+                    wrap.classList.toggle('ring-sky-500', cb.checked);
+                    updateDownloadBtn();
+                });
 
-            cb.addEventListener('change', function() {
-                wrap.classList.toggle('selected', cb.checked);
-                wrap.classList.toggle('ring-2', cb.checked);
-                wrap.classList.toggle('ring-sky-500', cb.checked);
-                updateDownloadBtn();
-            });
+                cb.addEventListener('change', function() {
+                    wrap.classList.toggle('selected', cb.checked);
+                    wrap.classList.toggle('ring-2', cb.checked);
+                    wrap.classList.toggle('ring-sky-500', cb.checked);
+                    updateDownloadBtn();
+                });
 
-            grid.appendChild(wrap);
+                grid.appendChild(wrap);
+            }
         });
         updateDownloadBtn();
     }
@@ -209,20 +245,19 @@
     }
     if (downloadBtn) {
         downloadBtn.addEventListener('click', function() {
-            if (downloadBtn.disabled) return;
+            if (downloadBtn.disabled || isMobile) return;
             var selected = [];
             grid.querySelectorAll('.blog-image-check:checked').forEach(function(cb) {
                 selected.push(cb.dataset.url);
             });
             if (selected.length === 0) return;
 
-            var delay = 300;
+            closeModal();
             selected.forEach(function(url, i) {
                 setTimeout(function() {
-                    window.open('/hinata/api/download_blog_image.php?url=' + encodeURIComponent(url), '_blank', 'noopener');
-                }, i * delay);
+                    triggerSingleDownload(url, i);
+                }, i * 400);
             });
-            closeModal();
         });
     }
     if (closeBtn) {
