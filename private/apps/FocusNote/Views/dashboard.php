@@ -88,6 +88,12 @@ $userName = $user['id_name'] ?? '私';
                     <a href="<?= htmlspecialchars($weeklyLink) ?>" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border <?= $cardBorder ?> bg-white hover:shadow-sm text-sm font-medium text-slate-600 transition">
                         <i class="fa-solid fa-calendar-week fn-theme-link"></i> ウィークリー（<?= date('n/d', strtotime($weekStart)) ?>〜）
                     </a>
+                    <a href="/focus_note/goal_setting.php" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border <?= $cardBorder ?> bg-white hover:shadow-sm text-sm font-medium text-slate-600 transition">
+                        <i class="fa-solid fa-bullseye fn-theme-link"></i> 目標設定の考え方
+                    </a>
+                    <a href="/focus_note/goal_setting_form.php" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border <?= $cardBorder ?> bg-white hover:shadow-sm text-sm font-medium text-slate-600 transition">
+                        <i class="fa-solid fa-pen fn-theme-link"></i> 目標・行動目標を設定
+                    </a>
                 </nav>
             </div>
         </div>

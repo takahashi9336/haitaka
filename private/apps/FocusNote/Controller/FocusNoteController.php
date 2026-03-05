@@ -7,6 +7,9 @@ use App\FocusNote\Model\DailyTaskModel;
 use App\FocusNote\Model\WeeklyPageModel;
 use App\FocusNote\Model\WeeklyTaskPickModel;
 use App\FocusNote\Model\QuestionActionModel;
+use App\FocusNote\Model\GoalModel;
+use App\FocusNote\Model\ActionGoalModel;
+use App\FocusNote\Model\IfThenRuleModel;
 use Core\Auth;
 
 /**
@@ -37,6 +40,46 @@ class FocusNoteController {
         $weeklyLink = '/focus_note/weekly.php?week=' . $weekStart;
 
         require_once __DIR__ . '/../Views/dashboard.php';
+    }
+
+    public function goalSetting(): void {
+        $auth = new Auth();
+        $auth->requireLogin();
+
+        $user = $_SESSION['user'];
+        require_once __DIR__ . '/../Views/goal_setting.php';
+    }
+
+    public function goalSettingForm(): void {
+        $auth = new Auth();
+        $auth->requireLogin();
+
+        $user = $_SESSION['user'];
+
+        try {
+            $goalModel = new GoalModel();
+            $actionModel = new ActionGoalModel();
+            $ruleModel = new IfThenRuleModel();
+
+            $goal = $goalModel->findActive();
+            $actionGoals = [];
+            $ifThenRules = [];
+
+            if ($goal) {
+                $actionGoals = $actionModel->getByGoalId((int) $goal['id']);
+                $ifThenRules = $ruleModel->getByGoalId((int) $goal['id']);
+            }
+
+            require_once __DIR__ . '/../Views/goal_setting_form.php';
+        } catch (\PDOException $e) {
+            $msg = $e->getMessage();
+            $isTableMissing = (strpos($msg, "doesn't exist") !== false || stripos($msg, 'exist') !== false);
+            self::renderError($isTableMissing
+                ? 'fn_goals 等のテーブルが存在しません。マイグレーション create_fn_goals.sql を実行してください。'
+                : 'データベースエラー: ' . $msg);
+        } catch (\Throwable $e) {
+            self::renderError('エラー: ' . $e->getMessage() . ' (in ' . basename($e->getFile()) . ':' . $e->getLine() . ')');
+        }
     }
 
     public function monthly(): void {
