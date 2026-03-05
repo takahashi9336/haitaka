@@ -10,6 +10,9 @@ use App\Hinata\Model\ReleaseModel;
 use App\Hinata\Model\ReleaseEditionModel;
 use App\Hinata\Model\BlogModel;
 use App\Hinata\Model\MemberModel;
+use App\Hinata\Model\TopicModel;
+use App\Hinata\Model\AnnouncementModel;
+use App\Hinata\Model\EventApplicationModel;
 use Core\Auth;
 use Core\Database;
 
@@ -75,6 +78,23 @@ class HinataController {
 
         // 今日は何の日（日向坂ヒストリー）
         $todayInHistory = $this->getTodayInHistory();
+
+        // トピック・お知らせ・応募締め切り
+        $topics = [];
+        $announcements = [];
+        $upcomingDeadlines = [];
+        try {
+            $topicModel = new TopicModel();
+            $topics = $topicModel->getActiveTopics();
+        } catch (\Throwable $e) {}
+        try {
+            $announcementModel = new AnnouncementModel();
+            $announcements = $announcementModel->getActiveAnnouncements(15);
+        } catch (\Throwable $e) {}
+        try {
+            $eventAppModel = new EventApplicationModel();
+            $upcomingDeadlines = $eventAppModel->getUpcomingDeadlines(7);
+        } catch (\Throwable $e) {}
 
         // 推し情報をセッションにキャッシュ
         $favModel->cacheOshiToSession();

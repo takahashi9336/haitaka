@@ -126,6 +126,35 @@ function oshiImgSrc(?string $imageUrl): string {
 
         <div class="flex-1 overflow-y-auto p-6 md:p-10 custom-scroll">
             <div class="max-w-5xl mx-auto">
+                <?php if (!empty($topics)): ?>
+                <section class="mb-5">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i class="fa-solid fa-bullhorn <?= $cardIconText ?>"<?= $isThemeHex ? ' style="color:' . htmlspecialchars($themePrimary) . '"' : '' ?>></i>
+                        <h2 class="text-sm font-bold text-slate-700">TOPICS</h2>
+                    </div>
+                    <div class="topic-scroll flex gap-3 overflow-x-auto pb-2" style="scrollbar-width: none; -webkit-overflow-scrolling: touch;">
+                        <?php foreach ($topics as $t): ?>
+                        <a href="<?= !empty($t['url']) ? htmlspecialchars($t['url']) : '#' ?>" class="topic-card shrink-0 w-64 md:w-72 rounded-xl border <?= $cardBorder ?> overflow-hidden bg-white shadow-sm hover:shadow-md transition-all flex <?= !empty($t['image_url']) ? 'flex-row' : '' ?>"<?= !empty($t['url']) ? ' target="_blank" rel="noopener"' : '' ?>>
+                            <?php if (!empty($t['image_url'])): ?>
+                            <div class="w-24 md:w-28 shrink-0 aspect-square bg-slate-100">
+                                <img src="<?= str_starts_with($t['image_url'], '/') || str_starts_with($t['image_url'], 'http') ? htmlspecialchars($t['image_url']) : '/assets/' . htmlspecialchars($t['image_url']) ?>" class="w-full h-full object-cover" alt="">
+                            </div>
+                            <div class="flex-1 min-w-0 p-3 flex flex-col justify-center">
+                                <p class="text-xs font-black text-slate-800 line-clamp-2"><?= htmlspecialchars($t['title']) ?></p>
+                                <?php if (!empty($t['summary'])): ?><p class="text-[10px] text-slate-500 mt-0.5 line-clamp-2"><?= htmlspecialchars($t['summary']) ?></p><?php endif; ?>
+                            </div>
+                            <?php else: ?>
+                            <div class="p-4 w-full">
+                                <p class="text-sm font-black text-slate-800"><?= htmlspecialchars($t['title']) ?></p>
+                                <?php if (!empty($t['summary'])): ?><p class="text-xs text-slate-500 mt-1"><?= htmlspecialchars($t['summary']) ?></p><?php endif; ?>
+                            </div>
+                            <?php endif; ?>
+                        </a>
+                        <?php endforeach; ?>
+                    </div>
+                </section>
+                <?php endif; ?>
+
                 <?php
                 $hasNextEvent = !empty($nextEvent) && isset($nextEvent['days_left']) && (int)$nextEvent['days_left'] >= 0;
                 $hasBdBanner = !empty($upcomingBirthdays);
@@ -161,6 +190,7 @@ function oshiImgSrc(?string $imageUrl): string {
                             <a href="/hinata/events.php" class="hidden md:inline-flex items-center justify-center w-8 h-8 rounded-full border <?= $cardBorder ?> <?= $cardIconText ?> hover:opacity-80 transition shrink-0"<?= $isThemeHex ? ' style="color: ' . htmlspecialchars($themePrimary) . ';"' : '' ?>>
                                 <i class="fa-solid fa-chevron-right text-xs"></i>
                             </a>
+                            <a href="/hinata/calendar.php" class="hidden md:inline-flex items-center gap-1 text-[10px] font-bold <?= $cardIconText ?> hover:opacity-80 transition shrink-0" title="iCalでカレンダー登録"<?= $isThemeHex ? ' style="color: ' . htmlspecialchars($themePrimary) . ';"' : '' ?>><i class="fa-solid fa-calendar-plus text-xs"></i></a>
                         </div>
                     </div>
                     <?php endif; ?>
@@ -244,6 +274,56 @@ function oshiImgSrc(?string $imageUrl): string {
                         </div>
                     </div>
                 </div>
+                <?php endif; ?>
+
+                <?php if (!empty($upcomingDeadlines)): ?>
+                <section class="mb-5">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i class="fa-solid fa-hourglass-end text-rose-500"></i>
+                        <h2 class="text-sm font-bold text-slate-700">応募締め切り間近</h2>
+                        <a href="/hinata/calendar.php" class="ml-auto text-[10px] font-bold <?= $cardIconText ?> hover:opacity-80" title="iCal/Googleカレンダーに登録"><i class="fa-solid fa-calendar-plus mr-0.5"></i></a>
+                        <a href="/hinata/events.php" class="text-[10px] font-bold <?= $cardIconText ?> hover:opacity-80">一覧 <i class="fa-solid fa-chevron-right"></i></a>
+                    </div>
+                    <div class="space-y-2">
+                        <?php foreach ($upcomingDeadlines as $dl): ?>
+                        <a href="<?= !empty($dl['application_url']) ? htmlspecialchars($dl['application_url']) : '/hinata/events.php' ?>" class="flex items-center gap-4 bg-white rounded-xl border <?= $cardBorder ?> shadow-sm px-4 py-3 hover:shadow-md transition"<?= !empty($dl['application_url']) ? ' target="_blank" rel="noopener"' : '' ?>>
+                            <div class="w-10 h-10 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center shrink-0"><i class="fa-solid fa-calendar-xmark text-sm"></i></div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-bold text-slate-800"><?= htmlspecialchars($dl['event_name']) ?><?= !empty($dl['round_name']) ? ' ' . htmlspecialchars($dl['round_name']) : '' ?></p>
+                                <p class="text-[10px] text-rose-600 font-bold">締切: <?= date('n/j H:i', strtotime($dl['application_deadline'])) ?></p>
+                            </div>
+                            <?php if (!empty($dl['application_url'])): ?><i class="fa-solid fa-external-link text-slate-300 text-xs shrink-0"></i><?php endif; ?>
+                        </a>
+                        <?php endforeach; ?>
+                    </div>
+                </section>
+                <?php endif; ?>
+
+                <?php if (!empty($announcements)): ?>
+                <section class="mb-5">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i class="fa-solid fa-bell <?= $cardIconText ?>"<?= $isThemeHex ? ' style="color:' . htmlspecialchars($themePrimary) . '"' : '' ?>></i>
+                        <h2 class="text-sm font-bold text-slate-700">お知らせ</h2>
+                    </div>
+                    <div class="space-y-2">
+                        <?php foreach ($announcements as $a): ?>
+                        <a href="<?= !empty($a['url']) ? htmlspecialchars($a['url']) : '#' ?>" class="flex items-center gap-4 bg-white rounded-xl border <?= $cardBorder ?> shadow-sm px-4 py-3 hover:shadow-md transition block"<?= !empty($a['url']) ? ' target="_blank" rel="noopener"' : '' ?>>
+                            <?php if (!empty($a['image_url'])): ?>
+                            <div class="w-14 h-14 shrink-0 rounded-lg overflow-hidden bg-slate-100">
+                                <img src="<?= str_starts_with($a['image_url'], '/') || str_starts_with($a['image_url'], 'http') ? htmlspecialchars($a['image_url']) : '/assets/' . htmlspecialchars($a['image_url']) ?>" class="w-full h-full object-cover" alt="">
+                            </div>
+                            <?php else: ?>
+                            <div class="w-10 h-10 rounded-lg <?= $headerIconBg ?> text-white flex items-center justify-center shrink-0"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?>><i class="fa-solid fa-newspaper text-sm"></i></div>
+                            <?php endif; ?>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-bold text-slate-800 line-clamp-1"><?= htmlspecialchars($a['title']) ?></p>
+                                <?php if (!empty($a['body'])): ?><p class="text-[10px] text-slate-500 mt-0.5 line-clamp-2"><?= htmlspecialchars($a['body']) ?></p><?php endif; ?>
+                            </div>
+                            <?php if (!empty($a['url'])): ?><i class="fa-solid fa-chevron-right text-slate-300 text-xs shrink-0"></i><?php endif; ?>
+                        </a>
+                        <?php endforeach; ?>
+                    </div>
+                </section>
                 <?php endif; ?>
 
                 <!-- 推し情報エリア -->
@@ -755,6 +835,13 @@ function oshiImgSrc(?string $imageUrl): string {
                                 <div class="w-16 h-16 md:w-12 md:h-12 rounded-lg flex items-center justify-center mb-2 md:mb-6 transition-colors card-icon <?= $cardIconBg ?> <?= $cardIconText ?> <?= $cardIconHover ?>"><i class="fa-solid fa-compact-disc text-2xl md:text-base"></i></div>
                                 <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-3 text-center md:text-left">リリース管理</h3>
                                 <p class="hidden md:block text-sm text-slate-400 leading-relaxed">シングル・アルバム情報を管理します。</p>
+                            </div>
+                        </a>
+                        <a href="/hinata/portal_info_admin.php" class="app-card hinata-portal-card group relative bg-white rounded-xl border <?= $cardBorder ?> shadow-sm overflow-hidden flex flex-col items-center justify-center p-4 md:p-8 md:block">
+                            <div class="relative z-10 flex flex-col items-center md:block">
+                                <div class="w-16 h-16 md:w-12 md:h-12 rounded-lg flex items-center justify-center mb-2 md:mb-6 transition-colors card-icon <?= $cardIconBg ?> <?= $cardIconText ?> <?= $cardIconHover ?>"><i class="fa-solid fa-newspaper text-2xl md:text-base"></i></div>
+                                <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-3 text-center md:text-left">ポータル情報管理</h3>
+                                <p class="hidden md:block text-sm text-slate-400 leading-relaxed">トピック・お知らせ・応募締め切りを管理します。</p>
                             </div>
                         </a>
                         <a href="/hinata/media_member_admin.php" class="app-card hinata-portal-card group relative bg-white rounded-xl border <?= $cardBorder ?> shadow-sm overflow-hidden flex flex-col items-center justify-center p-4 md:p-8 md:block">
