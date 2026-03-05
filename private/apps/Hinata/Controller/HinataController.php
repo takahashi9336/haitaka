@@ -65,7 +65,7 @@ class HinataController {
         $latestBlogPosts = [];
         try {
             $blogModel = new BlogModel();
-            $latestBlogPosts = $blogModel->getLatestAll(10);
+            $latestBlogPosts = $blogModel->getLatestAll(20);
         } catch (\Exception $e) {
             // テーブル未作成時は空配列のまま
         }
@@ -84,30 +84,32 @@ class HinataController {
     }
 
     /**
-     * 次の誕生日メンバー（今日含む直近3名）
+     * 次の誕生日メンバー（2週間以内）
      */
     private function getUpcomingBirthdays(): array {
         $pdo = Database::connect();
-        $sql = "SELECT m.id, m.name, m.birth_date, m.generation, m.image_url,
-                       c1.color_code as color1, c2.color_code as color2,
-                       (SELECT mi.image_url FROM hn_member_images mi WHERE mi.member_id = m.id ORDER BY mi.sort_order ASC LIMIT 1) as first_image,
-                       CASE
-                           WHEN DATE_FORMAT(m.birth_date, '%m-%d') >= DATE_FORMAT(CURDATE(), '%m-%d')
-                           THEN DATEDIFF(
-                               CONCAT(YEAR(CURDATE()), '-', DATE_FORMAT(m.birth_date, '%m-%d')),
-                               CURDATE()
-                           )
-                           ELSE DATEDIFF(
-                               CONCAT(YEAR(CURDATE()) + 1, '-', DATE_FORMAT(m.birth_date, '%m-%d')),
-                               CURDATE()
-                           )
-                       END AS days_until
-                FROM hn_members m
-                LEFT JOIN hn_colors c1 ON m.color_id1 = c1.id
-                LEFT JOIN hn_colors c2 ON m.color_id2 = c2.id
-                WHERE m.is_active = 1 AND m.birth_date IS NOT NULL
-                ORDER BY days_until ASC
-                LIMIT 3";
+        $sql = "SELECT * FROM (
+                    SELECT m.id, m.name, m.birth_date, m.generation, m.image_url,
+                           c1.color_code as color1, c2.color_code as color2,
+                           (SELECT mi.image_url FROM hn_member_images mi WHERE mi.member_id = m.id ORDER BY mi.sort_order ASC LIMIT 1) as first_image,
+                           CASE
+                               WHEN DATE_FORMAT(m.birth_date, '%m-%d') >= DATE_FORMAT(CURDATE(), '%m-%d')
+                               THEN DATEDIFF(
+                                   CONCAT(YEAR(CURDATE()), '-', DATE_FORMAT(m.birth_date, '%m-%d')),
+                                   CURDATE()
+                               )
+                               ELSE DATEDIFF(
+                                   CONCAT(YEAR(CURDATE()) + 1, '-', DATE_FORMAT(m.birth_date, '%m-%d')),
+                                   CURDATE()
+                               )
+                           END AS days_until
+                    FROM hn_members m
+                    LEFT JOIN hn_colors c1 ON m.color_id1 = c1.id
+                    LEFT JOIN hn_colors c2 ON m.color_id2 = c2.id
+                    WHERE m.is_active = 1 AND m.birth_date IS NOT NULL
+                ) t
+                WHERE days_until <= 14
+                ORDER BY days_until ASC";
         return $pdo->query($sql)->fetchAll(\PDO::FETCH_ASSOC);
     }
 

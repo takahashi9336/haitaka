@@ -369,10 +369,16 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         // カテゴリ表示順（その他は常に最後）
         const CATEGORY_ORDER = ['CM', 'Hinareha', 'Live', 'MV', 'SelfIntro', 'SoloPV', 'Special', 'Teaser', 'Trailer', 'Variety', 'その他'];
 
-        // URLパラメータの member_id で初期フィルタ
+        // URLパラメータの member_id / platform で初期フィルタ
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('member_id')) {
             filterMember.value = urlParams.get('member_id');
+        }
+        if (urlParams.has('platform')) {
+            const platform = urlParams.get('platform');
+            if (['youtube', 'tiktok', 'instagram'].includes(platform)) {
+                filterPlatform.value = platform;
+            }
         }
 
         // 初回ロード（デフォルト小さめのレイアウトを適用）

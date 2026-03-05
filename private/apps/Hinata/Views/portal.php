@@ -85,6 +85,22 @@ function oshiImgSrc(?string $imageUrl): string {
         .bd-scroll::-webkit-scrollbar { display: none; }
         @keyframes skeletonPulse { 0%,100% { opacity: 0.4; } 50% { opacity: 0.7; } }
         .skeleton-card { animation: skeletonPulse 1.5s ease-in-out infinite; }
+        .oshi-mirror-btn { position: relative; overflow: hidden; }
+        .oshi-mirror-btn::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%);
+            animation: mirror-sweep 2s ease-in-out infinite;
+        }
+        @keyframes mirror-sweep {
+            0%,100% { transform: translateY(-100%); opacity: 0; }
+            50% { transform: translateY(100%); opacity: 1; }
+        }
+        .release-expand-content { max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .release-accordion.expanded .release-expand-content { max-height: 3000px; }
+        .release-chevron { transition: transform 0.3s ease; }
+        .release-accordion.expanded .release-chevron { transform: rotate(180deg); }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden text-slate-800 <?= $bodyBgClass ?>"<?= $bodyStyle ? ' style="' . htmlspecialchars($bodyStyle) . '"' : '' ?>>
@@ -110,105 +126,82 @@ function oshiImgSrc(?string $imageUrl): string {
 
         <div class="flex-1 overflow-y-auto p-6 md:p-10 custom-scroll">
             <div class="max-w-5xl mx-auto">
-                <?php if (!empty($nextEvent) && isset($nextEvent['days_left']) && (int)$nextEvent['days_left'] >= 0): ?>
-                <div class="mb-8 flex items-center">
-                    <div class="flex items-center gap-4 bg-white rounded-xl border <?= $cardBorder ?> shadow-sm px-5 py-4 w-full md:w-auto">
-                        <div class="w-10 h-10 rounded-lg text-white flex items-center justify-center shadow-md hinata-next-event-icon <?= $headerIconBg ?>">
-                            <i class="fa-solid fa-calendar-day"></i>
-                        </div>
-                        <div class="flex-1">
-                            <p class="text-[10px] font-bold tracking-wider mb-1 hinata-next-event-label <?= !$isThemeHex ? "text-{$themeTailwind}-500" : '' ?>">次のイベント</p>
-                            <p class="text-sm font-bold text-slate-800 mb-0.5"><?= htmlspecialchars($nextEvent['event_name'] ?? '次のイベント') ?></p>
-                            <p class="text-xs text-slate-500">
-                                <?php
-                                    $days = (int)$nextEvent['days_left'];
-                                    $dateText = !empty($nextEvent['event_date']) ? \Core\Utils\DateUtil::format($nextEvent['event_date'], 'Y/m/d') : '';
+                <?php
+                $hasNextEvent = !empty($nextEvent) && isset($nextEvent['days_left']) && (int)$nextEvent['days_left'] >= 0;
+                $hasBdBanner = !empty($upcomingBirthdays);
+                if ($hasNextEvent || $hasBdBanner):
+                    $bdToday = $hasBdBanner ? array_filter($upcomingBirthdays, fn($b) => (int)$b['days_until'] === 0) : [];
+                    $bdUpcoming = $hasBdBanner ? array_filter($upcomingBirthdays, fn($b) => (int)$b['days_until'] > 0) : [];
+                ?>
+                <div class="mb-5 flex flex-col md:flex-row gap-4 md:gap-3 items-stretch">
+                    <?php if ($hasNextEvent): $days = (int)$nextEvent['days_left']; $dateText = !empty($nextEvent['event_date']) ? \Core\Utils\DateUtil::format($nextEvent['event_date'], 'Y/m/d') : ''; ?>
+                    <div class="flex-1 min-w-0 flex items-center">
+                        <div class="flex items-center gap-4 bg-white rounded-xl border <?= $cardBorder ?> shadow-sm px-5 py-4 w-full h-full min-h-[88px]">
+                            <div class="w-10 h-10 rounded-lg text-white flex items-center justify-center shadow-md hinata-next-event-icon <?= $headerIconBg ?> shrink-0">
+                                <i class="fa-solid fa-calendar-day"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-[10px] font-bold tracking-wider mb-1 hinata-next-event-label <?= !$isThemeHex ? "text-{$themeTailwind}-500" : '' ?>">次のイベント</p>
+                                <p class="text-sm font-bold text-slate-800 mb-0.5"><?= htmlspecialchars($nextEvent['event_name'] ?? '次のイベント') ?></p>
+                                <p class="text-xs text-slate-500">
+                                    <?php
                                     if ($days === 0) echo '本日開催';
                                     elseif ($days === 1) echo 'あと 1 日';
                                     else echo 'あと ' . $days . ' 日';
                                     if ($dateText) echo '（' . $dateText . '）';
-                                ?>
-                            </p>
-                        </div>
-                        <?php if ($days === 0 && in_array((int)($nextEvent['category'] ?? 0), [2, 3])): ?>
-                        <a href="/hinata/meetgreet_report.php?event_id=<?= (int)$nextEvent['id'] ?>"
-                           class="inline-flex items-center gap-1 text-[10px] font-bold text-white px-3 py-1.5 rounded-full transition active:scale-95 shrink-0 <?= $headerIconBg ?>"<?= $isThemeHex ? ' style="background: ' . htmlspecialchars($themePrimary) . ';"' : '' ?>>
-                            <i class="fa-solid fa-pen-to-square"></i>レポを書く
-                        </a>
-                        <?php endif; ?>
-                        <a href="/hinata/events.php" class="hidden md:inline-flex items-center justify-center w-8 h-8 rounded-full border <?= $cardBorder ?> <?= $cardIconText ?> hover:opacity-80 transition"<?= $isThemeHex ? ' style="color: ' . htmlspecialchars($themePrimary) . ';"' : '' ?>>
-                            <i class="fa-solid fa-chevron-right text-xs"></i>
-                        </a>
-                    </div>
-                </div>
-                <?php endif; ?>
-
-                <?php if (!empty($upcomingBirthdays)): ?>
-                <div class="mb-8">
-                    <?php
-                    $bdToday = array_filter($upcomingBirthdays, fn($b) => (int)$b['days_until'] === 0);
-                    $bdUpcoming = array_filter($upcomingBirthdays, fn($b) => (int)$b['days_until'] > 0);
-                    ?>
-                    <?php if (!empty($bdToday)): ?>
-                    <div class="bg-gradient-to-r from-pink-50 to-rose-50 rounded-xl border border-pink-200 shadow-sm px-5 py-4 mb-3 relative overflow-hidden">
-                        <div class="absolute top-0 right-0 opacity-10 text-6xl p-3 text-pink-300"><i class="fa-solid fa-cake-candles"></i></div>
-                        <div class="flex items-center gap-3 mb-2">
-                            <div class="w-8 h-8 rounded-lg bg-pink-500 text-white flex items-center justify-center shadow-sm"><i class="fa-solid fa-birthday-cake text-sm"></i></div>
-                            <h3 class="text-sm font-black text-pink-700 tracking-tight">Happy Birthday!</h3>
-                        </div>
-                        <div class="flex items-center gap-4">
-                            <?php foreach ($bdToday as $bd): ?>
-                            <?php
-                            $bdImg = $bd['first_image'] ?: ($bd['image_url'] ?? null);
-                            $bdAge = $bd['birth_date'] ? (date('Y') - (int)date('Y', strtotime($bd['birth_date']))) : null;
-                            ?>
-                            <a href="/hinata/member.php?id=<?= (int)$bd['id'] ?>" class="flex items-center gap-3 hover:opacity-80 transition">
-                                <div class="w-14 h-14 rounded-full overflow-hidden bg-pink-100 shrink-0 ring-2 ring-pink-300 shadow-md">
-                                    <?php if ($bdImg): ?>
-                                    <img src="/assets/img/members/<?= htmlspecialchars($bdImg) ?>" class="w-full h-full object-cover" alt="">
-                                    <?php else: ?>
-                                    <div class="w-full h-full flex items-center justify-center text-pink-300"><i class="fa-solid fa-user text-xl"></i></div>
-                                    <?php endif; ?>
-                                </div>
-                                <div>
-                                    <p class="text-base font-black text-pink-800"><?= htmlspecialchars($bd['name']) ?></p>
-                                    <p class="text-xs text-pink-600"><?= $bd['generation'] ?>期生<?= $bdAge ? " &middot; {$bdAge}歳" : '' ?></p>
-                                </div>
+                                    ?>
+                                </p>
+                            </div>
+                            <?php if ($days === 0 && in_array((int)($nextEvent['category'] ?? 0), [2, 3])): ?>
+                            <a href="/hinata/meetgreet_report.php?event_id=<?= (int)$nextEvent['id'] ?>"
+                               class="inline-flex items-center gap-1 text-[10px] font-bold text-white px-3 py-1.5 rounded-full transition active:scale-95 shrink-0 <?= $headerIconBg ?>"<?= $isThemeHex ? ' style="background: ' . htmlspecialchars($themePrimary) . ';"' : '' ?>>
+                                <i class="fa-solid fa-pen-to-square"></i>レポを書く
                             </a>
-                            <?php endforeach; ?>
+                            <?php endif; ?>
+                            <a href="/hinata/events.php" class="hidden md:inline-flex items-center justify-center w-8 h-8 rounded-full border <?= $cardBorder ?> <?= $cardIconText ?> hover:opacity-80 transition shrink-0"<?= $isThemeHex ? ' style="color: ' . htmlspecialchars($themePrimary) . ';"' : '' ?>>
+                                <i class="fa-solid fa-chevron-right text-xs"></i>
+                            </a>
                         </div>
                     </div>
                     <?php endif; ?>
-                    <?php if (!empty($bdUpcoming)): ?>
-                    <div class="bd-scroll">
-                        <?php foreach ($bdUpcoming as $bd): ?>
-                        <?php
-                        $bdImg = $bd['first_image'] ?: ($bd['image_url'] ?? null);
-                        $bdDate = $bd['birth_date'] ? date('Y/m/d', strtotime($bd['birth_date'])) : '';
-                        ?>
-                        <a href="/hinata/member.php?id=<?= (int)$bd['id'] ?>" class="flex items-center gap-3 bg-white rounded-xl border <?= $cardBorder ?> shadow-sm px-4 py-3 shrink-0 hover:shadow-md hover:border-pink-200 transition">
-                            <div class="w-10 h-10 rounded-full overflow-hidden bg-slate-100 shrink-0" style="<?= !empty($bd['color1']) ? 'box-shadow: 0 0 0 2px ' . htmlspecialchars($bd['color1']) : '' ?>">
-                                <?php if ($bdImg): ?>
-                                <img src="/assets/img/members/<?= htmlspecialchars($bdImg) ?>" class="w-full h-full object-cover" alt="">
-                                <?php else: ?>
-                                <div class="w-full h-full flex items-center justify-center text-slate-300"><i class="fa-solid fa-user text-sm"></i></div>
-                                <?php endif; ?>
+                    <?php if ($hasBdBanner): ?>
+                    <div class="flex-1 md:flex-initial md:w-72 lg:w-80 flex items-stretch min-h-[88px]">
+                        <div class="bg-gradient-to-r from-pink-50 to-rose-50 rounded-xl border border-pink-200 shadow-sm px-4 py-3 w-full overflow-hidden flex flex-col">
+                            <div class="flex items-center gap-2 mb-2 shrink-0">
+                                <div class="w-7 h-7 rounded-lg bg-pink-500 text-white flex items-center justify-center shadow-sm shrink-0"><i class="fa-solid fa-birthday-cake text-xs"></i></div>
+                                <h3 class="text-xs font-black text-pink-700 tracking-tight">誕生日</h3>
                             </div>
-                            <div class="min-w-0">
-                                <p class="text-xs font-bold text-slate-800 truncate"><?= htmlspecialchars($bd['name']) ?></p>
-                                <p class="text-[10px] text-slate-400"><?= $bdDate ?></p>
-                                <p class="text-[10px] text-pink-500 font-bold">あと<?= (int)$bd['days_until'] ?>日</p>
+                            <div class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden space-y-2">
+                                <?php foreach (array_merge($bdToday, $bdUpcoming) as $bd): ?>
+                                <?php
+                                $bdImg = $bd['first_image'] ?: ($bd['image_url'] ?? null);
+                                $bdDate = $bd['birth_date'] ? date('m/d', strtotime($bd['birth_date'])) : '';
+                                $isToday = (int)$bd['days_until'] === 0;
+                                ?>
+                                <a href="/hinata/member.php?id=<?= (int)$bd['id'] ?>" class="flex items-center gap-2 bg-white/80 rounded-lg border border-pink-100 px-3 py-2 hover:bg-white hover:shadow-sm transition shrink-0">
+                                    <div class="w-8 h-8 rounded-full overflow-hidden bg-pink-100 shrink-0" style="<?= !empty($bd['color1']) ? 'box-shadow: 0 0 0 1.5px ' . htmlspecialchars($bd['color1']) : '' ?>">
+                                        <?php if ($bdImg): ?>
+                                        <img src="/assets/img/members/<?= htmlspecialchars($bdImg) ?>" class="w-full h-full object-cover" alt="">
+                                        <?php else: ?>
+                                        <div class="w-full h-full flex items-center justify-center text-pink-300"><i class="fa-solid fa-user text-xs"></i></div>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="text-[11px] font-bold text-slate-800 truncate"><?= htmlspecialchars($bd['name']) ?></p>
+                                        <p class="text-[9px] <?= $isToday ? 'text-pink-600 font-bold' : 'text-slate-400' ?>"><?= $isToday ? '本日！' : ($bdDate . ' あと' . (int)$bd['days_until'] . '日') ?></p>
+                                    </div>
+                                    <?php if ($isToday): ?><i class="fa-solid fa-cake-candles text-pink-400 text-xs shrink-0"></i><?php endif; ?>
+                                </a>
+                                <?php endforeach; ?>
                             </div>
-                            <i class="fa-solid fa-cake-candles text-pink-300 text-xs ml-auto shrink-0"></i>
-                        </a>
-                        <?php endforeach; ?>
+                        </div>
                     </div>
                     <?php endif; ?>
                 </div>
                 <?php endif; ?>
 
                 <?php if (!empty($todayMeetGreetSlots)): ?>
-                <div class="mb-8">
+                <div class="mb-5">
                     <div class="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-200 shadow-sm overflow-hidden">
                         <div class="flex items-center gap-3 px-5 py-3 border-b border-amber-100">
                             <div class="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center shadow-sm">
@@ -254,8 +247,8 @@ function oshiImgSrc(?string $imageUrl): string {
                 <?php endif; ?>
 
                 <!-- 推し情報エリア -->
-                <section class="mb-10">
-                    <div class="flex items-center justify-between mb-4">
+                <section class="mb-7">
+                    <div class="flex items-center justify-between mb-3">
                         <h2 class="text-sm font-black text-slate-500 tracking-wider"><i class="fa-solid fa-crown text-amber-500 mr-2"></i>あなたの推し</h2>
                         <a href="/hinata/oshi_settings.php" class="text-[10px] font-bold text-slate-400 hover:text-slate-600 transition"><i class="fa-solid fa-gear mr-1"></i>推し設定</a>
                     </div>
@@ -271,15 +264,28 @@ function oshiImgSrc(?string $imageUrl): string {
                                     $mainLabel = FavoriteModel::LEVEL_LABELS[$mainLevel] ?? '';
                                 ?>
                                 <div class="flex flex-col md:flex-row gap-4 md:gap-5 h-full">
-                                    <div class="w-36 h-36 md:w-44 md:h-auto rounded-xl overflow-hidden bg-slate-100 shrink-0 shadow-md mx-auto md:mx-0 md:self-stretch">
-                                        <?php if ($mainOshi['image_url']): ?>
-                                        <img id="oshiMainImg" src="<?= oshiImgSrc($mainOshi['image_url']) ?>" class="w-full h-full object-cover" alt="">
-                                        <?php else: ?>
-                                        <div id="oshiMainImg" class="w-full h-full flex items-center justify-center text-slate-300"><i class="fa-solid fa-user text-4xl"></i></div>
-                                        <?php endif; ?>
+                                    <div class="flex flex-row md:flex-col gap-3 md:gap-4">
+                                        <div class="w-24 h-24 md:w-44 md:h-auto rounded-xl overflow-hidden bg-slate-100 shrink-0 shadow-md md:mx-0 md:self-stretch" style="min-width: 96px;">
+                                            <?php if ($mainOshi['image_url']): ?>
+                                            <img id="oshiMainImg" src="<?= oshiImgSrc($mainOshi['image_url']) ?>" class="w-full h-full object-cover" alt="">
+                                            <?php else: ?>
+                                            <div id="oshiMainImg" class="w-full h-full flex items-center justify-center text-slate-300"><i class="fa-solid fa-user text-3xl md:text-4xl"></i></div>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="flex-1 md:hidden flex flex-col justify-center min-w-0 space-y-1">
+                                            <span id="oshiMainLabelSp" class="inline-block text-[10px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full w-fit"><?= FavoriteModel::LEVEL_LABELS[$mainLevel] ?? '' ?></span>
+                                            <h3 id="oshiMainNameSp" class="text-base font-black text-slate-800"><?= htmlspecialchars($mainOshi['name']) ?></h3>
+                                            <p id="oshiMainGenSp" class="text-[11px] text-slate-400"><?= htmlspecialchars($mainOshi['generation']) ?>期生</p>
+                                            <a id="oshiMainBlogSp" href="<?= !empty($mainOshi['blog_url']) ? htmlspecialchars($mainOshi['blog_url']) : '#' ?>" target="_blank" class="flex items-center gap-1.5 text-sky-600 hover:text-sky-700 text-xs<?= empty($mainOshi['blog_url']) ? ' hidden' : '' ?>"><i class="fa-solid fa-blog w-3"></i>公式ブログ</a>
+                                            <?php if ($mainOshi['song_count'] > 0): ?>
+                                            <div id="oshiMainSongsSp" class="flex items-center gap-1.5 text-slate-500 text-xs"><i class="fa-solid fa-music w-3 text-slate-400"></i>参加楽曲 <?= $mainOshi['song_count'] ?> 曲</div>
+                                            <?php else: ?>
+                                            <div id="oshiMainSongsSp" class="hidden"></div>
+                                            <?php endif; ?>
+                                        </div>
                                     </div>
                                     <div class="flex-1 min-w-0 flex flex-col">
-                                        <div class="flex-1">
+                                        <div class="flex-1 hidden md:block">
                                             <span id="oshiMainLabel" class="inline-block text-[10px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full mb-1"><?= $mainLabel ?></span>
                                             <h3 id="oshiMainName" class="text-xl md:text-2xl font-black text-slate-800 mb-0.5"><?= htmlspecialchars($mainOshi['name']) ?></h3>
                                             <p id="oshiMainGen" class="text-[11px] text-slate-400 mb-2"><?= htmlspecialchars($mainOshi['generation']) ?>期生</p>
@@ -288,12 +294,14 @@ function oshiImgSrc(?string $imageUrl): string {
                                                 <a id="oshiMainInsta" href="<?= !empty($mainOshi['insta_url']) ? htmlspecialchars($mainOshi['insta_url']) : '#' ?>" target="_blank" class="flex items-center gap-2 text-pink-600 hover:text-pink-700<?= empty($mainOshi['insta_url']) ? ' hidden' : '' ?>"><i class="fa-brands fa-instagram w-4"></i>Instagram</a>
                                                 <div id="oshiMainEvent" class="flex items-center gap-2 text-slate-600"<?= empty($mainOshi['next_event']) ? ' style="display:none"' : '' ?>><?php if (!empty($mainOshi['next_event'])): ?><i class="fa-solid fa-calendar w-4 text-slate-400"></i><?= htmlspecialchars($mainOshi['next_event']['event_name']) ?> (<?= htmlspecialchars($mainOshi['next_event']['event_date']) ?>)<?php endif; ?></div>
                                                 <div id="oshiMainSongs" class="flex items-center gap-2 text-slate-600"<?= $mainOshi['song_count'] <= 0 ? ' style="display:none"' : '' ?>><?php if ($mainOshi['song_count'] > 0): ?><i class="fa-solid fa-music w-4 text-slate-400"></i>参加楽曲 <?= $mainOshi['song_count'] ?> 曲<?php endif; ?></div>
-                                                <?php
-                                                $mainNewItems = $oshiLatestItemByMember[$mainOshi['member_id']] ?? [];
-                                                $hasAnyNewItems = !empty($oshiLatestItemByMember);
-                                                ?>
-                                                <?php if ($hasAnyNewItems): ?>
-                                                <div id="oshiMainNewItemWrap" class="pt-2<?= empty($mainNewItems) ? ' hidden' : '' ?>">
+                                            </div>
+                                        </div>
+                                        <?php
+                                        $mainNewItems = $oshiLatestItemByMember[$mainOshi['member_id']] ?? [];
+                                        $hasAnyNewItems = !empty($oshiLatestItemByMember);
+                                        ?>
+                                        <?php if ($hasAnyNewItems): ?>
+                                        <div id="oshiMainNewItemWrap" class="pt-2<?= empty($mainNewItems) ? ' hidden' : '' ?>">
                                                     <p class="text-sm font-black text-slate-600 mb-1.5"><i class="fa-solid fa-bell text-amber-500 mr-1"></i>推しの新着</p>
                                                     <div id="oshiMainNewItemContent" class="space-y-1.5">
                                                         <?php foreach ($mainNewItems as $ni):
@@ -313,11 +321,9 @@ function oshiImgSrc(?string $imageUrl): string {
                                                         </div>
                                                         <?php endforeach; ?>
                                                     </div>
-                                                </div>
-                                                <?php endif; ?>
-                                            </div>
                                         </div>
-                                        <a id="oshiMainLink" href="/hinata/member.php?id=<?= $mainOshi['member_id'] ?>" class="inline-flex items-center justify-center gap-2 mt-3 w-full px-5 py-2.5 rounded-full text-sm font-black text-white bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-md hover:shadow-lg transition-all"><i class="fa-solid fa-arrow-right text-xs"></i>推し個別ページへ</a>
+                                        <?php endif; ?>
+                                        <a id="oshiMainLink" href="/hinata/member.php?id=<?= $mainOshi['member_id'] ?>" class="oshi-mirror-btn inline-flex items-center justify-center gap-2 mt-3 w-full px-5 py-2.5 rounded-full text-sm font-black text-white bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-md hover:shadow-lg transition-all"><i class="fa-solid fa-arrow-right text-xs"></i>推し個別ページへ</a>
                                     </div>
                                 </div>
                                 <?php endif; ?>
@@ -356,19 +362,19 @@ function oshiImgSrc(?string $imageUrl): string {
                     </div>
                     <?php else: ?>
                     <div class="bg-white rounded-xl border <?= $cardBorder ?> shadow-sm p-8 text-center">
-                        <div class="w-16 h-16 mx-auto rounded-full bg-amber-50 flex items-center justify-center mb-4">
+                        <div class="w-16 h-16 mx-auto rounded-full bg-amber-50 flex items-center justify-center mb-3">
                             <i class="fa-solid fa-heart text-amber-400 text-2xl"></i>
                         </div>
                         <p class="text-sm font-bold text-slate-700 mb-2">推しを設定しましょう！</p>
-                        <p class="text-xs text-slate-400 mb-4">推しを設定すると、ここにメンバーの情報が表示されます。</p>
+                        <p class="text-xs text-slate-400 mb-3">推しを設定すると、ここにメンバーの情報が表示されます。</p>
                         <a href="/hinata/oshi_settings.php" class="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg text-xs font-bold hover:bg-amber-600 transition shadow-sm"><i class="fa-solid fa-gear"></i>推し設定へ</a>
                     </div>
                     <?php endif; ?>
                 </section>
 
                 <?php if (!empty($todayInHistory)): ?>
-                <section class="mb-10">
-                    <div class="flex items-center gap-2 mb-3">
+                <section class="mb-7">
+                    <div class="flex items-center gap-2 mb-2">
                         <i class="fa-solid fa-clock-rotate-left text-indigo-500"></i>
                         <h2 class="text-sm font-bold text-slate-700">今日は何の日</h2>
                         <span class="text-[10px] text-slate-400 ml-1"><?= date('n月j日') ?></span>
@@ -402,16 +408,16 @@ function oshiImgSrc(?string $imageUrl): string {
                 <!-- 最新リリース情報 -->
                 <?php ob_start(); ?>
                 <?php if ($latestRelease): ?>
-                <section class="mb-10">
-                    <div class="flex items-center gap-2 mb-3">
+                <section class="mb-7" id="releaseSection">
+                    <div class="flex items-center gap-2 mb-2">
                         <i class="fa-solid fa-compact-disc text-violet-500"></i>
                         <h2 class="text-sm font-bold text-slate-700">最新リリース</h2>
                         <?php if ($releaseIsNew): ?>
                         <span class="text-[10px] font-black text-white bg-red-500 px-2.5 py-0.5 rounded-full shadow-sm shadow-red-200 animate-pulse">NEW</span>
                         <?php endif; ?>
                     </div>
-                    <div class="bg-white rounded-xl border <?= $cardBorder ?> shadow-sm overflow-hidden">
-                        <a href="/hinata/release.php?id=<?= $latestRelease['id'] ?>" class="block p-5 hover:bg-slate-50/50 transition group">
+                    <div id="releaseAccordion" class="release-accordion bg-white rounded-xl border <?= $cardBorder ?> shadow-sm overflow-hidden" data-release-id="<?= (int)$latestRelease['id'] ?>">
+                        <button type="button" id="releaseAccordionBtn" class="release-accordion-btn w-full text-left block p-5 hover:bg-slate-50/50 transition group cursor-pointer border-0 bg-transparent">
                             <div class="flex items-start gap-5">
                                 <div class="flex-1 min-w-0">
                                     <span class="text-[10px] font-bold text-violet-500 bg-violet-50 px-2 py-0.5 rounded-full"><?= htmlspecialchars($latestRelease['release_type_label']) ?></span>
@@ -420,8 +426,9 @@ function oshiImgSrc(?string $imageUrl): string {
                                         <?= $latestRelease['release_date'] ? date('Y/m/d', strtotime($latestRelease['release_date'])) : '' ?>
                                         <?php if ($latestRelease['song_count']): ?> &middot; <?= $latestRelease['song_count'] ?> 曲収録<?php endif; ?>
                                     </p>
+                                    <p class="text-[10px] text-violet-400 mt-1.5 flex items-center gap-1"><i class="fa-solid fa-chevron-down release-chevron text-[8px]"></i>タップで展開</p>
                                 </div>
-                                <i class="fa-solid fa-chevron-right text-slate-300 group-hover:text-slate-500 transition hidden md:block mt-2"></i>
+                                <i class="fa-solid fa-chevron-down release-chevron text-slate-300 group-hover:text-slate-500 transition mt-2"></i>
                             </div>
                             <?php
                             $jackets = [];
@@ -451,10 +458,11 @@ function oshiImgSrc(?string $imageUrl): string {
                                 </div>
                             </div>
                             <?php endif; ?>
-                        </a>
+                        </button>
+                        <div class="release-expand-content" id="releaseExpandContent">
                         <?php if (!empty($latestRelease['mvs'])): ?>
                         <div class="border-t border-slate-100 px-5 py-4">
-                            <div class="flex items-center gap-2 mb-3">
+                            <div class="flex items-center gap-2 mb-2">
                                 <i class="fa-solid fa-play-circle text-violet-400 text-sm"></i>
                                 <span class="text-[11px] font-bold text-slate-600">ミュージックビデオ</span>
                                 <span class="text-[9px] text-slate-400"><?= count($latestRelease['mvs']) ?> 本</span>
@@ -502,7 +510,7 @@ function oshiImgSrc(?string $imageUrl): string {
                                 ?>
                                 <li class="flex items-center gap-2.5 px-5 py-2.5 hover:bg-slate-50/50 transition">
                                     <span class="text-slate-300 text-[10px] font-mono w-4 text-right shrink-0"><?= (int)($rs['track_number'] ?? 0) ?></span>
-                                    <a href="/hinata/song.php?id=<?= (int)$rs['id'] ?>" class="flex-1 min-w-0">
+                                    <a href="/hinata/song.php?id=<?= (int)$rs['id'] ?>" class="flex-1 min-w-0 release-song-link" data-release-id="<?= (int)$latestRelease['id'] ?>">
                                         <p class="text-[12px] font-bold text-slate-700 truncate"><?= htmlspecialchars($rs['title']) ?></p>
                                         <p class="text-[9px] text-slate-400"><?= htmlspecialchars($trackTypeLabelsPortal[$rs['track_type'] ?? ''] ?? $rs['track_type'] ?? '') ?></p>
                                     </a>
@@ -527,6 +535,7 @@ function oshiImgSrc(?string $imageUrl): string {
                             </ul>
                         </div>
                         <?php endif; ?>
+                        </div>
                     </div>
                 </section>
                 <?php endif; ?>
@@ -535,11 +544,12 @@ function oshiImgSrc(?string $imageUrl): string {
 
                 <!-- 最新ブログ（全メンバー対象） -->
                 <?php if (!empty($latestBlogPosts)): ?>
-                <section class="mb-10">
-                    <div class="flex items-center gap-2 mb-3">
+                <section class="mb-7">
+                    <div class="flex items-center gap-2 mb-2">
                         <i class="fa-solid fa-pen-fancy text-pink-500"></i>
                         <h2 class="text-sm font-bold text-slate-700">最新ブログ</h2>
                         <span class="text-[10px] text-slate-400 ml-auto"><?= count($latestBlogPosts) ?> 件</span>
+                        <a href="https://www.hinatazaka46.com/s/official/diary/member?ima=0000" target="_blank" rel="noopener" class="text-[10px] font-bold text-pink-500 hover:text-pink-600 transition">もっと見る <i class="fa-solid fa-arrow-right text-[8px]"></i></a>
                     </div>
                     <div class="yt-scroll-wrap">
                         <button class="yt-arrow left hidden" onclick="YtCarousel.scroll('blogCards', -1)"><i class="fa-solid fa-chevron-left text-sm"></i></button>
@@ -571,11 +581,12 @@ function oshiImgSrc(?string $imageUrl): string {
                 <?php endif; ?>
 
                 <!-- YouTube (タブ切替) -->
-                <section class="mb-10">
-                    <div class="flex items-center gap-2 mb-3">
+                <section class="mb-7">
+                    <div class="flex items-center gap-2 mb-2">
                         <i class="fa-brands fa-youtube text-red-500"></i>
                         <h2 class="text-sm font-bold text-slate-700">YouTube</h2>
-                        <div class="flex gap-1 ml-auto">
+                        <div class="flex gap-1 ml-auto items-center">
+                            <a href="/hinata/media_list.php?platform=youtube" class="text-[10px] font-bold text-red-500 hover:text-red-600 transition">もっと見る <i class="fa-solid fa-arrow-right text-[8px]"></i></a>
                             <button class="yt-tab text-[10px] font-bold px-3 py-1 rounded-full bg-red-500 text-white" data-idx="0" onclick="switchYtTab(0)">ちゃんねる</button>
                             <button class="yt-tab text-[10px] font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition" data-idx="1" onclick="switchYtTab(1)">公式チャンネル</button>
                         </div>
@@ -607,10 +618,11 @@ function oshiImgSrc(?string $imageUrl): string {
                 </section>
 
                 <!-- TikTok -->
-                <section class="mb-10">
-                    <div class="flex items-center gap-2 mb-3">
+                <section class="mb-7">
+                    <div class="flex items-center gap-2 mb-2">
                         <i class="fa-brands fa-tiktok text-slate-800"></i>
                         <h2 class="text-sm font-bold text-slate-700">TikTok</h2>
+                        <a href="/hinata/media_list.php?platform=tiktok" class="ml-auto text-[10px] font-bold text-slate-600 hover:text-slate-800 transition">もっと見る <i class="fa-solid fa-arrow-right text-[8px]"></i></a>
                     </div>
                     <div class="yt-scroll-wrap">
                         <button class="yt-arrow left hidden" onclick="TkCarousel.scroll('tkCards', -1)"><i class="fa-solid fa-chevron-left text-sm"></i></button>
@@ -628,33 +640,51 @@ function oshiImgSrc(?string $imageUrl): string {
                     </div>
                 </section>
 
-                <!-- X 公式 (インライン) -->
-                <div class="flex flex-col gap-2 mb-10">
-                    <div class="flex items-center gap-3 bg-white rounded-lg border <?= $cardBorder ?> shadow-sm px-4 py-3">
-                        <i class="fa-brands fa-x-twitter text-lg text-slate-600"></i>
-                        <span class="text-xs font-bold text-slate-700">日向坂46</span>
-                        <span class="text-[10px] text-slate-400">@hinatazaka46</span>
-                        <a href="https://x.com/hinatazaka46" target="_blank" rel="noopener"
-                           class="ml-auto shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 text-white rounded-full text-[10px] font-bold hover:bg-slate-700 transition">
-                            <i class="fa-brands fa-x-twitter text-[8px]"></i>ポストを見る
-                        </a>
+                <!-- SNSリンクエリア -->
+                <section class="mb-7">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i class="fa-solid fa-share-nodes text-slate-500"></i>
+                        <h2 class="text-sm font-bold text-slate-700">公式リンク</h2>
                     </div>
-                    <div class="flex items-center gap-3 bg-white rounded-lg border <?= $cardBorder ?> shadow-sm px-4 py-3">
-                        <i class="fa-brands fa-instagram text-lg text-slate-600"></i>
-                        <span class="text-xs font-bold text-slate-700">日向坂46</span>
-                        <span class="text-[10px] text-slate-400">@hinatazaka46</span>
-                        <a href="https://www.instagram.com/hinatazaka46/" target="_blank" rel="noopener"
-                           class="ml-auto shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500 text-white rounded-full text-[10px] font-bold hover:brightness-110 transition">
-                            <i class="fa-brands fa-instagram text-[8px]"></i>Instagramを見る
-                        </a>
+                    <div class="bg-white rounded-xl border <?= $cardBorder ?> shadow-sm p-5">
+                        <div class="flex flex-wrap items-stretch gap-3">
+                            <a href="https://www.hinatazaka46.com/s/official/" target="_blank" rel="noopener" class="sns-link-card flex flex-col items-center justify-center gap-1.5 w-20 h-20 rounded-xl border <?= $cardBorder ?> bg-slate-50 hover:bg-slate-100 hover:shadow-md transition-all shrink-0 overflow-hidden" title="日向坂公式サイト">
+                                <div class="w-10 h-10 flex items-center justify-center shrink-0"><img src="/assets/img/hinata/hinata-logo.svg" alt="" class="max-w-full max-h-full object-contain" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><span class="w-10 h-10 items-center justify-center text-slate-600 hidden"><i class="fa-solid fa-globe text-xl"></i></span></div>
+                                <span class="text-[9px] font-bold text-slate-600 text-center leading-tight px-1">公式サイト</span>
+                            </a>
+                            <a href="https://x.com/hinatazaka46" target="_blank" rel="noopener" class="sns-link-card flex flex-col items-center justify-center gap-1.5 w-20 h-20 rounded-xl border <?= $cardBorder ?> bg-slate-800 hover:bg-slate-700 text-white hover:shadow-md transition-all shrink-0" title="日向坂公式X">
+                                <i class="fa-brands fa-x-twitter text-2xl"></i>
+                                <span class="text-[9px] font-bold text-center leading-tight px-1">X</span>
+                            </a>
+                            <a href="https://www.instagram.com/hinatazaka46/" target="_blank" rel="noopener" class="sns-link-card flex flex-col items-center justify-center gap-1.5 w-20 h-20 rounded-xl border <?= $cardBorder ?> bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500 text-white hover:brightness-110 hover:shadow-md transition-all shrink-0" title="日向坂公式Instagram">
+                                <i class="fa-brands fa-instagram text-2xl"></i>
+                                <span class="text-[9px] font-bold text-center leading-tight px-1">Instagram</span>
+                            </a>
+                            <a href="https://www.youtube.com/@46officialyoutubechannel99" target="_blank" rel="noopener" class="sns-link-card flex flex-col items-center justify-center gap-1.5 w-20 h-20 rounded-xl border <?= $cardBorder ?> bg-red-600 hover:bg-red-700 text-white hover:shadow-md transition-all shrink-0" title="日向坂公式YouTube">
+                                <i class="fa-brands fa-youtube text-2xl"></i>
+                                <span class="text-[9px] font-bold text-center leading-tight px-1">公式YT</span>
+                            </a>
+                            <a href="https://www.youtube.com/@hinatazakachannel" target="_blank" rel="noopener" class="sns-link-card flex flex-col items-center justify-center gap-1.5 w-20 h-20 rounded-xl border <?= $cardBorder ?> bg-red-600 hover:bg-red-700 text-white hover:shadow-md transition-all shrink-0" title="日向坂ちゃんねる">
+                                <i class="fa-brands fa-youtube text-2xl"></i>
+                                <span class="text-[9px] font-bold text-center leading-tight px-1">ちゃんねる</span>
+                            </a>
+                            <a href="https://www.tiktok.com/@hinatazakanews" target="_blank" rel="noopener" class="sns-link-card flex flex-col items-center justify-center gap-1.5 w-20 h-20 rounded-xl border <?= $cardBorder ?> bg-slate-800 hover:bg-slate-700 text-white hover:shadow-md transition-all shrink-0" title="日向坂公式TikTok">
+                                <i class="fa-brands fa-tiktok text-2xl"></i>
+                                <span class="text-[9px] font-bold text-center leading-tight px-1">TikTok</span>
+                            </a>
+                            <a href="https://store.plusmember.jp/hinatazaka46/" target="_blank" rel="noopener" class="sns-link-card flex flex-col items-center justify-center gap-1.5 w-20 h-20 rounded-xl border <?= $cardBorder ?> bg-amber-500 hover:bg-amber-600 text-white hover:shadow-md transition-all shrink-0" title="日向坂OFFICIAL GOODS STORE">
+                                <i class="fa-solid fa-bag-shopping text-2xl"></i>
+                                <span class="text-[9px] font-bold text-center leading-tight px-1">GOODS</span>
+                            </a>
+                        </div>
                     </div>
-                </div>
+                </section>
 
                 <?php if (!$releaseIsNew) echo $releaseHtml; ?>
 
                 <!-- アプリ -->
-                <section class="mb-10">
-                <div class="flex items-center gap-2 mb-4">
+                <section class="mb-7">
+                <div class="flex items-center gap-2 mb-2">
                     <i class="fa-solid fa-grip text-slate-400"></i>
                     <h2 class="text-sm font-black text-slate-500 tracking-wider">アプリ</h2>
                 </div>
@@ -663,7 +693,7 @@ function oshiImgSrc(?string $imageUrl): string {
                         <div class="hidden md:block absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform card-deco <?= $cardDeco ?>"><i class="fa-solid fa-book-open text-6xl"></i></div>
                         <div class="relative z-10 flex flex-col items-center md:block">
                             <div class="w-16 h-16 md:w-12 md:h-12 rounded-lg flex items-center justify-center mb-2 md:mb-6 transition-colors card-icon <?= $cardIconBg ?> <?= $cardIconText ?> <?= $cardIconHover ?>"><i class="fa-solid fa-comment-dots text-2xl md:text-base"></i></div>
-                            <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-4 text-center md:text-left">ミーグリネタ帳</h3>
+                            <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-3 text-center md:text-left">ミーグリネタ帳</h3>
                             <p class="hidden md:block text-sm text-slate-400 leading-relaxed">メンバーとの会話ネタや、ミーグリのレポを記録・管理します。</p>
                         </div>
                     </a>
@@ -671,7 +701,7 @@ function oshiImgSrc(?string $imageUrl): string {
                         <div class="hidden md:block absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform card-deco <?= $cardDeco ?>"><i class="fa-solid fa-ticket text-6xl"></i></div>
                         <div class="relative z-10 flex flex-col items-center md:block">
                             <div class="w-16 h-16 md:w-12 md:h-12 rounded-lg flex items-center justify-center mb-2 md:mb-6 transition-colors card-icon <?= $cardIconBg ?> <?= $cardIconText ?> <?= $cardIconHover ?>"><i class="fa-solid fa-ticket text-2xl md:text-base"></i></div>
-                            <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-4 text-center md:text-left">ミーグリ予定</h3>
+                            <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-3 text-center md:text-left">ミーグリ予定</h3>
                             <p class="hidden md:block text-sm text-slate-400 leading-relaxed">ミーグリの予定管理とレポを記録します。</p>
                         </div>
                     </a>
@@ -679,7 +709,7 @@ function oshiImgSrc(?string $imageUrl): string {
                         <div class="hidden md:block absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform card-deco <?= $cardDeco ?>"><i class="fa-solid fa-pen-to-square text-6xl"></i></div>
                         <div class="relative z-10 flex flex-col items-center md:block">
                             <div class="w-16 h-16 md:w-12 md:h-12 rounded-lg flex items-center justify-center mb-2 md:mb-6 transition-colors card-icon <?= $cardIconBg ?> <?= $cardIconText ?> <?= $cardIconHover ?>"><i class="fa-solid fa-pen-to-square text-2xl md:text-base"></i></div>
-                            <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-4 text-center md:text-left">レポ登録</h3>
+                            <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-3 text-center md:text-left">レポ登録</h3>
                             <p class="hidden md:block text-sm text-slate-400 leading-relaxed">ミーグリのレポをチャット形式で記録します。</p>
                         </div>
                     </a>
@@ -687,7 +717,7 @@ function oshiImgSrc(?string $imageUrl): string {
                         <div class="hidden md:block absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform card-deco <?= $cardDeco ?>"><i class="fa-solid fa-calendar-days text-6xl"></i></div>
                         <div class="relative z-10 flex flex-col items-center md:block">
                             <div class="w-16 h-16 md:w-12 md:h-12 rounded-lg flex items-center justify-center mb-2 md:mb-6 transition-colors card-icon <?= $cardIconBg ?> <?= $cardIconText ?> <?= $cardIconHover ?>"><i class="fa-solid fa-calendar-check text-2xl md:text-base"></i></div>
-                            <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-4 text-center md:text-left">イベント</h3>
+                            <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-3 text-center md:text-left">イベント</h3>
                             <p class="hidden md:block text-sm text-slate-400 leading-relaxed">ライブやミーグリ、発売日などの重要日程を確認します。</p>
                         </div>
                     </a>
@@ -695,7 +725,7 @@ function oshiImgSrc(?string $imageUrl): string {
                         <div class="hidden md:block absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform card-deco <?= $cardDeco ?>"><i class="fa-solid fa-users text-6xl"></i></div>
                         <div class="relative z-10 flex flex-col items-center md:block">
                             <div class="w-16 h-16 md:w-12 md:h-12 rounded-lg flex items-center justify-center mb-2 md:mb-6 transition-colors card-icon <?= $cardIconBg ?> <?= $cardIconText ?> <?= $cardIconHover ?>"><i class="fa-solid fa-address-card text-2xl md:text-base"></i></div>
-                            <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-4 text-center md:text-left">メンバー帳</h3>
+                            <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-3 text-center md:text-left">メンバー帳</h3>
                             <p class="hidden md:block text-sm text-slate-400 leading-relaxed">メンバーのプロフィール、サイリウムカラーなどをチェックします。</p>
                         </div>
                     </a>
@@ -703,7 +733,7 @@ function oshiImgSrc(?string $imageUrl): string {
                         <div class="hidden md:block absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform card-deco <?= $cardDeco ?>"><i class="fa-solid fa-music text-6xl"></i></div>
                         <div class="relative z-10 flex flex-col items-center md:block">
                             <div class="w-16 h-16 md:w-12 md:h-12 rounded-lg flex items-center justify-center mb-2 md:mb-6 transition-colors card-icon <?= $cardIconBg ?> <?= $cardIconText ?> <?= $cardIconHover ?>"><i class="fa-solid fa-music text-2xl md:text-base"></i></div>
-                            <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-4 text-center md:text-left">楽曲</h3>
+                            <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-3 text-center md:text-left">楽曲</h3>
                             <p class="hidden md:block text-sm text-slate-400 leading-relaxed">リリース一覧・全曲一覧・楽曲の紹介を確認します。</p>
                         </div>
                     </a>
@@ -711,7 +741,7 @@ function oshiImgSrc(?string $imageUrl): string {
                         <div class="hidden md:block absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform card-deco <?= $cardDeco ?>"><i class="fa-solid fa-video text-6xl"></i></div>
                         <div class="relative z-10 flex flex-col items-center md:block">
                             <div class="w-16 h-16 md:w-12 md:h-12 rounded-lg flex items-center justify-center mb-2 md:mb-6 transition-colors card-icon <?= $cardIconBg ?> <?= $cardIconText ?> <?= $cardIconHover ?>"><i class="fa-solid fa-play-circle text-2xl md:text-base"></i></div>
-                            <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-4 text-center md:text-left">動画一覧</h3>
+                            <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-3 text-center md:text-left">動画一覧</h3>
                             <p class="hidden md:block text-sm text-slate-400 leading-relaxed">登録されたすべての動画を閲覧します。</p>
                         </div>
                     </a>
@@ -723,35 +753,35 @@ function oshiImgSrc(?string $imageUrl): string {
                         <a href="/hinata/release_admin.php" class="app-card hinata-portal-card group relative bg-white rounded-xl border <?= $cardBorder ?> shadow-sm overflow-hidden flex flex-col items-center justify-center p-4 md:p-8 md:block">
                             <div class="relative z-10 flex flex-col items-center md:block">
                                 <div class="w-16 h-16 md:w-12 md:h-12 rounded-lg flex items-center justify-center mb-2 md:mb-6 transition-colors card-icon <?= $cardIconBg ?> <?= $cardIconText ?> <?= $cardIconHover ?>"><i class="fa-solid fa-compact-disc text-2xl md:text-base"></i></div>
-                                <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-4 text-center md:text-left">リリース管理</h3>
+                                <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-3 text-center md:text-left">リリース管理</h3>
                                 <p class="hidden md:block text-sm text-slate-400 leading-relaxed">シングル・アルバム情報を管理します。</p>
                             </div>
                         </a>
                         <a href="/hinata/media_member_admin.php" class="app-card hinata-portal-card group relative bg-white rounded-xl border <?= $cardBorder ?> shadow-sm overflow-hidden flex flex-col items-center justify-center p-4 md:p-8 md:block">
                             <div class="relative z-10 flex flex-col items-center md:block">
                                 <div class="w-16 h-16 md:w-12 md:h-12 rounded-lg flex items-center justify-center mb-2 md:mb-6 transition-colors card-icon <?= $cardIconBg ?> <?= $cardIconText ?> <?= $cardIconHover ?>"><i class="fa-solid fa-link text-2xl md:text-base"></i></div>
-                                <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-4 text-center md:text-left">動画・メンバー紐付け</h3>
+                                <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-3 text-center md:text-left">動画・メンバー紐付け</h3>
                                 <p class="hidden md:block text-sm text-slate-400 leading-relaxed">動画に出演メンバーを紐づけます。</p>
                             </div>
                         </a>
                         <a href="/hinata/media_song_admin.php" class="app-card hinata-portal-card group relative bg-white rounded-xl border <?= $cardBorder ?> shadow-sm overflow-hidden flex flex-col items-center justify-center p-4 md:p-8 md:block">
                             <div class="relative z-10 flex flex-col items-center md:block">
                                 <div class="w-16 h-16 md:w-12 md:h-12 rounded-lg flex items-center justify-center mb-2 md:mb-6 transition-colors card-icon <?= $cardIconBg ?> <?= $cardIconText ?> <?= $cardIconHover ?>"><i class="fa-solid fa-music text-2xl md:text-base"></i></div>
-                                <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-4 text-center md:text-left">動画・楽曲紐付け</h3>
+                                <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-3 text-center md:text-left">動画・楽曲紐付け</h3>
                                 <p class="hidden md:block text-sm text-slate-400 leading-relaxed">動画（MV等）と楽曲を紐づけます。</p>
                             </div>
                         </a>
                         <a href="/hinata/media_settings_admin.php" class="app-card hinata-portal-card group relative bg-white rounded-xl border <?= $cardBorder ?> shadow-sm overflow-hidden flex flex-col items-center justify-center p-4 md:p-8 md:block">
                             <div class="relative z-10 flex flex-col items-center md:block">
                                 <div class="w-16 h-16 md:w-12 md:h-12 rounded-lg flex items-center justify-center mb-2 md:mb-6 transition-colors card-icon <?= $cardIconBg ?> <?= $cardIconText ?> <?= $cardIconHover ?>"><i class="fa-solid fa-sliders text-2xl md:text-base"></i></div>
-                                <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-4 text-center md:text-left">動画設定</h3>
+                                <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-3 text-center md:text-left">動画設定</h3>
                                 <p class="hidden md:block text-sm text-slate-400 leading-relaxed">動画のカテゴリなどを変更します。</p>
                             </div>
                         </a>
                         <a href="/hinata/media_register.php" class="app-card hinata-portal-card group relative bg-white rounded-xl border <?= $cardBorder ?> shadow-sm overflow-hidden flex flex-col items-center justify-center p-4 md:p-8 md:block">
                             <div class="relative z-10 flex flex-col items-center md:block">
                                 <div class="w-16 h-16 md:w-12 md:h-12 rounded-lg flex items-center justify-center mb-2 md:mb-6 transition-colors card-icon <?= $cardIconBg ?> <?= $cardIconText ?> <?= $cardIconHover ?>"><i class="fa-solid fa-circle-plus text-2xl md:text-base"></i></div>
-                                <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-4 text-center md:text-left">メディア登録</h3>
+                                <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-3 text-center md:text-left">メディア登録</h3>
                                 <p class="hidden md:block text-sm text-slate-400 leading-relaxed">YouTube検索やURL貼り付けで動画を登録します。</p>
                             </div>
                         </a>
@@ -788,6 +818,12 @@ function oshiImgSrc(?string $imageUrl): string {
             if (el('oshiMainName')) el('oshiMainName').textContent = d.name || '';
             if (el('oshiMainGen')) el('oshiMainGen').textContent = (d.generation || '') + '期生';
             if (el('oshiMainLink')) el('oshiMainLink').href = '/hinata/member.php?id=' + d.member_id;
+            var labelSp = el('oshiMainLabelSp'), nameSp = el('oshiMainNameSp'), genSp = el('oshiMainGenSp'), blogSp = el('oshiMainBlogSp'), songsSp = el('oshiMainSongsSp');
+            if (labelSp) labelSp.textContent = label;
+            if (nameSp) nameSp.textContent = d.name || '';
+            if (genSp) genSp.textContent = (d.generation || '') + '期生';
+            if (blogSp) { if (d.blog_url) { blogSp.href = d.blog_url; blogSp.classList.remove('hidden'); } else { blogSp.classList.add('hidden'); } }
+            if (songsSp) { if (d.song_count > 0) { songsSp.innerHTML = '<i class="fa-solid fa-music w-3 text-slate-400"></i>参加楽曲 ' + d.song_count + ' 曲'; songsSp.classList.remove('hidden'); } else { songsSp.classList.add('hidden'); } }
 
             var blogEl = el('oshiMainBlog');
             if (blogEl) {
@@ -1061,11 +1097,63 @@ function oshiImgSrc(?string $imageUrl): string {
         });
     }
 
+    var ReleaseAccordion = {
+        key: function(rid) { return 'releaseExpand_' + rid; },
+        scrollKey: 'releaseScrollPos',
+        toggle: function() {
+            var el = document.getElementById('releaseAccordion');
+            if (!el) return;
+            var expanded = el.classList.toggle('expanded');
+            var rid = el.getAttribute('data-release-id');
+            if (rid) {
+                try { sessionStorage.setItem(this.key(rid), expanded ? '1' : '0'); } catch(e) {}
+            }
+        },
+        saveScrollAndExpand: function(rid) {
+            try {
+                var el = document.getElementById('releaseAccordion');
+                if (el) el.classList.add('expanded');
+                var main = document.querySelector('.flex-1.overflow-y-auto.custom-scroll') || document.documentElement;
+                sessionStorage.setItem(this.scrollKey, String(main.scrollTop || window.scrollY || 0));
+                if (rid) sessionStorage.setItem(this.key(rid), '1');
+            } catch(e) {}
+        },
+        restore: function() {
+            var el = document.getElementById('releaseAccordion');
+            if (!el) return;
+            var rid = el.getAttribute('data-release-id');
+            if (!rid) return;
+            try {
+                var expanded = sessionStorage.getItem(this.key(rid));
+                if (expanded === '1') {
+                    el.classList.add('expanded');
+                    var scrollPos = sessionStorage.getItem(this.scrollKey);
+                    if (scrollPos) {
+                        var pos = parseInt(scrollPos, 10);
+                        setTimeout(function() {
+                            var main = document.querySelector('.flex-1.overflow-y-auto.custom-scroll');
+                            if (main) main.scrollTop = pos; else window.scrollTo(0, pos);
+                        }, 100);
+                        sessionStorage.removeItem(this.scrollKey);
+                    }
+                }
+            } catch(e) {}
+        }
+    };
+    var releaseBtn = document.getElementById('releaseAccordionBtn');
+    if (releaseBtn) releaseBtn.addEventListener('click', function() { ReleaseAccordion.toggle(); });
+    document.querySelectorAll('.release-song-link').forEach(function(a) {
+        a.addEventListener('click', function() {
+            ReleaseAccordion.saveScrollAndExpand(this.getAttribute('data-release-id'));
+        });
+    });
     document.addEventListener('DOMContentLoaded', function() {
         YtCarousel.init();
         TkCarousel.init();
         YtCarousel.updateArrows('blogCards');
-        YtCarousel.updateArrows('releaseMvCards');
+        var mvEl = document.getElementById('releaseMvCards');
+        if (mvEl) YtCarousel.updateArrows('releaseMvCards');
+        ReleaseAccordion.restore();
     });
 
     document.getElementById('mobileMenuBtn').onclick = function() {
