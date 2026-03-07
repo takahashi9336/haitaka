@@ -79,8 +79,15 @@ $announceTypes = AnnouncementModel::TYPES;
                                     <input type="url" name="url" id="t_url" class="w-full h-11 border border-slate-200 rounded-lg px-3 text-sm outline-none">
                                 </div>
                                 <div>
-                                    <label class="block text-[10px] font-black text-slate-400 mb-1">画像URL</label>
-                                    <input type="text" name="image_url" id="t_image_url" placeholder="/assets/... または https://" class="w-full h-11 border border-slate-200 rounded-lg px-3 text-sm outline-none">
+                                    <label class="block text-[10px] font-black text-slate-400 mb-1">画像</label>
+                                    <input type="hidden" name="image_url" id="t_image_url">
+                                    <div class="flex items-center gap-3">
+                                        <input type="file" id="t_image_file" accept="image/jpeg,image/png,image/gif,image/webp" class="hidden">
+                                        <button type="button" id="t_image_upload_btn" class="h-11 px-4 border border-slate-200 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50">画像を選択</button>
+                                        <button type="button" id="t_image_clear_btn" class="h-11 px-3 text-xs text-red-500 hover:text-red-700 hidden">削除</button>
+                                        <span id="t_image_name" class="text-xs text-slate-500 truncate max-w-[120px]"></span>
+                                    </div>
+                                    <div id="t_image_preview" class="mt-2 w-20 h-20 rounded-lg overflow-hidden bg-slate-100 hidden"><img src="" alt="" class="w-full h-full object-cover"></div>
                                 </div>
                             </div>
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -148,8 +155,15 @@ $announceTypes = AnnouncementModel::TYPES;
                                     <input type="url" name="url" id="a_url" class="w-full h-11 border border-slate-200 rounded-lg px-3 text-sm outline-none">
                                 </div>
                                 <div>
-                                    <label class="block text-[10px] font-black text-slate-400 mb-1">画像URL</label>
-                                    <input type="text" name="image_url" id="a_image_url" placeholder="/assets/... または https://" class="w-full h-11 border border-slate-200 rounded-lg px-3 text-sm outline-none">
+                                    <label class="block text-[10px] font-black text-slate-400 mb-1">画像</label>
+                                    <input type="hidden" name="image_url" id="a_image_url">
+                                    <div class="flex items-center gap-3">
+                                        <input type="file" id="a_image_file" accept="image/jpeg,image/png,image/gif,image/webp" class="hidden">
+                                        <button type="button" id="a_image_upload_btn" class="h-11 px-4 border border-slate-200 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50">画像を選択</button>
+                                        <button type="button" id="a_image_clear_btn" class="h-11 px-3 text-xs text-red-500 hover:text-red-700 hidden">削除</button>
+                                        <span id="a_image_name" class="text-xs text-slate-500 truncate max-w-[120px]"></span>
+                                    </div>
+                                    <div id="a_image_preview" class="mt-2 w-20 h-20 rounded-lg overflow-hidden bg-slate-100 hidden"><img src="" alt="" class="w-full h-full object-cover"></div>
                                 </div>
                             </div>
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -252,6 +266,13 @@ $announceTypes = AnnouncementModel::TYPES;
                 document.getElementById('t_summary').value = t.summary || '';
                 document.getElementById('t_url').value = t.url || '';
                 document.getElementById('t_image_url').value = t.image_url || '';
+                const tPrev = document.getElementById('t_image_preview');
+                const tImg = tPrev.querySelector('img');
+                if (t.image_url) {
+                    tImg.src = t.image_url.startsWith('/') || t.image_url.startsWith('http') ? t.image_url : '/assets/' + t.image_url;
+                    tPrev.classList.remove('hidden');
+                    document.getElementById('t_image_clear_btn').classList.remove('hidden');
+                } else { tPrev.classList.add('hidden'); tImg.src = ''; document.getElementById('t_image_clear_btn').classList.add('hidden'); }
                 document.getElementById('t_type').value = t.topic_type || 'other';
                 document.getElementById('t_start').value = t.start_date || '';
                 document.getElementById('t_end').value = t.end_date || '';
@@ -264,7 +285,38 @@ $announceTypes = AnnouncementModel::TYPES;
         document.getElementById('topicBtnCancel').onclick = () => {
             document.getElementById('topic_id').value = '';
             document.getElementById('topicForm').reset();
+            document.getElementById('t_image_url').value = '';
+            document.getElementById('t_image_preview').classList.add('hidden');
+            document.getElementById('t_image_preview').querySelector('img').src = '';
+            document.getElementById('t_image_name').textContent = '';
+            document.getElementById('t_image_clear_btn').classList.add('hidden');
             document.getElementById('topicBtnCancel').classList.add('hidden');
+        };
+        document.getElementById('t_image_clear_btn').onclick = () => {
+            document.getElementById('t_image_url').value = '';
+            document.getElementById('t_image_preview').classList.add('hidden');
+            document.getElementById('t_image_preview').querySelector('img').src = '';
+            document.getElementById('t_image_name').textContent = '';
+            document.getElementById('t_image_clear_btn').classList.add('hidden');
+        };
+        document.getElementById('t_image_upload_btn').onclick = () => document.getElementById('t_image_file').click();
+        document.getElementById('t_image_file').onchange = async function() {
+            if (!this.files || !this.files[0]) return;
+            const fd = new FormData();
+            fd.append('file', this.files[0]);
+            try {
+                const res = await fetch('api/upload_topic_image.php', { method: 'POST', body: fd });
+                const json = await res.json();
+                if (json.status === 'success' && json.image_url) {
+                    document.getElementById('t_image_url').value = json.image_url;
+                    const prev = document.getElementById('t_image_preview');
+                    prev.querySelector('img').src = '/assets/' + json.image_url;
+                    prev.classList.remove('hidden');
+                    document.getElementById('t_image_name').textContent = this.files[0].name;
+                    document.getElementById('t_image_clear_btn').classList.remove('hidden');
+                } else alert(json.message || 'アップロードに失敗しました');
+            } catch (e) { alert('アップロード通信エラー: ' + e.message); }
+            this.value = '';
         };
         document.getElementById('topicForm').onsubmit = async (e) => {
             e.preventDefault();
@@ -285,6 +337,13 @@ $announceTypes = AnnouncementModel::TYPES;
                 document.getElementById('a_body').value = a.body || '';
                 document.getElementById('a_url').value = a.url || '';
                 document.getElementById('a_image_url').value = a.image_url || '';
+                const aPrev = document.getElementById('a_image_preview');
+                const aImg = aPrev.querySelector('img');
+                if (a.image_url) {
+                    aImg.src = a.image_url.startsWith('/') || a.image_url.startsWith('http') ? a.image_url : '/assets/' + a.image_url;
+                    aPrev.classList.remove('hidden');
+                    document.getElementById('a_image_clear_btn').classList.remove('hidden');
+                } else { aPrev.classList.add('hidden'); aImg.src = ''; document.getElementById('a_image_clear_btn').classList.add('hidden'); }
                 document.getElementById('a_type').value = a.announcement_type || 'other';
                 document.getElementById('a_published').value = a.published_at ? a.published_at.slice(0, 16) : '';
                 document.getElementById('a_expires').value = a.expires_at ? a.expires_at.slice(0, 16) : '';
@@ -299,7 +358,38 @@ $announceTypes = AnnouncementModel::TYPES;
         if (announceBtnCancel) announceBtnCancel.onclick = () => {
             document.getElementById('a_id').value = '';
             document.getElementById('announceForm').reset();
+            document.getElementById('a_image_url').value = '';
+            document.getElementById('a_image_preview').classList.add('hidden');
+            document.getElementById('a_image_preview').querySelector('img').src = '';
+            document.getElementById('a_image_name').textContent = '';
+            document.getElementById('a_image_clear_btn').classList.add('hidden');
             announceBtnCancel.classList.add('hidden');
+        };
+        document.getElementById('a_image_clear_btn').onclick = () => {
+            document.getElementById('a_image_url').value = '';
+            document.getElementById('a_image_preview').classList.add('hidden');
+            document.getElementById('a_image_preview').querySelector('img').src = '';
+            document.getElementById('a_image_name').textContent = '';
+            document.getElementById('a_image_clear_btn').classList.add('hidden');
+        };
+        document.getElementById('a_image_upload_btn').onclick = () => document.getElementById('a_image_file').click();
+        document.getElementById('a_image_file').onchange = async function() {
+            if (!this.files || !this.files[0]) return;
+            const fd = new FormData();
+            fd.append('file', this.files[0]);
+            try {
+                const res = await fetch('api/upload_announcement_image.php', { method: 'POST', body: fd });
+                const json = await res.json();
+                if (json.status === 'success' && json.image_url) {
+                    document.getElementById('a_image_url').value = json.image_url;
+                    const prev = document.getElementById('a_image_preview');
+                    prev.querySelector('img').src = '/assets/' + json.image_url;
+                    prev.classList.remove('hidden');
+                    document.getElementById('a_image_name').textContent = this.files[0].name;
+                    document.getElementById('a_image_clear_btn').classList.remove('hidden');
+                } else alert(json.message || 'アップロードに失敗しました');
+            } catch (e) { alert('アップロード通信エラー: ' + e.message); }
+            this.value = '';
         };
         document.getElementById('announceForm').onsubmit = async (e) => {
             e.preventDefault();

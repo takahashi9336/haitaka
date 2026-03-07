@@ -158,19 +158,22 @@ function oshiImgSrc(?string $imageUrl): string {
                 <?php
                 $hasNextEvent = !empty($nextEvent) && isset($nextEvent['days_left']) && (int)$nextEvent['days_left'] >= 0;
                 $hasBdBanner = !empty($upcomingBirthdays);
-                if ($hasNextEvent || $hasBdBanner):
-                    $bdToday = $hasBdBanner ? array_filter($upcomingBirthdays, fn($b) => (int)$b['days_until'] === 0) : [];
-                    $bdUpcoming = $hasBdBanner ? array_filter($upcomingBirthdays, fn($b) => (int)$b['days_until'] > 0) : [];
-                ?>
-                <div class="mb-5 flex flex-col md:flex-row gap-4 md:gap-3 items-stretch">
-                    <?php if ($hasNextEvent): $days = (int)$nextEvent['days_left']; $dateText = !empty($nextEvent['event_date']) ? \Core\Utils\DateUtil::format($nextEvent['event_date'], 'Y/m/d') : ''; ?>
-                    <div class="flex-1 min-w-0 flex items-center">
-                        <div class="flex items-center gap-4 bg-white rounded-xl border <?= $cardBorder ?> shadow-sm px-5 py-4 w-full h-full min-h-[88px]">
+                if ($hasNextEvent): $days = (int)$nextEvent['days_left']; $dateText = !empty($nextEvent['event_date']) ? \Core\Utils\DateUtil::format($nextEvent['event_date'], 'Y/m/d') : ''; ?>
+                <section class="mb-5">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i class="fa-solid fa-calendar-day <?= $cardIconText ?>"<?= $isThemeHex ? ' style="color:' . htmlspecialchars($themePrimary) . '"' : '' ?>></i>
+                        <h2 class="text-sm font-bold text-slate-700">次のイベント</h2>
+                        <div class="ml-auto flex items-center gap-1">
+                            <a href="/hinata/calendar.php" class="text-[10px] font-bold <?= $cardIconText ?> hover:opacity-80" title="iCalでカレンダー登録"<?= $isThemeHex ? ' style="color:' . htmlspecialchars($themePrimary) . '"' : '' ?>><i class="fa-solid fa-calendar-plus mr-0.5"></i></a>
+                            <a href="/hinata/events.php" class="text-[10px] font-bold <?= $cardIconText ?> hover:opacity-80">一覧 <i class="fa-solid fa-chevron-right"></i></a>
+                        </div>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="flex items-center gap-4 bg-white rounded-xl border <?= $cardBorder ?> shadow-sm px-5 py-4 w-full min-h-[88px]">
                             <div class="w-10 h-10 rounded-lg text-white flex items-center justify-center shadow-md hinata-next-event-icon <?= $headerIconBg ?> shrink-0">
                                 <i class="fa-solid fa-calendar-day"></i>
                             </div>
                             <div class="flex-1 min-w-0">
-                                <p class="text-[10px] font-bold tracking-wider mb-1 hinata-next-event-label <?= !$isThemeHex ? "text-{$themeTailwind}-500" : '' ?>">次のイベント</p>
                                 <p class="text-sm font-bold text-slate-800 mb-0.5"><?= htmlspecialchars($nextEvent['event_name'] ?? '次のイベント') ?></p>
                                 <p class="text-xs text-slate-500">
                                     <?php
@@ -190,44 +193,9 @@ function oshiImgSrc(?string $imageUrl): string {
                             <a href="/hinata/events.php" class="hidden md:inline-flex items-center justify-center w-8 h-8 rounded-full border <?= $cardBorder ?> <?= $cardIconText ?> hover:opacity-80 transition shrink-0"<?= $isThemeHex ? ' style="color: ' . htmlspecialchars($themePrimary) . ';"' : '' ?>>
                                 <i class="fa-solid fa-chevron-right text-xs"></i>
                             </a>
-                            <a href="/hinata/calendar.php" class="hidden md:inline-flex items-center gap-1 text-[10px] font-bold <?= $cardIconText ?> hover:opacity-80 transition shrink-0" title="iCalでカレンダー登録"<?= $isThemeHex ? ' style="color: ' . htmlspecialchars($themePrimary) . ';"' : '' ?>><i class="fa-solid fa-calendar-plus text-xs"></i></a>
                         </div>
                     </div>
-                    <?php endif; ?>
-                    <?php if ($hasBdBanner): ?>
-                    <div class="flex-1 md:flex-initial md:w-72 lg:w-80 flex items-stretch min-h-[88px]">
-                        <div class="bg-gradient-to-r from-pink-50 to-rose-50 rounded-xl border border-pink-200 shadow-sm px-4 py-3 w-full overflow-hidden flex flex-col">
-                            <div class="flex items-center gap-2 mb-2 shrink-0">
-                                <div class="w-7 h-7 rounded-lg bg-pink-500 text-white flex items-center justify-center shadow-sm shrink-0"><i class="fa-solid fa-birthday-cake text-xs"></i></div>
-                                <h3 class="text-xs font-black text-pink-700 tracking-tight">誕生日</h3>
-                            </div>
-                            <div class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden space-y-2">
-                                <?php foreach (array_merge($bdToday, $bdUpcoming) as $bd): ?>
-                                <?php
-                                $bdImg = $bd['first_image'] ?: ($bd['image_url'] ?? null);
-                                $bdDate = $bd['birth_date'] ? date('m/d', strtotime($bd['birth_date'])) : '';
-                                $isToday = (int)$bd['days_until'] === 0;
-                                ?>
-                                <a href="/hinata/member.php?id=<?= (int)$bd['id'] ?>" class="flex items-center gap-2 bg-white/80 rounded-lg border border-pink-100 px-3 py-2 hover:bg-white hover:shadow-sm transition shrink-0">
-                                    <div class="w-8 h-8 rounded-full overflow-hidden bg-pink-100 shrink-0" style="<?= !empty($bd['color1']) ? 'box-shadow: 0 0 0 1.5px ' . htmlspecialchars($bd['color1']) : '' ?>">
-                                        <?php if ($bdImg): ?>
-                                        <img src="/assets/img/members/<?= htmlspecialchars($bdImg) ?>" class="w-full h-full object-cover" alt="">
-                                        <?php else: ?>
-                                        <div class="w-full h-full flex items-center justify-center text-pink-300"><i class="fa-solid fa-user text-xs"></i></div>
-                                        <?php endif; ?>
-                                    </div>
-                                    <div class="min-w-0 flex-1">
-                                        <p class="text-[11px] font-bold text-slate-800 truncate"><?= htmlspecialchars($bd['name']) ?></p>
-                                        <p class="text-[9px] <?= $isToday ? 'text-pink-600 font-bold' : 'text-slate-400' ?>"><?= $isToday ? '本日！' : ($bdDate . ' あと' . (int)$bd['days_until'] . '日') ?></p>
-                                    </div>
-                                    <?php if ($isToday): ?><i class="fa-solid fa-cake-candles text-pink-400 text-xs shrink-0"></i><?php endif; ?>
-                                </a>
-                                <?php endforeach; ?>
-                            </div>
-                        </div>
-                    </div>
-                    <?php endif; ?>
-                </div>
+                </section>
                 <?php endif; ?>
 
                 <?php if (!empty($todayMeetGreetSlots)): ?>
@@ -451,6 +419,40 @@ function oshiImgSrc(?string $imageUrl): string {
                     </div>
                     <?php endif; ?>
                 </section>
+
+                <?php if ($hasBdBanner): $bdToday = array_filter($upcomingBirthdays, fn($b) => (int)$b['days_until'] === 0); $bdUpcoming = array_filter($upcomingBirthdays, fn($b) => (int)$b['days_until'] > 0); ?>
+                <section class="mb-5">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i class="fa-solid fa-birthday-cake text-pink-500"></i>
+                        <h2 class="text-sm font-bold text-slate-700">誕生日</h2>
+                    </div>
+                    <div class="bg-gradient-to-r from-pink-50 to-rose-50 rounded-xl border border-pink-200 shadow-sm px-4 py-3 overflow-hidden">
+                        <div class="space-y-2">
+                            <?php foreach (array_merge($bdToday, $bdUpcoming) as $bd): ?>
+                            <?php
+                            $bdImg = $bd['first_image'] ?: ($bd['image_url'] ?? null);
+                            $bdDate = $bd['birth_date'] ? date('m/d', strtotime($bd['birth_date'])) : '';
+                            $isToday = (int)$bd['days_until'] === 0;
+                            ?>
+                            <a href="/hinata/member.php?id=<?= (int)$bd['id'] ?>" class="flex items-center gap-3 bg-white/80 rounded-lg border border-pink-100 px-4 py-3 hover:bg-white hover:shadow-sm transition block">
+                                <div class="w-10 h-10 rounded-full overflow-hidden bg-pink-100 shrink-0" style="<?= !empty($bd['color1']) ? 'box-shadow: 0 0 0 1.5px ' . htmlspecialchars($bd['color1']) : '' ?>">
+                                    <?php if ($bdImg): ?>
+                                    <img src="/assets/img/members/<?= htmlspecialchars($bdImg) ?>" class="w-full h-full object-cover" alt="">
+                                    <?php else: ?>
+                                    <div class="w-full h-full flex items-center justify-center text-pink-300"><i class="fa-solid fa-user text-xs"></i></div>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-bold text-slate-800"><?= htmlspecialchars($bd['name']) ?></p>
+                                    <p class="text-[10px] <?= $isToday ? 'text-pink-600 font-bold' : 'text-slate-400' ?>"><?= $isToday ? '本日！' : ($bdDate . ' あと' . (int)$bd['days_until'] . '日') ?></p>
+                                </div>
+                                <?php if ($isToday): ?><i class="fa-solid fa-cake-candles text-pink-400 text-sm shrink-0"></i><?php endif; ?>
+                            </a>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </section>
+                <?php endif; ?>
 
                 <?php if (!empty($todayInHistory)): ?>
                 <section class="mb-7">
