@@ -328,6 +328,14 @@ $allCategories = [
                                         <i class="fa-solid fa-pen-to-square"></i>レポを書く
                                     </a>
                                 <?php endif; ?>
+                                <div class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+                                    <div class="px-4 py-2 bg-slate-50 flex items-center gap-2"><i class="fa-solid fa-chair text-slate-500 text-xs"></i><span class="text-[10px] font-bold text-slate-600 tracking-wider">座席・感想</span></div>
+                                    <div class="p-4 space-y-3">
+                                        <div><label class="block text-[9px] font-bold text-slate-400 mb-0.5">座席</label><input type="text" id="seat-cal-<?= (int)$e['id'] ?>" value="<?= htmlspecialchars($e['seat_info'] ?? '') ?>" placeholder="アリーナ○列、天空席など" class="w-full border border-slate-200 rounded px-3 py-2 text-sm"></div>
+                                        <div><label class="block text-[9px] font-bold text-slate-400 mb-0.5">感想</label><textarea id="impression-cal-<?= (int)$e['id'] ?>" rows="3" placeholder="参加後の感想" class="w-full border border-slate-200 rounded px-3 py-2 text-sm"><?= htmlspecialchars($e['impression'] ?? '') ?></textarea></div>
+                                        <button type="button" onclick="saveSeatImpressionCal(<?= (int)$e['id'] ?>)" class="text-[10px] font-bold text-white px-4 py-2 rounded-full transition" style="background:var(--hinata-theme)"><i class="fa-solid fa-check mr-1"></i>保存</button>
+                                    </div>
+                                </div>
                                 <?php if (!empty($e['event_info'])): ?>
                                     <div class="text-xs text-slate-600 bg-white p-4 rounded-xl border border-slate-100 shadow-sm whitespace-pre-wrap"><?= htmlspecialchars($e['event_info']) ?></div>
                                 <?php endif; ?>
@@ -562,10 +570,44 @@ $allCategories = [
                 h += '<a href="/hinata/meetgreet_report.php?event_id=' + e.id + '" class="text-[10px] font-bold text-white px-4 py-2 rounded-full transition inline-flex items-center gap-2 hover:opacity-90" style="background:var(--hinata-theme)"><i class="fa-solid fa-pen-to-square"></i>レポを書く</a>';
             }
 
+            h += '<div class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">';
+            h += '<div class="px-4 py-2 bg-slate-50 flex items-center gap-2"><i class="fa-solid fa-chair text-slate-500 text-xs"></i><span class="text-[10px] font-bold text-slate-600 tracking-wider">座席・感想</span></div>';
+            h += '<div class="p-4 space-y-3">';
+            h += '<div><label class="block text-[9px] font-bold text-slate-400 mb-0.5">座席</label><input type="text" id="seat-input-' + e.id + '" value="' + _esc(e.seat_info || '') + '" placeholder="アリーナ○列、天空席など" class="w-full border border-slate-200 rounded px-3 py-2 text-sm"></div>';
+            h += '<div><label class="block text-[9px] font-bold text-slate-400 mb-0.5">感想</label><textarea id="impression-input-' + e.id + '" rows="3" placeholder="参加後の感想" class="w-full border border-slate-200 rounded px-3 py-2 text-sm">' + _esc(e.impression || '') + '</textarea></div>';
+            h += '<button onclick="saveSeatImpression(' + e.id + ')" class="text-[10px] font-bold text-white px-4 py-2 rounded-full transition" style="background:var(--hinata-theme)"><i class="fa-solid fa-check mr-1"></i>保存</button>';
+            h += '</div></div>';
+
             if (e.event_info) h += '<div class="text-xs text-slate-600 bg-white p-4 rounded-xl border border-slate-100 shadow-sm whitespace-pre-wrap">' + _esc(e.event_info) + '</div>';
             if (e.event_url) h += '<a href="' + _esc(e.event_url) + '" target="_blank" class="text-[10px] font-bold text-sky-600 bg-sky-50 px-4 py-2 rounded-full border border-sky-100 hover:bg-sky-100 transition inline-flex items-center gap-2"><i class="fa-solid fa-arrow-up-right-from-square"></i> 特設サイトを開く</a>';
             if (e.video_key) h += '<div class="aspect-video w-full rounded-lg overflow-hidden bg-black shadow-lg"><iframe width="100%" height="100%" src="https://www.youtube.com/embed/' + _esc(e.video_key) + '?rel=0" frameborder="0" allowfullscreen></iframe></div>';
             return h;
+        }
+
+        function saveSeatImpression(eventId) {
+            var seatInp = document.getElementById('seat-input-' + eventId);
+            var impInp = document.getElementById('impression-input-' + eventId);
+            if (!seatInp || !impInp) return;
+            _doSaveSeatImpression(eventId, seatInp.value, impInp.value);
+        }
+        function saveSeatImpressionCal(eventId) {
+            var seatInp = document.getElementById('seat-cal-' + eventId);
+            var impInp = document.getElementById('impression-cal-' + eventId);
+            if (!seatInp || !impInp) return;
+            _doSaveSeatImpression(eventId, seatInp.value, impInp.value);
+        }
+        function _doSaveSeatImpression(eventId, seatVal, impVal) {
+            var seatInfo = (seatVal || '').trim();
+            var impression = (impVal || '').trim();
+            App.post('/hinata/api/save_event_seat_impression.php', { event_id: eventId, seat_info: seatInfo, impression: impression }, function(res) {
+                if (res.status === 'success') {
+                    var evtObj = rawEvents.find(function(e) { return e.id == eventId; });
+                    if (evtObj) { evtObj.seat_info = seatInfo || null; evtObj.impression = impression || null; }
+                    App.toast('保存しました', 'success');
+                } else {
+                    App.toast(res.message || 'エラー', 'error');
+                }
+            });
         }
 
         function toggleAttendanceSlide(eventId, btn) {

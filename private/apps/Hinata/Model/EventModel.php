@@ -21,7 +21,7 @@ class EventModel extends BaseModel {
     protected bool $isUserIsolated = false;
 
     public function getEventsForCalendar(string $start, string $end): array {
-        $sql = "SELECT e.*, s.status as my_status,
+        $sql = "SELECT e.*, s.status as my_status, s.seat_info as seat_info, s.impression as impression,
                        ma.media_key as video_key
                 FROM {$this->table} e
                 LEFT JOIN hn_user_events_status s ON e.id = s.event_id AND s.user_id = :uid
@@ -96,6 +96,20 @@ class EventModel extends BaseModel {
                 ON DUPLICATE KEY UPDATE status = VALUES(status)";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute(['uid' => $userId, 'eid' => $eventId, 'st' => $status]);
+    }
+
+    public function saveUserSeatImpression(int $eventId, ?string $seatInfo, ?string $impression): void {
+        $userId = $_SESSION['user']['id'] ?? 0;
+        $sql = "INSERT INTO hn_user_events_status (user_id, event_id, status, seat_info, impression)
+                VALUES (:uid, :eid, 1, :seat_info, :impression)
+                ON DUPLICATE KEY UPDATE seat_info = VALUES(seat_info), impression = VALUES(impression)";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([
+            'uid' => $userId,
+            'eid' => $eventId,
+            'seat_info' => $seatInfo ?: null,
+            'impression' => $impression ?: null,
+        ]);
     }
 
     public function deleteUserStatus(int $eventId): void {
