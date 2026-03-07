@@ -230,6 +230,15 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
             foreach ($expenses as $ex) { $totalExpense += (int)($ex['amount'] ?? 0); }
             $totalTransport = 0;
             foreach ($transportLegs as $tl) { $totalTransport += (int)($tl['amount'] ?? 0); }
+            $categoryOrder = array_keys(\App\LiveTrip\Model\ExpenseModel::$categories);
+            usort($expenses, function($a, $b) use ($categoryOrder) {
+                $posA = array_search($a['category'] ?? '', $categoryOrder);
+                $posB = array_search($b['category'] ?? '', $categoryOrder);
+                $posA = $posA === false ? 999 : $posA;
+                $posB = $posB === false ? 999 : $posB;
+                if ($posA !== $posB) return $posA - $posB;
+                return ((int)($a['id'] ?? 0)) - ((int)($b['id'] ?? 0));
+            });
             ?>
             <form method="post" action="/live_trip/expense_store.php" class="flex flex-wrap gap-2 mb-4 p-3 bg-slate-50 rounded-lg">
                 <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
@@ -243,57 +252,79 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
                 <input type="text" name="memo" placeholder="メモ" class="border border-slate-200 rounded px-2 py-1 flex-1 min-w-24 text-sm">
                 <button type="submit" class="lt-theme-btn text-white px-3 py-1 rounded text-sm">追加</button>
             </form>
-            <div class="space-y-2">
-                <?php foreach ($expenses as $ex): ?>
-                <div class="expense-item py-2 border-b border-slate-100 last:border-0">
-                    <div class="expense-view flex justify-between items-center">
-                        <span><?= htmlspecialchars(\App\LiveTrip\Model\ExpenseModel::$categories[$ex['category']] ?? $ex['category']) ?>: ¥<?= number_format($ex['amount']) ?><?= $ex['memo'] ? ' (' . htmlspecialchars($ex['memo']) . ')' : '' ?></span>
-                        <span class="flex gap-1">
-                            <button type="button" class="expense-edit-btn text-slate-500 text-sm hover:text-slate-700" title="編集"><i class="fa-solid fa-pen text-xs"></i></button>
-                            <form method="post" action="/live_trip/expense_delete.php" class="inline" onsubmit="return confirm('削除しますか？');">
+            <div class="space-y-4">
+                <?php
+                $groupedByCat = [];
+                foreach ($expenses as $ex) {
+                    $c = $ex['category'] ?? 'other';
+                    if (!isset($groupedByCat[$c])) $groupedByCat[$c] = [];
+                    $groupedByCat[$c][] = $ex;
+                }
+                foreach ($categoryOrder as $catKey):
+                    if (empty($groupedByCat[$catKey])) continue;
+                    $catLabel = \App\LiveTrip\Model\ExpenseModel::$categories[$catKey] ?? $catKey;
+                ?>
+                <div>
+                    <p class="font-bold text-slate-700"><?= htmlspecialchars($catLabel) ?></p>
+                    <hr class="border-slate-200 my-1">
+                    <div class="space-y-2 mt-2">
+                        <?php foreach ($groupedByCat[$catKey] as $ex):
+                            $exLabel = trim($ex['memo'] ?? '') !== '' ? trim($ex['memo']) : $catLabel;
+                        ?>
+                        <div class="expense-item py-2 border-b border-slate-100 last:border-0">
+                            <div class="expense-view flex justify-between items-center">
+                                <span class="text-slate-700"><?= htmlspecialchars($exLabel) ?></span>
+                                <span class="flex items-center gap-2">
+                                    <span class="font-medium">¥<?= number_format((int)($ex['amount'] ?? 0)) ?></span>
+                                    <button type="button" class="expense-edit-btn text-slate-500 text-sm hover:text-slate-700" title="編集"><i class="fa-solid fa-pen text-xs"></i></button>
+                                    <form method="post" action="/live_trip/expense_delete.php" class="inline" onsubmit="return confirm('削除しますか？');">
+                                        <input type="hidden" name="id" value="<?= (int)$ex['id'] ?>">
+                                        <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
+                                        <input type="hidden" name="tab" value="expense">
+                                        <button type="submit" class="text-red-500 text-sm hover:underline"><i class="fa-solid fa-trash-can"></i></button>
+                                    </form>
+                                </span>
+                            </div>
+                            <form method="post" action="/live_trip/expense_update.php" class="expense-edit-form edit-form hidden flex flex-wrap gap-2 items-center p-2 bg-slate-50 rounded">
                                 <input type="hidden" name="id" value="<?= (int)$ex['id'] ?>">
                                 <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
                                 <input type="hidden" name="tab" value="expense">
-                                <button type="submit" class="text-red-500 text-sm hover:underline"><i class="fa-solid fa-trash-can"></i></button>
+                                <select name="category" class="border border-slate-200 rounded px-2 py-1 text-sm" required>
+                                    <?php foreach (\App\LiveTrip\Model\ExpenseModel::$categories as $k => $v): ?>
+                                    <option value="<?= htmlspecialchars($k) ?>" <?= ($ex['category'] ?? '') === $k ? 'selected' : '' ?>><?= htmlspecialchars($v) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <input type="number" name="amount" value="<?= (int)($ex['amount'] ?? 0) ?>" class="border border-slate-200 rounded px-2 py-1 w-24 text-sm" required>
+                                <input type="text" name="memo" value="<?= htmlspecialchars($ex['memo'] ?? '') ?>" placeholder="メモ" class="border border-slate-200 rounded px-2 py-1 flex-1 min-w-24 text-sm">
+                                <button type="submit" class="lt-theme-btn text-white px-3 py-1 rounded text-sm">保存</button>
+                                <button type="button" class="expense-cancel-btn px-3 py-1 border border-slate-200 rounded text-sm">キャンセル</button>
                             </form>
-                        </span>
+                        </div>
+                        <?php endforeach; ?>
                     </div>
-                    <form method="post" action="/live_trip/expense_update.php" class="expense-edit-form edit-form hidden flex flex-wrap gap-2 items-center p-2 bg-slate-50 rounded">
-                        <input type="hidden" name="id" value="<?= (int)$ex['id'] ?>">
-                        <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
-                        <input type="hidden" name="tab" value="expense">
-                        <select name="category" class="border border-slate-200 rounded px-2 py-1 text-sm" required>
-                            <?php foreach (\App\LiveTrip\Model\ExpenseModel::$categories as $k => $v): ?>
-                            <option value="<?= htmlspecialchars($k) ?>" <?= ($ex['category'] ?? '') === $k ? 'selected' : '' ?>><?= htmlspecialchars($v) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <input type="number" name="amount" value="<?= (int)($ex['amount'] ?? 0) ?>" class="border border-slate-200 rounded px-2 py-1 w-24 text-sm" required>
-                        <input type="text" name="memo" value="<?= htmlspecialchars($ex['memo'] ?? '') ?>" placeholder="メモ" class="border border-slate-200 rounded px-2 py-1 flex-1 min-w-24 text-sm">
-                        <button type="submit" class="lt-theme-btn text-white px-3 py-1 rounded text-sm">保存</button>
-                        <button type="button" class="expense-cancel-btn px-3 py-1 border border-slate-200 rounded text-sm">キャンセル</button>
-                    </form>
                 </div>
                 <?php endforeach; ?>
+                <?php if ($totalTransport > 0): ?>
+                <div>
+                    <p class="font-bold text-slate-700">交通費（移動タブから登録）</p>
+                    <hr class="border-slate-200 my-1">
+                    <div class="space-y-2 mt-2">
+                        <?php foreach ($transportLegs as $tl): ?>
+                        <?php if (!empty($tl['amount']) && (int)$tl['amount'] > 0): ?>
+                        <div class="py-2 border-b border-slate-100 last:border-0 flex justify-between items-center text-sm">
+                            <span class="text-slate-700">
+                                <?= htmlspecialchars(\App\LiveTrip\Model\TransportLegModel::$directions[$tl['direction']] ?? $tl['direction']) ?>: <?= htmlspecialchars($tl['transport_type'] ?? '') ?> <?= htmlspecialchars($tl['route_memo'] ?? '') ?>
+                                <?php if ($tl['departure'] || $tl['arrival']): ?><span class="text-slate-500">(<?= htmlspecialchars($tl['departure'] ?? '') ?>→<?= htmlspecialchars($tl['arrival'] ?? '') ?>)</span><?php endif; ?>
+                            </span>
+                            <span class="font-medium">¥<?= number_format((int)$tl['amount']) ?></span>
+                        </div>
+                        <?php endif; ?>
+                        <?php endforeach; ?>
+                        <p class="pt-2 font-bold text-slate-700">小計: ¥<?= number_format($totalTransport) ?></p>
+                    </div>
+                </div>
+                <?php endif; ?>
             </div>
-            <?php if ($totalTransport > 0): ?>
-            <div class="mt-4 p-3 bg-amber-50 rounded-lg border border-amber-100">
-                <p class="text-sm font-bold text-slate-600 mb-2">交通費（移動タブから登録）</p>
-                <ul class="space-y-1.5">
-                    <?php foreach ($transportLegs as $tl): ?>
-                    <?php if (!empty($tl['amount']) && (int)$tl['amount'] > 0): ?>
-                    <li class="flex justify-between items-center text-sm">
-                        <span class="text-slate-700">
-                            <?= htmlspecialchars(\App\LiveTrip\Model\TransportLegModel::$directions[$tl['direction']] ?? $tl['direction']) ?>: <?= htmlspecialchars($tl['transport_type'] ?? '') ?> <?= htmlspecialchars($tl['route_memo'] ?? '') ?>
-                            <?php if ($tl['departure'] || $tl['arrival']): ?><span class="text-slate-500">(<?= htmlspecialchars($tl['departure'] ?? '') ?>→<?= htmlspecialchars($tl['arrival'] ?? '') ?>)</span><?php endif; ?>
-                        </span>
-                        <span class="font-medium">¥<?= number_format((int)$tl['amount']) ?></span>
-                    </li>
-                    <?php endif; ?>
-                    <?php endforeach; ?>
-                </ul>
-                <p class="mt-2 pt-2 border-t border-amber-200 font-bold text-slate-700">小計: ¥<?= number_format($totalTransport) ?></p>
-            </div>
-            <?php endif; ?>
             <?php if ($totalExpense > 0 || $totalTransport > 0): ?>
             <p class="mt-4 font-bold text-slate-700">合計: ¥<?= number_format($totalExpense + $totalTransport) ?></p>
             <?php endif; ?>
