@@ -207,7 +207,7 @@ function oshiImgSrc(?string $imageUrl): string {
                             </div>
                             <h3 class="text-sm font-black text-amber-700 tracking-tight">本日のミーグリ予定</h3>
                             <span class="text-[10px] font-bold text-amber-500 bg-amber-100 px-2 py-0.5 rounded-full"><?= count($todayMeetGreetSlots) ?> 枠</span>
-                            <a href="/hinata/meetgreet.php" class="ml-auto text-[10px] font-bold text-amber-500 hover:text-amber-700 transition">詳細 <i class="fa-solid fa-arrow-right"></i></a>
+                            <a href="/hinata/talk.php" class="ml-auto text-[10px] font-bold text-amber-500 hover:text-amber-700 transition">ネタを確認 <i class="fa-solid fa-arrow-right"></i></a>
                         </div>
                         <div class="divide-y divide-amber-100/80">
                             <?php foreach ($todayMeetGreetSlots as $slot): ?>
