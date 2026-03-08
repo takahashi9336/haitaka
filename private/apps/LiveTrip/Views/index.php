@@ -20,7 +20,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         body { font-family: 'Inter', 'Noto Sans JP', sans-serif; }
         .sidebar { transition: width 0.3s; width: 240px; }
         @media (max-width: 768px) {
-            .sidebar { position: fixed; transform: translateX(-100%); z-index: 100; width: 240px !important; }
+            .sidebar { position: fixed; transform: translateX(-100%); z-index: 100; height: 100%; width: 240px !important; }
             .sidebar.mobile-open { transform: translateX(0); }
         }
     </style>
@@ -47,6 +47,11 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
     </header>
 
     <div class="p-4 sm:p-6 flex-1 min-w-0">
+        <?php
+        $currentPeriod = $_GET['period'] ?? 'all';
+        $currentSort = $_GET['sort'] ?? 'date_desc';
+        $baseUrl = '/live_trip/';
+        ?>
         <?php if (empty($trips)): ?>
         <div class="bg-white border border-slate-200 rounded-xl p-12 text-center">
             <i class="fa-solid fa-plane text-4xl text-slate-300 mb-4"></i>
@@ -56,22 +61,69 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             </a>
         </div>
         <?php else: ?>
+        <div class="flex flex-wrap gap-2 mb-4 items-center justify-between">
+            <div class="flex rounded-lg border border-slate-200 overflow-hidden">
+                <a href="<?= $baseUrl ?>?period=upcoming<?= $currentSort !== 'date_desc' ? '&sort=' . htmlspecialchars($currentSort) : '' ?>" class="px-3 py-2 text-sm font-medium <?= $currentPeriod === 'upcoming' ? 'bg-slate-100 text-slate-800' : 'bg-white text-slate-600 hover:bg-slate-50' ?>">今後の遠征</a>
+                <a href="<?= $baseUrl ?>?period=past<?= $currentSort !== 'date_desc' ? '&sort=' . htmlspecialchars($currentSort) : '' ?>" class="px-3 py-2 text-sm font-medium border-l border-slate-200 <?= $currentPeriod === 'past' ? 'bg-slate-100 text-slate-800' : 'bg-white text-slate-600 hover:bg-slate-50' ?>">過去の遠征</a>
+                <a href="<?= $baseUrl ?>?period=all<?= $currentSort !== 'date_desc' ? '&sort=' . htmlspecialchars($currentSort) : '' ?>" class="px-3 py-2 text-sm font-medium border-l border-slate-200 <?= $currentPeriod === 'all' ? 'bg-slate-100 text-slate-800' : 'bg-white text-slate-600 hover:bg-slate-50' ?>">すべて</a>
+            </div>
+            <div class="flex items-center gap-2">
+                <label class="text-xs text-slate-500">並び順:</label>
+                <select id="sortSelect" class="border border-slate-200 rounded px-2 py-1 text-sm">
+                    <option value="date_desc" <?= $currentSort === 'date_desc' ? 'selected' : '' ?>>新しい順</option>
+                    <option value="date_asc" <?= $currentSort === 'date_asc' ? 'selected' : '' ?>>古い順</option>
+                </select>
+            </div>
+        </div>
         <div class="space-y-3">
-            <?php foreach ($trips as $t): ?>
-            <a href="/live_trip/show.php?id=<?= (int)$t['id'] ?>" class="block bg-white border border-slate-200 rounded-xl p-4 hover:border-slate-300 hover:shadow-md transition">
-                <div class="flex justify-between items-start">
-                    <div>
+            <?php foreach ($trips as $t):
+                $ed = $t['event_date'] ?? '';
+                $firstDate = ($ed !== '' && strpos($ed, '〜') !== false) ? trim(substr($ed, 0, strpos($ed, '〜'))) : $ed;
+                $lastDate = ($ed !== '' && strpos($ed, '〜') !== false) ? trim(substr($ed, strpos($ed, '〜') + 3)) : $ed;
+                $today = date('Y-m-d');
+                $relativeDate = '';
+                if ($ed !== '') {
+                    $isUpcoming = $lastDate >= $today;
+                    $refDate = $isUpcoming ? $firstDate : $lastDate;
+                    $d1 = new DateTime($refDate);
+                    $d2 = new DateTime($today);
+                    $diff = $d1->diff($d2, true);
+                    $days = (int)($diff->days ?? 0);
+                    if ($isUpcoming) {
+                        $relativeDate = $days === 0 ? '今日' : ($days === 1 ? '明日' : 'あと' . $days . '日');
+                    } else {
+                        $relativeDate = $days === 0 ? '昨日' : ($days === 1 ? '1日前' : $days . '日前');
+                    }
+                }
+                $totalExp = (int)($t['total_expense'] ?? 0);
+                $checkTotal = (int)($t['checklist_total'] ?? 0);
+                $checkChecked = (int)($t['checklist_checked'] ?? 0);
+            ?>
+            <div class="block bg-white border border-slate-200 rounded-xl p-4 hover:border-slate-300 hover:shadow-md transition relative">
+                <a href="/live_trip/show.php?id=<?= (int)$t['id'] ?>" class="absolute inset-0 z-0 rounded-xl" aria-hidden="true"></a>
+                <div class="flex justify-between items-start gap-2 relative z-10 pointer-events-none">
+                    <div class="min-w-0 flex-1">
                         <h3 class="font-bold text-slate-800"><?= htmlspecialchars($t['event_name'] ?? '（未設定）') ?></h3>
                         <p class="text-sm text-slate-500 mt-1">
-                            <?= htmlspecialchars($t['event_date'] ?? '') ?>
+                            <?= htmlspecialchars($ed) ?>
+                            <?php if ($relativeDate): ?><span class="text-slate-400">(<?= htmlspecialchars($relativeDate) ?>)</span><?php endif; ?>
                             <?php if (!empty($t['event_place'])): ?>
                                 · <?= htmlspecialchars($t['event_place']) ?>
                             <?php endif; ?>
                         </p>
+                        <div class="flex flex-wrap gap-3 mt-2 text-xs text-slate-600">
+                            <?php if ($totalExp > 0): ?>
+                            <span><i class="fa-solid fa-yen-sign text-slate-400 mr-0.5"></i>¥<?= number_format($totalExp) ?></span>
+                            <?php endif; ?>
+                            <?php if ($checkTotal > 0): ?>
+                            <span><i class="fa-solid fa-list-check text-slate-400 mr-0.5"></i><?= $checkChecked ?>/<?= $checkTotal ?></span>
+                            <?php endif; ?>
+                            <a href="/live_trip/shiori.php?id=<?= (int)$t['id'] ?>" target="_blank" rel="noopener" class="lt-theme-link hover:underline relative z-20 pointer-events-auto"><i class="fa-solid fa-book mr-0.5"></i>しおり</a>
+                        </div>
                     </div>
-                    <i class="fa-solid fa-chevron-right text-slate-300"></i>
+                    <i class="fa-solid fa-chevron-right text-slate-300 shrink-0 mt-1"></i>
                 </div>
-            </a>
+            </div>
             <?php endforeach; ?>
         </div>
         <?php endif; ?>
@@ -81,6 +133,12 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
 <script>
 document.getElementById('mobileMenuBtn')?.addEventListener('click', () => {
     document.getElementById('sidebar')?.classList.toggle('mobile-open');
+});
+document.getElementById('sortSelect')?.addEventListener('change', function() {
+    var url = new URL(window.location.href);
+    url.searchParams.set('sort', this.value);
+    if (!url.searchParams.has('period')) url.searchParams.set('period', 'all');
+    window.location.href = url.toString();
 });
 </script>
 </body>

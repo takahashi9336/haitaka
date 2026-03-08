@@ -19,6 +19,14 @@ class MyListItemModel extends BaseModel {
         return $stmt->fetchAll();
     }
 
+    public function updateOrder(int $myListId, array $orderedIds): bool {
+        foreach ($orderedIds as $i => $id) {
+            $stmt = $this->pdo->prepare("UPDATE {$this->table} SET sort_order = ? WHERE id = ? AND my_list_id = ?");
+            $stmt->execute([$i, (int)$id, $myListId]);
+        }
+        return true;
+    }
+
     public function copyToChecklist(int $myListId, int $tripPlanId, int $userId): int {
         $items = $this->getByMyListId($myListId);
         $listModel = new MyListModel();

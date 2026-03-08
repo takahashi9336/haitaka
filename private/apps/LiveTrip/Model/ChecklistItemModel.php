@@ -50,4 +50,36 @@ class ChecklistItemModel extends BaseModel {
         $this->pdo->prepare("UPDATE {$this->table} SET checked = ? WHERE id = ?")->execute([$newVal, $id]);
         return true;
     }
+
+    public function updateOrder(int $tripPlanId, array $orderedIds): bool {
+        $pdo = $this->pdo;
+        $stmt = $pdo->prepare("UPDATE {$this->table} SET sort_order = ? WHERE id = ? AND trip_plan_id = ?");
+        foreach ($orderedIds as $i => $id) {
+            $stmt->execute([$i, (int)$id, $tripPlanId]);
+        }
+        return true;
+    }
+
+    /**
+     * 複数 trip のチェックリスト件数・チェック数を取得
+     * @return array<int, array{total: int, checked: int}>
+     */
+    public function getCountsByTripPlanIds(array $tripPlanIds): array {
+        if (empty($tripPlanIds)) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($tripPlanIds), '?'));
+        $sql = "SELECT trip_plan_id, COUNT(*) AS total, SUM(checked) AS checked FROM {$this->table}
+                WHERE trip_plan_id IN ({$placeholders}) GROUP BY trip_plan_id";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(array_values($tripPlanIds));
+        $result = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $result[(int)$row['trip_plan_id']] = [
+                'total' => (int)$row['total'],
+                'checked' => (int)$row['checked'],
+            ];
+        }
+        return $result;
+    }
 }

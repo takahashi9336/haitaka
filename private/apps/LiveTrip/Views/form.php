@@ -18,7 +18,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         .lt-theme-btn { background-color: var(--lt-theme); }
         body { font-family: 'Inter', 'Noto Sans JP', sans-serif; }
         .sidebar { width: 240px; }
-        @media (max-width: 768px) { .sidebar { position: fixed; transform: translateX(-100%); } .sidebar.mobile-open { transform: translateX(0); } }
+        @media (max-width: 768px) { .sidebar { position: fixed; transform: translateX(-100%); z-index: 100; height: 100%; width: 240px !important; } .sidebar.mobile-open { transform: translateX(0); } }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden text-slate-800 <?= $bodyBgClass ?>"<?= $bodyStyle ? ' style="' . htmlspecialchars($bodyStyle) . '"' : '' ?>>
@@ -32,12 +32,6 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
     </header>
 
     <div class="p-6 max-w-2xl">
-        <?php if (!empty($_SESSION['flash_error'])): ?>
-        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-            <?= htmlspecialchars($_SESSION['flash_error']) ?>
-            <?php unset($_SESSION['flash_error']); ?>
-        </div>
-        <?php endif; ?>
 
         <form method="post" action="<?= $isEdit ? '/live_trip/update.php' : '/live_trip/store.php' ?>" class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
             <?php if ($isEdit): ?>
@@ -71,10 +65,10 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                     <?php endif; ?>
                 </div>
                 <div id="event-rows-add" class="mt-3 space-y-4"></div>
-                <button type="button" id="add-event-btn" class="mt-2 text-emerald-600 hover:underline font-bold text-sm"><i class="fa-solid fa-plus mr-1"></i>イベントを追加</button>
-                <p class="text-sm text-slate-500 mt-2">
-                    <a href="/live_trip/lt_event_create.php?redirect=<?= urlencode($isEdit ? '/live_trip/edit.php?id=' . (int)$trip['id'] : '/live_trip/create.php') ?>" class="text-emerald-600 hover:underline">+ 汎用イベントを新規登録</a>
-                </p>
+                <div class="mt-2 flex flex-wrap items-center gap-3">
+                    <button type="button" id="add-event-btn" class="text-emerald-600 hover:underline font-bold text-sm"><i class="fa-solid fa-plus mr-1"></i>イベントを追加</button>
+                    <a href="/live_trip/lt_event_create.php?redirect=<?= urlencode($isEdit ? '/live_trip/edit.php?id=' . (int)$trip['id'] : '/live_trip/create.php') ?>" class="text-slate-500 hover:text-slate-700 text-sm">+ 汎用イベントを新規登録</a>
+                </div>
             </div>
 
             <div class="mb-6">
@@ -102,41 +96,50 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         const div = document.createElement('div');
         div.className = 'event-row flex flex-wrap gap-2 items-start p-3 bg-slate-50 rounded-lg border border-slate-200';
         div.innerHTML = `
-            <div class="w-full md:w-auto">
-                <select name="events[${id}][event_type]" class="event-type-select border border-slate-200 rounded px-2 py-1 text-sm">
-                    <option value="hinata">日向坂</option>
-                    <option value="generic">汎用</option>
-                </select>
+            <div class="w-full flex flex-wrap gap-2 items-start">
+                <div class="flex rounded border border-slate-200 overflow-hidden shrink-0">
+                    <button type="button" class="event-tab-btn px-3 py-1.5 text-xs font-bold bg-slate-100 text-slate-700" data-type="hinata">日向坂</button>
+                    <button type="button" class="event-tab-btn px-3 py-1.5 text-xs font-bold text-slate-500 hover:bg-slate-50" data-type="generic">汎用</button>
+                </div>
+                <input type="hidden" name="events[${id}][event_type]" class="event-type-input" value="hinata">
+                <div class="event-select-wrap hinata-select flex-1 min-w-[160px]">
+                    <select name="events[${id}][hn_event_id]" class="hn-event-select w-full border border-slate-200 rounded px-2 py-1 text-sm">
+                        <option value="">イベントを選択</option>
+                        ${(hinataEvents||[]).map(e => '<option value="'+e.id+'">'+escapeHtml(e.event_name)+' ('+e.event_date+')</option>').join('')}
+                    </select>
+                </div>
+                <div class="event-select-wrap generic-select flex-1 min-w-[160px]" style="display:none">
+                    <select name="events[${id}][lt_event_id]" class="lt-event-select w-full border border-slate-200 rounded px-2 py-1 text-sm">
+                        <option value="">イベントを選択</option>
+                        ${(ltEvents||[]).map(e => '<option value="'+e.id+'">'+escapeHtml(e.event_name)+' ('+e.event_date+')</option>').join('')}
+                    </select>
+                </div>
+                <div class="flex-1 min-w-[100px]"><input type="text" name="events[${id}][seat_info]" placeholder="座席" class="w-full border border-slate-200 rounded px-2 py-1 text-sm"></div>
+                <div class="flex-1 min-w-[100px]"><input type="text" name="events[${id}][impression]" placeholder="感想" class="w-full border border-slate-200 rounded px-2 py-1 text-sm"></div>
+                <button type="button" class="event-remove-btn text-red-500 hover:text-red-700 text-sm shrink-0" title="削除"><i class="fa-solid fa-trash-can"></i></button>
             </div>
-            <div class="hinata-select w-full md:w-48">
-                <select name="events[${id}][hn_event_id]" class="hn-event-select w-full border border-slate-200 rounded px-2 py-1 text-sm">
-                    <option value="">選択</option>
-                    ${hinataEvents.map(e => '<option value="'+e.id+'">'+escapeHtml(e.event_name)+' ('+e.event_date+')</option>').join('')}
-                </select>
-            </div>
-            <div class="generic-select w-full md:w-48" style="display:none">
-                <select name="events[${id}][lt_event_id]" class="lt-event-select w-full border border-slate-200 rounded px-2 py-1 text-sm">
-                    <option value="">選択</option>
-                    ${ltEvents.map(e => '<option value="'+e.id+'">'+escapeHtml(e.event_name)+' ('+e.event_date+')</option>').join('')}
-                </select>
-            </div>
-            <div class="flex-1 min-w-[120px]"><input type="text" name="events[${id}][seat_info]" placeholder="座席" class="w-full border border-slate-200 rounded px-2 py-1 text-sm"></div>
-            <div class="flex-1 min-w-[120px]"><input type="text" name="events[${id}][impression]" placeholder="感想" class="w-full border border-slate-200 rounded px-2 py-1 text-sm"></div>
-            <button type="button" class="event-remove-btn text-red-500 hover:text-red-700 text-sm" title="削除"><i class="fa-solid fa-trash-can"></i></button>
         `;
-        div.querySelector('.event-type-select').addEventListener('change', function() {
-            const v = this.value;
-            div.querySelector('.hinata-select').style.display = v === 'hinata' ? 'block' : 'none';
-            div.querySelector('.generic-select').style.display = v === 'generic' ? 'block' : 'none';
-            const hnSel = div.querySelector('.hn-event-select');
-            const ltSel = div.querySelector('.lt-event-select');
-            hnSel.name = v === 'hinata' ? `events[${id}][hn_event_id]` : '';
-            ltSel.name = v === 'generic' ? `events[${id}][lt_event_id]` : '';
-        });
-        div.querySelector('.event-remove-btn').addEventListener('click', function() {
-            div.remove();
-        });
-        div.querySelector('.event-type-select').dispatchEvent(new Event('change'));
+        const typeInput = div.querySelector('.event-type-input');
+        const tabs = div.querySelectorAll('.event-tab-btn');
+        const hinataWrap = div.querySelector('.hinata-select');
+        const genericWrap = div.querySelector('.generic-select');
+        const hnSel = div.querySelector('.hn-event-select');
+        const ltSel = div.querySelector('.lt-event-select');
+        function setType(t) {
+            typeInput.value = t;
+            tabs.forEach(bt => {
+                bt.classList.toggle('bg-slate-100', bt.dataset.type === t);
+                bt.classList.toggle('text-slate-700', bt.dataset.type === t);
+                bt.classList.toggle('text-slate-500', bt.dataset.type !== t);
+            });
+            hinataWrap.style.display = t === 'hinata' ? 'block' : 'none';
+            genericWrap.style.display = t === 'generic' ? 'block' : 'none';
+            hnSel.name = t === 'hinata' ? `events[${id}][hn_event_id]` : '';
+            ltSel.name = t === 'generic' ? `events[${id}][lt_event_id]` : '';
+        }
+        tabs.forEach(bt => bt.addEventListener('click', () => setType(bt.dataset.type)));
+        div.querySelector('.event-remove-btn').addEventListener('click', () => div.remove());
+        setType('hinata');
         return div;
     }
     function escapeHtml(s) {
@@ -160,6 +163,16 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
     document.getElementById('add-event-btn')?.click();
     <?php endif; ?>
 })();
+</script>
+<?php require_once __DIR__ . '/../../../components/flash_toast.php'; ?>
+<script>
+document.querySelectorAll('form[method="post"]').forEach(function(f) {
+    f.addEventListener('submit', function() {
+        f.querySelectorAll('button[type="submit"]').forEach(function(btn) {
+            if (!btn.disabled) { btn.disabled = true; btn.dataset.origHtml = btn.innerHTML; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>送信中...'; }
+        });
+    });
+});
 </script>
 </body>
 </html>

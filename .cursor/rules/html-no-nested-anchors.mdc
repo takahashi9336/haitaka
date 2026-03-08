@@ -1,0 +1,20 @@
+---
+description: a/button の入れ子禁止、サイドバー・スマホ表示
+globs: "**/*.php"
+alwaysApply: false
+---
+
+# 1. a タグ・button タグの入れ子禁止
+
+`<a>` や `<button>` の中に `<a>` や `<button>` を入れてはいけない。ブラウザが壊れた HTML として自動修正し、レイアウト崩れ（空の白い枠や謎のボックス）が発生する。
+
+# 2. サイドバーのスマホ表示
+
+`.sidebar` のモバイルスタイル（`@media (max-width: 768px)`）では以下を指定する:
+
+- `position: fixed`
+- `transform: translateX(-100%)`
+- `z-index: 100`
+- `height: 100%`
+- `width: 240px !important`
+- `.sidebar.mobile-open { transform: translateX(0); }` で開く

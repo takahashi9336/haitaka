@@ -21,14 +21,30 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
+        :root { --shiori-theme: <?= htmlspecialchars($themePrimaryHex ?? '#10b981') ?>; }
         body { font-family: 'Inter', 'Noto Sans JP', sans-serif; }
         .shiori-block { font-size: 15px; }
         .shiori-label { font-size: 11px; color: #64748b; font-weight: 700; }
+        .shiori-header { background-color: var(--shiori-theme); }
+        .shiori-link { color: var(--shiori-theme); }
+        .shiori-time { color: #334155; font-weight: 700; }
+        .shiori-timeline { position: relative; padding-left: 2rem; }
+        .shiori-timeline::before {
+            content: ''; position: absolute; left: 0.5rem; top: 0; bottom: 0;
+            width: 2px; background: #e2e8f0;
+        }
+        .shiori-timeline-node { position: relative; }
+        .shiori-timeline-node .shiori-node-icon {
+            position: absolute; left: -1.5rem; top: 0.3rem;
+            width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; background: #fff; border: 2px solid; z-index: 1;
+        }
+        .shiori-day-band { margin-left: -1rem; margin-right: -1rem; padding: 0.5rem 1rem; }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen text-slate-800 pb-8">
 
-<header class="sticky top-0 z-10 bg-emerald-600 text-white px-4 py-3 flex items-center justify-between shadow-md">
+<header class="shiori-header sticky top-0 z-10 text-white px-4 py-3 flex items-center justify-between shadow-md">
     <a href="/live_trip/show.php?id=<?= (int)$trip['id'] ?>" class="text-white/90 hover:text-white text-sm"><i class="fa-solid fa-arrow-left mr-1"></i>詳細へ</a>
     <h1 class="font-bold text-lg truncate max-w-[60%]"><?= htmlspecialchars($trip['event_name'] ?? '遠征') ?></h1>
     <span class="w-14"></span>
@@ -39,7 +55,7 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
         <p class="shiori-label mb-1">イベント</p>
         <p class="font-bold"><?= htmlspecialchars($trip['event_date'] ?? '') ?></p>
         <?php if ($eventPlace): ?>
-        <a href="<?= htmlspecialchars($eventPlaceForMaps) ?>" target="_blank" rel="noopener" class="text-emerald-600 font-medium text-sm mt-1 inline-flex items-center gap-1">
+        <a href="<?= htmlspecialchars($eventPlaceForMaps) ?>" target="_blank" rel="noopener" class="shiori-link font-medium text-sm mt-1 inline-flex items-center gap-1">
             <?= htmlspecialchars($eventPlace) ?> <i class="fa-solid fa-external-link text-xs"></i>
         </a>
         <?php endif; ?>
@@ -54,7 +70,7 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
         <div class="mb-4 last:mb-0 pb-4 last:pb-0 border-b border-slate-100 last:border-0">
             <p class="font-bold"><?= htmlspecialchars($h['hotel_name']) ?></p>
             <?php if ($mapsUrl !== '#'): ?>
-            <a href="<?= htmlspecialchars($mapsUrl) ?>" target="_blank" rel="noopener" class="text-emerald-600 text-sm">地図で開く</a>
+            <a href="<?= htmlspecialchars($mapsUrl) ?>" target="_blank" rel="noopener" class="shiori-link text-sm">地図で開く</a>
             <?php endif; ?>
             <?php if ($h['reservation_no']): ?><p class="text-sm mt-1">予約番号: <strong><?= htmlspecialchars($h['reservation_no']) ?></strong></p><?php endif; ?>
             <?php if ($h['check_in']): ?><p class="text-sm">チェックイン: <?= htmlspecialchars($h['check_in']) ?></p><?php endif; ?>
@@ -82,8 +98,10 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
     <?php if (!empty($mergedTimeline)): ?>
     <div class="bg-white rounded-xl p-4 shadow-sm">
         <p class="shiori-label mb-3">タイムライン</p>
+        <div class="shiori-timeline space-y-0">
         <?php
         $lastDate = '';
+        $themeHex = $themePrimaryHex ?? '#10b981';
         foreach ($mergedTimeline as $m):
             $d = $m['date'] ?? '';
             if ($d !== $lastDate):
@@ -98,21 +116,44 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
                     elseif ($d > $lastEv) $dayLabel .= '（翌日）';
                 }
         ?>
-        <p class="shiori-label <?= $isFirstGroup ? 'mt-0' : 'mt-3' ?> mb-2"><?= htmlspecialchars($dayLabel) ?></p>
-        <?php endif; ?>
-        <div class="flex gap-3 py-2 border-b border-slate-100 last:border-0">
-            <span class="font-mono font-bold text-emerald-600 w-14 shrink-0"><?= htmlspecialchars($m['time'] !== '99:99' ? $m['time'] : '') ?></span>
-            <div>
-                <?php if ($m['type'] === 'timeline'): $ti = $m['data']; ?>
-                <p class="font-medium"><?= htmlspecialchars($ti['label']) ?></p>
-                <?php if ($ti['memo']): ?><p class="text-sm text-slate-500"><?= htmlspecialchars($ti['memo']) ?></p><?php endif; ?>
-                <?php else: $tl = $m['data']; $dir = \App\LiveTrip\Model\TransportLegModel::$directions[$tl['direction']] ?? $tl['direction']; ?>
-                <p class="font-medium"><?= htmlspecialchars($dir) ?>: <?= htmlspecialchars($tl['transport_type'] ?? '') ?> <?= htmlspecialchars($tl['route_memo'] ?? '') ?></p>
-                <?php if ($tl['departure'] || $tl['arrival']): ?><p class="text-sm text-slate-500"><?= htmlspecialchars($tl['departure']) ?> → <?= htmlspecialchars($tl['arrival']) ?></p><?php endif; ?>
+        <div class="shiori-day-band -mx-4 px-4 py-2 bg-slate-100 text-slate-600 font-bold text-sm <?= $isFirstGroup ? 'mt-0' : 'mt-3' ?>">
+            <?= htmlspecialchars($dayLabel) ?>
+        </div>
+        <?php endif;
+            $ti = $m['type'] === 'timeline' ? $m['data'] : null;
+            $tl = $m['type'] === 'transport' ? $m['data'] : null;
+            $iconClass = 'fa-clock';
+            $nodeColor = '#64748b';
+            if ($m['type'] === 'transport' && $tl):
+                $tt = $tl['transport_type'] ?? '';
+                if (preg_match('/新幹線|電車|在来線|列車/', $tt)) { $iconClass = 'fa-train'; $nodeColor = '#3b82f6'; }
+                elseif (strpos($tt, '車') !== false) { $iconClass = 'fa-car'; $nodeColor = '#3b82f6'; }
+                else { $iconClass = 'fa-bus'; $nodeColor = '#3b82f6'; }
+            elseif ($m['type'] === 'timeline' && $ti):
+                $label = $ti['label'] ?? '';
+                if (strpos($label, '開場') !== false) { $iconClass = 'fa-door-open'; $nodeColor = $themeHex; }
+                elseif (strpos($label, '開演') !== false) { $iconClass = 'fa-star'; $nodeColor = $themeHex; }
+            endif;
+        ?>
+        <div class="shiori-timeline-node flex gap-3 py-2.5 border-b border-slate-200 last:border-0" style="--node-color: <?= htmlspecialchars($nodeColor) ?>">
+            <span class="font-mono text-sm shiori-time w-12 shrink-0"><?= htmlspecialchars($m['time'] !== '99:99' ? $m['time'] : '') ?></span>
+            <div class="min-w-0 flex-1 pl-1">
+                <span class="shiori-node-icon" style="color: <?= htmlspecialchars($nodeColor) ?>; border-color: <?= htmlspecialchars($nodeColor) ?>"><i class="fa-solid <?= htmlspecialchars($iconClass) ?> text-xs"></i></span>
+                <?php if ($m['type'] === 'timeline'): ?>
+                <p class="font-medium text-slate-800"><?= htmlspecialchars($ti['label']) ?></p>
+                <?php if ($ti['memo']): ?><p class="text-sm text-slate-500 mt-0.5"><?= htmlspecialchars($ti['memo']) ?></p><?php endif; ?>
+                <?php else: $dir = \App\LiveTrip\Model\TransportLegModel::$directions[$tl['direction']] ?? $tl['direction']; ?>
+                <p class="font-medium text-slate-800"><?= htmlspecialchars($dir) ?>: <?= htmlspecialchars($tl['transport_type'] ?? '') ?> <?= htmlspecialchars($tl['route_memo'] ?? '') ?></p>
+                <?php
+                $routeMemo = trim($tl['route_memo'] ?? '');
+                $hasRouteInMemo = $routeMemo !== '' && (strpos($routeMemo, '→') !== false || strpos($routeMemo, '駅') !== false);
+                if (($tl['departure'] || $tl['arrival']) && !$hasRouteInMemo):
+                ?><p class="text-sm text-slate-500 mt-0.5"><?= htmlspecialchars($tl['departure']) ?> → <?= htmlspecialchars($tl['arrival']) ?></p><?php endif; ?>
                 <?php endif; ?>
             </div>
         </div>
         <?php endforeach; ?>
+        </div>
     </div>
     <?php endif; ?>
 
@@ -120,9 +161,11 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
     <div class="bg-white rounded-xl p-4 shadow-sm">
         <p class="shiori-label mb-3">チェックリスト</p>
         <?php foreach ($checklistItems as $ci): ?>
-        <div class="flex items-center gap-2 py-2">
-            <i class="fa-<?= $ci['checked'] ? 'solid fa-circle-check text-emerald-500' : 'regular fa-circle' ?> text-slate-300 w-5"></i>
-            <span class="<?= $ci['checked'] ? 'line-through text-slate-400' : '' ?>"><?= htmlspecialchars($ci['item_name']) ?></span>
+        <div class="shiori-checklist-row flex items-center gap-2 py-2 border-b border-slate-50 last:border-0" data-id="<?= (int)$ci['id'] ?>">
+            <button type="button" class="shiori-checklist-toggle text-left flex-1 flex items-center gap-2 w-full min-w-0" data-id="<?= (int)$ci['id'] ?>" data-trip="<?= (int)$trip['id'] ?>">
+                <i class="shiori-checklist-icon fa-<?= $ci['checked'] ? 'solid fa-circle-check text-emerald-500' : 'regular fa-circle' ?> text-slate-300 w-5 shrink-0"></i>
+                <span class="shiori-checklist-label <?= $ci['checked'] ? 'line-through text-slate-400' : '' ?>"><?= htmlspecialchars($ci['item_name']) ?></span>
+            </button>
         </div>
         <?php endforeach; ?>
     </div>
@@ -133,5 +176,38 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
     <?php endif; ?>
 </div>
 
+<script>
+(function() {
+    var tripId = <?= (int)$trip['id'] ?>;
+    document.querySelectorAll('.shiori-checklist-toggle').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var id = this.dataset.id;
+            var trip = this.dataset.trip;
+            fetch('/live_trip/checklist_toggle.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest'},
+                body: 'id=' + id + '&trip_plan_id=' + trip
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.status === 'ok') {
+                    document.querySelectorAll('.shiori-checklist-row[data-id="' + id + '"]').forEach(function(row) {
+                        var icon = row.querySelector('.shiori-checklist-icon');
+                        var label = row.querySelector('.shiori-checklist-label');
+                        if (!icon || !label) return;
+                        if (data.checked) {
+                            icon.className = 'shiori-checklist-icon fa-solid fa-circle-check text-emerald-500 w-5 shrink-0';
+                            label.classList.add('line-through', 'text-slate-400');
+                        } else {
+                            icon.className = 'shiori-checklist-icon fa-regular fa-circle text-slate-300 w-5 shrink-0';
+                            label.classList.remove('line-through', 'text-slate-400');
+                        }
+                    });
+                }
+            });
+        });
+    });
+})();
+</script>
 </body>
 </html>

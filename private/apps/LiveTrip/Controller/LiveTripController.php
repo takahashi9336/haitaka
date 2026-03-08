@@ -34,6 +34,46 @@ class LiveTripController {
         $userId = (int) $_SESSION['user']['id'];
         $tripPlanModel = new TripPlanModel();
         $trips = $tripPlanModel->getMyTrips($userId);
+
+        $tripIds = array_map(fn($t) => (int)$t['id'], $trips);
+        $expenseTotals = (new ExpenseModel())->getTotalsByTripPlanIds($tripIds);
+        $transportTotals = (new TransportLegModel())->getAmountTotalsByTripPlanIds($tripIds);
+        $checklistCounts = (new ChecklistItemModel())->getCountsByTripPlanIds($tripIds);
+
+        foreach ($trips as &$t) {
+            $tid = (int)$t['id'];
+            $t['total_expense'] = ($expenseTotals[$tid] ?? 0) + ($transportTotals[$tid] ?? 0);
+            $c = $checklistCounts[$tid] ?? ['total' => 0, 'checked' => 0];
+            $t['checklist_total'] = $c['total'];
+            $t['checklist_checked'] = $c['checked'];
+        }
+        unset($t);
+
+        $period = $_GET['period'] ?? 'all';
+        $sort = $_GET['sort'] ?? 'date_desc';
+        $today = date('Y-m-d');
+
+        $trips = array_filter($trips, function ($t) use ($period, $today) {
+            $ed = $t['event_date'] ?? '';
+            if ($ed === '') return $period === 'all';
+            $lastDate = strpos($ed, '〜') !== false ? trim(substr($ed, strpos($ed, '〜') + 3)) : $ed;
+            $isUpcoming = $lastDate >= $today;
+            return match ($period) {
+                'upcoming' => $isUpcoming,
+                'past' => !$isUpcoming,
+                default => true,
+            };
+        });
+
+        usort($trips, function ($a, $b) use ($sort) {
+            $da = $a['event_date'] ?? '';
+            $db = $b['event_date'] ?? '';
+            $da = strpos($da, '〜') !== false ? trim(substr($da, 0, strpos($da, '〜'))) : $da;
+            $db = strpos($db, '〜') !== false ? trim(substr($db, 0, strpos($db, '〜'))) : $db;
+            $cmp = strcmp($da, $db);
+            return $sort === 'date_asc' ? $cmp : -$cmp;
+        });
+
         $user = $_SESSION['user'];
         require_once __DIR__ . '/../Views/index.php';
     }
@@ -158,6 +198,7 @@ class LiveTripController {
             }
         }
         Logger::info("live_trip created id={$tripId} by=" . ($_SESSION['user']['id_name'] ?? ''));
+        $_SESSION['flash_success'] = '遠征を登録しました。宿泊・移動・チェックリストを追加して計画を充実させましょう。';
         header('Location: /live_trip/show.php?id=' . $tripId);
         exit;
     }
@@ -615,6 +656,26 @@ class LiveTripController {
         return !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
     }
 
+    public function reorderChecklist(): void {
+        $this->requireAccess();
+        header('Content-Type: application/json');
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['status' => 'error']);
+            exit;
+        }
+        $tripPlanId = (int)($_POST['trip_plan_id'] ?? 0);
+        $order = $_POST['order'] ?? [];
+        $userId = (int)$_SESSION['user']['id'];
+        if (!$this->canAccessTrip($tripPlanId, $userId) || !is_array($order)) {
+            echo json_encode(['status' => 'error']);
+            exit;
+        }
+        $orderedIds = array_map('intval', array_filter($order));
+        (new ChecklistItemModel())->updateOrder($tripPlanId, $orderedIds);
+        echo json_encode(['status' => 'ok']);
+        exit;
+    }
+
     public function toggleChecklist(): void {
         $this->requireAccess();
         header('Content-Type: application/json');
@@ -755,7 +816,29 @@ class LiveTripController {
             'my_list_id' => $myListId,
             'item_name' => trim($_POST['item_name'] ?? ''),
         ]);
-        header('Location: /live_trip/my_list.php?edit=' . $myListId);
+        header('Location: /live_trip/my_list.php');
+        exit;
+    }
+
+    public function reorderMyListItems(): void {
+        $this->requireAccess();
+        header('Content-Type: application/json');
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['status' => 'error']);
+            exit;
+        }
+        $myListId = (int)($_POST['my_list_id'] ?? 0);
+        $order = $_POST['order'] ?? [];
+        $userId = (int)$_SESSION['user']['id'];
+        $listModel = new MyListModel();
+        $list = $listModel->find($myListId);
+        if (!$list || (int)$list['user_id'] !== $userId || !is_array($order)) {
+            echo json_encode(['status' => 'error']);
+            exit;
+        }
+        $orderedIds = array_map('intval', array_filter($order));
+        (new MyListItemModel())->updateOrder($myListId, $orderedIds);
+        echo json_encode(['status' => 'ok']);
         exit;
     }
 
@@ -767,7 +850,7 @@ class LiveTripController {
         $list = $listModel->find($myListId);
         if (!$list || (int)$list['user_id'] !== (int)$_SESSION['user']['id']) { header('Location: /live_trip/my_list.php'); exit; }
         (new MyListItemModel())->delete($id);
-        header('Location: /live_trip/my_list.php?edit=' . $myListId);
+        header('Location: /live_trip/my_list.php');
         exit;
     }
 
