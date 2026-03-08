@@ -259,6 +259,14 @@ $showHinataUtility = (
     && $isHinataPage
     && strpos($uri, '_admin') === false
 );
+$showAdminUtility = (
+    isset($_SESSION['user']['id'])
+    && ($_SESSION['user']['role'] ?? '') === 'admin'
+);
 if ($showHinataUtility) {
     require __DIR__ . '/../apps/Hinata/Views/partials/hinata_utility_fab.php';
+}
+if ($showAdminUtility) {
+    $adminFabOverHinata = $showHinataUtility;
+    require __DIR__ . '/../apps/Admin/Views/partials/admin_utility_fab.php';
 }
