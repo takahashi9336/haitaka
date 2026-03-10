@@ -85,7 +85,7 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
         <p class="shiori-label mb-3">移動</p>
         <?php foreach ($transportLegs as $t): ?>
         <div class="mb-3 last:mb-0">
-            <p class="text-xs text-slate-500"><?= htmlspecialchars(\App\LiveTrip\Model\TransportLegModel::$directions[$t['direction']] ?? $t['direction']) ?></p>
+            <?php if ($t['departure_date']): ?><p class="text-xs text-slate-500"><?= htmlspecialchars($t['departure_date']) ?></p><?php endif; ?>
             <p class="font-medium"><?= htmlspecialchars($t['transport_type'] ?? '') ?> <?= htmlspecialchars($t['route_memo'] ?? '') ?></p>
             <?php if ($t['departure'] || $t['arrival']): ?>
             <p class="text-sm text-slate-600"><?= htmlspecialchars($t['departure']) ?> → <?= htmlspecialchars($t['arrival']) ?><?= $t['duration_min'] ? ' ('.$t['duration_min'].'分)' : '' ?></p>
@@ -142,8 +142,8 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
                 <?php if ($m['type'] === 'timeline'): ?>
                 <p class="font-medium text-slate-800"><?= htmlspecialchars($ti['label']) ?></p>
                 <?php if ($ti['memo']): ?><p class="text-sm text-slate-500 mt-0.5"><?= htmlspecialchars($ti['memo']) ?></p><?php endif; ?>
-                <?php else: $dir = \App\LiveTrip\Model\TransportLegModel::$directions[$tl['direction']] ?? $tl['direction']; ?>
-                <p class="font-medium text-slate-800"><?= htmlspecialchars($dir) ?>: <?= htmlspecialchars($tl['transport_type'] ?? '') ?> <?= htmlspecialchars($tl['route_memo'] ?? '') ?></p>
+                <?php else: ?>
+                <p class="font-medium text-slate-800"><?= htmlspecialchars($tl['transport_type'] ?? '') ?> <?= htmlspecialchars($tl['route_memo'] ?? '') ?></p>
                 <?php
                 $routeMemo = trim($tl['route_memo'] ?? '');
                 $hasRouteInMemo = $routeMemo !== '' && (strpos($routeMemo, '→') !== false || strpos($routeMemo, '駅') !== false);

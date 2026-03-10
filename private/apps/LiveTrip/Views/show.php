@@ -1,10 +1,27 @@
 <?php
 $appKey = 'live_trip';
 require_once __DIR__ . '/../../../components/theme_from_session.php';
+\Core\Database::connect();
 $eventPlace = $trip['event_place'] ?? $trip['hn_event_place'] ?? '';
 $eventDates = array_values(array_unique(array_filter(array_column($trip['events'] ?? [], 'event_date'))));
 sort($eventDates);
 $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode($eventPlace) : '#';
+
+$staticMapSvc = new \App\LiveTrip\Service\MapsStaticMapService();
+$venueMapUrl = null;
+$firstEv = $trip['events'][0] ?? null;
+if ($firstEv && ($lat = trim($firstEv['venue_latitude'] ?? '')) !== '' && ($lng = trim($firstEv['venue_longitude'] ?? '')) !== '') {
+    $venueMapUrl = $staticMapSvc->getStaticMapUrl($lat, $lng, 320, 120);
+}
+$hotelMapUrls = [];
+foreach ($hotelStays ?? [] as $h) {
+    $lat = trim($h['latitude'] ?? '');
+    $lng = trim($h['longitude'] ?? '');
+    if ($lat !== '' && $lng !== '') {
+        $url = $staticMapSvc->getStaticMapUrl($lat, $lng, 320, 120);
+        if ($url) $hotelMapUrls[(int)$h['id']] = $url;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -35,6 +52,9 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
         .edit-form.hidden { display: none !important; }
         .lt-tab-bar { -webkit-overflow-scrolling: touch; }
         .lt-checklist-sortable .sortable-ghost { opacity: 0.4; }
+        .lt-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; display: flex; align-items: center; justify-content: center; }
+        .lt-modal-overlay.hidden { display: none; }
+        .lt-modal { background: white; border-radius: 1rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); max-width: 28rem; width: 100%; max-height: 90vh; overflow-y: auto; }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden text-slate-800 <?= $bodyBgClass ?>"<?= $bodyStyle ? ' style="' . htmlspecialchars($bodyStyle) . '"' : '' ?>>
@@ -116,16 +136,27 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
                     <?php if ($eventPlace): ?>
                     <a href="<?= htmlspecialchars($eventPlaceForMaps) ?>" target="_blank" rel="noopener" class="text-sky-600 font-medium text-sm mt-1 inline-flex items-center gap-1"><?= htmlspecialchars($eventPlace) ?> <i class="fa-solid fa-external-link text-xs"></i></a>
                     <?php endif; ?>
+                    <?php if ($venueMapUrl): ?>
+                    <a href="<?= htmlspecialchars($eventPlaceForMaps) ?>" target="_blank" rel="noopener" class="block mt-2 rounded-lg overflow-hidden border border-slate-200 max-w-[320px]">
+                        <img src="<?= htmlspecialchars($venueMapUrl) ?>" alt="会場" width="320" height="120" class="w-full h-auto">
+                    </a>
+                    <?php endif; ?>
                 </div>
                 <?php if (!empty($hotelStays)): ?>
                 <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
                     <p class="text-xs font-bold text-slate-500 mb-3">宿泊</p>
                     <?php foreach ($hotelStays as $h):
                         $mapsUrl = (new \App\LiveTrip\Model\HotelStayModel())->getGoogleMapsUrl($h);
+                        $hotelMapUrl = $hotelMapUrls[(int)$h['id']] ?? null;
                     ?>
                     <div class="mb-3 last:mb-0">
                         <p class="font-bold"><?= htmlspecialchars($h['hotel_name']) ?></p>
                         <?php if ($mapsUrl !== '#'): ?><a href="<?= htmlspecialchars($mapsUrl) ?>" target="_blank" rel="noopener" class="text-sky-600 text-sm">地図で開く</a><?php endif; ?>
+                        <?php if ($hotelMapUrl): ?>
+                        <a href="<?= htmlspecialchars($mapsUrl !== '#' ? $mapsUrl : '#') ?>" target="_blank" rel="noopener" class="block mt-2 rounded-lg overflow-hidden border border-slate-200 max-w-[320px]">
+                            <img src="<?= htmlspecialchars($hotelMapUrl) ?>" alt="<?= htmlspecialchars($h['hotel_name']) ?>" width="320" height="120" class="w-full h-auto">
+                        </a>
+                        <?php endif; ?>
                         <?php if ($h['reservation_no']): ?><p class="text-sm">予約番号: <?= htmlspecialchars($h['reservation_no']) ?></p><?php endif; ?>
                     </div>
                     <?php endforeach; ?>
@@ -136,7 +167,7 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
                     <p class="text-xs font-bold text-slate-500 mb-3">移動</p>
                     <?php foreach ($transportLegs as $t): ?>
                     <div class="mb-2">
-                        <p class="text-xs text-slate-500"><?= htmlspecialchars(\App\LiveTrip\Model\TransportLegModel::$directions[$t['direction']] ?? $t['direction']) ?></p>
+                        <?php if ($t['departure_date']): ?><p class="text-xs text-slate-500"><?= htmlspecialchars($t['departure_date']) ?></p><?php endif; ?>
                         <p><?= htmlspecialchars($t['transport_type'] ?? '') ?> <?= htmlspecialchars($t['route_memo'] ?? '') ?></p>
                         <?php if ($t['departure'] || $t['arrival']): ?><p class="text-sm text-slate-600"><?= htmlspecialchars($t['departure']) ?> → <?= htmlspecialchars($t['arrival']) ?><?= $t['duration_min'] ? ' ('.$t['duration_min'].'分)' : '' ?></p><?php endif; ?>
                     </div>
@@ -169,8 +200,8 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
                         <div>
                             <?php if ($m['type'] === 'timeline'): $t = $m['data']; ?>
                             <p class="font-medium"><?= htmlspecialchars($t['label']) ?><?= $t['memo'] ? ' · ' . htmlspecialchars($t['memo']) : '' ?></p>
-                            <?php else: $t = $m['data']; $dir = \App\LiveTrip\Model\TransportLegModel::$directions[$t['direction']] ?? $t['direction']; ?>
-                            <p class="font-medium"><i class="fa-solid fa-train text-slate-400 mr-1"></i><?= htmlspecialchars($dir) ?>: <?= htmlspecialchars($t['transport_type'] ?? '') ?> <?= htmlspecialchars($t['route_memo'] ?? '') ?></p>
+                            <?php else: $t = $m['data']; ?>
+                            <p class="font-medium"><i class="fa-solid fa-train text-slate-400 mr-1"></i><?= htmlspecialchars($t['transport_type'] ?? '') ?> <?= htmlspecialchars($t['route_memo'] ?? '') ?></p>
                             <?php if ($t['departure'] || $t['arrival']): ?><p class="text-sm text-slate-500"><?= htmlspecialchars($t['departure']) ?> → <?= htmlspecialchars($t['arrival']) ?></p><?php endif; ?>
                             <?php endif; ?>
                         </div>
@@ -332,7 +363,7 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
                         <?php if (!empty($tl['amount']) && (int)$tl['amount'] > 0): ?>
                         <div class="py-2 border-b border-slate-100 last:border-0 flex justify-between items-center text-sm">
                             <span class="text-slate-700">
-                                <?= htmlspecialchars(\App\LiveTrip\Model\TransportLegModel::$directions[$tl['direction']] ?? $tl['direction']) ?>: <?= htmlspecialchars($tl['transport_type'] ?? '') ?> <?= htmlspecialchars($tl['route_memo'] ?? '') ?>
+                                <?= htmlspecialchars($tl['transport_type'] ?? '') ?> <?= htmlspecialchars($tl['route_memo'] ?? '') ?>
                                 <?php if ($tl['departure'] || $tl['arrival']): ?><span class="text-slate-500">(<?= htmlspecialchars($tl['departure'] ?? '') ?>→<?= htmlspecialchars($tl['arrival'] ?? '') ?>)</span><?php endif; ?>
                             </span>
                             <span class="font-medium">¥<?= number_format((int)$tl['amount']) ?></span>
@@ -361,6 +392,9 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
             <form method="post" action="/live_trip/hotel_store.php" class="space-y-3 p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
                 <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
                 <input type="hidden" name="tab" value="hotel">
+                <input type="hidden" name="latitude" value="">
+                <input type="hidden" name="longitude" value="">
+                <input type="hidden" name="place_id" value="">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-bold text-slate-500 mb-1">ホテル名 *</label>
@@ -416,6 +450,7 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
             <div class="space-y-4">
                 <?php foreach ($hotelStays ?? [] as $h): 
                     $mapsUrl = (new \App\LiveTrip\Model\HotelStayModel())->getGoogleMapsUrl($h);
+                    $hotelMapUrl = $hotelMapUrls[(int)$h['id']] ?? null;
                 ?>
                 <div class="hotel-item p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
                     <div class="hotel-view">
@@ -438,6 +473,11 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
                             </span>
                         </div>
                         <?php if ($h['address']): ?><p class="text-sm text-slate-500"><?= htmlspecialchars($h['address']) ?></p><?php endif; ?>
+                        <?php if ($hotelMapUrl): ?>
+                        <a href="<?= htmlspecialchars($mapsUrl !== '#' ? $mapsUrl : '#') ?>" target="_blank" rel="noopener" class="block mt-2 rounded-lg overflow-hidden border border-slate-200 max-w-[320px]">
+                            <img src="<?= htmlspecialchars($hotelMapUrl) ?>" alt="<?= htmlspecialchars($h['hotel_name']) ?>" width="320" height="120" class="w-full h-auto">
+                        </a>
+                        <?php endif; ?>
                         <?php if ($h['distance_from_home'] || $h['time_from_home']): ?>
                         <p class="text-sm">自宅から: <?= htmlspecialchars($h['distance_from_home'] ?? '') ?> <?= htmlspecialchars($h['time_from_home'] ?? '') ?></p>
                         <?php endif; ?>
@@ -453,6 +493,9 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
                         <input type="hidden" name="id" value="<?= (int)$h['id'] ?>">
                         <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
                         <input type="hidden" name="tab" value="hotel">
+                        <input type="hidden" name="latitude" value="<?= htmlspecialchars($h['latitude'] ?? '') ?>">
+                        <input type="hidden" name="longitude" value="<?= htmlspecialchars($h['longitude'] ?? '') ?>">
+                        <input type="hidden" name="place_id" value="<?= htmlspecialchars($h['place_id'] ?? '') ?>">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div><label class="block text-xs font-bold text-slate-500 mb-1">ホテル名 *</label><input type="text" name="hotel_name" value="<?= htmlspecialchars($h['hotel_name'] ?? '') ?>" required class="w-full border border-slate-200 rounded px-3 py-2 text-sm"></div>
                             <div><label class="block text-xs font-bold text-slate-500 mb-1">住所</label><input type="text" name="address" value="<?= htmlspecialchars($h['address'] ?? '') ?>" class="w-full border border-slate-200 rounded px-3 py-2 text-sm"></div>
@@ -485,53 +528,53 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
             </h2>
             <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
                 <p class="text-sm text-slate-600 mb-3">移動を追加する際に交通費も登録できます。費用タブで集計を確認できます。</p>
-                <form method="post" action="/live_trip/transport_store.php" class="space-y-3">
+                <form id="transport-add-form" method="post" action="/live_trip/transport_store.php" class="space-y-3">
                 <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
                 <input type="hidden" name="tab" value="transport">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">往路/復路</label>
-                        <select name="direction" class="w-full border border-slate-200 rounded px-3 py-2 text-sm">
-                            <option value="outbound">往路</option>
-                            <option value="return">復路</option>
-                        </select>
-                    </div>
-                    <div>
                         <label class="block text-xs font-bold text-slate-500 mb-1">出発日</label>
-                        <input type="date" name="departure_date" class="w-full border border-slate-200 rounded px-3 py-2 text-sm" placeholder="未入力=往路前日/復路翌日" title="未入力時は往路=前日・復路=翌日">
+                        <input type="date" name="departure_date" class="w-full border border-slate-200 rounded px-3 py-2 text-sm">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-500 mb-1">出発時刻</label>
                         <input type="text" name="scheduled_time" class="w-full border border-slate-200 rounded px-3 py-2 text-sm" placeholder="08:00（タイムラインに表示）">
                     </div>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">交通機関</label>
-                        <input type="text" name="transport_type" class="w-full border border-slate-200 rounded px-3 py-2 text-sm" placeholder="新幹線、在来線など">
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">経路メモ</label>
-                    <input type="text" name="route_memo" class="w-full border border-slate-200 rounded px-3 py-2 text-sm" placeholder="東京→名古屋 のぞみ、名古屋→会場 在来線">
-                </div>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div>
                         <label class="block text-xs font-bold text-slate-500 mb-1">発</label>
-                        <input type="text" name="departure" class="w-full border border-slate-200 rounded px-2 py-1 text-sm" placeholder="発着駅・空港">
+                        <input type="text" id="transport-departure" name="departure" class="w-full border border-slate-200 rounded px-2 py-1 text-sm" placeholder="発着駅・空港">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-500 mb-1">着</label>
-                        <input type="text" name="arrival" class="w-full border border-slate-200 rounded px-2 py-1 text-sm">
+                        <input type="text" id="transport-arrival" name="arrival" class="w-full border border-slate-200 rounded px-2 py-1 text-sm">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-500 mb-1">所要時間(分)</label>
-                        <input type="number" name="duration_min" class="w-full border border-slate-200 rounded px-2 py-1 text-sm">
+                        <input type="number" id="transport-duration-min" name="duration_min" class="w-full border border-slate-200 rounded px-2 py-1 text-sm">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-500 mb-1">交通費(円)</label>
                         <input type="number" name="transport_amount" class="w-full border border-slate-200 rounded px-2 py-1 text-sm" placeholder="費用も登録">
                     </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" id="transport-fetch-routes-btn" class="px-3 py-2 border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50">
+                        <i class="fa-solid fa-route mr-1"></i>候補を取得
+                    </button>
+                    <span id="transport-routes-status" class="text-sm text-slate-500"></span>
+                </div>
+                <div id="transport-route-options" class="hidden flex flex-wrap gap-2"></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">交通機関</label>
+                        <input type="text" id="transport-type" name="transport_type" class="w-full border border-slate-200 rounded px-3 py-2 text-sm" placeholder="新幹線、在来線など">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">経路メモ</label>
+                    <input type="text" id="transport-route-memo" name="route_memo" class="w-full border border-slate-200 rounded px-3 py-2 text-sm" placeholder="東京→名古屋 のぞみ、名古屋→会場 在来線">
                 </div>
                 <button type="submit" class="lt-theme-btn text-white px-4 py-2 rounded text-sm">移動を追加</button>
                 </form>
@@ -542,7 +585,7 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
                     <div class="transport-view flex justify-between items-start">
                         <div>
                             <?php if (!empty($t['scheduled_time'])): ?><span class="font-mono font-bold text-emerald-600 mr-2"><?= htmlspecialchars($t['scheduled_time']) ?></span><?php endif; ?>
-                            <span class="text-xs font-bold text-slate-500"><?= htmlspecialchars(\App\LiveTrip\Model\TransportLegModel::$directions[$t['direction']] ?? $t['direction']) ?></span>
+                            <?php if ($t['departure_date']): ?><span class="text-xs font-bold text-slate-500"><?= htmlspecialchars($t['departure_date']) ?></span><?php endif; ?>
                             <p class="text-slate-700"><?= htmlspecialchars($t['transport_type'] ?? '') ?> <?= htmlspecialchars($t['route_memo'] ?? '') ?><?= !empty($t['amount']) ? ' ¥' . number_format($t['amount']) : '' ?></p>
                             <?php if ($t['departure'] || $t['arrival']): ?>
                             <p class="text-sm text-slate-500"><?= htmlspecialchars($t['departure']) ?> → <?= htmlspecialchars($t['arrival']) ?><?= $t['duration_min'] ? ' (' . $t['duration_min'] . '分)' : '' ?></p>
@@ -563,7 +606,6 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
                         <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
                         <input type="hidden" name="tab" value="transport">
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-                            <div><label class="block text-xs font-bold text-slate-500 mb-1">往路/復路</label><select name="direction" class="w-full border border-slate-200 rounded px-2 py-1 text-sm"><option value="outbound" <?= ($t['direction'] ?? '') === 'outbound' ? 'selected' : '' ?>>往路</option><option value="return" <?= ($t['direction'] ?? '') === 'return' ? 'selected' : '' ?>>復路</option></select></div>
                             <div><label class="block text-xs font-bold text-slate-500 mb-1">出発日</label><input type="date" name="departure_date" value="<?= htmlspecialchars($t['departure_date'] ?? '') ?>" class="w-full border border-slate-200 rounded px-2 py-1 text-sm"></div>
                             <div><label class="block text-xs font-bold text-slate-500 mb-1">出発時刻</label><input type="text" name="scheduled_time" value="<?= htmlspecialchars($t['scheduled_time'] ?? '') ?>" class="w-full border border-slate-200 rounded px-2 py-1 text-sm" placeholder="08:00"></div>
                         </div>
@@ -622,8 +664,8 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
                     <span class="flex-1">
                         <?php if ($m['type'] === 'timeline'): $ti = $m['data']; ?>
                         <?= htmlspecialchars($ti['label']) ?><?= $ti['memo'] ? ' · ' . htmlspecialchars($ti['memo']) : '' ?>
-                        <?php else: $tl = $m['data']; $dir = \App\LiveTrip\Model\TransportLegModel::$directions[$tl['direction']] ?? $tl['direction']; ?>
-                        <i class="fa-solid fa-train text-slate-400 mr-1"></i><?= htmlspecialchars($dir) ?>: <?= htmlspecialchars($tl['transport_type'] ?? '') ?> <?= htmlspecialchars($tl['route_memo'] ?? '') ?><?= $tl['departure'] || $tl['arrival'] ? ' (' . htmlspecialchars($tl['departure'] ?? '') . '→' . htmlspecialchars($tl['arrival'] ?? '') . ')' : '' ?>
+                        <?php else: $tl = $m['data']; ?>
+                        <i class="fa-solid fa-train text-slate-400 mr-1"></i><?= htmlspecialchars($tl['transport_type'] ?? '') ?> <?= htmlspecialchars($tl['route_memo'] ?? '') ?><?= $tl['departure'] || $tl['arrival'] ? ' (' . htmlspecialchars($tl['departure'] ?? '') . '→' . htmlspecialchars($tl['arrival'] ?? '') . ')' : '' ?>
                         <?php endif; ?>
                     </span>
                     <span class="flex gap-1">
@@ -665,7 +707,6 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
                     <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
                     <input type="hidden" name="tab" value="timeline">
                     <input type="hidden" name="departure_date" value="<?= htmlspecialchars($tl['departure_date'] ?? '') ?>">
-                    <input type="hidden" name="direction" value="<?= htmlspecialchars($tl['direction'] ?? 'outbound') ?>">
                     <input type="hidden" name="transport_type" value="<?= htmlspecialchars($tl['transport_type'] ?? '') ?>">
                     <input type="hidden" name="route_memo" value="<?= htmlspecialchars($tl['route_memo'] ?? '') ?>">
                     <input type="hidden" name="departure" value="<?= htmlspecialchars($tl['departure'] ?? '') ?>">
@@ -689,13 +730,11 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
             <h2 class="font-bold text-slate-700 flex items-center gap-2">
                 <i class="fa-solid fa-list-check text-slate-400"></i> チェックリスト
             </h2>
-            <form id="checklist-add-form" class="flex gap-2 p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
-                <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
-                <input type="text" name="item_name" id="checklist-item-input" placeholder="チケット確認、財布など" class="border border-slate-200 rounded px-3 py-2 text-sm flex-1" required>
-                <button type="submit" class="lt-theme-btn text-white px-4 py-2 rounded text-sm">追加</button>
-            </form>
             <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
-                <p class="text-xs font-bold text-slate-500 mb-2">マイリストから追加</p>
+                <div class="flex justify-between items-center gap-2 mb-2">
+                    <p class="text-xs font-bold text-slate-500">マイリストを適用</p>
+                    <a href="/live_trip/my_list.php?redirect=<?= urlencode('/live_trip/show.php?id=' . (int)$trip['id'] . '#checklist') ?>" class="text-sm lt-theme-link hover:underline shrink-0" title="持ち物マイリストの管理">マイリストを管理</a>
+                </div>
                 <form method="post" action="/live_trip/apply_mylist.php" class="flex flex-wrap gap-2">
                     <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
                     <input type="hidden" name="tab" value="checklist">
@@ -711,37 +750,19 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
                     <button type="submit" class="px-3 py-2 border border-slate-200 rounded text-sm hover:bg-slate-50 shrink-0">適用</button>
                 </form>
             </div>
+            <form id="checklist-add-form" class="flex gap-2 p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
+                <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
+                <input type="text" name="item_name" id="checklist-item-input" placeholder="チケット確認、財布など" class="border border-slate-200 rounded px-3 py-2 text-sm flex-1" required>
+                <button type="submit" class="lt-theme-btn text-white px-4 py-2 rounded text-sm">追加</button>
+            </form>
             <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
-                <p class="text-xs font-bold text-slate-500 mb-2">チェックリストをマイリストに登録</p>
-                <p class="text-xs text-slate-500 mb-2">画面で追加した項目をマイリストテンプレートとして保存</p>
-                <form method="post" action="/live_trip/save_checklist_to_mylist.php" class="space-y-2">
-                    <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
-                    <input type="hidden" name="tab" value="checklist">
-                    <div class="flex flex-wrap gap-2 items-end">
-                        <div class="flex-1 min-w-0">
-                            <label class="block text-xs text-slate-500 mb-0.5">新規リスト名</label>
-                            <input type="text" name="list_name" placeholder="例: 遠征基本セット" class="w-full border border-slate-200 rounded px-3 py-2 text-sm">
-                        </div>
-                        <button type="submit" name="action" value="new" class="lt-theme-btn text-white px-3 py-2 rounded text-sm font-bold shrink-0">新規作成</button>
-                    </div>
-                    <?php if (!empty($myLists)): ?>
-                    <div class="flex flex-wrap gap-2 items-end pt-1 border-t border-emerald-200">
-                        <div class="flex-1 min-w-0">
-                            <label class="block text-xs text-slate-500 mb-0.5">既存リストに追加</label>
-                            <select name="my_list_id" class="w-full border border-slate-200 rounded px-3 py-2 text-sm">
-                                <option value="">選択</option>
-                                <?php foreach ($myLists as $ml): ?>
-                                <option value="<?= (int)$ml['id'] ?>"><?= htmlspecialchars($ml['list_name']) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <button type="submit" name="action" value="add" class="px-3 py-2 border border-slate-200 rounded text-sm hover:bg-slate-50 shrink-0">追加</button>
-                    </div>
-                    <?php endif; ?>
-                </form>
-            </div>
-            <p class="text-xs text-slate-500"><a href="/live_trip/my_list.php" class="lt-theme-link hover:underline">持ち物マイリストを管理</a></p>
-            <div id="checklist-list" class="lt-checklist-sortable p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
+                <div class="flex justify-between items-center gap-2 mb-3">
+                    <p class="text-xs font-bold text-slate-500">チェックリスト</p>
+                    <button type="button" id="mylist-register-btn" class="text-sm font-medium lt-theme-link hover:underline shrink-0">
+                        <i class="fa-solid fa-cloud-arrow-up mr-0.5"></i>マイリスト登録
+                    </button>
+                </div>
+                <div id="checklist-list" class="lt-checklist-sortable">
             <?php foreach ($checklistItems ?? [] as $ci): ?>
             <div class="lt-checklist-row flex items-center gap-2 py-2 border-b border-slate-100" data-id="<?= (int)$ci['id'] ?>">
                 <span class="lt-checklist-drag-handle cursor-grab text-slate-400 hover:text-slate-600 shrink-0" title="並び替え"><i class="fa-solid fa-grip-vertical text-xs"></i></span>
@@ -753,11 +774,50 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
                 <button type="button" class="checklist-delete text-red-500 text-sm hover:text-red-600" data-id="<?= (int)$ci['id'] ?>" data-trip="<?= (int)$trip['id'] ?>"><i class="fa-solid fa-trash-can"></i></button>
             </div>
             <?php endforeach; ?>
+                </div>
             </div>
         </div>
         </div>
     </div>
 </main>
+
+<div id="mylist-register-modal" class="lt-modal-overlay hidden" aria-hidden="true">
+    <div class="lt-modal m-4" role="dialog" aria-labelledby="mylist-modal-title">
+        <div class="p-5">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="mylist-modal-title" class="font-bold text-slate-700">マイリストに登録</h3>
+                <button type="button" id="mylist-modal-close" class="text-slate-400 hover:text-slate-600 p-1" aria-label="閉じる"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <p class="text-sm text-slate-500 mb-4">チェックリストをマイリストテンプレートとして保存します</p>
+            <form method="post" action="/live_trip/save_checklist_to_mylist.php" class="space-y-4">
+                <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
+                <input type="hidden" name="tab" value="checklist">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">新規リストを作成</label>
+                    <div class="flex gap-2 mt-1">
+                        <input type="text" name="list_name" placeholder="例: 遠征基本セット" class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm">
+                        <button type="submit" name="action" value="new" class="lt-theme-btn text-white px-4 py-2 rounded-lg text-sm font-bold shrink-0">作成</button>
+                    </div>
+                </div>
+                <?php if (!empty($myLists)): ?>
+                <div class="pt-3 border-t border-slate-200">
+                    <label class="block text-xs font-bold text-slate-500 mb-1">既存リストを更新</label>
+                    <div class="flex gap-2 mt-1">
+                        <select name="my_list_id" class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm">
+                            <option value="">選択</option>
+                            <?php foreach ($myLists as $ml): ?>
+                            <option value="<?= (int)$ml['id'] ?>"><?= htmlspecialchars($ml['list_name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <button type="submit" name="action" value="add" class="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50 shrink-0">更新</button>
+                    </div>
+                </div>
+                <?php endif; ?>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
 (function() {
     var tripId = <?= (int)$trip['id'] ?>;
@@ -850,11 +910,10 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
     }
     function onDelete() {
         var id=this.dataset.id, trip=this.dataset.trip;
-        if (!confirm('削除しますか？')) return;
-        var row = document.querySelector('.lt-checklist-row[data-id="'+id+'"]');
+        var rows = document.querySelectorAll('.lt-checklist-row[data-id="'+id+'"]');
         fetch('/live_trip/checklist_delete.php', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded','X-Requested-With':'XMLHttpRequest'}, body:'id='+id+'&trip_plan_id='+trip })
             .then(function(r){ return r.json(); })
-            .then(function(data){ if (data.status==='ok' && row) row.remove(); });
+            .then(function(data){ if (data.status==='ok') rows.forEach(function(r){ r.remove(); }); });
     }
 
     document.querySelectorAll('.checklist-toggle').forEach(function(){});
@@ -944,6 +1003,80 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
             form.classList.add('hidden');
         }
     });
+
+    var mylistModal = document.getElementById('mylist-register-modal');
+    var mylistModalBtn = document.getElementById('mylist-register-btn');
+    var mylistModalClose = document.getElementById('mylist-modal-close');
+    if (mylistModal && mylistModalBtn) {
+        mylistModalBtn.addEventListener('click', function() {
+            mylistModal.classList.remove('hidden');
+            mylistModal.setAttribute('aria-hidden', 'false');
+        });
+        function closeMylistModal() {
+            mylistModal.classList.add('hidden');
+            mylistModal.setAttribute('aria-hidden', 'true');
+        }
+        mylistModalClose?.addEventListener('click', closeMylistModal);
+        mylistModal.addEventListener('click', function(e) {
+            if (e.target === mylistModal) closeMylistModal();
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && mylistModal && !mylistModal.classList.contains('hidden')) closeMylistModal();
+        });
+    }
+
+    var fetchRoutesBtn = document.getElementById('transport-fetch-routes-btn');
+    var routesStatus = document.getElementById('transport-routes-status');
+    var routeOptionsEl = document.getElementById('transport-route-options');
+    if (fetchRoutesBtn && routeOptionsEl) {
+        fetchRoutesBtn.addEventListener('click', function() {
+            var dep = document.getElementById('transport-departure');
+            var arr = document.getElementById('transport-arrival');
+            if (!dep || !arr) return;
+            var origin = (dep.value || '').trim();
+            var dest = (arr.value || '').trim();
+            if (!origin || !dest) {
+                routesStatus.textContent = '発・着を入力してください';
+                return;
+            }
+            routesStatus.textContent = '取得中...';
+            routeOptionsEl.innerHTML = '';
+            routeOptionsEl.classList.add('hidden');
+            fetch('/live_trip/api/route_options.php?origin=' + encodeURIComponent(origin) + '&destination=' + encodeURIComponent(dest))
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    routesStatus.textContent = '';
+                    if (data.status !== 'ok' || !data.options || data.options.length === 0) {
+                        routesStatus.textContent = data.message || '候補が取得できませんでした';
+                        return;
+                    }
+                    routeOptionsEl.classList.remove('hidden');
+                    routeOptionsEl.classList.add('flex', 'flex-wrap', 'gap-2');
+                    data.options.forEach(function(opt) {
+                        var btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'px-3 py-2 border border-slate-200 rounded-lg text-sm hover:bg-slate-50 hover:border-emerald-300';
+                        btn.textContent = opt.label + ' ' + opt.duration + (opt.distance ? ' ' + opt.distance : '');
+                        btn.dataset.mode = opt.mode;
+                        btn.dataset.label = opt.label;
+                        btn.dataset.duration = opt.duration_min || '';
+                        btn.dataset.distance = opt.distance || '';
+                        btn.addEventListener('click', function() {
+                            var typeInp = document.getElementById('transport-type');
+                            var durInp = document.getElementById('transport-duration-min');
+                            var memoInp = document.getElementById('transport-route-memo');
+                            if (typeInp) typeInp.value = this.dataset.label || '';
+                            if (durInp) durInp.value = this.dataset.duration || '';
+                            if (memoInp && this.dataset.distance) memoInp.value = this.dataset.distance;
+                        });
+                        routeOptionsEl.appendChild(btn);
+                    });
+                })
+                .catch(function() {
+                    routesStatus.textContent = '取得に失敗しました';
+                });
+        });
+    }
 })();
 </script>
 <?php require_once __DIR__ . '/../../../components/flash_toast.php'; ?>

@@ -39,6 +39,11 @@ class ChecklistItemModel extends BaseModel {
         return $stmt->execute([$id, $tripPlanId]);
     }
 
+    public function deleteByTripPlanId(int $tripPlanId): bool {
+        $stmt = $this->pdo->prepare("DELETE FROM {$this->table} WHERE trip_plan_id = ?");
+        return $stmt->execute([$tripPlanId]);
+    }
+
     public function toggleChecked(int $id, int $tripPlanId, int $userId): bool {
         $memberModel = new TripMemberModel();
         if (!$memberModel->isMember($tripPlanId, $userId)) return false;

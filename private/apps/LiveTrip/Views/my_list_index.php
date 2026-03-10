@@ -1,6 +1,13 @@
 <?php
 $appKey = 'live_trip';
 require_once __DIR__ . '/../../../components/theme_from_session.php';
+$returnTo = $_GET['redirect'] ?? null;
+if ($returnTo !== null) {
+    $_SESSION['my_list_return_to'] = $returnTo;
+} else {
+    $returnTo = $_SESSION['my_list_return_to'] ?? null;
+}
+$backHref = $returnTo ?: '/live_trip/';
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -27,7 +34,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
 <main class="flex-1 flex flex-col min-w-0 overflow-auto overflow-x-hidden w-full">
     <header class="h-14 sm:h-16 bg-white border-b border-slate-200 flex items-center px-4 sm:px-6 shrink-0">
         <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2 mr-2"><i class="fa-solid fa-bars"></i></button>
-        <a href="/live_trip/" class="text-slate-500 hover:text-slate-700 mr-2"><i class="fa-solid fa-arrow-left"></i></a>
+        <a href="<?= htmlspecialchars($backHref) ?>" class="text-slate-500 hover:text-slate-700 mr-2"><i class="fa-solid fa-arrow-left"></i></a>
         <h1 class="font-black text-slate-700 text-lg truncate">持ち物マイリスト</h1>
     </header>
 

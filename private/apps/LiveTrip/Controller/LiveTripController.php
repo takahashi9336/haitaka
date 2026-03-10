@@ -13,6 +13,9 @@ use App\LiveTrip\Model\TimelineItemModel;
 use App\LiveTrip\Model\ChecklistItemModel;
 use App\LiveTrip\Model\MyListModel;
 use App\LiveTrip\Model\MyListItemModel;
+use App\LiveTrip\Service\MapsGeocodeService;
+use App\LiveTrip\Service\MapsDistanceMatrixService;
+use App\LiveTrip\Service\MapsDirectionsService;
 use App\Hinata\Model\EventModel as HinataEventModel;
 use Core\Auth;
 use Core\Logger;
@@ -387,6 +390,41 @@ class LiveTripController {
         $tripPlanId = (int) ($_POST['trip_plan_id'] ?? 0);
         $userId = (int) $_SESSION['user']['id'];
         if (!$this->canAccessTrip($tripPlanId, $userId)) { header('Location: /live_trip/'); exit; }
+        \Core\Database::connect(); // .env を $_ENV に読み込む（Geocoding 前に必須）
+
+        $geoLat = trim($_POST['latitude'] ?? '') ?: null;
+        $geoLng = trim($_POST['longitude'] ?? '') ?: null;
+        $geoPlaceId = trim($_POST['place_id'] ?? '') ?: null;
+        if ($geoLat === null || $geoLng === null) {
+            $address = trim($_POST['address'] ?? '');
+            $hotelName = trim($_POST['hotel_name'] ?? '');
+            $geocodeTarget = $address ?: $hotelName;
+            if ($geocodeTarget !== '') {
+                $geo = (new MapsGeocodeService())->geocode($geocodeTarget);
+                if ($geo) {
+                    $geoLat = $geo['latitude'];
+                    $geoLng = $geo['longitude'];
+                    $geoPlaceId = $geo['place_id'];
+                }
+            }
+        }
+
+        $distFromVenue = trim($_POST['distance_from_venue'] ?? '');
+        $timeFromVenue = trim($_POST['time_from_venue'] ?? '');
+        if ($geoLat !== null && $geoLng !== null) {
+            $venue = $this->getVenueCoordinatesForTrip($tripPlanId, $userId);
+            if ($venue !== null) {
+                $dm = (new MapsDistanceMatrixService())->getDistanceAndDuration(
+                    $venue['lat'], $venue['lng'],
+                    $geoLat, $geoLng
+                );
+                if ($dm !== null) {
+                    $distFromVenue = $dm['distance'];
+                    $timeFromVenue = $dm['duration'];
+                }
+            }
+        }
+
         $model = new HotelStayModel();
         $model->create([
             'trip_plan_id' => $tripPlanId,
@@ -394,14 +432,17 @@ class LiveTripController {
             'address' => trim($_POST['address'] ?? ''),
             'distance_from_home' => trim($_POST['distance_from_home'] ?? ''),
             'time_from_home' => trim($_POST['time_from_home'] ?? ''),
-            'distance_from_venue' => trim($_POST['distance_from_venue'] ?? ''),
-            'time_from_venue' => trim($_POST['time_from_venue'] ?? ''),
+            'distance_from_venue' => $distFromVenue,
+            'time_from_venue' => $timeFromVenue,
             'check_in' => !empty($_POST['check_in']) ? $_POST['check_in'] : null,
             'check_out' => !empty($_POST['check_out']) ? $_POST['check_out'] : null,
             'reservation_no' => trim($_POST['reservation_no'] ?? ''),
             'price' => !empty($_POST['price']) ? (int) $_POST['price'] : null,
             'num_guests' => !empty($_POST['num_guests']) ? (int) $_POST['num_guests'] : null,
             'memo' => trim($_POST['memo'] ?? ''),
+            'latitude' => $geoLat,
+            'longitude' => $geoLng,
+            'place_id' => $geoPlaceId,
         ]);
         $this->redirectToShow($tripPlanId, 'hotel');
     }
@@ -416,19 +457,57 @@ class LiveTripController {
         $model = new HotelStayModel();
         $row = $model->find($id);
         if (!$row || (int)$row['trip_plan_id'] !== $tripPlanId) { header('Location: /live_trip/'); exit; }
+        \Core\Database::connect(); // .env を $_ENV に読み込む（Geocoding 前に必須）
+
+        $geoLat = isset($_POST['latitude']) && $_POST['latitude'] !== '' ? trim($_POST['latitude']) : null;
+        $geoLng = isset($_POST['longitude']) && $_POST['longitude'] !== '' ? trim($_POST['longitude']) : null;
+        $geoPlaceId = trim($_POST['place_id'] ?? '') ?: null;
+        if ($geoLat === null || $geoLng === null) {
+            $address = trim($_POST['address'] ?? '');
+            $hotelName = trim($_POST['hotel_name'] ?? '');
+            $geocodeTarget = $address ?: $hotelName;
+            if ($geocodeTarget !== '') {
+                $geo = (new MapsGeocodeService())->geocode($geocodeTarget);
+                if ($geo) {
+                    $geoLat = $geo['latitude'];
+                    $geoLng = $geo['longitude'];
+                    $geoPlaceId = $geo['place_id'];
+                }
+            }
+        }
+
+        $distFromVenue = trim($_POST['distance_from_venue'] ?? '');
+        $timeFromVenue = trim($_POST['time_from_venue'] ?? '');
+        if ($geoLat !== null && $geoLng !== null) {
+            $venue = $this->getVenueCoordinatesForTrip($tripPlanId, $userId);
+            if ($venue !== null) {
+                $dm = (new MapsDistanceMatrixService())->getDistanceAndDuration(
+                    $venue['lat'], $venue['lng'],
+                    $geoLat, $geoLng
+                );
+                if ($dm !== null) {
+                    $distFromVenue = $dm['distance'];
+                    $timeFromVenue = $dm['duration'];
+                }
+            }
+        }
+
         $model->update($id, [
             'hotel_name' => trim($_POST['hotel_name'] ?? ''),
             'address' => trim($_POST['address'] ?? ''),
             'distance_from_home' => trim($_POST['distance_from_home'] ?? ''),
             'time_from_home' => trim($_POST['time_from_home'] ?? ''),
-            'distance_from_venue' => trim($_POST['distance_from_venue'] ?? ''),
-            'time_from_venue' => trim($_POST['time_from_venue'] ?? ''),
+            'distance_from_venue' => $distFromVenue,
+            'time_from_venue' => $timeFromVenue,
             'check_in' => !empty($_POST['check_in']) ? $_POST['check_in'] : null,
             'check_out' => !empty($_POST['check_out']) ? $_POST['check_out'] : null,
             'reservation_no' => trim($_POST['reservation_no'] ?? ''),
             'price' => !empty($_POST['price']) ? (int) $_POST['price'] : null,
             'num_guests' => !empty($_POST['num_guests']) ? (int) $_POST['num_guests'] : null,
             'memo' => trim($_POST['memo'] ?? ''),
+            'latitude' => $geoLat,
+            'longitude' => $geoLng,
+            'place_id' => $geoPlaceId,
         ]);
         $this->redirectToShow($tripPlanId, 'hotel');
     }
@@ -455,7 +534,6 @@ class LiveTripController {
         $depDate = trim($_POST['departure_date'] ?? '') ?: null;
         $model->create([
             'trip_plan_id' => $tripPlanId,
-            'direction' => $_POST['direction'] ?? 'outbound',
             'departure_date' => $depDate,
             'transport_type' => trim($_POST['transport_type'] ?? ''),
             'route_memo' => trim($_POST['route_memo'] ?? ''),
@@ -480,7 +558,6 @@ class LiveTripController {
         if (!$row || (int)$row['trip_plan_id'] !== $tripPlanId) { header('Location: /live_trip/'); exit; }
         $depDate = trim($_POST['departure_date'] ?? '') ?: null;
         $model->update($id, [
-            'direction' => $_POST['direction'] ?? 'outbound',
             'departure_date' => $depDate,
             'transport_type' => trim($_POST['transport_type'] ?? ''),
             'route_memo' => trim($_POST['route_memo'] ?? ''),
@@ -624,7 +701,6 @@ class LiveTripController {
         $eventDates = array_values(array_unique(array_filter(array_column($events, 'event_date'))));
         sort($eventDates);
         $firstEv = $eventDates[0] ?? '9999-12-31';
-        $lastEv = !empty($eventDates) ? $eventDates[count($eventDates) - 1] : $firstEv;
         foreach ($timelineItems as $t) {
             $date = $t['scheduled_date'] ?? $firstEv;
             $time = trim($t['scheduled_time'] ?? '') ?: '99:99';
@@ -633,19 +709,7 @@ class LiveTripController {
         foreach ($transportLegs as $t) {
             $st = trim($t['scheduled_time'] ?? '');
             if ($st === '') continue;
-            $dd = $t['departure_date'] ?? null;
-            if (!$dd && $firstEv !== '9999-12-31') {
-                $dir = $t['direction'] ?? 'outbound';
-                $refDate = $dir === 'outbound' ? $firstEv : $lastEv;
-                $evDt = \DateTime::createFromFormat('Y-m-d', $refDate);
-                if ($evDt) {
-                    $evDt->modify($dir === 'outbound' ? '-1 day' : '+1 day');
-                    $dd = $evDt->format('Y-m-d');
-                } else {
-                    $dd = $refDate;
-                }
-            }
-            $dd = $dd ?: $firstEv;
+            $dd = $t['departure_date'] ?? $firstEv;
             $items[] = ['type' => 'transport', 'date' => $dd, 'time' => $st, 'sortKey' => $dd . ' ' . $st, 'data' => $t];
         }
         usort($items, fn($a, $b) => strcmp($a['sortKey'], $b['sortKey']));
@@ -703,8 +767,9 @@ class LiveTripController {
             header('Location: /live_trip/show.php?id=' . $tripPlanId);
             exit;
         }
-        $itemModel = new MyListItemModel();
-        $itemModel->copyToChecklist($myListId, $tripPlanId, $userId);
+        (new ChecklistItemModel())->deleteByTripPlanId($tripPlanId);
+        (new MyListItemModel())->copyToChecklist($myListId, $tripPlanId, $userId);
+        $_SESSION['flash_success'] = 'マイリストの内容でチェックリストを置き換えました。';
         $this->redirectToShow($tripPlanId, 'checklist');
     }
 
@@ -757,18 +822,16 @@ class LiveTripController {
                 $this->redirectToShow($tripPlanId, 'checklist');
                 return;
             }
-            $existing = $itemModel->getByMyListId($myListId);
-            $existingNames = array_flip(array_column($existing, 'item_name'));
-            $sortOrder = count($existing);
-            foreach ($items as $item) {
-                if (isset($existingNames[$item['item_name']])) continue;
+            $pdo = \Core\Database::connect();
+            $pdo->prepare("DELETE FROM lt_my_list_items WHERE my_list_id = ?")->execute([$myListId]);
+            foreach ($items as $i => $item) {
                 $itemModel->create([
                     'my_list_id' => $myListId,
                     'item_name' => $item['item_name'],
-                    'sort_order' => $sortOrder++,
+                    'sort_order' => $i,
                 ]);
             }
-            $_SESSION['flash_success'] = 'マイリストに追加しました。';
+            $_SESSION['flash_success'] = 'マイリストを更新しました。';
         } else {
             header('Location: /live_trip/show.php?id=' . $tripPlanId . '#checklist');
             exit;
@@ -866,11 +929,32 @@ class LiveTripController {
             header('Location: /live_trip/');
             exit;
         }
+        \Core\Database::connect(); // .env を $_ENV に読み込む（Geocoding 前に必須）
+        $eventPlace = trim($_POST['event_place'] ?? '');
+        $eventPlaceAddress = trim($_POST['event_place_address'] ?? '') ?: null;
+
+        $geoLat = null;
+        $geoLng = null;
+        $geoPlaceId = null;
+        $geocodeTarget = $eventPlaceAddress ?: $eventPlace;
+        if ($geocodeTarget !== '') {
+            $geo = (new MapsGeocodeService())->geocode($geocodeTarget);
+            if ($geo) {
+                $geoLat = $geo['latitude'];
+                $geoLng = $geo['longitude'];
+                $geoPlaceId = $geo['place_id'];
+            }
+        }
+
         $model = new LtEventModel();
         $model->create([
             'event_name' => trim($_POST['event_name'] ?? ''),
             'event_date' => $_POST['event_date'] ?? '',
-            'event_place' => trim($_POST['event_place'] ?? ''),
+            'event_place' => $eventPlace ?: null,
+            'event_place_address' => $eventPlaceAddress,
+            'latitude' => $geoLat,
+            'longitude' => $geoLng,
+            'place_id' => $geoPlaceId,
             'event_info' => trim($_POST['event_info'] ?? ''),
         ]);
         $redirect = $_POST['redirect'] ?? '/live_trip/create.php';
@@ -880,6 +964,28 @@ class LiveTripController {
 
     private function canAccessTrip(int $tripPlanId, int $userId): bool {
         return (new TripMemberModel())->isMember($tripPlanId, $userId);
+    }
+
+    /**
+     * 遠征の会場座標を取得（最初のイベントから）
+     * @return array{lat: string, lng: string}|null
+     */
+    private function getVenueCoordinatesForTrip(int $tripPlanId, int $userId): ?array {
+        $events = (new TripPlanEventModel())->getByTripPlanId($tripPlanId, $userId);
+        if (empty($events)) return null;
+
+        $ev = $events[0];
+        $lat = trim($ev['venue_latitude'] ?? '');
+        $lng = trim($ev['venue_longitude'] ?? '');
+        if ($lat !== '' && $lng !== '') {
+            return ['lat' => $lat, 'lng' => $lng];
+        }
+
+        $geocodeTarget = trim($ev['venue_address'] ?? '') ?: trim($ev['event_place'] ?? '') ?: trim($ev['hn_event_place'] ?? '');
+        if ($geocodeTarget === '') return null;
+
+        $geo = (new MapsGeocodeService())->geocode($geocodeTarget);
+        return $geo ? ['lat' => $geo['latitude'], 'lng' => $geo['longitude']] : null;
     }
 
     private function upsertHinataEventStatus(int $userId, int $eventId, ?string $seatInfo, ?string $impression): void {
@@ -896,5 +1002,26 @@ class LiveTripController {
             'seat_info' => $seatInfo,
             'impression' => $impression,
         ]);
+    }
+
+    /**
+     * 経路候補 API（車/電車/徒歩）
+     */
+    public function routeOptions(): void {
+        $this->requireAccess();
+        header('Content-Type: application/json; charset=utf-8');
+
+        \Core\Database::connect();
+        $origin = trim($_GET['origin'] ?? '');
+        $destination = trim($_GET['destination'] ?? '');
+
+        if ($origin === '' || $destination === '') {
+            echo json_encode(['status' => 'error', 'options' => [], 'message' => '発・着を入力してください']);
+            exit;
+        }
+
+        $options = (new MapsDirectionsService())->getRouteOptions($origin, $destination);
+        echo json_encode(['status' => 'ok', 'options' => $options]);
+        exit;
     }
 }

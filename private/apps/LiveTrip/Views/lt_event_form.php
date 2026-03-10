@@ -42,7 +42,11 @@ $redirect = $_GET['redirect'] ?? '/live_trip/create.php';
             </div>
             <div class="mb-4">
                 <label class="block text-sm font-bold text-slate-600 mb-2">会場</label>
-                <input type="text" name="event_place" class="w-full border border-slate-200 rounded-lg px-4 py-2" placeholder="例:  ZOZOマリンスタジアム">
+                <input type="text" name="event_place" class="w-full border border-slate-200 rounded-lg px-4 py-2" placeholder="例: ZOZOマリンスタジアム">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-bold text-slate-600 mb-2">会場住所（Maps連携用・任意）</label>
+                <input type="text" name="event_place_address" class="w-full border border-slate-200 rounded-lg px-4 py-2" placeholder="例: 千葉県千葉市美浜区美浜1">
             </div>
             <div class="mb-6">
                 <label class="block text-sm font-bold text-slate-600 mb-2">メモ</label>

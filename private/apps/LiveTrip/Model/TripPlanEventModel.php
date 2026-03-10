@@ -27,6 +27,9 @@ class TripPlanEventModel extends BaseModel {
                        COALESCE(he.event_date, le.event_date) AS event_date,
                        COALESCE(he.event_place, le.event_place) AS event_place,
                        he.event_place AS hn_event_place,
+                       le.latitude AS venue_latitude,
+                       le.longitude AS venue_longitude,
+                       le.event_place_address AS venue_address,
                        CASE WHEN tpe.event_type = 'hinata' THEN ues.seat_info ELSE tpe.seat_info END AS seat_info,
                        CASE WHEN tpe.event_type = 'hinata' THEN ues.impression ELSE tpe.impression END AS impression
                 FROM {$this->table} tpe

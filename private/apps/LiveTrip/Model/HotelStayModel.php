@@ -25,6 +25,11 @@ class HotelStayModel extends BaseModel {
     }
 
     public function getGoogleMapsUrl(array $stay): string {
+        $lat = trim($stay['latitude'] ?? '');
+        $lng = trim($stay['longitude'] ?? '');
+        if ($lat !== '' && $lng !== '') {
+            return 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode($lat . ',' . $lng);
+        }
         $q = $stay['address'] ?: $stay['hotel_name'];
         if (empty($q)) return '#';
         return 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode($q);
