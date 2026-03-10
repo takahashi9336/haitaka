@@ -67,6 +67,14 @@ $hinataTheme = getThemeVarsForApp('hinata');     // 日向坂 次のイベント
 $taskTheme = getThemeVarsForApp('task_manager'); // 最優先タスク、タスク管理遷移ボックス
 $adminTheme = getThemeVarsForApp('admin');       // 管理画面への遷移ボックス（管理者のみ）
 $focusNoteTheme = getThemeVarsForApp('focus_note'); // Focus Note
+$animeTheme = getThemeVarsForApp('anime');       // アニメ（未登録時は indigo フォールバック）
+
+// アニメリンク表示: .env の ANIME_BETA_ID_NAMES に id_name が含まれるユーザーのみ（カンマ区切り）
+$showAnimeLink = false;
+$allowedAnimeIds = isset($_ENV['ANIME_BETA_ID_NAMES']) ? array_map('trim', explode(',', $_ENV['ANIME_BETA_ID_NAMES'])) : [];
+if (!empty($allowedAnimeIds) && in_array($user['id_name'] ?? '', $allowedAnimeIds, true)) {
+    $showAnimeLink = true;
+}
 
 $focusNoteActionCount = 0;
 try {
@@ -356,6 +364,10 @@ try {
                         ['href' => '/focus_note/', 'icon' => 'fa-bolt', 'label' => '集中ノート', 'sub' => '未完了アクション', 'theme' => $focusNoteTheme,
                          'value' => $focusNoteActionCount, 'empty_icon' => 'fa-circle-check', 'empty_text' => null],
                     ];
+                    if ($showAnimeLink) {
+                        $navCards[] = ['href' => '/anime/', 'icon' => 'fa-tv', 'label' => 'アニメ', 'sub' => 'Annict', 'theme' => $animeTheme,
+                                       'value' => -1, 'empty_icon' => null, 'empty_text' => null];
+                    }
                     if (($user['role'] ?? '') === 'admin') {
                         $navCards[] = ['href' => '/admin/', 'icon' => 'fa-shield-halved', 'label' => '管理画面', 'sub' => '管理', 'theme' => $adminTheme,
                                        'value' => -1, 'empty_icon' => null, 'empty_text' => null];

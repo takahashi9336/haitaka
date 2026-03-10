@@ -28,6 +28,11 @@ $screenNameFilter = $_GET['screen_name'] ?? '';
             .sidebar { position: fixed; transform: translateX(-100%); z-index: 100; width: 240px !important; }
             .sidebar.mobile-open { transform: translateX(0); }
         }
+        .improvement-list-table { table-layout: fixed; min-width: 800px; }
+        .improvement-list-table td.screen-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .improvement-list-table td.content-cell { white-space: pre-wrap; word-break: break-word; line-height: 1.5; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; -webkit-line-clamp: 4; line-clamp: 4; }
+        .improvement-list-table th:nth-child(2),
+        .improvement-list-table td.content-cell { width: 53%; min-width: 280px; }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden text-slate-800 <?= $bodyBgClass ?? 'bg-slate-50' ?>">
@@ -47,7 +52,7 @@ $screenNameFilter = $_GET['screen_name'] ?? '';
         </header>
 
         <div class="flex-1 overflow-y-auto p-6 md:p-12">
-            <div class="max-w-5xl mx-auto w-full">
+            <div class="max-w-[1400px] mx-auto w-full">
                 <?php if ($success ?? null): ?>
                 <div class="mb-4 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-700 font-bold"><?= htmlspecialchars($success) ?></div>
                 <?php endif; ?>
@@ -100,14 +105,14 @@ $screenNameFilter = $_GET['screen_name'] ?? '';
                     </div>
 
                     <div class="overflow-x-auto rounded-xl border border-slate-100">
-                        <table class="w-full text-left text-sm min-w-[500px]">
+                        <table class="improvement-list-table w-full text-left text-sm">
                             <thead class="bg-slate-50 border-b border-slate-100">
                                 <tr>
-                                    <th class="px-6 py-4 font-black text-[10px] text-slate-400 tracking-wider">画面名</th>
-                                    <th class="px-6 py-4 font-black text-[10px] text-slate-400 tracking-wider">改善事項</th>
-                                    <th class="px-6 py-4 font-black text-[10px] text-slate-400 tracking-wider">ステータス</th>
-                                    <th class="px-6 py-4 font-black text-[10px] text-slate-400 tracking-wider">追加日</th>
-                                    <th class="px-6 py-4 font-black text-[10px] text-slate-400 tracking-wider text-right">操作</th>
+                                    <th class="px-4 py-4 font-black text-[10px] text-slate-400 tracking-wider w-[16%] min-w-[140px]">画面名</th>
+                                    <th class="px-4 py-4 font-black text-[10px] text-slate-400 tracking-wider">改善事項</th>
+                                    <th class="px-4 py-4 font-black text-[10px] text-slate-400 tracking-wider w-[10%] min-w-[90px]">ステータス</th>
+                                    <th class="px-4 py-4 font-black text-[10px] text-slate-400 tracking-wider w-[9%] min-w-[85px]">追加日</th>
+                                    <th class="px-4 py-4 font-black text-[10px] text-slate-400 tracking-wider text-right w-[12%] min-w-[110px]">操作</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-50">
@@ -128,13 +133,13 @@ $screenNameFilter = $_GET['screen_name'] ?? '';
                                     };
                                 ?>
                                 <tr class="hover:bg-slate-50/50 transition-colors">
-                                    <td class="px-6 py-4 font-mono text-xs font-bold text-slate-700 max-w-[120px] truncate" title="<?= htmlspecialchars($item['screen_name']) ?>"><?= htmlspecialchars($item['screen_name']) ?></td>
-                                    <td class="px-6 py-4 text-sm text-slate-700 max-w-[200px] line-clamp-2"><?= nl2br(htmlspecialchars($item['content'])) ?></td>
-                                    <td class="px-6 py-4">
+                                    <td class="screen-name px-4 py-4 font-mono text-xs font-bold text-slate-700" title="<?= htmlspecialchars($item['screen_name']) ?>"><?= htmlspecialchars($item['screen_name']) ?></td>
+                                    <td class="content-cell px-4 py-4 text-sm text-slate-700"><?= nl2br(htmlspecialchars($item['content'])) ?></td>
+                                    <td class="px-4 py-4 shrink-0">
                                         <span class="text-[10px] font-black px-2 py-1 rounded-full <?= $statusClass ?>"><?= htmlspecialchars($statusLabel) ?></span>
                                     </td>
-                                    <td class="px-6 py-4 text-xs text-slate-500"><?= htmlspecialchars(date('Y/m/d', strtotime($item['created_at']))) ?></td>
-                                    <td class="px-6 py-4 text-right">
+                                    <td class="px-4 py-4 text-xs text-slate-500 shrink-0"><?= htmlspecialchars(date('Y/m/d', strtotime($item['created_at']))) ?></td>
+                                    <td class="px-4 py-4 text-right shrink-0">
                                         <button type="button" class="edit-item-btn text-[10px] font-black tracking-wider px-3 py-1.5 rounded-lg transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200"
                                             data-id="<?= (int)$item['id'] ?>"
                                             data-screen-name="<?= htmlspecialchars($item['screen_name'], ENT_QUOTES, 'UTF-8') ?>"
