@@ -1,8 +1,11 @@
 /**
  * Global Core Utility
  * 物理パス: haitaka/www/assets/js/core.js
+ * 冪等: 複数回読み込まれてもエラーにならない
  */
-const App = {
+(function() {
+    if (window.App) return;
+    window.App = {
     /**
      * サイト全体で利用可能なトースト通知
      * 使用例: App.toast('コピーしました。');
@@ -37,8 +40,8 @@ const App = {
         }
         el.textContent = message;
         el.style.opacity = '1';
-        clearTimeout(App._toastTimer);
-        App._toastTimer = setTimeout(() => {
+        clearTimeout(window.App._toastTimer);
+        window.App._toastTimer = setTimeout(() => {
             el.style.opacity = '0';
         }, duration ?? 2500);
     },
@@ -186,9 +189,10 @@ const App = {
             });
         }
     }
-};
+    };
 
-document.addEventListener('DOMContentLoaded', () => {
-    App.initSidebar();
-    App.initScrollPersist();
-});
+    document.addEventListener('DOMContentLoaded', () => {
+        window.App.initSidebar();
+        window.App.initScrollPersist();
+    });
+})();
