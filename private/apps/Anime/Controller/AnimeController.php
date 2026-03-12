@@ -239,4 +239,23 @@ class AnimeController {
         $idx = array_rand($works);
         echo json_encode(['status' => 'success', 'data' => $works[$idx]], JSON_UNESCAPED_UNICODE);
     }
+
+    /**
+     * Annict 連携解除 API
+     */
+    public function revokeApi(): void {
+        header('Content-Type: application/json; charset=utf-8');
+
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        if ($userId <= 0) {
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        if (AnnictOAuthService::revokeToken($userId)) {
+            echo json_encode(['status' => 'success'], JSON_UNESCAPED_UNICODE);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => '連携解除に失敗しました'], JSON_UNESCAPED_UNICODE);
+        }
+    }
 }

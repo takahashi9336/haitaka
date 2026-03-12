@@ -84,7 +84,7 @@ $themeActiveAttrs = function (array $app, ?array $parentApp = null) {
 
 $inactiveClass = "text-slate-500 hover:bg-slate-50 transition";
 ?>
-<aside id="sidebar" class="sidebar bg-white border-r border-slate-200 flex flex-col shrink-0 z-50 transition-all duration-300">
+<aside id="sidebar" class="sidebar bg-white border-r border-slate-200 flex flex-col shrink-0 min-h-0 z-50 transition-all duration-300">
     <div class="h-16 flex items-center justify-between px-4 border-b border-slate-100 shrink-0">
         <a href="<?= htmlspecialchars($user['default_route'] ?? '/index.php') ?>" class="flex items-center gap-2 overflow-hidden hover:opacity-80 transition cursor-pointer">
             <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white shrink-0 shadow-indigo-200 shadow-lg">
@@ -100,7 +100,7 @@ $inactiveClass = "text-slate-500 hover:bg-slate-50 transition";
         </button>
     </div>
 
-    <nav class="flex-1 flex flex-col px-3 py-6 space-y-1 overflow-y-auto">
+    <nav class="flex-1 min-h-0 flex flex-col px-3 py-6 space-y-1 overflow-y-auto">
         <?php if ($useSessionMenu): ?>
             <?php foreach ($sessionApps as $app):
                 $href = !empty($app['path']) ? rtrim($app['route_prefix'] ?? '', '/') . '/' . ltrim($app['path'], '/') : ($app['default_route'] ?? rtrim($app['route_prefix'] ?? '', '/') . '/');

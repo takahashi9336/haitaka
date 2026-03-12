@@ -116,7 +116,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
 
                 <div class="mt-6 text-center">
                     <a href="/hinata/meetgreet.php" class="text-xs text-slate-400 hover:text-slate-600 transition">
-                        <i class="fa-solid fa-arrow-left mr-1"></i>ミーグリ予定に戻る
+                        <i class="fa-solid fa-arrow-left mr-1"></i>スケジュールに戻る
                     </a>
                 </div>
             </div>

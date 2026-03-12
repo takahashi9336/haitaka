@@ -1,3 +1,9 @@
+/* モバイル: iOS で input/textarea フォーカス時の自動ズームを防ぐ（16px未満でズームするため） */
+/* Tailwind の text-sm 等に上書きされないよう !important を使用 */
+input, textarea, select {
+  font-size: max(16px, 1em) !important;
+}
+
 /* Base Layout Styles */
 :root {
     --sidebar-width: 240px;

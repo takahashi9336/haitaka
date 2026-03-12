@@ -25,7 +25,7 @@ $screenNameFilter = $_GET['screen_name'] ?? '';
         body { font-family: 'Inter', 'Noto Sans JP', sans-serif; }
         .sidebar { transition: width 0.3s; width: 240px; }
         @media (max-width: 768px) {
-            .sidebar { position: fixed; transform: translateX(-100%); z-index: 100; width: 240px !important; }
+            .sidebar { position: fixed; transform: translateX(-100%); z-index: 100; width: 240px !important; height: 100%; }
             .sidebar.mobile-open { transform: translateX(0); }
         }
         .improvement-list-table { table-layout: fixed; min-width: 800px; }
@@ -79,7 +79,7 @@ $screenNameFilter = $_GET['screen_name'] ?? '';
                             <option value="<?= htmlspecialchars($val) ?>" <?= $statusFilter === $val ? 'selected' : '' ?>><?= htmlspecialchars($label) ?></option>
                             <?php endforeach; ?>
                         </select>
-                        <input type="text" name="screen_name" value="<?= htmlspecialchars($screenNameFilter) ?>" placeholder="画面名で検索" class="h-9 border border-slate-200 rounded-lg px-3 text-sm w-48">
+                        <input type="text" name="screen_name" value="<?= htmlspecialchars($screenNameFilter) ?>" placeholder="画面名で検索" autocomplete="off" class="h-9 border border-slate-200 rounded-lg px-3 text-sm w-48">
                         <button type="submit" class="h-9 px-4 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200">絞り込み</button>
                     </form>
 
