@@ -95,6 +95,23 @@ class AnnictApiClient {
         return $res['works'][0];
     }
 
+    /**
+     * /works の生レスポンスを取得（検証用）
+     * @param array{filter_ids?: string, filter_title?: string, filter_season?: string, page?: int, per_page?: int} $params
+     */
+    public function getWorksRaw(array $params): ?array {
+        $query = [];
+        if ($this->hasToken()) $query['access_token'] = $this->accessToken;
+        if (isset($params['filter_ids']) && $params['filter_ids'] !== '') $query['filter_ids'] = $params['filter_ids'];
+        if (!empty($params['filter_title'])) $query['filter_title'] = $params['filter_title'];
+        if (!empty($params['filter_season'])) $query['filter_season'] = $params['filter_season'];
+        if (isset($params['page'])) $query['page'] = (int)$params['page'];
+        if (isset($params['per_page'])) $query['per_page'] = min(50, max(1, (int)$params['per_page']));
+        $query['sort_season'] = $params['sort_season'] ?? 'desc';
+
+        return $this->request('GET', '/works', $query);
+    }
+
     private function request(string $method, string $path, array $params = [], bool $postAsForm = false): ?array {
         $url = self::BASE_URL . $path;
 
