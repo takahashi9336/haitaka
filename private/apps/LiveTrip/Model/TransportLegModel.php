@@ -12,7 +12,7 @@ class TransportLegModel extends BaseModel {
     protected array $fields = [
         'id', 'trip_plan_id', 'departure_date', 'transport_type', 'route_memo',
         'departure', 'arrival', 'duration_min', 'scheduled_time', 'amount',
-        'sort_order', 'created_at', 'updated_at'
+        'maps_link', 'sort_order', 'created_at', 'updated_at'
     ];
     protected bool $isUserIsolated = false;
 

@@ -8,6 +8,7 @@ use App\LiveTrip\Model\TripMemberModel;
 use App\LiveTrip\Model\LtEventModel;
 use App\LiveTrip\Model\ExpenseModel;
 use App\LiveTrip\Model\HotelStayModel;
+use App\LiveTrip\Model\DestinationModel;
 use App\LiveTrip\Model\TransportLegModel;
 use App\LiveTrip\Model\TimelineItemModel;
 use App\LiveTrip\Model\ChecklistItemModel;
@@ -16,6 +17,8 @@ use App\LiveTrip\Model\MyListItemModel;
 use App\LiveTrip\Service\MapsGeocodeService;
 use App\LiveTrip\Service\MapsDistanceMatrixService;
 use App\LiveTrip\Service\MapsDirectionsService;
+use App\LiveTrip\Service\MapsPlacesAutocompleteService;
+use App\LiveTrip\Service\MapsLinkResolveService;
 use App\Hinata\Model\EventModel as HinataEventModel;
 use Core\Auth;
 use Core\Logger;
@@ -41,11 +44,12 @@ class LiveTripController {
         $tripIds = array_map(fn($t) => (int)$t['id'], $trips);
         $expenseTotals = (new ExpenseModel())->getTotalsByTripPlanIds($tripIds);
         $transportTotals = (new TransportLegModel())->getAmountTotalsByTripPlanIds($tripIds);
+        $hotelTotals = (new HotelStayModel())->getPriceTotalsByTripPlanIds($tripIds);
         $checklistCounts = (new ChecklistItemModel())->getCountsByTripPlanIds($tripIds);
 
         foreach ($trips as &$t) {
             $tid = (int)$t['id'];
-            $t['total_expense'] = ($expenseTotals[$tid] ?? 0) + ($transportTotals[$tid] ?? 0);
+            $t['total_expense'] = ($expenseTotals[$tid] ?? 0) + ($transportTotals[$tid] ?? 0) + ($hotelTotals[$tid] ?? 0);
             $c = $checklistCounts[$tid] ?? ['total' => 0, 'checked' => 0];
             $t['checklist_total'] = $c['total'];
             $t['checklist_checked'] = $c['checked'];
@@ -106,6 +110,10 @@ class LiveTripController {
         $transportModel = new TransportLegModel();
         $expenses = $expenseModel->getByTripPlanId($id);
         $hotelStays = $hotelModel->getByTripPlanId($id);
+        $destinations = [];
+        try {
+            $destinations = (new DestinationModel())->getByTripPlanId($id);
+        } catch (\Throwable $e) { /* テーブル未作成時 */ }
         $transportLegs = $transportModel->getByTripPlanId($id);
         $timelineItems = [];
         $checklistItems = [];
@@ -135,6 +143,10 @@ class LiveTripController {
         $hotelModel = new HotelStayModel();
         $transportModel = new TransportLegModel();
         $hotelStays = $hotelModel->getByTripPlanId($id);
+        $destinations = [];
+        try {
+            $destinations = (new DestinationModel())->getByTripPlanId($id);
+        } catch (\Throwable $e) { }
         $transportLegs = $transportModel->getByTripPlanId($id);
         $timelineItems = [];
         $checklistItems = [];
@@ -523,6 +535,109 @@ class LiveTripController {
         $this->redirectToShow($tripPlanId, 'hotel');
     }
 
+    public function storeDestination(): void {
+        $this->requireAccess();
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
+        $tripPlanId = (int) ($_POST['trip_plan_id'] ?? 0);
+        $userId = (int) $_SESSION['user']['id'];
+        if (!$this->canAccessTrip($tripPlanId, $userId)) { header('Location: /live_trip/'); exit; }
+        \Core\Database::connect();
+
+        $geoLat = trim($_POST['latitude'] ?? '') ?: null;
+        $geoLng = trim($_POST['longitude'] ?? '') ?: null;
+        $geoPlaceId = trim($_POST['place_id'] ?? '') ?: null;
+        if ($geoLat === null || $geoLng === null) {
+            $address = trim($_POST['address'] ?? '');
+            $name = trim($_POST['name'] ?? '');
+            $geocodeTarget = $address ?: $name;
+            if ($geocodeTarget !== '') {
+                $geo = (new MapsGeocodeService())->geocode($geocodeTarget);
+                if ($geo) {
+                    $geoLat = $geo['latitude'];
+                    $geoLng = $geo['longitude'];
+                    $geoPlaceId = $geo['place_id'];
+                }
+            }
+        }
+
+        $type = trim($_POST['destination_type'] ?? 'other');
+        if (!in_array($type, ['collab', 'sightseeing', 'other'], true)) $type = 'other';
+
+        $model = new DestinationModel();
+        $model->create([
+            'trip_plan_id' => $tripPlanId,
+            'name' => trim($_POST['name'] ?? ''),
+            'destination_type' => $type,
+            'address' => trim($_POST['address'] ?? ''),
+            'visit_date' => !empty($_POST['visit_date']) ? $_POST['visit_date'] : null,
+            'visit_time' => trim($_POST['visit_time'] ?? '') ?: null,
+            'memo' => trim($_POST['memo'] ?? ''),
+            'latitude' => $geoLat,
+            'longitude' => $geoLng,
+            'place_id' => $geoPlaceId,
+            'sort_order' => (int) ($_POST['sort_order'] ?? 0),
+        ]);
+        $this->redirectToShow($tripPlanId, 'destination');
+    }
+
+    public function updateDestination(): void {
+        $this->requireAccess();
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
+        $id = (int) ($_POST['id'] ?? 0);
+        $tripPlanId = (int) ($_POST['trip_plan_id'] ?? 0);
+        $userId = (int) $_SESSION['user']['id'];
+        if (!$this->canAccessTrip($tripPlanId, $userId)) { header('Location: /live_trip/'); exit; }
+        $model = new DestinationModel();
+        $row = $model->find($id);
+        if (!$row || (int)$row['trip_plan_id'] !== $tripPlanId) { header('Location: /live_trip/'); exit; }
+        \Core\Database::connect();
+
+        $geoLat = isset($_POST['latitude']) && $_POST['latitude'] !== '' ? trim($_POST['latitude']) : null;
+        $geoLng = isset($_POST['longitude']) && $_POST['longitude'] !== '' ? trim($_POST['longitude']) : null;
+        $geoPlaceId = trim($_POST['place_id'] ?? '') ?: null;
+        if ($geoLat === null || $geoLng === null) {
+            $address = trim($_POST['address'] ?? '');
+            $name = trim($_POST['name'] ?? '');
+            $geocodeTarget = $address ?: $name;
+            if ($geocodeTarget !== '') {
+                $geo = (new MapsGeocodeService())->geocode($geocodeTarget);
+                if ($geo) {
+                    $geoLat = $geo['latitude'];
+                    $geoLng = $geo['longitude'];
+                    $geoPlaceId = $geo['place_id'];
+                }
+            }
+        }
+
+        $type = trim($_POST['destination_type'] ?? 'other');
+        if (!in_array($type, ['collab', 'sightseeing', 'other'], true)) $type = 'other';
+
+        $model->update($id, [
+            'name' => trim($_POST['name'] ?? ''),
+            'destination_type' => $type,
+            'address' => trim($_POST['address'] ?? ''),
+            'visit_date' => !empty($_POST['visit_date']) ? $_POST['visit_date'] : null,
+            'visit_time' => trim($_POST['visit_time'] ?? '') ?: null,
+            'memo' => trim($_POST['memo'] ?? ''),
+            'latitude' => $geoLat,
+            'longitude' => $geoLng,
+            'place_id' => $geoPlaceId,
+            'sort_order' => (int) ($_POST['sort_order'] ?? 0),
+        ]);
+        $this->redirectToShow($tripPlanId, 'destination');
+    }
+
+    public function deleteDestination(): void {
+        $this->requireAccess();
+        $id = (int) ($_POST['id'] ?? 0);
+        $tripPlanId = (int) ($_POST['trip_plan_id'] ?? 0);
+        $userId = (int) $_SESSION['user']['id'];
+        if (!$this->canAccessTrip($tripPlanId, $userId)) { header('Location: /live_trip/'); exit; }
+        $model = new DestinationModel();
+        $model->delete($id);
+        $this->redirectToShow($tripPlanId, 'destination');
+    }
+
     public function storeTransport(): void {
         $this->requireAccess();
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
@@ -532,6 +647,10 @@ class LiveTripController {
         $model = new TransportLegModel();
         $amount = (int) ($_POST['transport_amount'] ?? 0);
         $depDate = trim($_POST['departure_date'] ?? '') ?: null;
+        $mapsLink = trim($_POST['maps_link'] ?? '');
+        if (strlen($mapsLink) > 2048) {
+            $mapsLink = substr($mapsLink, 0, 2048);
+        }
         $model->create([
             'trip_plan_id' => $tripPlanId,
             'departure_date' => $depDate,
@@ -542,6 +661,7 @@ class LiveTripController {
             'duration_min' => !empty($_POST['duration_min']) ? (int) $_POST['duration_min'] : null,
             'scheduled_time' => trim($_POST['scheduled_time'] ?? '') ?: null,
             'amount' => $amount > 0 ? $amount : null,
+            'maps_link' => $mapsLink !== '' ? $mapsLink : null,
         ]);
         $this->redirectToShow($tripPlanId, 'transport');
     }
@@ -557,6 +677,10 @@ class LiveTripController {
         $row = $model->find($id);
         if (!$row || (int)$row['trip_plan_id'] !== $tripPlanId) { header('Location: /live_trip/'); exit; }
         $depDate = trim($_POST['departure_date'] ?? '') ?: null;
+        $mapsLink = trim($_POST['maps_link'] ?? '');
+        if (strlen($mapsLink) > 2048) {
+            $mapsLink = substr($mapsLink, 0, 2048);
+        }
         $model->update($id, [
             'departure_date' => $depDate,
             'transport_type' => trim($_POST['transport_type'] ?? ''),
@@ -566,6 +690,7 @@ class LiveTripController {
             'duration_min' => isset($_POST['duration_min']) && $_POST['duration_min'] !== '' ? (int) $_POST['duration_min'] : null,
             'scheduled_time' => trim($_POST['scheduled_time'] ?? '') ?: null,
             'amount' => isset($_POST['amount']) && $_POST['amount'] !== '' ? (int) $_POST['amount'] : null,
+            'maps_link' => $mapsLink !== '' ? $mapsLink : null,
         ]);
         $this->redirectToShow($tripPlanId, $_POST['tab'] ?? 'transport');
     }
@@ -685,7 +810,7 @@ class LiveTripController {
 
     private function redirectToShow(int $tripPlanId, string $defaultTab = 'summary'): void {
         $tab = $_POST['tab'] ?? $defaultTab;
-        $valid = ['summary', 'info', 'expense', 'hotel', 'transport', 'timeline', 'checklist'];
+        $valid = ['summary', 'info', 'expense', 'hotel', 'destination', 'transport', 'timeline', 'checklist'];
         if (!in_array($tab, $valid, true)) {
             $tab = $defaultTab;
         }
@@ -1005,23 +1130,41 @@ class LiveTripController {
     }
 
     /**
-     * 経路候補 API（車/電車/徒歩）
+     * Google Maps 経路URL解決 API（貼り付け用）
+     * GET url= で受け取り、発・着・所要時間・resolved_url を返す
      */
-    public function routeOptions(): void {
+    public function resolveMapsLink(): void {
         $this->requireAccess();
         header('Content-Type: application/json; charset=utf-8');
 
         \Core\Database::connect();
-        $origin = trim($_GET['origin'] ?? '');
-        $destination = trim($_GET['destination'] ?? '');
+        $url = trim($_GET['url'] ?? '');
+        if ($url === '') {
+            echo json_encode(['status' => 'error', 'message' => 'URLを入力してください']);
+            exit;
+        }
+        $result = (new MapsLinkResolveService())->resolve($url);
+        echo json_encode($result);
+        exit;
+    }
 
-        if ($origin === '' || $destination === '') {
-            echo json_encode(['status' => 'error', 'options' => [], 'message' => '発・着を入力してください']);
+    /**
+     * Places Autocomplete API（発着・宿泊などの入力補完）
+     */
+    public function placesAutocomplete(): void {
+        $this->requireAccess();
+        header('Content-Type: application/json; charset=utf-8');
+
+        \Core\Database::connect();
+        $input = trim($_GET['input'] ?? '');
+
+        if ($input === '') {
+            echo json_encode(['status' => 'ok', 'predictions' => []]);
             exit;
         }
 
-        $options = (new MapsDirectionsService())->getRouteOptions($origin, $destination);
-        echo json_encode(['status' => 'ok', 'options' => $options]);
+        $predictions = (new MapsPlacesAutocompleteService())->getSuggestions($input);
+        echo json_encode(['status' => 'ok', 'predictions' => $predictions]);
         exit;
     }
 }

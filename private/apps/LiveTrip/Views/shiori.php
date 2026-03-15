@@ -9,6 +9,21 @@ $eventPlace = $trip['event_place'] ?? $trip['hn_event_place'] ?? '';
 $eventDates = array_values(array_unique(array_filter(array_column($trip['events'] ?? [], 'event_date'))));
 sort($eventDates);
 $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode($eventPlace) : '#';
+// イベント日付ごとの開場・開演（タイムライン項目から紐づけ）
+$eventDoorCurtain = [];
+foreach ($mergedTimeline ?? [] as $m) {
+    if (($m['type'] ?? '') === 'timeline') {
+        $ti = $m['data'] ?? [];
+        $d = $m['date'] ?? '';
+        $label = $ti['label'] ?? '';
+        $time = trim($ti['scheduled_time'] ?? '');
+        if ($d && $time && (strpos($label, '開場') !== false || strpos($label, '開演') !== false)) {
+            if (!isset($eventDoorCurtain[$d])) $eventDoorCurtain[$d] = [];
+            if (strpos($label, '開場') !== false) $eventDoorCurtain[$d]['開場'] = $time;
+            elseif (strpos($label, '開演') !== false) $eventDoorCurtain[$d]['開演'] = $time;
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -52,12 +67,34 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
 
 <div class="px-4 py-4 space-y-4 max-w-lg mx-auto">
     <div class="bg-white rounded-xl p-4 shadow-sm">
-        <p class="shiori-label mb-1">イベント</p>
+        <p class="shiori-label mb-2">イベント</p>
+        <?php foreach ($trip['events'] ?? [] as $ev): 
+            $evDate = $ev['event_date'] ?? '';
+            $evPlace = $ev['event_place'] ?? $ev['hn_event_place'] ?? '';
+            $dc = $eventDoorCurtain[$evDate] ?? [];
+            $evMapsUrl = $evPlace ? 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode($evPlace) : '#';
+        ?>
+        <div class="mb-4 last:mb-0 pb-4 last:pb-0 border-b border-slate-100 last:border-0">
+            <p class="font-bold"><?= htmlspecialchars($ev['event_name'] ?? '') ?> <span class="text-slate-500 font-normal text-sm"><?= htmlspecialchars($evDate) ?></span></p>
+            <?php if ($evPlace): ?>
+            <a href="<?= htmlspecialchars($evMapsUrl) ?>" target="_blank" rel="noopener" class="shiori-link font-medium text-sm mt-1 inline-flex items-center gap-1">
+                <?= htmlspecialchars($evPlace) ?> <i class="fa-solid fa-external-link text-xs"></i>
+            </a>
+            <?php endif; ?>
+            <?php if (!empty($dc)): ?>
+            <p class="text-sm text-slate-600 mt-2">
+                <i class="fa-solid fa-door-open text-slate-400 mr-1"></i><?php if (!empty($dc['開場'])): ?>開場 <?= htmlspecialchars($dc['開場']) ?><?php endif; ?><?php if (!empty($dc['開場']) && !empty($dc['開演'])): ?>　<?php endif; ?><?php if (!empty($dc['開演'])): ?><i class="fa-solid fa-star text-slate-400 ml-2 mr-1"></i>開演 <?= htmlspecialchars($dc['開演']) ?><?php endif; ?>
+            </p>
+            <?php endif; ?>
+        </div>
+        <?php endforeach; ?>
+        <?php if (empty($trip['events'] ?? [])): ?>
         <p class="font-bold"><?= htmlspecialchars($trip['event_date'] ?? '') ?></p>
         <?php if ($eventPlace): ?>
         <a href="<?= htmlspecialchars($eventPlaceForMaps) ?>" target="_blank" rel="noopener" class="shiori-link font-medium text-sm mt-1 inline-flex items-center gap-1">
             <?= htmlspecialchars($eventPlace) ?> <i class="fa-solid fa-external-link text-xs"></i>
         </a>
+        <?php endif; ?>
         <?php endif; ?>
     </div>
 
@@ -75,6 +112,27 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
             <?php if ($h['reservation_no']): ?><p class="text-sm mt-1">予約番号: <strong><?= htmlspecialchars($h['reservation_no']) ?></strong></p><?php endif; ?>
             <?php if ($h['check_in']): ?><p class="text-sm">チェックイン: <?= htmlspecialchars($h['check_in']) ?></p><?php endif; ?>
             <?php if ($h['check_out']): ?><p class="text-sm">チェックアウト: <?= htmlspecialchars($h['check_out']) ?></p><?php endif; ?>
+        </div>
+        <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
+
+    <?php if (!empty($destinations)): 
+        $destModel = new \App\LiveTrip\Model\DestinationModel();
+    ?>
+    <div class="bg-white rounded-xl p-4 shadow-sm">
+        <p class="shiori-label mb-3">目的地</p>
+        <?php foreach ($destinations as $d):
+            $dMapsUrl = $destModel->getGoogleMapsUrl($d);
+            $dTypeLabel = \App\LiveTrip\Model\DestinationModel::$types[$d['destination_type'] ?? 'other'] ?? 'その他';
+        ?>
+        <div class="mb-4 last:mb-0 pb-4 last:pb-0 border-b border-slate-100 last:border-0">
+            <p class="font-bold"><?= htmlspecialchars($d['name']) ?> <span class="text-slate-500 font-normal text-sm"><?= htmlspecialchars($dTypeLabel) ?></span></p>
+            <?php if ($dMapsUrl !== '#'): ?>
+            <a href="<?= htmlspecialchars($dMapsUrl) ?>" target="_blank" rel="noopener" class="shiori-link text-sm">地図で開く</a>
+            <a href="https://www.google.com/maps/dir/?api=1&destination=<?= rawurlencode($d['address'] ?? $d['name']) ?>&travelmode=transit" target="_blank" rel="noopener" class="shiori-link text-sm ml-2"><i class="fa-solid fa-train text-slate-400"></i>電車で案内</a>
+            <?php endif; ?>
+            <?php if (!empty($d['visit_date'])): ?><p class="text-sm mt-1">訪問予定: <?= htmlspecialchars($d['visit_date']) ?><?= !empty($d['visit_time']) ? ' ' . htmlspecialchars($d['visit_time']) : '' ?></p><?php endif; ?>
         </div>
         <?php endforeach; ?>
     </div>

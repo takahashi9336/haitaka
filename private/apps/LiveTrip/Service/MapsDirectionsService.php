@@ -6,7 +6,7 @@ use App\LiveTrip\Model\MapsApiUsageModel;
 
 /**
  * Google Directions API 呼び出し
- * 車・電車・徒歩の経路候補を取得。90% 制限を適用。
+ * 車・電車・徒歩・自転車の経路候補を取得。90% 制限を適用。
  */
 class MapsDirectionsService {
     private string $apiKey = '';
@@ -16,6 +16,7 @@ class MapsDirectionsService {
         'driving' => '車',
         'transit' => '電車',
         'walking' => '徒歩',
+        'bicycling' => '自転車',
     ];
 
     public function __construct() {
@@ -47,47 +48,72 @@ class MapsDirectionsService {
     }
 
     /**
-     * 発・着から経路候補（車/電車/徒歩）を取得
-     * @param string $origin      出発地（住所・駅名など）
-     * @param string $destination 目的地
-     * @return array<array{mode: string, label: string, duration: string, distance: string, duration_min: int}>
+     * 発・着・モードから所要時間（分）を1回だけ取得（ルートリンク反映用）
+     * @param string      $origin        出発地
+     * @param string      $destination   目的地
+     * @param string      $mode          driving|transit|walking|bicycling
+     * @param string|null $departureDate 出発日 Y-m-d。transit 用。null のとき now
+     * @return int|null 所要時間（分）。取得失敗時は null
      */
-    public function getRouteOptions(string $origin, string $destination): array {
+    public function getRouteDuration(string $origin, string $destination, string $mode = 'transit', ?string $departureDate = null): ?int {
         $origin = trim($origin);
         $destination = trim($destination);
-        if ($origin === '' || $destination === '') return [];
-        if (!$this->isConfigured()) return [];
+        if ($origin === '' || $destination === '') return null;
+        if (!$this->isConfigured()) return null;
+        if (!isset(self::MODES[$mode])) $mode = 'transit';
 
-        $options = [];
+        $departureTime = $this->resolveDepartureTime($departureDate);
 
         try {
-            foreach (self::MODES as $mode => $label) {
-                $usageModel = new MapsApiUsageModel();
-                if (!$usageModel->incrementAndCheck('directions', 1)) {
-                    continue;
-                }
-
-                $result = $this->fetchDirection($origin, $destination, $mode);
-                if ($result !== null) {
-                    $options[] = $result;
-                }
+            $usageModel = new MapsApiUsageModel();
+            if (!$usageModel->incrementAndCheck('directions', 1)) {
+                return null;
             }
+            $result = $this->fetchDirection($origin, $destination, $mode, $departureTime);
+            return $result !== null ? $result['duration_min'] : null;
         } catch (\Throwable $e) {
             \Core\Logger::errorWithContext('Directions failed', $e);
+            return null;
         }
-
-        return $options;
     }
 
     /**
+     * 出発日から Directions API 用の departure_time を決定（transit 用）
+     * @param string|null $departureDate Y-m-d または null
+     * @return int|null Unix 秒。null のときは「now」として扱う
+     */
+    private function resolveDepartureTime(?string $departureDate): ?int {
+        if ($departureDate === null || $departureDate === '') {
+            return null;
+        }
+        $date = \DateTimeImmutable::createFromFormat('Y-m-d', trim($departureDate));
+        if ($date === false) {
+            return null;
+        }
+        // その日の 9:00 JST の Unix 秒（transit の departure_time 用）
+        $nineJst = new \DateTimeImmutable($date->format('Y-m-d') . ' 09:00:00', new \DateTimeZone('Asia/Tokyo'));
+        return $nineJst->getTimestamp();
+    }
+
+    /**
+     * @param int|null $departureTime Unix 秒。transit のときのみ使用。null のときは now
      * @return array{mode: string, label: string, duration: string, distance: string, duration_min: int}|null
      */
-    private function fetchDirection(string $origin, string $destination, string $mode): ?array {
-        $url = self::DIRECTIONS_URL . '?origin=' . rawurlencode($origin)
-            . '&destination=' . rawurlencode($destination)
-            . '&mode=' . rawurlencode($mode)
-            . '&language=ja'
-            . '&key=' . rawurlencode($this->apiKey);
+    private function fetchDirection(string $origin, string $destination, string $mode, ?int $departureTime = null): ?array {
+        $params = [
+            'origin' => $origin,
+            'destination' => $destination,
+            'mode' => $mode,
+            'language' => 'ja',
+            'region' => 'jp',
+            'key' => $this->apiKey,
+        ];
+        if ($mode === 'transit' && $departureTime !== null) {
+            $params['departure_time'] = (string) $departureTime;
+        } elseif ($mode === 'transit') {
+            $params['departure_time'] = 'now';
+        }
+        $url = self::DIRECTIONS_URL . '?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
 
         $ctx = stream_context_create([
             'http' => ['timeout' => 10],
