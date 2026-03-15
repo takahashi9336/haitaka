@@ -223,29 +223,69 @@ try {
                     <p class="text-xs text-slate-400 mt-1"><?php if ($activeTasksCount > 0): ?>未完了タスク <span class="font-bold text-slate-500"><?= $activeTasksCount ?></span> 件<?php else: ?>タスクはすべて完了しています<?php endif; ?></p>
                 </div>
 
+                <?php
+                    function dashboard_article_training_url(array $item): string {
+                        $url = $item['url'] ?? '';
+                        $title = $item['title'] ?? '';
+                        $params = ['url' => $url];
+                        if ($title !== '') {
+                            $params['title'] = $title;
+                        }
+                        return '/dashboard/article_training.php?' . http_build_query($params);
+                    }
+                ?>
+
                 <?php if ($dashboardCuriosityItem !== null): ?>
                 <div class="mb-4">
-                    <a href="<?= htmlspecialchars($dashboardCuriosityItem['url']) ?>" target="_blank" rel="noopener noreferrer" class="block bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all px-4 py-3 active:scale-[0.99] hover:border-amber-200">
-                        <p class="text-[9px] font-bold tracking-wider text-amber-600 mb-1"><i class="fa-solid fa-sparkles mr-1"></i>今日の好奇心ブースト</p>
-                        <p class="text-sm font-bold text-slate-800"><?= htmlspecialchars($dashboardCuriosityItem['title']) ?></p>
-                        <?php if (!empty($dashboardCuriosityItem['pubDate'])): ?>
-                        <p class="text-xs text-slate-400 mt-1"><?= htmlspecialchars($dashboardCuriosityItem['pubDate']) ?></p>
-                        <?php endif; ?>
-                        <span class="text-xs text-slate-400 mt-1 inline-block">新しいタブで開く <i class="fa-solid fa-external-link-alt ml-0.5"></i></span>
-                    </a>
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-3">
+                        <div class="flex items-start gap-3">
+                            <a href="<?= htmlspecialchars($dashboardCuriosityItem['url']) ?>" target="_blank" rel="noopener noreferrer" class="flex-1 block hover:shadow-sm hover:bg-amber-50/30 rounded-lg px-2 py-1 -mx-2 -my-1 transition">
+                                <p class="text-[9px] font-bold tracking-wider text-amber-600 mb-1"><i class="fa-solid fa-sparkles mr-1"></i>今日の好奇心ブースト</p>
+                                <p class="text-sm font-bold text-slate-800"><?= htmlspecialchars($dashboardCuriosityItem['title']) ?></p>
+                                <?php if (!empty($dashboardCuriosityItem['pubDate'])): ?>
+                                <p class="text-xs text-slate-400 mt-1"><?= htmlspecialchars($dashboardCuriosityItem['pubDate']) ?></p>
+                                <?php endif; ?>
+                                <span class="text-xs text-slate-400 mt-1 inline-block">新しいタブで開く <i class="fa-solid fa-external-link-alt ml-0.5"></i></span>
+                            </a>
+                            <div class="shrink-0 flex flex-col items-end gap-1 ml-2">
+                                <a href="<?= htmlspecialchars(dashboard_article_training_url($dashboardCuriosityItem)) ?>" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-amber-200 text-[11px] font-semibold text-amber-700 hover:bg-amber-50 active:scale-95 transition">
+                                    <i class="fa-solid fa-pen"></i>
+                                    <span>この記事でトレーニング</span>
+                                </a>
+                                <p class="text-[10px] text-slate-400 text-right leading-tight max-w-[140px]">
+                                    「ほめポイント」と「ツッコミポイント」を
+                                    <span class="font-bold">3つずつ</span>書き出してみましょう。
+                                </p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <?php endif; ?>
 
                 <?php if ($dashboardAiItem !== null): ?>
                 <div class="mb-4">
-                    <a href="<?= htmlspecialchars($dashboardAiItem['url']) ?>" target="_blank" rel="noopener noreferrer" class="block bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all px-4 py-3 active:scale-[0.99] hover:border-violet-200">
-                        <p class="text-[9px] font-bold tracking-wider text-violet-600 mb-1"><i class="fa-solid fa-robot mr-1"></i>AI関連</p>
-                        <p class="text-sm font-bold text-slate-800"><?= htmlspecialchars($dashboardAiItem['title']) ?></p>
-                        <?php if (!empty($dashboardAiItem['pubDate'])): ?>
-                        <p class="text-xs text-slate-400 mt-1"><?= htmlspecialchars($dashboardAiItem['pubDate']) ?></p>
-                        <?php endif; ?>
-                        <span class="text-xs text-slate-400 mt-1 inline-block">新しいタブで開く <i class="fa-solid fa-external-link-alt ml-0.5"></i></span>
-                    </a>
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-3">
+                        <div class="flex items-start gap-3">
+                            <a href="<?= htmlspecialchars($dashboardAiItem['url']) ?>" target="_blank" rel="noopener noreferrer" class="flex-1 block hover:shadow-sm hover:bg-violet-50/30 rounded-lg px-2 py-1 -mx-2 -my-1 transition">
+                                <p class="text-[9px] font-bold tracking-wider text-violet-600 mb-1"><i class="fa-solid fa-robot mr-1"></i>AI関連</p>
+                                <p class="text-sm font-bold text-slate-800"><?= htmlspecialchars($dashboardAiItem['title']) ?></p>
+                                <?php if (!empty($dashboardAiItem['pubDate'])): ?>
+                                <p class="text-xs text-slate-400 mt-1"><?= htmlspecialchars($dashboardAiItem['pubDate']) ?></p>
+                                <?php endif; ?>
+                                <span class="text-xs text-slate-400 mt-1 inline-block">新しいタブで開く <i class="fa-solid fa-external-link-alt ml-0.5"></i></span>
+                            </a>
+                            <div class="shrink-0 flex flex-col items-end gap-1 ml-2">
+                                <a href="<?= htmlspecialchars(dashboard_article_training_url($dashboardAiItem)) ?>" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-violet-200 text-[11px] font-semibold text-violet-700 hover:bg-violet-50 active:scale-95 transition">
+                                    <i class="fa-solid fa-pen"></i>
+                                    <span>この記事でトレーニング</span>
+                                </a>
+                                <p class="text-[10px] text-slate-400 text-right leading-tight max-w-[140px]">
+                                    「なるほど」と思った点と
+                                    「ほんとかな？」と思った点を整理してみましょう。
+                                </p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <?php endif; ?>
 
@@ -255,14 +295,22 @@ try {
                         <p class="text-[9px] font-bold tracking-wider text-slate-500 mb-2"><i class="fa-solid fa-book-open mr-1"></i>パレオな男</p>
                         <ul class="space-y-2">
                             <?php foreach ($dashboardPaleoItems as $paleo): ?>
-                            <li>
-                                <a href="<?= htmlspecialchars($paleo['url']) ?>" target="_blank" rel="noopener noreferrer" class="text-sm text-slate-800 hover:text-slate-600 hover:underline flex items-baseline gap-2">
-                                    <?= htmlspecialchars($paleo['title']) ?>
-                                    <i class="fa-solid fa-external-link-alt text-[10px] text-slate-400 shrink-0"></i>
-                                </a>
-                                <?php if (!empty($paleo['pubDate'])): ?>
-                                <p class="text-[10px] text-slate-400 ml-0 mt-0.5"><?= htmlspecialchars($paleo['pubDate']) ?></p>
-                                <?php endif; ?>
+                            <li class="flex items-start gap-2">
+                                <div class="flex-1 min-w-0">
+                                    <a href="<?= htmlspecialchars($paleo['url']) ?>" target="_blank" rel="noopener noreferrer" class="text-sm text-slate-800 hover:text-slate-600 hover:underline flex items-baseline gap-2">
+                                        <?= htmlspecialchars($paleo['title']) ?>
+                                        <i class="fa-solid fa-external-link-alt text-[10px] text-slate-400 shrink-0"></i>
+                                    </a>
+                                    <?php if (!empty($paleo['pubDate'])): ?>
+                                    <p class="text-[10px] text-slate-400 ml-0 mt-0.5"><?= htmlspecialchars($paleo['pubDate']) ?></p>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="shrink-0 ml-2">
+                                    <a href="<?= htmlspecialchars(dashboard_article_training_url($paleo)) ?>" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full border border-slate-200 text-[10px] font-semibold text-slate-600 hover:bg-slate-50 active:scale-95 transition">
+                                        <i class="fa-solid fa-pen"></i>
+                                        <span>トレーニング</span>
+                                    </a>
+                                </div>
                             </li>
                             <?php endforeach; ?>
                         </ul>
