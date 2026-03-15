@@ -1053,31 +1053,35 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
                 <button type="button" id="mylist-modal-close" class="text-slate-400 hover:text-slate-600 p-1" aria-label="閉じる"><i class="fa-solid fa-times"></i></button>
             </div>
             <p class="text-sm text-slate-500 mb-4">チェックリストをマイリストテンプレートとして保存します</p>
-            <form method="post" action="/live_trip/save_checklist_to_mylist.php" class="space-y-4">
-                <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
-                <input type="hidden" name="tab" value="checklist">
+            <div class="space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-500 mb-1">新規リストを作成</label>
-                    <div class="flex gap-2 mt-1">
-                        <input type="text" name="list_name" placeholder="例: 遠征基本セット" class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm">
-                        <button type="submit" name="action" value="new" class="lt-theme-btn text-white px-4 py-2 rounded-lg text-sm font-bold shrink-0">作成</button>
-                    </div>
+                    <form method="post" action="/live_trip/save_checklist_to_mylist.php" class="flex gap-2 mt-1">
+                        <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
+                        <input type="hidden" name="tab" value="checklist">
+                        <input type="hidden" name="action" value="new">
+                        <input type="text" name="list_name" placeholder="例: 遠征基本セット" class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm" required>
+                        <button type="submit" class="lt-theme-btn text-white px-4 py-2 rounded-lg text-sm font-bold shrink-0">作成</button>
+                    </form>
                 </div>
                 <?php if (!empty($myLists)): ?>
                 <div class="pt-3 border-t border-slate-200">
                     <label class="block text-xs font-bold text-slate-500 mb-1">既存リストを更新</label>
-                    <div class="flex gap-2 mt-1">
-                        <select name="my_list_id" class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm">
+                    <form method="post" action="/live_trip/save_checklist_to_mylist.php" class="flex gap-2 mt-1">
+                        <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
+                        <input type="hidden" name="tab" value="checklist">
+                        <input type="hidden" name="action" value="add">
+                        <select name="my_list_id" class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm" required>
                             <option value="">選択</option>
                             <?php foreach ($myLists as $ml): ?>
                             <option value="<?= (int)$ml['id'] ?>"><?= htmlspecialchars($ml['list_name']) ?></option>
                             <?php endforeach; ?>
                         </select>
-                        <button type="submit" name="action" value="add" class="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50 shrink-0">更新</button>
-                    </div>
+                        <button type="submit" class="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50 shrink-0">更新</button>
+                    </form>
                 </div>
                 <?php endif; ?>
-            </form>
+            </div>
         </div>
     </div>
 </div>

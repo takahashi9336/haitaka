@@ -908,6 +908,13 @@ class LiveTripController {
             exit;
         }
         $action = $_POST['action'] ?? '';
+        // 1フォーム2ボタン時代の名残で action が送られない場合のフォールバック（Enter送信など）
+        if ($action === '' && trim($_POST['list_name'] ?? '') !== '') {
+            $action = 'new';
+        }
+        if ($action === '' && (int)($_POST['my_list_id'] ?? 0) > 0) {
+            $action = 'add';
+        }
         $checkModel = new ChecklistItemModel();
         $items = $checkModel->getByTripPlanId($tripPlanId);
         if (empty($items)) {
