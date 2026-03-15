@@ -52,15 +52,6 @@ $themeHex = $animeTheme['themePrimaryHex'] ?? '#0ea5e9';
         @media (max-width: 768px) {
             .sidebar { position: fixed; transform: translateX(-100%); z-index: 100; height: 100%; width: 240px !important; }
             .sidebar.mobile-open { transform: translateX(0); }
-            /* スマホ: 検索結果をビューポート固定で表示（親の overflow で切り取られないように） */
-            #dashSearchResults {
-                position: fixed !important;
-                left: 0.75rem !important;
-                right: 0.75rem !important;
-                top: 5rem !important;
-                max-height: calc(100vh - 6rem) !important;
-                width: auto !important;
-            }
         }
     </style>
 </head>
@@ -123,7 +114,7 @@ $themeHex = $animeTheme['themePrimaryHex'] ?? '#0ea5e9';
                 <?php else: ?>
 
                 <!-- スタッツカード -->
-                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4 mb-6 md:mb-8">
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
                     <a href="/anime/list.php?tab=watched" class="stat-card bg-white rounded-xl border border-slate-100 shadow-sm p-3 md:p-5 hover:shadow-md hover:border-green-200 transition-all group block">
                         <div class="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
                             <div class="w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center bg-green-50 text-green-500">
@@ -160,32 +151,6 @@ $themeHex = $animeTheme['themePrimaryHex'] ?? '#0ea5e9';
                         </div>
                         <div class="flex items-end gap-1">
                             <span class="text-2xl md:text-3xl font-black text-slate-800"><?= $stats['wanna_watch'] ?></span>
-                            <span class="text-xs md:text-sm font-bold text-slate-400 mb-0.5">作品</span>
-                        </div>
-                    </a>
-                    <a href="/anime/list.php?tab=on_hold" class="stat-card bg-white rounded-xl border border-slate-100 shadow-sm p-3 md:p-5 hover:shadow-md hover:border-slate-200 transition-all group block">
-                        <div class="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
-                            <div class="w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center bg-slate-100 text-slate-500">
-                                <i class="fa-solid fa-pause text-sm md:text-lg"></i>
-                            </div>
-                            <span class="text-[11px] md:text-xs font-bold text-slate-400">中断</span>
-                            <i class="fa-solid fa-chevron-right text-slate-300 ml-auto text-xs opacity-0 group-hover:opacity-100 transition-opacity"></i>
-                        </div>
-                        <div class="flex items-end gap-1">
-                            <span class="text-2xl md:text-3xl font-black text-slate-800"><?= $stats['on_hold'] ?></span>
-                            <span class="text-xs md:text-sm font-bold text-slate-400 mb-0.5">作品</span>
-                        </div>
-                    </a>
-                    <a href="/anime/list.php?tab=stop_watching" class="stat-card bg-white rounded-xl border border-slate-100 shadow-sm p-3 md:p-5 hover:shadow-md hover:border-slate-200 transition-all group block">
-                        <div class="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
-                            <div class="w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center bg-slate-100 text-slate-500">
-                                <i class="fa-solid fa-stop text-sm md:text-lg"></i>
-                            </div>
-                            <span class="text-[11px] md:text-xs font-bold text-slate-400">中止</span>
-                            <i class="fa-solid fa-chevron-right text-slate-300 ml-auto text-xs opacity-0 group-hover:opacity-100 transition-opacity"></i>
-                        </div>
-                        <div class="flex items-end gap-1">
-                            <span class="text-2xl md:text-3xl font-black text-slate-800"><?= $stats['stop_watching'] ?></span>
                             <span class="text-xs md:text-sm font-bold text-slate-400 mb-0.5">作品</span>
                         </div>
                     </a>
@@ -238,11 +203,11 @@ $themeHex = $animeTheme['themePrimaryHex'] ?? '#0ea5e9';
                             </div>
                             <div id="animeGachaResult" class="hidden">
                                 <div class="flex flex-col sm:flex-row items-center gap-6">
-                                    <div id="animeGachaCard" class="gacha-card shrink-0">
-                                        <div id="animeGachaPoster" class="w-36 h-[216px] bg-slate-700 rounded-xl flex items-center justify-center shadow-2xl ring-2 ring-white/20">
-                                            <i class="fa-solid fa-tv text-4xl text-slate-500"></i>
-                                        </div>
-                                    </div>
+                            <div id="animeGachaCard" class="gacha-card shrink-0">
+                                <div id="animeGachaPoster" class="w-64 md:w-80 aspect-[16/9] bg-slate-700 rounded-xl flex items-center justify-center shadow-2xl ring-2 ring-white/20">
+                                    <i class="fa-solid fa-tv text-4xl text-slate-500"></i>
+                                </div>
+                            </div>
                                     <div class="flex-1 text-center sm:text-left">
                                         <h3 id="animeGachaTitle" class="text-white font-black text-xl md:text-2xl leading-tight mb-2"></h3>
                                         <div id="animeGachaMeta" class="flex items-center gap-3 justify-center sm:justify-start text-slate-400 text-sm mb-4"></div>
@@ -279,7 +244,7 @@ $themeHex = $animeTheme['themePrimaryHex'] ?? '#0ea5e9';
                         <div id="thisSeasonScroll" class="rec-scroll">
                             <?php foreach (array_slice($thisSeasonWorks, 0, 12) as $w): ?>
                             <a href="/anime/detail.php?id=<?= (int)($w['id'] ?? 0) ?>" class="rec-card block shrink-0">
-                                <div class="aspect-[2/3] rounded-xl overflow-hidden bg-slate-100 mb-2">
+                                <div class="aspect-[16/9] rounded-xl overflow-hidden bg-slate-100 mb-2">
                                     <?php if (!empty($w['images']['recommended_url'])): ?>
                                     <img src="<?= htmlspecialchars($w['images']['recommended_url']) ?>" alt="" class="w-full h-full object-cover group-hover:scale-105 transition" loading="lazy">
                                     <?php else: ?>
@@ -307,7 +272,7 @@ $themeHex = $animeTheme['themePrimaryHex'] ?? '#0ea5e9';
                         <div id="watchingScroll" class="rec-scroll">
                             <?php foreach (array_slice($watchingWorks, 0, 12) as $w): ?>
                             <a href="/anime/detail.php?id=<?= (int)($w['id'] ?? 0) ?>" class="rec-card block shrink-0 group">
-                                <div class="aspect-[2/3] rounded-xl overflow-hidden bg-slate-100 mb-2">
+                                <div class="aspect-[16/9] rounded-xl overflow-hidden bg-slate-100 mb-2">
                                     <?php if (!empty($w['images']['recommended_url'])): ?>
                                     <img src="<?= htmlspecialchars($w['images']['recommended_url']) ?>" alt="" class="w-full h-full object-cover group-hover:scale-105 transition" loading="lazy">
                                     <?php else: ?>
@@ -328,7 +293,7 @@ $themeHex = $animeTheme['themePrimaryHex'] ?? '#0ea5e9';
 
                 <!-- 媒体分布・ステータス分布・季節分布 -->
                 <?php
-                $statusLabels = ['watching' => '見てる', 'watched' => '見た', 'wanna_watch' => '見たい', 'on_hold' => '中断', 'stop_watching' => '中止'];
+                $statusLabels = ['watching' => '見てる', 'watched' => '見た', 'wanna_watch' => '見たい'];
                 $hasAnyStatus = array_sum($stats) > 0;
                 $hasCharts = !empty($mediaDistribution) || $hasAnyStatus || !empty($seasonDistribution);
                 ?>
@@ -401,7 +366,9 @@ $themeHex = $animeTheme['themePrimaryHex'] ?? '#0ea5e9';
                             const imgUrl = w.images?.recommended_url || w.images?.facebook?.og_image_url || '';
                             if (posterEl) {
                                 if (imgUrl) {
-                                    posterEl.outerHTML = '<img id="animeGachaPoster" src="' + imgUrl.replace(/^http:\/\//i, 'https://') + '" alt="" class="w-36 h-[216px] object-cover rounded-xl shadow-2xl ring-2 ring-white/20">';
+                                    posterEl.outerHTML = '<img id="animeGachaPoster" src="' +
+                                        imgUrl.replace(/^http:\/\//i, 'https://') +
+                                        '" alt="" class="w-64 md:w-80 aspect-[16/9] object-cover rounded-xl shadow-2xl ring-2 ring-white/20">';
                                 }
                                 document.getElementById('animeGachaCard')?.classList.add('gacha-reveal');
                             }
@@ -429,8 +396,7 @@ $themeHex = $animeTheme['themePrimaryHex'] ?? '#0ea5e9';
         AnimeSearch.init({
             inputId: 'dashSearchInput',
             resultsId: 'dashSearchResults',
-            wrapperId: 'dashSearchWrapper',
-            onAdded: function() { location.reload(); }
+            wrapperId: 'dashSearchWrapper'
         });
         (function() {
             const revokeBtn = document.getElementById('annictRevokeBtn');

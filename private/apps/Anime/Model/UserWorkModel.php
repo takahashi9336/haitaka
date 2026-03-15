@@ -86,7 +86,7 @@ class UserWorkModel extends BaseModel {
     }
 
     /**
-     * ユーザーのステータス別件数を集計
+     * ユーザーのステータス別件数を集計（エンタメダッシュボードなどで利用）
      */
     public function getStatsByUser(int $userId): array {
         $sql = "SELECT status, COUNT(*) AS cnt FROM {$this->table} WHERE user_id = :uid GROUP BY status";
@@ -97,8 +97,6 @@ class UserWorkModel extends BaseModel {
             'wanna_watch' => 0,
             'watching' => 0,
             'watched' => 0,
-            'on_hold' => 0,
-            'stop_watching' => 0,
         ];
         foreach ($rows as $r) {
             if (isset($stats[$r['status']])) {

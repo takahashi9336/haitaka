@@ -67,12 +67,12 @@ class AnnictApiClient {
     /**
      * ステータスを設定
      * @param int $workId Annict 作品ID
-     * @param string $kind wanna_watch | watching | watched | on_hold | stop_watching | no_select
+     * @param string $kind wanna_watch | watching | watched | no_select
      */
     public function setStatus(int $workId, string $kind): ?array {
         if (!$this->hasToken()) return null;
 
-        $allowed = ['wanna_watch', 'watching', 'watched', 'on_hold', 'stop_watching', 'no_select'];
+        $allowed = ['wanna_watch', 'watching', 'watched', 'no_select'];
         if (!in_array($kind, $allowed, true)) return null;
 
         $body = [

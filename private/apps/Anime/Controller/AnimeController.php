@@ -39,8 +39,6 @@ class AnimeController {
             'wanna_watch' => 0,
             'watching' => 0,
             'watched' => 0,
-            'on_hold' => 0,
-            'stop_watching' => 0,
         ];
         $mediaDistribution = [];
         $seasonDistribution = [];
@@ -84,7 +82,7 @@ class AnimeController {
         $auth->requireLogin();
 
         $tab = $_GET['tab'] ?? 'watching';
-        $allowedTabs = ['wanna_watch', 'watching', 'watched', 'on_hold', 'stop_watching'];
+        $allowedTabs = ['wanna_watch', 'watching', 'watched'];
         if (!in_array($tab, $allowedTabs, true)) $tab = 'watching';
 
         $user = $_SESSION['user'];
@@ -103,8 +101,6 @@ class AnimeController {
             'wanna_watch' => '見たい',
             'watching' => '見てる',
             'watched' => '見た',
-            'on_hold' => '中断',
-            'stop_watching' => '中止',
         ];
         require_once __DIR__ . '/../Views/anime_list.php';
     }
@@ -155,7 +151,7 @@ class AnimeController {
         $annictWorkId = (int)($input['work_id'] ?? 0);
         $kind = trim($input['kind'] ?? '');
 
-        $allowed = ['wanna_watch', 'watching', 'watched', 'on_hold', 'stop_watching', 'no_select'];
+        $allowed = ['wanna_watch', 'watching', 'watched', 'no_select'];
         if ($annictWorkId <= 0 || !in_array($kind, $allowed, true)) {
             echo json_encode(['status' => 'error', 'message' => '不正なパラメータ'], JSON_UNESCAPED_UNICODE);
             return;
@@ -210,11 +206,31 @@ class AnimeController {
 
         $works = $res['works'] ?? [];
         $workModel = new WorkModel();
-        foreach ($works as $w) {
-            $workModel->upsertFromAnnict($w);
-        }
+        $userWorkModel = new UserWorkModel();
 
-        echo json_encode(['status' => 'success', 'data' => $works, 'total_count' => (int)($res['total_count'] ?? 0)], JSON_UNESCAPED_UNICODE);
+        foreach ($works as &$w) {
+            // Annict 作品をローカルキャッシュへ保存 / 更新
+            $workModel->upsertFromAnnict($w);
+
+            // すでにユーザーのリストにあるかどうかを付加
+            $annictId = (int)($w['id'] ?? 0);
+            if ($annictId > 0 && $userId > 0) {
+                $uw = $userWorkModel->findByUserAndAnnictWork($userId, $annictId);
+                if ($uw && !empty($uw['status'])) {
+                    $w['user_status'] = $uw['status'];
+                }
+            }
+        }
+        unset($w);
+
+        echo json_encode(
+            [
+                'status' => 'success',
+                'data' => $works,
+                'total_count' => (int)($res['total_count'] ?? 0),
+            ],
+            JSON_UNESCAPED_UNICODE
+        );
     }
 
     /**

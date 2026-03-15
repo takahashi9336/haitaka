@@ -61,9 +61,9 @@ $themeHex = '#0ea5e9';
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                     <?php foreach ($works as $w): ?>
                     <a href="/anime/detail.php?id=<?= (int)($w['id'] ?? 0) ?>" class="block group min-w-0 overflow-hidden">
-                        <div class="aspect-[2/3] rounded-lg overflow-hidden bg-slate-100 mb-2">
+                        <div class="aspect-[16/9] rounded-lg overflow-hidden bg-slate-100 mb-2">
                             <?php if (!empty($w['images']['recommended_url'])): ?>
-                            <img src="<?= htmlspecialchars($w['images']['recommended_url']) ?>" alt="" class="w-full h-full object-contain object-center group-hover:scale-105 transition" loading="lazy">
+                            <img src="<?= htmlspecialchars($w['images']['recommended_url']) ?>" alt="" class="w-full h-full object-cover object-center group-hover:scale-105 transition" loading="lazy">
                             <?php else: ?>
                             <div class="w-full h-full flex items-center justify-center"><i class="fa-solid fa-tv text-3xl text-slate-300"></i></div>
                             <?php endif; ?>

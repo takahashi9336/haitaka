@@ -3,7 +3,7 @@ $appKey = 'dashboard';
 require_once __DIR__ . '/../../../components/theme_from_session.php';
 $imageUrl = $work['images']['recommended_url'] ?? $work['images']['facebook']['og_image_url'] ?? null;
 $statusKind = $work['status']['kind'] ?? '';
-$statusLabels = ['wanna_watch' => '見たい', 'watching' => '見てる', 'watched' => '見た', 'on_hold' => '中断', 'stop_watching' => '中止'];
+$statusLabels = ['wanna_watch' => '見たい', 'watching' => '見てる', 'watched' => '見た'];
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -41,11 +41,11 @@ $statusLabels = ['wanna_watch' => '見たい', 'watching' => '見てる', 'watch
         <div class="flex-1 px-3 py-4 sm:px-4 md:p-8">
             <div class="max-w-4xl mx-auto">
                 <div class="flex flex-col md:flex-row gap-6">
-                    <div class="shrink-0 w-full md:w-48">
+                    <div class="shrink-0 w-full md:w-[320px]">
                         <?php if ($imageUrl): ?>
-                        <img src="<?= htmlspecialchars($imageUrl) ?>" alt="" class="w-full rounded-xl shadow-lg aspect-[2/3] object-cover">
+                        <img src="<?= htmlspecialchars($imageUrl) ?>" alt="" class="w-full rounded-xl shadow-lg aspect-[16/9] object-cover">
                         <?php else: ?>
-                        <div class="w-full aspect-[2/3] rounded-xl bg-slate-200 flex items-center justify-center">
+                        <div class="w-full aspect-[16/9] rounded-xl bg-slate-200 flex items-center justify-center">
                             <i class="fa-solid fa-tv text-5xl text-slate-400"></i>
                         </div>
                         <?php endif; ?>
