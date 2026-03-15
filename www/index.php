@@ -139,6 +139,19 @@ try {
 } catch (\Throwable $e) {
     \Core\Logger::errorWithContext('Oshi birthday fetch error', $e);
 }
+
+// ダッシュボード記事ウィジェット（好奇心ブースト・AI関連・パレオな男）
+$dashboardCuriosityItem = null;
+$dashboardAiItem = null;
+$dashboardPaleoItems = [];
+try {
+    $feedService = new \App\Dashboard\Service\DashboardFeedService();
+    $dashboardCuriosityItem = $feedService->getCuriosityItem();
+    $dashboardAiItem = $feedService->getAiItem();
+    $dashboardPaleoItems = $feedService->getPaleoItems();
+} catch (\Throwable $e) {
+    \Core\Logger::errorWithContext('Dashboard feed fetch error', $e);
+}
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -209,6 +222,54 @@ try {
                     </p>
                     <p class="text-xs text-slate-400 mt-1"><?php if ($activeTasksCount > 0): ?>未完了タスク <span class="font-bold text-slate-500"><?= $activeTasksCount ?></span> 件<?php else: ?>タスクはすべて完了しています<?php endif; ?></p>
                 </div>
+
+                <?php if ($dashboardCuriosityItem !== null): ?>
+                <div class="mb-4">
+                    <a href="<?= htmlspecialchars($dashboardCuriosityItem['url']) ?>" target="_blank" rel="noopener noreferrer" class="block bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all px-4 py-3 active:scale-[0.99] hover:border-amber-200">
+                        <p class="text-[9px] font-bold tracking-wider text-amber-600 mb-1"><i class="fa-solid fa-sparkles mr-1"></i>今日の好奇心ブースト</p>
+                        <p class="text-sm font-bold text-slate-800"><?= htmlspecialchars($dashboardCuriosityItem['title']) ?></p>
+                        <?php if (!empty($dashboardCuriosityItem['pubDate'])): ?>
+                        <p class="text-xs text-slate-400 mt-1"><?= htmlspecialchars($dashboardCuriosityItem['pubDate']) ?></p>
+                        <?php endif; ?>
+                        <span class="text-xs text-slate-400 mt-1 inline-block">新しいタブで開く <i class="fa-solid fa-external-link-alt ml-0.5"></i></span>
+                    </a>
+                </div>
+                <?php endif; ?>
+
+                <?php if ($dashboardAiItem !== null): ?>
+                <div class="mb-4">
+                    <a href="<?= htmlspecialchars($dashboardAiItem['url']) ?>" target="_blank" rel="noopener noreferrer" class="block bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all px-4 py-3 active:scale-[0.99] hover:border-violet-200">
+                        <p class="text-[9px] font-bold tracking-wider text-violet-600 mb-1"><i class="fa-solid fa-robot mr-1"></i>AI関連</p>
+                        <p class="text-sm font-bold text-slate-800"><?= htmlspecialchars($dashboardAiItem['title']) ?></p>
+                        <?php if (!empty($dashboardAiItem['pubDate'])): ?>
+                        <p class="text-xs text-slate-400 mt-1"><?= htmlspecialchars($dashboardAiItem['pubDate']) ?></p>
+                        <?php endif; ?>
+                        <span class="text-xs text-slate-400 mt-1 inline-block">新しいタブで開く <i class="fa-solid fa-external-link-alt ml-0.5"></i></span>
+                    </a>
+                </div>
+                <?php endif; ?>
+
+                <?php if (!empty($dashboardPaleoItems)): ?>
+                <div class="mb-4">
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm px-4 py-3">
+                        <p class="text-[9px] font-bold tracking-wider text-slate-500 mb-2"><i class="fa-solid fa-book-open mr-1"></i>パレオな男</p>
+                        <ul class="space-y-2">
+                            <?php foreach ($dashboardPaleoItems as $paleo): ?>
+                            <li>
+                                <a href="<?= htmlspecialchars($paleo['url']) ?>" target="_blank" rel="noopener noreferrer" class="text-sm text-slate-800 hover:text-slate-600 hover:underline flex items-baseline gap-2">
+                                    <?= htmlspecialchars($paleo['title']) ?>
+                                    <i class="fa-solid fa-external-link-alt text-[10px] text-slate-400 shrink-0"></i>
+                                </a>
+                                <?php if (!empty($paleo['pubDate'])): ?>
+                                <p class="text-[10px] text-slate-400 ml-0 mt-0.5"><?= htmlspecialchars($paleo['pubDate']) ?></p>
+                                <?php endif; ?>
+                            </li>
+                            <?php endforeach; ?>
+                        </ul>
+                        <a href="https://yuchrszk.blogspot.com/" target="_blank" rel="noopener noreferrer" class="text-xs text-slate-500 hover:text-slate-700 mt-2 inline-block">ブログへ →</a>
+                    </div>
+                </div>
+                <?php endif; ?>
 
                 <?php if (!empty($nextEvent) && isset($nextEvent['days_left']) && (int)$nextEvent['days_left'] >= 0): ?>
                 <?php $eventDays = (int)$nextEvent['days_left']; ?>
