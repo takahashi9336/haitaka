@@ -14,7 +14,7 @@ class UserDramaModel extends BaseModel {
         'tags', 'created_at', 'updated_at',
     ];
 
-    public function getListByStatus(string $status, string $sort = 'created_at', string $order = 'DESC', string $filter = ''): array {
+    public function getListByStatus(string $status, string $sort = 'created_at', string $order = 'DESC', string $filter = '', ?string $category = null): array {
         $allowedSort = ['created_at', 'updated_at', 'watched_date', 'rating', 'first_air_date', 'title'];
         $sortCol = in_array($sort, $allowedSort, true) ? $sort : 'created_at';
 
@@ -30,13 +30,18 @@ class UserDramaModel extends BaseModel {
         $where = "us.user_id = :uid AND us.status = :status";
         $params = ['uid' => $this->userId, 'status' => $status];
 
+        if ($category === 'anime' || $category === 'drama') {
+            $where .= " AND s.category = :category";
+            $params['category'] = $category;
+        }
+
         if ($filter === 'this_month') {
             $where .= " AND us.watched_date >= :month_start AND us.watched_date < :month_end";
             $params['month_start'] = date('Y-m-01');
             $params['month_end'] = date('Y-m-01', strtotime('+1 month'));
         }
 
-        $sql = "SELECT us.*, s.tmdb_id, s.title, s.original_title, s.overview,
+        $sql = "SELECT us.*, s.tmdb_id, s.category, s.title, s.original_title, s.overview,
                        s.poster_path, s.backdrop_path,
                        s.first_air_date, s.last_air_date,
                        s.number_of_seasons, s.number_of_episodes,
@@ -99,10 +104,18 @@ class UserDramaModel extends BaseModel {
         return $this->update($id, $data);
     }
 
-    public function countByStatus(string $status): int {
-        $sql = "SELECT COUNT(*) FROM {$this->table} WHERE user_id = :uid AND status = :status";
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute(['uid' => $this->userId, 'status' => $status]);
+    public function countByStatus(string $status, ?string $category = null): int {
+        if ($category === 'anime' || $category === 'drama') {
+            $sql = "SELECT COUNT(*) FROM {$this->table} us
+                    JOIN dr_series s ON us.series_id = s.id
+                    WHERE us.user_id = :uid AND us.status = :status AND s.category = :category";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute(['uid' => $this->userId, 'status' => $status, 'category' => $category]);
+        } else {
+            $sql = "SELECT COUNT(*) FROM {$this->table} WHERE user_id = :uid AND status = :status";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute(['uid' => $this->userId, 'status' => $status]);
+        }
         return (int)$stmt->fetchColumn();
     }
 

@@ -10,7 +10,7 @@ $totalMins = ($totalRuntime ?? 0) % 60;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ドラマダッシュボード - MyPlatform</title>
+    <title>アニメ/ドラマダッシュボード - MyPlatform</title>
     <?php require_once __DIR__ . '/../../../components/head_favicon.php'; ?>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -44,9 +44,9 @@ $totalMins = ($totalRuntime ?? 0) % 60;
             <div class="flex items-center gap-3">
                 <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
                 <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-lg <?= $headerIconBg ?> <?= $headerShadow ?>"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?>>
-                    <i class="fa-solid fa-clapperboard text-sm"></i>
+                    <i class="fa-solid fa-masks-theater text-sm"></i>
                 </div>
-                <h1 class="font-black text-slate-700 text-xl tracking-tighter">ドラマ</h1>
+                <h1 class="font-black text-slate-700 text-xl tracking-tighter">アニメ/ドラマ</h1>
             </div>
             <div class="flex items-center gap-2 sm:gap-3">
                 <a href="/drama/import.php" class="flex items-center gap-2 px-3 py-2 border border-slate-200 text-slate-500 text-xs sm:text-sm font-bold rounded-lg hover:bg-slate-50 transition" title="一括登録">

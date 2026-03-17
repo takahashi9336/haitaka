@@ -2,13 +2,20 @@
 $appKey = 'drama';
 require_once __DIR__ . '/../../../components/theme_from_session.php';
 $viewMode = $_GET['view'] ?? ($_COOKIE['dr_view_mode'] ?? 'grid');
+// controller から $tab / $category が渡ってくる前提だが、直アクセス時の安全策としてフォールバック
+if (!isset($tab)) {
+    $tab = $_GET['tab'] ?? 'wanna_watch';
+}
+if (!isset($category)) {
+    $category = $_GET['category'] ?? 'all';
+}
 ?>
 <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ドラマリスト - MyPlatform</title>
+    <title>アニメ/ドラマリスト - MyPlatform</title>
     <?php require_once __DIR__ . '/../../../components/head_favicon.php'; ?>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -60,10 +67,10 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['dr_view_mode'] ?? 'grid');
         <header class="h-16 bg-white/80 backdrop-blur-md border-b <?= $headerBorder ?> flex items-center justify-between px-6 shrink-0 z-10">
             <div class="flex items-center gap-3">
                 <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
-                <a href="/drama/" class="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-lg <?= $headerIconBg ?> <?= $headerShadow ?> hover:brightness-110 transition"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?> title="ドラマダッシュボード">
-                    <i class="fa-solid fa-clapperboard text-sm"></i>
+                <a href="/drama/" class="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-lg <?= $headerIconBg ?> <?= $headerShadow ?> hover:brightness-110 transition"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?> title="アニメ/ドラマダッシュボード">
+                    <i class="fa-solid fa-masks-theater text-sm"></i>
                 </a>
-                <h1 class="font-black text-slate-700 text-xl tracking-tighter">ドラマ</h1>
+                <h1 class="font-black text-slate-700 text-xl tracking-tighter">アニメ/ドラマ</h1>
             </div>
             <div class="flex items-center gap-2 sm:gap-3">
                 <a href="/drama/import.php" class="flex items-center gap-2 px-3 py-2 border border-slate-200 text-slate-500 text-sm font-bold rounded-lg hover:bg-slate-50 transition" title="一括登録">
@@ -71,9 +78,9 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['dr_view_mode'] ?? 'grid');
                     <span class="hidden sm:inline">一括登録</span>
                 </a>
                 <?php if ($tmdbConfigured): ?>
-                <button onclick="DrSearchModal.open()" class="flex items-center gap-2 px-4 py-2 dr-theme-btn text-white text-sm font-bold rounded-lg shadow-sm transition">
+                    <button onclick="DrSearchModal.open()" class="flex items-center gap-2 px-4 py-2 dr-theme-btn text-white text-sm font-bold rounded-lg shadow-sm transition">
                     <i class="fa-solid fa-plus"></i>
-                    <span class="hidden sm:inline">ドラマを追加</span>
+                        <span class="hidden sm:inline">作品を追加</span>
                 </button>
                 <?php else: ?>
                 <div class="text-xs text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg">
@@ -87,19 +94,24 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['dr_view_mode'] ?? 'grid');
         <div class="bg-white/90 backdrop-blur-sm border-b border-slate-200 px-4 md:px-12 py-2 shrink-0 z-[5]">
             <div class="max-w-7xl mx-auto flex flex-nowrap items-center gap-3 md:gap-6">
                 <button class="tab-btn text-sm font-bold py-2 whitespace-nowrap <?= $tab === 'wanna_watch' ? 'active dr-theme-text' : 'text-slate-400 hover:text-slate-600' ?>"
-                        onclick="location.href='?tab=wanna_watch'">
+                        onclick="changeDrTab('wanna_watch')">
                     <i class="fa-solid fa-bookmark mr-1"></i>見たい<span class="ml-1 text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full"><?= (int)($wannaWatchCount ?? 0) ?></span>
                 </button>
                 <button class="tab-btn text-sm font-bold py-2 whitespace-nowrap <?= $tab === 'watching' ? 'active dr-theme-text' : 'text-slate-400 hover:text-slate-600' ?>"
-                        onclick="location.href='?tab=watching'">
+                        onclick="changeDrTab('watching')">
                     <i class="fa-solid fa-play mr-1"></i>見てる<span class="ml-1 text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full"><?= (int)($watchingCount ?? 0) ?></span>
                 </button>
                 <button class="tab-btn text-sm font-bold py-2 whitespace-nowrap <?= $tab === 'watched' ? 'active dr-theme-text' : 'text-slate-400 hover:text-slate-600' ?>"
-                        onclick="location.href='?tab=watched'">
+                        onclick="changeDrTab('watched')">
                     <i class="fa-solid fa-check-circle mr-1"></i>見た<span class="ml-1 text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full"><?= (int)($watchedCount ?? 0) ?></span>
                 </button>
 
                 <div class="ml-auto flex items-center gap-2">
+                    <select onchange="applyDrCategory(this.value)" class="text-xs border border-slate-200 rounded-lg px-1.5 md:px-2 py-1.5 text-slate-500 focus:outline-none focus:ring-1 focus:ring-[var(--dr-theme)] max-w-[7rem] md:max-w-none mr-2">
+                        <option value="all" <?= $category === 'all' ? 'selected' : '' ?>>すべて</option>
+                        <option value="anime" <?= $category === 'anime' ? 'selected' : '' ?>>アニメ</option>
+                        <option value="drama" <?= $category === 'drama' ? 'selected' : '' ?>>ドラマ</option>
+                    </select>
                     <div class="flex items-center bg-slate-100 rounded-lg p-0.5">
                         <button onclick="setDrViewMode('grid')" class="view-toggle-btn w-8 h-8 rounded-md flex items-center justify-center text-sm transition <?= $viewMode === 'grid' ? 'active' : 'text-slate-400 hover:text-slate-600' ?>" title="ブロック表示">
                             <i class="fa-solid fa-table-cells"></i>
@@ -131,7 +143,7 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['dr_view_mode'] ?? 'grid');
                     <?= date('Y年n月') ?>の視聴完了ドラマを表示中（<?= count($series ?? []) ?>本）
                     <?php endif; ?>
                 </span>
-                <a href="?tab=<?= htmlspecialchars($tab) ?>" class="ml-auto text-xs text-blue-500 hover:text-blue-700 font-bold transition">
+                <a href="?tab=<?= htmlspecialchars($tab) ?>&category=<?= htmlspecialchars($category) ?>" class="ml-auto text-xs text-blue-500 hover:text-blue-700 font-bold transition">
                     <i class="fa-solid fa-xmark mr-0.5"></i>フィルタ解除
                 </a>
             </div>
@@ -156,7 +168,7 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['dr_view_mode'] ?? 'grid');
                         まだ見たドラマがありません
                         <?php endif; ?>
                     </h3>
-                    <p class="text-sm text-slate-400 mb-6">ドラマを追加してリストを作りましょう</p>
+                    <p class="text-sm text-slate-400 mb-6">アニメ/ドラマを追加してリストを作りましょう</p>
                     <?php if ($tmdbConfigured): ?>
                     <button onclick="DrSearchModal.open()" class="px-6 py-2.5 dr-theme-btn text-white text-sm font-bold rounded-lg shadow-sm transition">
                         <i class="fa-solid fa-plus mr-2"></i>ドラマを追加
@@ -330,6 +342,7 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['dr_view_mode'] ?? 'grid');
     <?php require_once __DIR__ . '/_drama_search_shared.php'; ?>
     <script>
         const drCurrentTab = '<?= htmlspecialchars($tab) ?>';
+        const drCurrentCategory = '<?= htmlspecialchars($category) ?>';
 
         function goDrDetail(id) {
             const view = document.getElementById('drViewList').classList.contains('hidden') ? 'grid' : 'list';
@@ -343,8 +356,26 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['dr_view_mode'] ?? 'grid');
             const [sort, order] = val.split('-');
             const url = new URL(location.href);
             url.searchParams.set('tab', drCurrentTab);
+            url.searchParams.set('category', drCurrentCategory);
             url.searchParams.set('sort', sort);
             url.searchParams.set('order', order);
+            location.href = url.toString();
+        }
+
+        function applyDrCategory(category) {
+            const url = new URL(location.href);
+            url.searchParams.set('tab', drCurrentTab);
+            url.searchParams.set('category', category);
+            location.href = url.toString();
+        }
+
+        function changeDrTab(tab) {
+            const url = new URL(location.href);
+            url.searchParams.set('tab', tab);
+            url.searchParams.set('category', drCurrentCategory);
+            url.searchParams.delete('filter');
+            url.searchParams.delete('sort');
+            url.searchParams.delete('order');
             location.href = url.toString();
         }
 

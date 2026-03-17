@@ -9,7 +9,7 @@ class DramaModel extends BaseModel {
     protected bool $isUserIsolated = false;
 
     protected array $fields = [
-        'id', 'tmdb_id', 'title', 'original_title', 'overview',
+        'id', 'tmdb_id', 'category', 'title', 'original_title', 'overview',
         'poster_path', 'backdrop_path',
         'first_air_date', 'last_air_date',
         'number_of_seasons', 'number_of_episodes',
@@ -29,7 +29,10 @@ class DramaModel extends BaseModel {
             $episodeRuntime = (int)max($tmdbData['episode_run_time']);
         }
 
+        $category = $this->detectCategoryFromTmdb($tmdbData);
+
         $data = [
+            'category' => $category,
             'title' => $tmdbData['name'] ?? '',
             'original_title' => $tmdbData['original_name'] ?? null,
             'overview' => $tmdbData['overview'] ?? null,
@@ -50,6 +53,37 @@ class DramaModel extends BaseModel {
         }
 
         return $data;
+    }
+
+    /**
+     * TMDBのTVシリーズ情報からアニメ/ドラマ種別を推定する
+     * - 日本発 & Animationジャンルを持つものを anime、それ以外を drama とする
+     */
+    public function detectCategoryFromTmdb(array $tmdbData): string {
+        $origin = $tmdbData['origin_country'] ?? [];
+        $origin = is_array($origin) ? $origin : [];
+        $originalLang = $tmdbData['original_language'] ?? '';
+
+        // genres (詳細) / genre_ids（検索結果）どちらにも対応
+        $genreIds = [];
+        if (!empty($tmdbData['genres']) && is_array($tmdbData['genres'])) {
+            foreach ($tmdbData['genres'] as $g) {
+                if (isset($g['id'])) {
+                    $genreIds[] = (int)$g['id'];
+                }
+            }
+        } elseif (!empty($tmdbData['genre_ids']) && is_array($tmdbData['genre_ids'])) {
+            $genreIds = array_map('intval', $tmdbData['genre_ids']);
+        }
+
+        $isJapanese = in_array('JP', $origin, true) || $originalLang === 'ja';
+        $hasAnimation = in_array(16, $genreIds, true); // 16 = Animation
+
+        if ($isJapanese && $hasAnimation) {
+            return 'anime';
+        }
+
+        return 'drama';
     }
 
     private function updateColumnsById(int $id, array $data): bool {

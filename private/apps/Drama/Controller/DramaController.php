@@ -14,12 +14,17 @@ class DramaController {
         $auth->requireLogin();
 
         $user = $_SESSION['user'];
+        $category = $_GET['category'] ?? 'all';
+        if (!in_array($category, ['all', 'anime', 'drama'], true)) {
+            $category = 'all';
+        }
 
         try {
             $userDramaModel = new UserDramaModel();
-            $wannaWatchCount = $userDramaModel->countByStatus('wanna_watch');
-            $watchingCount = $userDramaModel->countByStatus('watching');
-            $watchedCount = $userDramaModel->countByStatus('watched');
+            $targetCategory = $category === 'all' ? null : $category;
+            $wannaWatchCount = $userDramaModel->countByStatus('wanna_watch', $targetCategory);
+            $watchingCount = $userDramaModel->countByStatus('watching', $targetCategory);
+            $watchedCount = $userDramaModel->countByStatus('watched', $targetCategory);
             $thisMonthCount = $userDramaModel->getThisMonthWatchedCount();
             $totalRuntime = $userDramaModel->getTotalWatchedRuntime();
             $monthlyWatchCounts = $userDramaModel->getMonthlyWatchCounts(12);
@@ -71,17 +76,22 @@ class DramaController {
         $sort = $_GET['sort'] ?? 'created_at';
         $order = $_GET['order'] ?? 'DESC';
         $filter = $_GET['filter'] ?? '';
+        $category = $_GET['category'] ?? 'all';
 
         if (!in_array($tab, ['wanna_watch', 'watching', 'watched'], true)) {
             $tab = 'wanna_watch';
         }
+        if (!in_array($category, ['all', 'anime', 'drama'], true)) {
+            $category = 'all';
+        }
 
         try {
             $userDramaModel = new UserDramaModel();
-            $wannaWatchCount = $userDramaModel->countByStatus('wanna_watch');
-            $watchingCount = $userDramaModel->countByStatus('watching');
-            $watchedCount = $userDramaModel->countByStatus('watched');
-            $series = $userDramaModel->getListByStatus($tab, $sort, $order, $filter);
+            $targetCategory = $category === 'all' ? null : $category;
+            $wannaWatchCount = $userDramaModel->countByStatus('wanna_watch', $targetCategory);
+            $watchingCount = $userDramaModel->countByStatus('watching', $targetCategory);
+            $watchedCount = $userDramaModel->countByStatus('watched', $targetCategory);
+            $series = $userDramaModel->getListByStatus($tab, $sort, $order, $filter, $targetCategory);
         } catch (\Exception $e) {
             Logger::errorWithContext('Drama list error', $e);
             $wannaWatchCount = $watchingCount = $watchedCount = 0;
