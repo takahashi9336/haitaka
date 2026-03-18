@@ -14,13 +14,5 @@ Database::connect();
 $auth = new Auth();
 $auth->requireLogin();
 
-$user = $_SESSION['user'];
-$allowedIds = isset($_ENV['ANIME_BETA_ID_NAMES']) ? array_map('trim', explode(',', $_ENV['ANIME_BETA_ID_NAMES'])) : [];
-if (empty($allowedIds) || !in_array($user['id_name'] ?? '', $allowedIds, true)) {
-    header('HTTP/1.1 403 Forbidden');
-    echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>403</title></head><body><p>アクセス権限がありません。</p><a href="/">ダッシュボードへ</a></body></html>';
-    exit;
-}
-
 $controller = new \App\Anime\Controller\AnimeController();
 $controller->dashboard();

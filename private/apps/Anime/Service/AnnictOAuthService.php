@@ -12,7 +12,9 @@ use Core\Logger;
 class AnnictOAuthService {
 
     private const BASE_URL = 'https://api.annict.com';
-    private const SCOPE = 'read write';
+    // Annict のアプリ設定側で許可しているスコープと一致させる必要がある
+    // 現状は「作品検索などの読み取り」のみで十分なため read のみにしておく
+    private const SCOPE = 'read';
 
     private string $clientId;
     private string $clientSecret;

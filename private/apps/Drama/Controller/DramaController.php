@@ -5,26 +5,52 @@ namespace App\Drama\Controller;
 use App\Drama\Model\DramaModel;
 use App\Drama\Model\UserDramaModel;
 use App\Drama\Model\TmdbTvApiClient;
+use App\Movie\Model\TmdbApiClient as MovieTmdbApiClient;
 use Core\Auth;
 use Core\Logger;
 
 class DramaController {
+    private const REC_CACHE_TTL = 21600; // 6時間
+
+    private function getRecCachePath(string $type, int $userId): string {
+        $dir = __DIR__ . '/../../../cache/drama_rec';
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0755, true);
+        }
+        if ($type === 'trending') {
+            return $dir . '/trending.json';
+        }
+        return $dir . "/{$type}_{$userId}.json";
+    }
+
+    private function readRecCache(string $path): ?array {
+        if (!file_exists($path)) return null;
+        $mtime = filemtime($path);
+        if (time() - $mtime > self::REC_CACHE_TTL) {
+            @unlink($path);
+            return null;
+        }
+        $data = @file_get_contents($path);
+        if ($data === false) return null;
+        $decoded = json_decode($data, true);
+        return is_array($decoded) ? $decoded : null;
+    }
+
+    private function writeRecCache(string $path, array $data): void {
+        @file_put_contents($path, json_encode($data, JSON_UNESCAPED_UNICODE), LOCK_EX);
+    }
+
     public function dashboard(): void {
         $auth = new Auth();
         $auth->requireLogin();
 
         $user = $_SESSION['user'];
-        $category = $_GET['category'] ?? 'all';
-        if (!in_array($category, ['all', 'anime', 'drama'], true)) {
-            $category = 'all';
-        }
 
         try {
             $userDramaModel = new UserDramaModel();
-            $targetCategory = $category === 'all' ? null : $category;
-            $wannaWatchCount = $userDramaModel->countByStatus('wanna_watch', $targetCategory);
-            $watchingCount = $userDramaModel->countByStatus('watching', $targetCategory);
-            $watchedCount = $userDramaModel->countByStatus('watched', $targetCategory);
+            $wannaWatchCount = $userDramaModel->countByStatus('wanna_watch', null);
+            $watchingCount = $userDramaModel->countByStatus('watching', null);
+            $watchedCount = $userDramaModel->countByStatus('watched', null);
             $thisMonthCount = $userDramaModel->getThisMonthWatchedCount();
             $totalRuntime = $userDramaModel->getTotalWatchedRuntime();
             $monthlyWatchCounts = $userDramaModel->getMonthlyWatchCounts(12);
@@ -54,6 +80,24 @@ class DramaController {
     }
 
     /**
+     * ガチャAPI（ランダムに見たいドラマ1件返却）
+     */
+    public function gachaApi(): void {
+        header('Content-Type: application/json');
+        try {
+            $userDramaModel = new UserDramaModel();
+            $item = $userDramaModel->getRandomWannaWatchItem();
+            if (!$item) {
+                echo json_encode(['status' => 'empty', 'message' => '見たいリストが空です'], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+            echo json_encode(['status' => 'success', 'data' => $item], JSON_UNESCAPED_UNICODE);
+        } catch (\Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    /**
      * 一括登録画面
      */
     public function import(): void {
@@ -76,22 +120,17 @@ class DramaController {
         $sort = $_GET['sort'] ?? 'created_at';
         $order = $_GET['order'] ?? 'DESC';
         $filter = $_GET['filter'] ?? '';
-        $category = $_GET['category'] ?? 'all';
 
         if (!in_array($tab, ['wanna_watch', 'watching', 'watched'], true)) {
             $tab = 'wanna_watch';
         }
-        if (!in_array($category, ['all', 'anime', 'drama'], true)) {
-            $category = 'all';
-        }
 
         try {
             $userDramaModel = new UserDramaModel();
-            $targetCategory = $category === 'all' ? null : $category;
-            $wannaWatchCount = $userDramaModel->countByStatus('wanna_watch', $targetCategory);
-            $watchingCount = $userDramaModel->countByStatus('watching', $targetCategory);
-            $watchedCount = $userDramaModel->countByStatus('watched', $targetCategory);
-            $series = $userDramaModel->getListByStatus($tab, $sort, $order, $filter, $targetCategory);
+            $wannaWatchCount = $userDramaModel->countByStatus('wanna_watch', null);
+            $watchingCount = $userDramaModel->countByStatus('watching', null);
+            $watchedCount = $userDramaModel->countByStatus('watched', null);
+            $series = $userDramaModel->getListByStatus($tab, $sort, $order, $filter, null);
         } catch (\Exception $e) {
             Logger::errorWithContext('Drama list error', $e);
             $wannaWatchCount = $watchingCount = $watchedCount = 0;
@@ -205,6 +244,134 @@ class DramaController {
                 'message' => $e->getMessage(),
             ], JSON_UNESCAPED_UNICODE);
         }
+    }
+
+    /**
+     * おすすめドラマ API（6時間キャッシュ付き）
+     */
+    public function recommendationsApi(): void {
+        header('Content-Type: application/json');
+        try {
+            $type = $_GET['type'] ?? '';
+            if (!in_array($type, ['personal', 'genre', 'trending'], true)) {
+                echo json_encode(['status' => 'error', 'message' => '不正なtypeパラメータ'], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+
+            $userDramaModel = new UserDramaModel();
+            $tmdb = new TmdbTvApiClient();
+            if (!$tmdb->isConfigured()) {
+                echo json_encode(['status' => 'error', 'message' => 'TMDB未設定'], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+
+            $userId = (int)($_SESSION['user']['id'] ?? 0);
+            $cachePath = $this->getRecCachePath($type, $userId);
+            $cached = $this->readRecCache($cachePath);
+
+            if ($cached !== null) {
+                $this->applyRegisteredFlags($cached, $userDramaModel);
+                echo json_encode($cached, JSON_UNESCAPED_UNICODE);
+                return;
+            }
+
+            $result = $this->fetchRecommendations($type, $userDramaModel, $tmdb);
+            if ($result !== null) {
+                $this->writeRecCache($cachePath, $result);
+            }
+
+            echo json_encode($result ?? ['status' => 'empty'], JSON_UNESCAPED_UNICODE);
+        } catch (\Exception $e) {
+            Logger::errorWithContext('Drama recommendations API error', $e);
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    private function applyRegisteredFlags(array &$response, UserDramaModel $userDramaModel): void {
+        $existingSet = array_flip($userDramaModel->getAllTmdbIds());
+        if (isset($response['data']) && is_array($response['data'])) {
+            foreach ($response['data'] as &$s) {
+                $id = $s['id'] ?? null;
+                if ($id === null) continue;
+                $s['_registered'] = isset($existingSet[$id]);
+            }
+        }
+    }
+
+    private function fetchRecommendations(string $type, UserDramaModel $userDramaModel, TmdbTvApiClient $tmdb): ?array {
+        $existingSet = array_flip($userDramaModel->getAllTmdbIds());
+        $seriesList = [];
+
+        switch ($type) {
+            case 'personal':
+                $topIds = $userDramaModel->getTopRatedTmdbIds(5);
+                if (empty($topIds)) {
+                    return ['status' => 'empty', 'message' => '高評価のドラマがありません'];
+                }
+
+                $seen = [];
+                foreach ($topIds as $tmdbId) {
+                    $result = $tmdb->getRecommendations((int)$tmdbId);
+                    if (!$result || empty($result['results'])) continue;
+                    foreach ($result['results'] as $s) {
+                        $id = $s['id'] ?? null;
+                        if ($id === null || isset($seen[$id])) continue;
+                        $seen[$id] = true;
+                        $s['_registered'] = isset($existingSet[$id]);
+                        $seriesList[] = $s;
+                    }
+                }
+                usort($seriesList, fn($a, $b) => ($b['vote_average'] ?? 0) <=> ($a['vote_average'] ?? 0));
+                $seriesList = array_filter($seriesList, fn($s) => empty($s['_registered']));
+                $seriesList = array_slice(array_values($seriesList), 0, 20);
+                return ['status' => 'success', 'data' => $seriesList];
+
+            case 'genre':
+                $genreNames = $userDramaModel->getTopGenreNames(3);
+                if (empty($genreNames)) {
+                    return ['status' => 'empty', 'message' => 'ジャンルデータがありません'];
+                }
+
+                $genreIds = [];
+                foreach ($genreNames as $name) {
+                    $gid = MovieTmdbApiClient::genreNameToId($name);
+                    if ($gid) {
+                        $genreIds[] = $gid;
+                    }
+                }
+                if (empty($genreIds)) {
+                    return ['status' => 'empty', 'message' => 'ジャンルマッピングなし'];
+                }
+
+                $result = $tmdb->discoverByGenres($genreIds);
+                if ($result && !empty($result['results'])) {
+                    foreach ($result['results'] as $s) {
+                        $id = $s['id'] ?? null;
+                        if ($id === null) continue;
+                        $s['_registered'] = isset($existingSet[$id]);
+                        if (!$s['_registered']) {
+                            $seriesList[] = $s;
+                        }
+                    }
+                }
+                $seriesList = array_slice($seriesList, 0, 20);
+                return ['status' => 'success', 'genres' => $genreNames, 'data' => $seriesList];
+
+            case 'trending':
+                $result = $tmdb->getTrending('week');
+                if ($result && !empty($result['results'])) {
+                    foreach ($result['results'] as $s) {
+                        $id = $s['id'] ?? null;
+                        if ($id === null) continue;
+                        $s['_registered'] = isset($existingSet[$id]);
+                        $seriesList[] = $s;
+                    }
+                }
+                $seriesList = array_slice($seriesList, 0, 20);
+                return ['status' => 'success', 'data' => $seriesList];
+        }
+
+        return null;
     }
 
     /**

@@ -263,10 +263,17 @@ $showAdminUtility = (
     isset($_SESSION['user']['id'])
     && ($_SESSION['user']['role'] ?? '') === 'admin'
 );
+$showSenseLabUtility = (
+    isset($_SESSION['user']['id'])
+    && ($_SESSION['user']['role'] ?? '') === 'admin'
+);
 if ($showHinataUtility) {
     require __DIR__ . '/../apps/Hinata/Views/partials/hinata_utility_fab.php';
 }
 if ($showAdminUtility) {
     $adminFabOverHinata = $showHinataUtility;
     require __DIR__ . '/../apps/Admin/Views/partials/admin_utility_fab.php';
+}
+if ($showSenseLabUtility) {
+    require __DIR__ . '/../apps/SenseLab/Views/partials/sense_lab_utility_fab.php';
 }

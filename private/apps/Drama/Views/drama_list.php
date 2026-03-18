@@ -2,12 +2,9 @@
 $appKey = 'drama';
 require_once __DIR__ . '/../../../components/theme_from_session.php';
 $viewMode = $_GET['view'] ?? ($_COOKIE['dr_view_mode'] ?? 'grid');
-// controller から $tab / $category が渡ってくる前提だが、直アクセス時の安全策としてフォールバック
+// controller から $tab が渡ってくる前提だが、直アクセス時の安全策としてフォールバック
 if (!isset($tab)) {
     $tab = $_GET['tab'] ?? 'wanna_watch';
-}
-if (!isset($category)) {
-    $category = $_GET['category'] ?? 'all';
 }
 ?>
 <!DOCTYPE html>
@@ -15,7 +12,7 @@ if (!isset($category)) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>アニメ/ドラマリスト - MyPlatform</title>
+    <title>ドラマリスト - MyPlatform</title>
     <?php require_once __DIR__ . '/../../../components/head_favicon.php'; ?>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -67,10 +64,10 @@ if (!isset($category)) {
         <header class="h-16 bg-white/80 backdrop-blur-md border-b <?= $headerBorder ?> flex items-center justify-between px-6 shrink-0 z-10">
             <div class="flex items-center gap-3">
                 <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
-                <a href="/drama/" class="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-lg <?= $headerIconBg ?> <?= $headerShadow ?> hover:brightness-110 transition"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?> title="アニメ/ドラマダッシュボード">
-                    <i class="fa-solid fa-masks-theater text-sm"></i>
+                <a href="/drama/" class="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-lg <?= $headerIconBg ?> <?= $headerShadow ?> hover:brightness-110 transition"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?> title="ドラマダッシュボード">
+                    <i class="fa-solid fa-clapperboard text-sm"></i>
                 </a>
-                <h1 class="font-black text-slate-700 text-xl tracking-tighter">アニメ/ドラマ</h1>
+                <h1 class="font-black text-slate-700 text-xl tracking-tighter">ドラマ</h1>
             </div>
             <div class="flex items-center gap-2 sm:gap-3">
                 <a href="/drama/import.php" class="flex items-center gap-2 px-3 py-2 border border-slate-200 text-slate-500 text-sm font-bold rounded-lg hover:bg-slate-50 transition" title="一括登録">
@@ -107,11 +104,7 @@ if (!isset($category)) {
                 </button>
 
                 <div class="ml-auto flex items-center gap-2">
-                    <select onchange="applyDrCategory(this.value)" class="text-xs border border-slate-200 rounded-lg px-1.5 md:px-2 py-1.5 text-slate-500 focus:outline-none focus:ring-1 focus:ring-[var(--dr-theme)] max-w-[7rem] md:max-w-none mr-2">
-                        <option value="all" <?= $category === 'all' ? 'selected' : '' ?>>すべて</option>
-                        <option value="anime" <?= $category === 'anime' ? 'selected' : '' ?>>アニメ</option>
-                        <option value="drama" <?= $category === 'drama' ? 'selected' : '' ?>>ドラマ</option>
-                    </select>
+                    <!-- カテゴリ切り替えは廃止（ドラマ専用） -->
                     <div class="flex items-center bg-slate-100 rounded-lg p-0.5">
                         <button onclick="setDrViewMode('grid')" class="view-toggle-btn w-8 h-8 rounded-md flex items-center justify-center text-sm transition <?= $viewMode === 'grid' ? 'active' : 'text-slate-400 hover:text-slate-600' ?>" title="ブロック表示">
                             <i class="fa-solid fa-table-cells"></i>
@@ -134,7 +127,7 @@ if (!isset($category)) {
             </div>
         </div>
 
-        <?php if (!empty($filter)): ?>
+                <?php if (!empty($filter)): ?>
         <div class="bg-blue-50 border-b border-blue-100 px-6 md:px-12 py-2 shrink-0">
             <div class="max-w-7xl mx-auto flex items-center gap-3">
                 <i class="fa-solid fa-filter text-blue-400 text-xs"></i>
@@ -143,7 +136,7 @@ if (!isset($category)) {
                     <?= date('Y年n月') ?>の視聴完了ドラマを表示中（<?= count($series ?? []) ?>本）
                     <?php endif; ?>
                 </span>
-                <a href="?tab=<?= htmlspecialchars($tab) ?>&category=<?= htmlspecialchars($category) ?>" class="ml-auto text-xs text-blue-500 hover:text-blue-700 font-bold transition">
+                <a href="?tab=<?= htmlspecialchars($tab) ?>" class="ml-auto text-xs text-blue-500 hover:text-blue-700 font-bold transition">
                     <i class="fa-solid fa-xmark mr-0.5"></i>フィルタ解除
                 </a>
             </div>
@@ -342,7 +335,6 @@ if (!isset($category)) {
     <?php require_once __DIR__ . '/_drama_search_shared.php'; ?>
     <script>
         const drCurrentTab = '<?= htmlspecialchars($tab) ?>';
-        const drCurrentCategory = '<?= htmlspecialchars($category) ?>';
 
         function goDrDetail(id) {
             const view = document.getElementById('drViewList').classList.contains('hidden') ? 'grid' : 'list';
@@ -356,23 +348,14 @@ if (!isset($category)) {
             const [sort, order] = val.split('-');
             const url = new URL(location.href);
             url.searchParams.set('tab', drCurrentTab);
-            url.searchParams.set('category', drCurrentCategory);
             url.searchParams.set('sort', sort);
             url.searchParams.set('order', order);
-            location.href = url.toString();
-        }
-
-        function applyDrCategory(category) {
-            const url = new URL(location.href);
-            url.searchParams.set('tab', drCurrentTab);
-            url.searchParams.set('category', category);
             location.href = url.toString();
         }
 
         function changeDrTab(tab) {
             const url = new URL(location.href);
             url.searchParams.set('tab', tab);
-            url.searchParams.set('category', drCurrentCategory);
             url.searchParams.delete('filter');
             url.searchParams.delete('sort');
             url.searchParams.delete('order');

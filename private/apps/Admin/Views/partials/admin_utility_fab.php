@@ -28,7 +28,7 @@ $adminFabOverHinata = $adminFabOverHinata ?? false;
         </button>
     </div>
 
-    <div id="adminFabAddPanel" class="admin-add-panel fixed right-6 bottom-2 left-4 md:left-auto md:max-w-sm bg-white rounded-xl border border-slate-200 p-3 z-[9101] transition-all duration-200 ease-out" data-state="closed" aria-hidden="true">
+    <div id="adminFabAddPanel" class="admin-add-panel fixed right-4 bottom-4 left-4 md:left-auto md:bottom-4 md:max-w-sm lg:max-w-md bg-white rounded-xl border border-slate-200 p-3 z-[9101] transition-all duration-200 ease-out" data-state="closed" aria-hidden="true">
         <div class="flex justify-between items-center mb-2">
             <span class="text-xs font-bold text-slate-500 tracking-wider">改善事項を追加</span>
             <button type="button" id="adminFabAddClose" class="text-slate-400 hover:text-slate-600 p-1" aria-label="閉じる">
@@ -53,8 +53,8 @@ $adminFabOverHinata = $adminFabOverHinata ?? false;
 </div>
 
 <style>
-#admin-utility-fab.admin-fab-position { bottom: 6rem; }
 #admin-utility-fab.admin-fab-alone { bottom: 1.5rem; }
+#admin-utility-fab.admin-fab-position { bottom: 13rem; }
 
 #adminFabArc {
     --fab-radius: 80px;

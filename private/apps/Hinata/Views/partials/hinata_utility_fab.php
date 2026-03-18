@@ -51,7 +51,7 @@ $topOshiUrl = $topOshi ? '/hinata/member.php?id=' . (int)$topOshi['member_id'] :
     </div>
 
     <!-- ミーグリネタ登録パネル（下部配置・FABに被せて縦幅節約・表示アニメーション・ふんわりオレンジの枠） -->
-    <div id="hinataFabNetaPanel" class="hinata-neta-panel fixed right-6 bottom-2 left-4 md:left-auto md:max-w-sm bg-white rounded-xl border border-slate-200 p-3 z-[9101] transition-all duration-200 ease-out" data-state="closed" data-top-oshi-id="<?= (int)($topOshi['member_id'] ?? 0) ?>" aria-hidden="true">
+    <div id="hinataFabNetaPanel" class="hinata-neta-panel fixed right-4 bottom-4 left-4 md:left-auto md:bottom-4 md:max-w-sm lg:max-w-md bg-white rounded-xl border border-slate-200 p-3 z-[9101] transition-all duration-200 ease-out" data-state="closed" data-top-oshi-id="<?= (int)($topOshi['member_id'] ?? 0) ?>" aria-hidden="true">
         <div class="flex justify-between items-center mb-2">
             <span class="text-xs font-bold text-slate-500 tracking-wider">ミーグリネタ登録</span>
             <button type="button" id="hinataFabNetaClose" class="text-slate-400 hover:text-slate-600 p-1" aria-label="閉じる">

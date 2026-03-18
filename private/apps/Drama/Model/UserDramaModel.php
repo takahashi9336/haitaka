@@ -185,6 +185,22 @@ class UserDramaModel extends BaseModel {
         return (int)$stmt->fetchColumn();
     }
 
+    /**
+     * ランダムに「見たい」ドラマを1件取得
+     */
+    public function getRandomWannaWatchItem(): ?array {
+        $sql = "SELECT us.*, s.tmdb_id, s.title, s.original_title, s.overview,
+                       s.poster_path, s.backdrop_path, s.first_air_date,
+                       s.vote_average, s.runtime_avg
+                FROM {$this->table} us
+                JOIN dr_series s ON us.series_id = s.id
+                WHERE us.user_id = :uid AND us.status = 'wanna_watch'
+                ORDER BY RAND() LIMIT 1";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(['uid' => $this->userId]);
+        return $stmt->fetch() ?: null;
+    }
+
     public function getGenreDistribution(): array {
         $sql = "SELECT s.genres FROM {$this->table} us
                 JOIN dr_series s ON us.series_id = s.id

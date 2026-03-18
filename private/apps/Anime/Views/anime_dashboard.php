@@ -33,10 +33,10 @@ $themeHex = $animeTheme['themePrimaryHex'] ?? '#0ea5e9';
         .gacha-idle { animation: gachaPulse 2.5s ease-in-out infinite, gachaGlow 2.5s ease-in-out infinite; }
         .gacha-reveal { animation: gachaReveal 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
         .rec-scroll-wrap { position: relative; overflow: hidden; }
-        .rec-scroll { display: flex; flex-wrap: nowrap; overflow-x: auto; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; scrollbar-width: none; gap: 12px; padding-bottom: 8px; }
+        .rec-scroll { display: flex; flex-wrap: nowrap; overflow-x: auto; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; scrollbar-width: none; gap: 20px; padding-bottom: 12px; }
         .rec-scroll::-webkit-scrollbar { display: none; }
-        .rec-card { flex: 0 0 120px; transition: transform 0.2s ease; }
-        @media (min-width: 768px) { .rec-card { flex: 0 0 140px; } }
+        .rec-card { flex: 0 0 190px; transition: transform 0.2s ease; }
+        @media (min-width: 768px) { .rec-card { flex: 0 0 230px; } }
         .rec-card:hover { transform: translateY(-4px); }
         .rec-arrow {
             position: absolute; top: 50%; transform: translateY(-50%); z-index: 5;
@@ -69,6 +69,10 @@ $themeHex = $animeTheme['themePrimaryHex'] ?? '#0ea5e9';
                 <h1 class="font-black text-slate-700 text-xl tracking-tighter">アニメ</h1>
             </div>
             <div class="flex items-center gap-2 sm:gap-3">
+                <a href="/anime/import.php" class="hidden sm:inline-flex items-center gap-2 px-3 py-2 border border-slate-200 text-slate-500 text-xs sm:text-sm font-bold rounded-lg hover:bg-slate-50 transition" title="一括登録">
+                    <i class="fa-solid fa-file-import"></i>
+                    <span>一括登録</span>
+                </a>
                 <?php if ($oauthConfigured && $hasToken): ?>
                 <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full mr-1 hidden sm:inline-flex items-center gap-1"><i class="fa-solid fa-link text-[9px]"></i>Annict 連携済み</span>
                 <button type="button" id="annictRevokeBtn" class="text-[10px] font-bold text-slate-400 hover:text-red-600 px-2 py-1 rounded hover:bg-slate-50 transition" title="Annict 連携を解除">連携解除</button>
@@ -235,30 +239,29 @@ $themeHex = $animeTheme['themePrimaryHex'] ?? '#0ea5e9';
                     </div>
                 </div>
 
-                <!-- 今期アニメ -->
-                <?php if (!empty($thisSeasonWorks)): ?>
-                <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-6 mb-6 rec-section">
-                    <h2 class="text-sm font-bold text-slate-700 mb-4"><i class="fa-solid fa-calendar text-sky-500 mr-2"></i>今期のアニメ</h2>
-                    <div class="rec-scroll-wrap">
-                        <button type="button" class="rec-arrow left" onclick="document.getElementById('thisSeasonScroll').scrollBy({left:-200,behavior:'smooth'})" aria-label="左にスクロール"><i class="fa-solid fa-chevron-left text-sm"></i></button>
-                        <div id="thisSeasonScroll" class="rec-scroll">
-                            <?php foreach (array_slice($thisSeasonWorks, 0, 12) as $w): ?>
-                            <a href="/anime/detail.php?id=<?= (int)($w['id'] ?? 0) ?>" class="rec-card block shrink-0">
-                                <div class="aspect-[16/9] rounded-xl overflow-hidden bg-slate-100 mb-2">
-                                    <?php if (!empty($w['images']['recommended_url'])): ?>
-                                    <img src="<?= htmlspecialchars($w['images']['recommended_url']) ?>" alt="" class="w-full h-full object-cover group-hover:scale-105 transition" loading="lazy">
-                                    <?php else: ?>
-                                    <div class="w-full h-full flex items-center justify-center"><i class="fa-solid fa-tv text-3xl text-slate-300"></i></div>
-                                    <?php endif; ?>
-                                </div>
-                                <p class="text-xs font-bold text-slate-700 truncate"><?= htmlspecialchars($w['title'] ?? '') ?></p>
-                            </a>
-                            <?php endforeach; ?>
+                <!-- 今期アニメ（Annict API から取得） -->
+                <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-6 mb-6">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i class="fa-solid fa-calendar text-sky-500"></i>
+                        <h2 class="text-sm font-bold text-slate-700">今期のアニメ</h2>
+                        <span id="animeCurrentSeasonLabel" class="text-[10px] text-slate-400 ml-1"></span>
+                        <a href="/anime/current_season.php" class="ml-auto text-[11px] font-bold text-sky-500 hover:text-sky-600 inline-flex items-center gap-1">
+                            <span>もっと見る</span>
+                            <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                        </a>
+                    </div>
+                    <div id="animeCurrentSeasonContainer" class="rec-scroll-wrap">
+                        <div class="flex items-center justify-center py-6 text-slate-400 text-sm" id="animeCurrentSeasonLoading">
+                            <i class="fa-solid fa-spinner fa-spin mr-2"></i>読み込み中...
                         </div>
-                        <button type="button" class="rec-arrow right" onclick="document.getElementById('thisSeasonScroll').scrollBy({left:200,behavior:'smooth'})" aria-label="右にスクロール"><i class="fa-solid fa-chevron-right text-sm"></i></button>
+                        <div class="hidden" id="animeCurrentSeasonEmpty">
+                            <p class="text-center text-slate-400 text-sm py-6"><i class="fa-solid fa-circle-info mr-1"></i>今期のアニメ情報を取得できませんでした。</p>
+                        </div>
+                        <button type="button" class="rec-arrow left hidden" onclick="AnimeCurrentSeason.scroll(-1)" aria-label="左にスクロール"><i class="fa-solid fa-chevron-left text-sm"></i></button>
+                        <div id="animeCurrentSeasonScroll" class="rec-scroll hidden"></div>
+                        <button type="button" class="rec-arrow right hidden" onclick="AnimeCurrentSeason.scroll(1)" aria-label="右にスクロール"><i class="fa-solid fa-chevron-right text-sm"></i></button>
                     </div>
                 </div>
-                <?php endif; ?>
 
                 <!-- 視聴中 -->
                 <?php if (!empty($watchingWorks)): ?>
@@ -267,14 +270,14 @@ $themeHex = $animeTheme['themePrimaryHex'] ?? '#0ea5e9';
                         <h2 class="text-sm font-bold text-slate-700"><i class="fa-solid fa-play text-sky-500 mr-2"></i>視聴中</h2>
                         <a href="/anime/list.php?tab=watching" class="text-xs font-bold text-sky-500 hover:text-sky-600 transition">もっと見る <i class="fa-solid fa-chevron-right text-[10px]"></i></a>
                     </div>
-                    <div class="rec-scroll-wrap">
+                    <div class="rec-scroll-wrap" id="animeWatchingContainer">
                         <button type="button" class="rec-arrow left" onclick="document.getElementById('watchingScroll').scrollBy({left:-200,behavior:'smooth'})" aria-label="左にスクロール"><i class="fa-solid fa-chevron-left text-sm"></i></button>
                         <div id="watchingScroll" class="rec-scroll">
                             <?php foreach (array_slice($watchingWorks, 0, 12) as $w): ?>
-                            <a href="/anime/detail.php?id=<?= (int)($w['id'] ?? 0) ?>" class="rec-card block shrink-0 group">
+                            <div class="rec-card block shrink-0 group cursor-pointer" data-anime-id="<?= (int)($w['id'] ?? 0) ?>">
                                 <div class="aspect-[16/9] rounded-xl overflow-hidden bg-slate-100 mb-2">
                                     <?php if (!empty($w['images']['recommended_url'])): ?>
-                                    <img src="<?= htmlspecialchars($w['images']['recommended_url']) ?>" alt="" class="w-full h-full object-cover group-hover:scale-105 transition" loading="lazy">
+                                    <img src="<?= htmlspecialchars($w['images']['recommended_url']) ?>" alt="" class="w-full h-full object-cover group-hover:scale-105 transition" loading="lazy" referrerpolicy="no-referrer">
                                     <?php else: ?>
                                     <div class="w-full h-full flex items-center justify-center"><i class="fa-solid fa-tv text-3xl text-slate-300"></i></div>
                                     <?php endif; ?>
@@ -283,7 +286,7 @@ $themeHex = $animeTheme['themePrimaryHex'] ?? '#0ea5e9';
                                 <?php if (isset($w['episodes_count']) && $w['episodes_count'] > 0): ?>
                                 <p class="text-[10px] text-slate-400"><?= $w['episodes_count'] ?>話</p>
                                 <?php endif; ?>
-                            </a>
+                            </div>
                             <?php endforeach; ?>
                         </div>
                         <button type="button" class="rec-arrow right" onclick="document.getElementById('watchingScroll').scrollBy({left:200,behavior:'smooth'})" aria-label="右にスクロール"><i class="fa-solid fa-chevron-right text-sm"></i></button>
@@ -393,6 +396,136 @@ $themeHex = $animeTheme['themePrimaryHex'] ?? '#0ea5e9';
                 }
             }
         };
+        const AnimeCurrentSeason = {
+            data: [],
+            esc(str) {
+                const d = document.createElement('div');
+                d.textContent = str || '';
+                return d.innerHTML;
+            },
+            renderCard(w) {
+                const imgUrl = (w.images && (w.images.recommended_url || (w.images.facebook && w.images.facebook.og_image_url))) || '';
+                const safeImg = imgUrl ? this.esc(imgUrl.replace(/^http:\/\//i, 'https://')) : '';
+                const title = this.esc(w.title || '');
+                const episodes = w.episodes_count || null;
+                const seasonText = w.season_name_text || w.season_name || '';
+                return '<div class="rec-card cursor-pointer" data-anime-id="' + (w.id || 0) + '">' +
+                    '<div class="aspect-[16/9] rounded-xl overflow-hidden bg-slate-100 mb-2">' +
+                    (safeImg ? '<img src="' + safeImg + '" alt="" class="w-full h-full object-cover" loading="lazy" referrerpolicy="no-referrer">' :
+                        '<div class="w-full h-full flex items-center justify-center"><i class="fa-solid fa-tv text-2xl text-slate-300"></i></div>') +
+                    '</div>' +
+                    '<p class="text-[11px] font-bold text-slate-700 line-clamp-2 leading-snug">' + title + '</p>' +
+                    (seasonText || episodes ? '<p class="text-[10px] text-slate-400 mt-0.5">' +
+                        (seasonText ? this.esc(seasonText) : '') +
+                        (seasonText && episodes ? '・' : '') +
+                        (episodes ? episodes + '話' : '') +
+                        '</p>' : '') +
+                '</div>';
+            },
+            updateArrows() {
+                const scroll = document.getElementById('animeCurrentSeasonScroll');
+                if (!scroll) return;
+                const left = document.querySelector('#animeCurrentSeasonContainer .rec-arrow.left');
+                const right = document.querySelector('#animeCurrentSeasonContainer .rec-arrow.right');
+                if (!left || !right) return;
+                const atStart = scroll.scrollLeft <= 4;
+                const atEnd = scroll.scrollLeft + scroll.clientWidth >= scroll.scrollWidth - 4;
+                left.classList.toggle('hidden', atStart);
+                right.classList.toggle('hidden', atEnd);
+            },
+            scroll(dir) {
+                const el = document.getElementById('animeCurrentSeasonScroll');
+                if (!el) return;
+                const card = el.querySelector('.rec-card');
+                const width = card ? card.offsetWidth : 140;
+                const amount = (width + 12) * 3 * dir;
+                el.scrollBy({ left: amount, behavior: 'smooth' });
+            },
+            open(id) {
+                if (!this.data || !Array.isArray(this.data)) return;
+                var targetId = Number(id);
+                var w = null;
+                for (var i = 0; i < this.data.length; i++) {
+                    var curId = Number(this.data[i].id || 0);
+                    if (curId === targetId) {
+                        w = this.data[i];
+                        break;
+                    }
+                }
+                if (!w) return;
+                if (window.AnimePreview && typeof AnimePreview.open === 'function') {
+                    AnimePreview.open(w);
+                } else {
+                    // フォールバックとして詳細ページへ
+                    window.location.href = '/anime/detail.php?id=' + (w.id || 0);
+                }
+            },
+            async init() {
+                const labelEl = document.getElementById('animeCurrentSeasonLabel');
+                const loadingEl = document.getElementById('animeCurrentSeasonLoading');
+                const emptyEl = document.getElementById('animeCurrentSeasonEmpty');
+                const scrollEl = document.getElementById('animeCurrentSeasonScroll');
+                try {
+                    const res = await fetch('/anime/api/current_season.php');
+                    const json = await res.json();
+                    if (json.status === 'success' && Array.isArray(json.data) && json.data.length > 0) {
+                        this.data = json.data;
+                        if (labelEl && json.season) {
+                            labelEl.textContent = json.season;
+                        }
+                        if (scrollEl) {
+                            scrollEl.innerHTML = json.data.map(w => this.renderCard(w)).join('');
+                            scrollEl.classList.remove('hidden');
+                            scrollEl.addEventListener('scroll', () => this.updateArrows(), { passive: true });
+                            scrollEl.addEventListener('click', (e) => {
+                                const card = e.target.closest('.rec-card');
+                                if (!card) return;
+                                const id = card.getAttribute('data-anime-id');
+                                AnimeCurrentSeason.open(id);
+                            });
+                            this.updateArrows();
+                        }
+                        if (loadingEl) loadingEl.classList.add('hidden');
+                    } else {
+                        if (loadingEl) loadingEl.classList.add('hidden');
+                        if (emptyEl) emptyEl.classList.remove('hidden');
+                    }
+                } catch (e) {
+                    console.error(e);
+                    if (loadingEl) loadingEl.classList.add('hidden');
+                    if (emptyEl) emptyEl.classList.remove('hidden');
+                }
+            }
+        };
+
+        AnimeCurrentSeason.init();
+
+        // 視聴中カード用モーダルフック
+        (function() {
+            const watchingData = <?= json_encode(array_values(array_slice($watchingWorks, 0, 12))) ?>;
+            const map = {};
+            for (let i = 0; i < watchingData.length; i++) {
+                const w = watchingData[i];
+                if (w && w.id) {
+                    map[String(w.id)] = w;
+                }
+            }
+            const scroll = document.getElementById('watchingScroll');
+            if (!scroll) return;
+            scroll.addEventListener('click', function(e) {
+                const card = e.target.closest('.rec-card');
+                if (!card) return;
+                const id = card.getAttribute('data-anime-id');
+                if (!id) return;
+                const w = map[String(id)];
+                if (w && window.AnimePreview && typeof AnimePreview.open === 'function') {
+                    AnimePreview.open(w);
+                } else {
+                    window.location.href = '/anime/detail.php?id=' + encodeURIComponent(id);
+                }
+            });
+        })();
+
         AnimeSearch.init({
             inputId: 'dashSearchInput',
             resultsId: 'dashSearchResults',

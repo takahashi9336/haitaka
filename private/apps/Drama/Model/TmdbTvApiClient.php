@@ -67,6 +67,16 @@ class TmdbTvApiClient {
         ]);
     }
 
+    public function getRecommendations(int $tmdbId, int $page = 1): ?array {
+        if (!$this->isConfigured()) return null;
+
+        return $this->request("/tv/{$tmdbId}/recommendations", [
+            'api_key' => $this->apiKey,
+            'language' => 'ja-JP',
+            'page' => $page,
+        ]);
+    }
+
     public function discoverByGenres(array $genreIds, array $options = []): ?array {
         if (!$this->isConfigured() || empty($genreIds)) return null;
 

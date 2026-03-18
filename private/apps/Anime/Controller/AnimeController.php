@@ -16,6 +16,26 @@ use Core\Logger;
 class AnimeController {
 
     /**
+     * 現在の年月から Annict の season 文字列を生成する（例: 2025-spring）
+     */
+    private function getCurrentSeasonString(): string {
+        $year = (int)date('Y');
+        $month = (int)date('n');
+
+        if ($month >= 1 && $month <= 3) {
+            $season = 'winter';
+        } elseif ($month >= 4 && $month <= 6) {
+            $season = 'spring';
+        } elseif ($month >= 7 && $month <= 9) {
+            $season = 'summer';
+        } else {
+            $season = 'autumn';
+        }
+
+        return sprintf('%d-%s', $year, $season);
+    }
+
+    /**
      * ダッシュボード（ローカル DB から取得）
      */
     public function dashboard(): void {
@@ -55,7 +75,7 @@ class AnimeController {
                 $sn = $w['season_name_text'] ?? $w['season_name'] ?? '';
                 if ($sn) $seasonDistribution[$sn] = ($seasonDistribution[$sn] ?? 0) + 1;
             }
-            $currentSeason = $this->getCurrentSeason();
+            $currentSeason = $this->getCurrentSeasonString();
             $thisSeasonWorks = array_filter($works, fn($w) => ($w['season_name'] ?? '') === $currentSeason);
             $watchingWorks = array_filter($works, fn($w) => ($w['status']['kind'] ?? '') === 'watching');
         }
@@ -63,15 +83,6 @@ class AnimeController {
         $authorizeUrl = $oauthConfigured ? $oauthService->getAuthorizeUrl() : '';
 
         require_once __DIR__ . '/../Views/anime_dashboard.php';
-    }
-
-    private function getCurrentSeason(): string {
-        $m = (int)date('n');
-        $y = date('Y');
-        if ($m >= 1 && $m <= 3) return $y . '-winter';
-        if ($m >= 4 && $m <= 6) return $y . '-spring';
-        if ($m >= 7 && $m <= 9) return $y . '-summer';
-        return $y . '-autumn';
     }
 
     /**
@@ -254,6 +265,139 @@ class AnimeController {
 
         $idx = array_rand($works);
         echo json_encode(['status' => 'success', 'data' => $works[$idx]], JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * 今期アニメ一覧 API（Annict から取得、ユーザーの登録状況を付加）
+     */
+    public function currentSeasonApi(): void {
+        header('Content-Type: application/json; charset=utf-8');
+
+        try {
+            $userId = (int)($_SESSION['user']['id'] ?? 0);
+            if ($userId <= 0) {
+                echo json_encode(['status' => 'error', 'message' => 'Unauthorized'], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+
+            $season = $this->getCurrentSeasonString();
+            $client = new AnnictApiClient($userId);
+            $res = $client->getWorksRaw([
+                'filter_season' => $season,
+                'page' => 1,
+                'per_page' => 50,
+            ]);
+
+            if (!$res || empty($res['works'])) {
+                echo json_encode(['status' => 'empty', 'data' => []], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+
+            $works = $res['works'] ?? [];
+            $workModel = new WorkModel();
+            $userWorkModel = new UserWorkModel();
+
+            foreach ($works as &$w) {
+                $workModel->upsertFromAnnict($w);
+                $annictId = (int)($w['id'] ?? 0);
+                if ($annictId > 0) {
+                    $uw = $userWorkModel->findByUserAndAnnictWork($userId, $annictId);
+                    if ($uw && !empty($uw['status'])) {
+                        $w['user_status'] = $uw['status'];
+                    }
+                }
+            }
+            unset($w);
+
+            // 最大20件まで返却（フロント側のカード数を揃える）
+            $works = array_slice($works, 0, 20);
+
+            echo json_encode([
+                'status' => 'success',
+                'season' => $season,
+                'data' => $works,
+                'total_count' => (int)($res['total_count'] ?? count($works)),
+            ], JSON_UNESCAPED_UNICODE);
+        } catch (\Exception $e) {
+            Logger::errorWithContext('Anime current season API error', $e);
+            echo json_encode(['status' => 'error', 'message' => '内部エラーが発生しました'], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    /**
+     * 今期アニメ一覧画面
+     */
+    public function currentSeasonList(): void {
+        $auth = new Auth();
+        $auth->requireLogin();
+
+        $user = $_SESSION['user'] ?? [];
+        $userId = (int)($user['id'] ?? 0);
+
+        $season = $this->getCurrentSeasonString();
+        $works = [];
+        $errorMessage = null;
+
+        try {
+            if ($userId > 0) {
+                $client = new AnnictApiClient($userId);
+                $res = $client->getWorksRaw([
+                    'filter_season' => $season,
+                    'page' => 1,
+                    'per_page' => 50,
+                ]);
+                if ($res && !empty($res['works'])) {
+                    $works = $res['works'];
+                    $workModel = new WorkModel();
+                    $userWorkModel = new UserWorkModel();
+                    foreach ($works as &$w) {
+                        $workModel->upsertFromAnnict($w);
+                        $annictId = (int)($w['id'] ?? 0);
+                        if ($annictId > 0) {
+                            $uw = $userWorkModel->findByUserAndAnnictWork($userId, $annictId);
+                            if ($uw && !empty($uw['status'])) {
+                                $w['user_status'] = $uw['status'];
+                            }
+
+                            // APIの response に images が含まれない/ブロックされるケースがあるため、
+                            // ローカルキャッシュの image_url を優先して表示に使う
+                            $localWork = $workModel->findByAnnictId($annictId);
+                            if ($localWork && !empty($localWork['image_url'])) {
+                                $w['image_url'] = $localWork['image_url'];
+                                if (!isset($w['images']) || !is_array($w['images'])) {
+                                    $w['images'] = [];
+                                }
+                                $w['images']['recommended_url'] = $localWork['image_url'];
+                            }
+                        }
+                    }
+                    unset($w);
+                }
+            }
+        } catch (\Exception $e) {
+            Logger::errorWithContext('Anime current season list error', $e);
+            $errorMessage = '今期のアニメ情報の取得に失敗しました。時間をおいて再度お試しください。';
+        }
+
+        require_once __DIR__ . '/../Views/anime_current_season.php';
+    }
+
+    /**
+     * 一括登録画面
+     */
+    public function import(): void {
+        $auth = new Auth();
+        $auth->requireLogin();
+
+        $user = $_SESSION['user'] ?? [];
+        $userId = (int)($user['id'] ?? 0);
+
+        $oauthService = new AnnictOAuthService();
+        $oauthConfigured = $oauthService->isConfigured();
+        $hasToken = $userId > 0 && AnnictOAuthService::getTokenForUser($userId) !== null;
+        $authorizeUrl = $oauthConfigured ? $oauthService->getAuthorizeUrl() : '';
+
+        require_once __DIR__ . '/../Views/anime_import.php';
     }
 
     /**
