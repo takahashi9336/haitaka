@@ -95,6 +95,18 @@ use App\Hinata\Helper\MemberGroupHelper;
                                 <input type="url" name="youtube_url" id="f_youtube" class="w-full h-12 border border-slate-100 rounded-lg px-4 text-sm outline-none" placeholder="YouTube URL">
                             </div>
 
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 mb-1 tracking-wider">キャンペーンハッシュタグ（#不要・付けて入力してもOK、例: 七回目のひな誕祭）</label>
+                                <input type="text" name="event_hashtag" id="f_hashtag" class="w-full h-12 border border-slate-100 rounded-lg px-4 text-sm outline-none focus:ring-2 <?= $isThemeHex ? 'focus:ring-[var(--hinata-theme)]' : 'focus:ring-' . $themeTailwind . '-100' ?>" placeholder="七回目のひな誕祭">
+                                <p class="mt-1 text-[10px] text-slate-400">初参戦ガイドで「#○○ の動画」として表示されます。タイトルまたは説明にこのハッシュタグが含まれる動画が自動で横スクロール表示されます。</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 mb-1 tracking-wider">コラボ企画ページURL</label>
+                                <div id="collabUrlsContainer" class="space-y-2"></div>
+                                <button type="button" id="btnAddCollabUrl" class="mt-2 text-xs font-bold text-sky-600 hover:text-sky-700"><i class="fa-solid fa-plus mr-1"></i>URLを追加</button>
+                            </div>
+
                             <div class="pt-2">
                                 <label class="block text-[10px] font-black text-slate-400 mb-2 tracking-wider">出演メンバー</label>
                                 <div class="flex gap-6 mb-3">
@@ -162,6 +174,14 @@ use App\Hinata\Helper\MemberGroupHelper;
             const cat = parseInt(document.getElementById('f_category').value);
             document.getElementById('mgRoundsWrap').classList.toggle('hidden', cat !== 2 && cat !== 3);
         }
+        function addCollabUrlInput(val) {
+            const div = document.createElement('div');
+            div.className = 'flex gap-2';
+            div.innerHTML = '<input type="url" name="collaboration_urls[]" class="flex-1 h-10 border border-slate-100 rounded-lg px-3 text-sm outline-none" placeholder="https://..." value="' + (val || '').replace(/"/g, '&quot;') + '"><button type="button" class="shrink-0 w-10 h-10 text-slate-400 hover:text-red-500" onclick="this.parentElement.remove()"><i class="fa-solid fa-times"></i></button>';
+            document.getElementById('collabUrlsContainer').appendChild(div);
+        }
+        document.getElementById('btnAddCollabUrl').onclick = () => addCollabUrlInput('');
+
         function editEvent(ev) {
             document.getElementById('event_id').value = ev.id;
             document.getElementById('f_name').value = ev.event_name;
@@ -172,7 +192,13 @@ use App\Hinata\Helper\MemberGroupHelper;
             document.getElementById('f_place').value = ev.event_place || '';
             document.getElementById('f_info').value = ev.event_info || '';
             document.getElementById('f_url').value = ev.event_url || '';
+            document.getElementById('f_hashtag').value = ev.event_hashtag || '';
             document.getElementById('f_youtube').value = '';
+            document.getElementById('collabUrlsContainer').innerHTML = '';
+            try {
+                const urls = ev.collaboration_urls ? (typeof ev.collaboration_urls === 'string' ? JSON.parse(ev.collaboration_urls) : ev.collaboration_urls) : [];
+                if (Array.isArray(urls) && urls.length) { urls.forEach(u => addCollabUrlInput(u)); } else { addCollabUrlInput(''); }
+            } catch (_) { addCollabUrlInput(''); }
             document.getElementById('btnDelete').classList.remove('hidden');
             document.getElementById('btnCancel').classList.remove('hidden');
             document.getElementById('btnSubmit').innerText = '変更を保存';
@@ -184,6 +210,7 @@ use App\Hinata\Helper\MemberGroupHelper;
             const formData = new FormData(e.target);
             const data = Object.fromEntries(formData.entries());
             data.member_ids = Array.from(formData.getAll('member_ids[]'));
+            data.collaboration_urls = Array.from(formData.getAll('collaboration_urls[]')).filter(u => String(u).trim());
             const cat = parseInt(data.category);
             if (cat !== 2 && cat !== 3) {
                 data.mg_rounds = '';

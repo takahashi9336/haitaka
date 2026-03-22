@@ -150,9 +150,11 @@ class SongController {
         $releaseTypes = ReleaseModel::RELEASE_TYPES;
         $trackTypesDisplay = SongModel::TRACK_TYPES_DISPLAY;
         $formationTypesDisplay = SongModel::FORMATION_TYPES_DISPLAY;
-        // 戻り先: リリースの楽曲一覧から来た場合はそのリリース詳細へ、全曲タブからは全曲タブへ、それ以外はリリース一覧
+        // 戻り先: リリースの楽曲一覧から来た場合はそのリリース詳細へ、初参戦ガイドからはガイドへ、全曲タブからは全曲タブへ、それ以外はリリース一覧
         if (isset($_GET['from']) && $_GET['from'] === 'release' && !empty($_GET['release_id'])) {
             $backUrl = 'release.php?id=' . (int)$_GET['release_id'];
+        } elseif (isset($_GET['from']) && $_GET['from'] === 'live_guide' && !empty($_GET['event_id'])) {
+            $backUrl = 'live_guide.php?event_id=' . (int)$_GET['event_id'];
         } elseif (isset($_GET['from']) && $_GET['from'] === 'songs') {
             $backUrl = 'songs.php?tab=songs';
         } else {

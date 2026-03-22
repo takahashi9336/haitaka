@@ -293,6 +293,9 @@ $allCategories = [
                                     <button onclick="loadSetlist(<?= $e['id'] ?>)" class="text-[10px] font-bold text-slate-400 hover:text-slate-600 px-3 py-1.5 rounded-full border border-slate-200 hover:border-slate-300 transition flex items-center gap-1">
                                         <i class="fa-solid fa-list-ol text-[8px]"></i>セットリスト
                                     </button>
+                                    <a href="/hinata/live_guide.php?event_id=<?= (int)$e['id'] ?>" class="text-[10px] font-bold text-sky-600 hover:text-sky-700 px-3 py-1.5 rounded-full border border-sky-200 hover:border-sky-300 transition flex items-center gap-1">
+                                        <i class="fa-solid fa-music text-[8px]"></i>初参戦ガイド
+                                    </a>
                                 </div>
                                 <div id="setlist-<?= $e['id'] ?>" class="hidden"></div>
                                 <?php endif; ?>
@@ -545,6 +548,7 @@ $allCategories = [
                 h += '<button onclick="toggleAttendanceSlide(' + e.id + ', this)" class="attendance-btn text-[10px] font-bold px-3 py-1.5 rounded-full border transition flex items-center gap-1 ' + (att ? 'bg-sky-500 text-white border-sky-500' : 'bg-white text-slate-500 border-slate-200 hover:border-sky-300') + '" data-attended="' + (att ? '1' : '0') + '">';
                 h += '<i class="fa-solid fa-flag text-[8px]"></i><span>' + (att ? '参戦済み' : '参戦した') + '</span></button>';
                 h += '<button onclick="loadSetlistSlide(' + e.id + ')" class="text-[10px] font-bold text-slate-400 hover:text-slate-600 px-3 py-1.5 rounded-full border border-slate-200 hover:border-slate-300 transition flex items-center gap-1"><i class="fa-solid fa-list-ol text-[8px]"></i>セットリスト</button>';
+                h += '<a href="/hinata/live_guide.php?event_id=' + e.id + '" class="text-[10px] font-bold text-sky-600 hover:text-sky-700 px-3 py-1.5 rounded-full border border-sky-200 hover:border-sky-300 transition flex items-center gap-1"><i class="fa-solid fa-music text-[8px]"></i>初参戦ガイド</a>';
                 h += '</div>';
                 h += '<div id="setlist-slide-' + e.id + '" class="hidden"></div>';
             }

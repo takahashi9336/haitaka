@@ -147,6 +147,14 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                             </div>
                         </div>
                         <div class="mb-6">
+                            <h3 class="text-sm font-bold text-slate-700 mb-2">ハッシュタグ（初参戦ガイド用）</h3>
+                            <p class="text-[10px] text-slate-500 mb-1">カンマ区切りで入力（#は不要）例: 七回目のひな誕祭</p>
+                            <div class="flex gap-2">
+                                <input type="text" id="hashtagsInput" placeholder="七回目のひな誕祭" class="flex-1 h-10 px-4 border <?= $cardBorder ?> rounded-lg text-sm outline-none focus:ring-2 <?= $isThemeHex ? 'focus:ring-[var(--hinata-theme)]' : 'focus:ring-' . $themeTailwind . '-200' ?>">
+                                <button type="button" id="btnSaveHashtags" class="shrink-0 h-10 px-4 rounded-lg text-xs font-bold bg-sky-500 hover:bg-sky-600 text-white transition">保存</button>
+                            </div>
+                        </div>
+                        <div class="mb-6">
                             <h3 class="text-sm font-bold text-slate-700 mb-2">楽曲を選択して紐づける</h3>
                             <div class="mb-3">
                                 <input type="text" id="searchSong" placeholder="楽曲・リリース名で検索..." class="w-full h-10 px-4 border <?= $cardBorder ?> rounded-lg text-sm outline-none focus:ring-2 <?= $isThemeHex ? 'focus:ring-[var(--hinata-theme)]' : 'focus:ring-' . $themeTailwind . '-200' ?>">
@@ -278,9 +286,20 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             selectionPanel.classList.remove('hidden');
             applySongFilter();
             await loadLinkedSong();
+            await loadHashtags();
             if (window.innerWidth < 768) {
                 setTimeout(() => selectionPanel.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
             }
+        }
+
+        async function loadHashtags() {
+            const input = document.getElementById('hashtagsInput');
+            if (!input || !selectedMetaId) return;
+            try {
+                const res = await fetch('/hinata/api/get_media_hashtags.php?meta_id=' + selectedMetaId);
+                const json = await res.json();
+                input.value = (json.status === 'success' && Array.isArray(json.data)) ? json.data.join(', ') : '';
+            } catch (_) { input.value = ''; }
         }
 
         async function loadLinkedSong() {
@@ -359,6 +378,27 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 if (json.status === 'success') {
                     showToast('紐付けを解除しました。');
                     loadLinkedSong();
+                } else {
+                    alert('エラー: ' + (json.message || ''));
+                }
+            } catch (e) {
+                alert('通信エラー: ' + e.message);
+            }
+        };
+
+        document.getElementById('btnSaveHashtags').onclick = async function() {
+            if (!selectedMetaId) return;
+            const input = document.getElementById('hashtagsInput');
+            const tags = (input.value || '').split(/[,、\s]+/).map(t => t.replace(/^#/, '').trim()).filter(t => t);
+            try {
+                const res = await fetch('/hinata/api/save_media_hashtags.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ meta_id: selectedMetaId, hashtags: tags })
+                });
+                const json = await res.json();
+                if (json.status === 'success') {
+                    showToast('ハッシュタグを保存しました');
                 } else {
                     alert('エラー: ' + (json.message || ''));
                 }

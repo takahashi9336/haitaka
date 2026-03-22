@@ -17,6 +17,7 @@ class MediaController {
      * カテゴリ定義（hn_media_metadata.category のバリエーション）
      */
     private const CATEGORIES = [
+        'Call' => 'Call',
         'CM' => 'CM',
         'Hinareha' => 'Hinareha',
         'Live' => 'Live',

@@ -12,6 +12,7 @@ class EventModel extends BaseModel {
     protected string $table = 'hn_events';
     protected array $fields = [
         'id', 'event_name', 'event_date', 'category', 'mg_rounds', 'event_place', 'event_info', 'event_url',
+        'event_hashtag', 'collaboration_urls',
         'updated_at', 'update_user'
     ];
 
@@ -87,6 +88,20 @@ class EventModel extends BaseModel {
                   AND event_date <= DATE_ADD(NOW(), INTERVAL 1 YEAR)
                 ORDER BY event_date ASC";
         return $this->pdo->query($sql)->fetchAll();
+    }
+
+    /**
+     * 初参戦ガイド用：直近のライブイベント一覧（category=1）
+     * 過去1ヶ月〜未来1年
+     */
+    public function getUpcomingLiveEventsForGuide(): array {
+        $sql = "SELECT id, event_name, event_date, event_place, event_url, event_hashtag, collaboration_urls
+                FROM {$this->table}
+                WHERE category = 1
+                  AND event_date >= DATE_SUB(NOW(), INTERVAL 1 MONTH)
+                  AND event_date <= DATE_ADD(NOW(), INTERVAL 1 YEAR)
+                ORDER BY event_date ASC";
+        return $this->pdo->query($sql)->fetchAll(\PDO::FETCH_ASSOC);
     }
 
     public function saveUserStatus(int $eventId, int $status): void {

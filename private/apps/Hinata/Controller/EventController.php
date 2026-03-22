@@ -97,14 +97,20 @@ class EventController {
                 ? (int)$input['mg_rounds']
                 : null;
 
+            $collabUrls = null;
+            if (!empty($input['collaboration_urls']) && is_array($input['collaboration_urls'])) {
+                $collabUrls = json_encode(array_values(array_filter(array_map('trim', $input['collaboration_urls']))));
+            }
             $eventData = [
-                'event_name'  => $input['event_name'],
-                'event_date'  => $input['event_date'],
-                'category'    => $input['category'],
-                'mg_rounds'   => $mgRounds,
-                'event_place' => $input['event_place'] ?? '',
-                'event_info'  => $input['event_info'] ?? '',
-                'event_url'   => $input['event_url'] ?? '',
+                'event_name'         => $input['event_name'],
+                'event_date'         => $input['event_date'],
+                'category'           => $input['category'],
+                'mg_rounds'          => $mgRounds,
+                'event_place'        => $input['event_place'] ?? '',
+                'event_info'         => $input['event_info'] ?? '',
+                'event_url'          => $input['event_url'] ?? '',
+                'event_hashtag'      => ($h = trim(preg_replace('/^#+/', '', trim($input['event_hashtag'] ?? '')))) !== '' ? $h : null,
+                'collaboration_urls' => $collabUrls,
             ];
 
             if (!empty($input['id'])) {
