@@ -64,7 +64,7 @@ class SenseLabController
             $errors[] = '理由はいずれか1つ以上入力してください。';
         }
 
-        $uploadDir = __DIR__ . '/../../../www/uploads/sense_lab';
+        $uploadDir = dirname(__DIR__, 4) . '/www/uploads/sense_lab';
         $uploadUrlBase = '/uploads/sense_lab';
         if (!is_dir($uploadDir)) {
             @mkdir($uploadDir, 0775, true);
@@ -219,7 +219,7 @@ class SenseLabController
                     if (!isset($allowed[$mime])) {
                         $errors[] = '許可されている画像形式は JPG/PNG/GIF のみです。';
                     } else {
-                        $uploadDir = __DIR__ . '/../../../www/uploads/sense_lab';
+                        $uploadDir = dirname(__DIR__, 4) . '/www/uploads/sense_lab';
                         $uploadUrlBase = '/uploads/sense_lab';
                         if (!is_dir($uploadDir)) {
                             @mkdir($uploadDir, 0775, true);
@@ -273,7 +273,7 @@ class SenseLabController
             if ($entry) {
                 $model->delete($id, $user['id']);
                 if (!empty($entry['image_path'])) {
-                    $path = __DIR__ . '/../../../www' . $entry['image_path'];
+                    $path = dirname(__DIR__, 4) . '/www' . $entry['image_path'];
                     if (is_file($path)) {
                         @unlink($path);
                     }
