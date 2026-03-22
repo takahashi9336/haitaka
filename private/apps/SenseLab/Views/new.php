@@ -74,8 +74,8 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
 
                     <div class="space-y-4">
                         <div>
-                            <label for="image" class="block text-[10px] font-black text-slate-400 tracking-wider mb-1">画像（必須）</label>
-                            <input type="file" name="image" id="image" accept="image/*" required
+                            <label for="image" class="block text-[10px] font-black text-slate-400 tracking-wider mb-1">画像（任意）</label>
+                            <input type="file" name="image" id="image" accept="image/*"
                                    class="block w-full text-sm text-slate-700">
                             <p class="mt-1 text-xs text-slate-400">JPG/PNG/GIF, 最大2MB。自炊・MVキャプチャ・風景など。</p>
                         </div>

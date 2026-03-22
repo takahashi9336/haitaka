@@ -4,6 +4,19 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
 
 $totalHours = floor(($totalRuntime ?? 0) / 60);
 $totalMins = ($totalRuntime ?? 0) % 60;
+
+// 友人の視聴（ドラマのみ）
+$friendsActivityItems = [];
+$friendsActivityHasViewable = false;
+try {
+    $friendsActivityService = new \App\FriendsActivity\Service\FriendsActivityService();
+    $friendsActivityHasViewable = $friendsActivityService->hasViewableUsers((int)($_SESSION['user']['id'] ?? 0));
+    if ($friendsActivityHasViewable) {
+        $friendsActivityItems = $friendsActivityService->getFriendsWatchedItems((int)($_SESSION['user']['id'] ?? 0), 12, 'drama');
+    }
+} catch (\Throwable $e) {
+    \Core\Logger::errorWithContext('Friends activity (drama) fetch error', $e);
+}
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -245,6 +258,73 @@ $totalMins = ($totalRuntime ?? 0) % 60;
                             <?php endif; ?>
                         </div>
                     </div>
+                </div>
+
+                <!-- 友人が視聴したドラマ -->
+                <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-6 mb-6 md:mb-8">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-sm font-bold text-slate-700"><i class="fa-solid fa-user-group dr-theme-text mr-2"></i>友人が視聴したドラマ</h2>
+                        <a href="/friends_activity.php?filter=drama" class="text-xs font-bold dr-theme-text hover:opacity-80 transition">もっと見る <i class="fa-solid fa-chevron-right text-[10px]"></i></a>
+                    </div>
+                    <?php if (!$friendsActivityHasViewable): ?>
+                    <p class="text-sm text-slate-500 py-4">友達またはグループに<strong>自分もメンバーとして</strong>参加すると、友人の視聴履歴がここに表示されます。管理画面で友達登録・グループへの追加を行ってください。</p>
+                    <?php elseif (empty($friendsActivityItems)): ?>
+                    <p class="text-sm text-slate-500 py-4">まだ視聴履歴はありません</p>
+                    <?php else: ?>
+                    <div class="rec-scroll-wrap">
+                        <button type="button" class="rec-arrow left" onclick="document.getElementById('friendsDramaScroll').scrollBy({left:-180,behavior:'smooth'})" aria-label="左にスクロール"><i class="fa-solid fa-chevron-left text-sm"></i></button>
+                        <div id="friendsDramaScroll" class="rec-scroll">
+                            <?php foreach ($friendsActivityItems as $fa): ?>
+                            <?php
+                            $canPreview = !empty($fa['tmdb_id']);
+                            $dramaData = $canPreview ? json_encode([
+                                'id' => $fa['tmdb_id'],
+                                'name' => $fa['title'],
+                                'title' => $fa['title'],
+                                'original_name' => $fa['original_title'] ?? null,
+                                'poster_path' => $fa['poster_path'] ?? null,
+                                'first_air_date' => $fa['first_air_date'] ?? null,
+                                'number_of_seasons' => $fa['number_of_seasons'] ?? null,
+                                'number_of_episodes' => $fa['number_of_episodes'] ?? null,
+                                'overview' => $fa['overview'] ?? null,
+                                'user_status' => $fa['user_status'] ?? null,
+                                'user_series_id' => $fa['user_series_id'] ?? null,
+                            ]) : 'null';
+                            ?>
+                            <?php
+                            $faReg = !empty($fa['_registered']);
+                            ?>
+                            <?php if ($canPreview): ?>
+                            <div class="rec-card shrink-0 group cursor-pointer" role="button" tabindex="0" onclick="DramaPreview.open(<?= htmlspecialchars($dramaData) ?>)">
+                            <?php else: ?>
+                            <a href="<?= htmlspecialchars($fa['detail_url']) ?>" class="rec-card block shrink-0 group">
+                            <?php endif; ?>
+                                <div class="aspect-[2/3] rounded-xl overflow-hidden bg-slate-100 mb-2 relative">
+                                    <?php if (!empty($fa['image_url'])): ?>
+                                    <img src="<?= htmlspecialchars($fa['image_url']) ?>" alt="" class="w-full h-full object-cover group-hover:scale-105 transition" loading="lazy">
+                                    <?php else: ?>
+                                    <div class="w-full h-full flex items-center justify-center"><i class="fa-solid fa-clapperboard text-3xl text-slate-300"></i></div>
+                                    <?php endif; ?>
+                                    <?php if ($canPreview): ?>
+                                    <?php if ($faReg): ?>
+                                    <div class="absolute top-1.5 right-1.5 w-6 h-6 bg-emerald-500 text-white rounded-full flex items-center justify-center text-[10px] shadow"><i class="fa-solid fa-check"></i></div>
+                                    <?php else: ?>
+                                    <div class="absolute top-1.5 right-1.5 flex flex-col gap-1" onclick="event.stopPropagation()">
+                                        <button onclick="FriendsDramaRec.addToList(<?= (int)$fa['tmdb_id'] ?>, 'wanna_watch', this)" class="w-6 h-6 bg-white/90 hover:bg-amber-400 hover:text-white text-slate-500 rounded-full flex items-center justify-center text-[10px] shadow transition backdrop-blur-sm" title="見たいリストに追加"><i class="fa-solid fa-bookmark"></i></button>
+                                        <button onclick="FriendsDramaRec.addToList(<?= (int)$fa['tmdb_id'] ?>, 'watching', this)" class="w-6 h-6 bg-white/90 hover:bg-sky-500 hover:text-white text-slate-500 rounded-full flex items-center justify-center text-[10px] shadow transition backdrop-blur-sm" title="見てるに追加"><i class="fa-solid fa-play"></i></button>
+                                        <button onclick="FriendsDramaRec.addToList(<?= (int)$fa['tmdb_id'] ?>, 'watched', this)" class="w-6 h-6 bg-white/90 hover:bg-green-500 hover:text-white text-slate-500 rounded-full flex items-center justify-center text-[10px] shadow transition backdrop-blur-sm" title="見たに追加"><i class="fa-solid fa-check"></i></button>
+                                    </div>
+                                    <?php endif; ?>
+                                    <?php endif; ?>
+                                </div>
+                                <p class="text-xs font-bold text-slate-700 line-clamp-2"><?= htmlspecialchars($fa['title']) ?></p>
+                                <p class="text-[10px] text-slate-400"><?= htmlspecialchars($fa['id_name']) ?><?= !empty($fa['watched_date']) ? '・' . htmlspecialchars($fa['watched_date']) : '' ?></p>
+                            <?php echo $canPreview ? '</div>' : '</a>'; ?>
+                            <?php endforeach; ?>
+                        </div>
+                        <button type="button" class="rec-arrow right" onclick="document.getElementById('friendsDramaScroll').scrollBy({left:180,behavior:'smooth'})" aria-label="右にスクロール"><i class="fa-solid fa-chevron-right text-sm"></i></button>
+                    </div>
+                    <?php endif; ?>
                 </div>
 
                 <!-- おすすめドラマ（TMDB） -->
@@ -731,6 +811,31 @@ $totalMins = ($totalRuntime ?? 0) % 60;
         };
 
         DrGacha.init();
+
+        const FriendsDramaRec = {
+            async addToList(tmdbId, status, btnEl) {
+                btnEl.disabled = true;
+                const origHtml = btnEl.innerHTML;
+                btnEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+                try {
+                    const result = await App.post('/drama/api/add.php', { tmdb_id: tmdbId, status: status });
+                    if (result.status === 'success') {
+                        const wrap = btnEl.closest('.absolute');
+                        if (wrap) wrap.outerHTML = '<div class="absolute top-1.5 right-1.5 w-6 h-6 bg-emerald-500 text-white rounded-full flex items-center justify-center text-[10px] shadow"><i class="fa-solid fa-check"></i></div>';
+                        App.toast({ wanna_watch: '見たい', watching: '見てる', watched: '見た' }[status] + 'に追加しました');
+                    } else {
+                        App.toast(result.message || '追加に失敗しました');
+                        btnEl.disabled = false;
+                        btnEl.innerHTML = origHtml;
+                    }
+                } catch (e) {
+                    console.error(e);
+                    App.toast('エラーが発生しました');
+                    btnEl.disabled = false;
+                    btnEl.innerHTML = origHtml;
+                }
+            }
+        };
 
         const DrRec = {
             esc(str) {

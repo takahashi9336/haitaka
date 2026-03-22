@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS sl_sense_entries (
     id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     user_id     INT NOT NULL,
     title       VARCHAR(255) NOT NULL COMMENT '直感的なタイトル',
-    image_path  VARCHAR(500) NOT NULL COMMENT '画像の相対パス',
+    image_path  VARCHAR(500) NULL COMMENT '画像の相対パス（任意）',
     category    VARCHAR(50) NOT NULL COMMENT 'food|design|daily|other など',
     reason_1    TEXT NULL COMMENT 'なぜ良いと思ったか 1つ目',
     reason_2    TEXT NULL COMMENT 'なぜ良いと思ったか 2つ目',

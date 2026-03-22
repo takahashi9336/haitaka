@@ -8,6 +8,7 @@ use Core\AppModel;
 use Core\RoleModel;
 use Core\RoleAppModel;
 use Core\SessionManager;
+use App\Admin\Model\FriendGroupAdminModel;
 
 class AdminController {
 
@@ -160,5 +161,105 @@ class AdminController {
             $roleAppIds[(int)$r['id']] = $roleAppModel->getAppIdsByRoleId((int)$r['id']);
         }
         require_once __DIR__ . '/../Views/roles.php';
+    }
+
+    public function friends(): void {
+        $auth = new Auth();
+        $auth->requireAdmin();
+
+        $user = $_SESSION['user'];
+        $userModel = new UserModel();
+        $allUsers = $userModel->getAllUsers();
+        $adminModel = new FriendGroupAdminModel();
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $action = $_POST['action'] ?? '';
+            if ($action === 'add_friend') {
+                $userIdA = (int)($_POST['user_id_a'] ?? 0);
+                $userIdB = (int)($_POST['user_id_b'] ?? 0);
+                if ($userIdA && $userIdB) {
+                    if ($userIdA === $userIdB) {
+                        $_SESSION['admin_error'] = '同一ユーザーを選択できません。';
+                    } elseif ($adminModel->friendPairExists($userIdA, $userIdB)) {
+                        $_SESSION['admin_error'] = 'このペアは既に登録済みです。';
+                    } elseif ($adminModel->addFriend($userIdA, $userIdB, (int)$user['id'])) {
+                        $_SESSION['admin_success'] = '友達を登録しました。';
+                    } else {
+                        $_SESSION['admin_error'] = '登録に失敗しました。';
+                    }
+                } else {
+                    $_SESSION['admin_error'] = '両方のユーザーを選択してください。';
+                }
+            } elseif ($action === 'delete_friend' && isset($_POST['id'])) {
+                if ($adminModel->deleteFriend((int)$_POST['id'])) {
+                    $_SESSION['admin_success'] = '友達登録を削除しました。';
+                }
+            }
+            header('Location: /admin/friends.php');
+            exit;
+        }
+
+        $friends = $adminModel->getAllFriendsWithNames();
+        require_once __DIR__ . '/../Views/friends.php';
+    }
+
+    public function friendGroups(): void {
+        $auth = new Auth();
+        $auth->requireAdmin();
+
+        $user = $_SESSION['user'];
+        $userModel = new UserModel();
+        $allUsers = $userModel->getAllUsers();
+        $adminModel = new FriendGroupAdminModel();
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $action = $_POST['action'] ?? '';
+            if ($action === 'create_group') {
+                $name = trim($_POST['group_name'] ?? '');
+                $memberIds = isset($_POST['member_ids']) && is_array($_POST['member_ids'])
+                    ? array_map('intval', array_filter($_POST['member_ids'])) : [];
+                if ($name === '') {
+                    $_SESSION['admin_error'] = 'グループ名を入力してください。';
+                } else {
+                    $gid = $adminModel->createGroup($name, (int)$user['id']);
+                    if ($gid) {
+                        $adminModel->setGroupMembers($gid, $memberIds);
+                        $_SESSION['admin_success'] = 'グループを作成しました。';
+                    } else {
+                        $_SESSION['admin_error'] = 'グループの作成に失敗しました。';
+                    }
+                }
+            } elseif ($action === 'update_group' && isset($_POST['group_id'])) {
+                $groupId = (int)$_POST['group_id'];
+                $name = trim($_POST['group_name'] ?? '');
+                $memberIds = isset($_POST['member_ids']) && is_array($_POST['member_ids'])
+                    ? array_map('intval', array_filter($_POST['member_ids'])) : [];
+                if ($name === '') {
+                    $_SESSION['admin_error'] = 'グループ名を入力してください。';
+                } elseif ($adminModel->updateGroupName($groupId, $name) && $adminModel->setGroupMembers($groupId, $memberIds)) {
+                    $_SESSION['admin_success'] = 'グループを更新しました。';
+                } else {
+                    $_SESSION['admin_error'] = '更新に失敗しました。';
+                }
+            } elseif ($action === 'delete_group' && isset($_POST['group_id'])) {
+                if ($adminModel->deleteGroup((int)$_POST['group_id'])) {
+                    $_SESSION['admin_success'] = 'グループを削除しました。';
+                }
+            }
+            header('Location: /admin/friend_groups.php');
+            exit;
+        }
+
+        $groups = $adminModel->getAllGroupsWithMemberCount();
+        $editGroup = null;
+        $editMembers = [];
+        if (isset($_GET['edit'])) {
+            $editId = (int)$_GET['edit'];
+            $editGroup = $adminModel->getGroupById($editId);
+            if ($editGroup) {
+                $editMembers = $adminModel->getGroupMembers($editId);
+            }
+        }
+        require_once __DIR__ . '/../Views/friend_groups.php';
     }
 }

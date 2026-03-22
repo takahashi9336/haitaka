@@ -79,20 +79,33 @@ const DramaPreview = {
         const labels = { wanna_watch: '見たい', watching: '見てる', watched: '見た' };
         if (s.user_status && labels[s.user_status]) {
             const label = labels[s.user_status];
-            const color = s.user_status === 'watched' ? 'green' : (s.user_status === 'watching' ? 'sky' : 'amber');
-            statusBadge = `<span class="inline-flex items-center gap-1 text-xs font-bold text-${color}-600 bg-${color}-50 px-2.5 py-1 rounded-full"><i class="fa-solid fa-check"></i>${_drEsc(label)}済</span>`;
+            const badgeClass = s.user_status === 'watched' ? 'text-green-600 bg-green-50' : (s.user_status === 'watching' ? 'text-sky-600 bg-sky-50' : 'text-amber-600 bg-amber-50');
+            statusBadge = `<span class="inline-flex items-center gap-1 text-xs font-bold ${badgeClass} px-2.5 py-1 rounded-full"><i class="fa-solid fa-check"></i>${_drEsc(label)}済</span>`;
         }
 
+        const isWatched = s.user_status === 'watched';
+        const isPartial = s.user_status === 'wanna_watch' || s.user_status === 'watching';
         let actionsHtml = '';
-        if (!s.user_status) {
+        if (isWatched) {
+            actionsHtml = detailUrl
+                ? `<a href="${detailUrl}" class="block w-full text-center px-4 py-2.5 bg-violet-500 hover:bg-violet-600 text-white text-sm font-bold rounded-xl transition"><i class="fa-solid fa-arrow-right mr-1.5"></i>詳細ページを開く</a>`
+                : '';
+        } else if (isPartial) {
+            const detailLink = detailUrl ? `<a href="${detailUrl}" class="flex-1 text-center px-4 py-2.5 border border-slate-200 text-slate-600 text-sm font-bold rounded-xl hover:bg-slate-50 transition"><i class="fa-solid fa-arrow-right mr-1.5"></i>詳細</a>` : '';
             actionsHtml = `
-                <button onclick="DramaPreview.addStatus(${s.id}, 'wanna_watch')" class="flex-1 px-4 py-2.5 bg-violet-500 hover:bg-violet-600 text-white text-sm font-bold rounded-xl transition">
+                ${detailLink}
+                <button onclick="DramaPreview.addStatus(${s.id}, 'watched')" class="flex-1 min-w-[120px] px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold rounded-xl transition">
+                    <i class="fa-solid fa-check mr-1.5"></i>見たに追加
+                </button>`;
+        } else if (!s.user_status) {
+            actionsHtml = `
+                <button onclick="DramaPreview.addStatus(${s.id}, 'wanna_watch')" class="flex-1 min-w-[100px] px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold rounded-xl transition">
                     <i class="fa-solid fa-bookmark mr-1.5"></i>見たいに追加
                 </button>
-                <button onclick="DramaPreview.addStatus(${s.id}, 'watching')" class="flex-1 px-4 py-2.5 bg-sky-100 hover:bg-sky-200 text-sky-700 text-sm font-bold rounded-xl transition">
+                <button onclick="DramaPreview.addStatus(${s.id}, 'watching')" class="flex-1 min-w-[100px] px-4 py-2.5 bg-sky-500 hover:bg-sky-600 text-white text-sm font-bold rounded-xl transition">
                     <i class="fa-solid fa-play mr-1.5"></i>見てるに追加
                 </button>
-                <button onclick="DramaPreview.addStatus(${s.id}, 'watched')" class="flex-1 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold rounded-xl transition">
+                <button onclick="DramaPreview.addStatus(${s.id}, 'watched')" class="flex-1 min-w-[100px] px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold rounded-xl transition">
                     <i class="fa-solid fa-check mr-1.5"></i>見たに追加
                 </button>`;
         }
@@ -150,6 +163,11 @@ const DramaPreview = {
             if (result.status === 'success') {
                 const labels = { wanna_watch: '見たい', watching: '見てる', watched: '見た' };
                 App.toast(labels[status] + 'に追加しました');
+                const cached = this._cache[tmdbId];
+                if (cached) {
+                    cached.user_status = status;
+                    cached.user_series_id = result.data?.id ?? cached.user_series_id;
+                }
                 if (actionsEl) {
                     actionsEl.innerHTML = `<div class="w-full text-center py-2"><span class="inline-flex items-center gap-1 text-violet-600 font-bold text-sm bg-violet-50 px-3 py-1.5 rounded-full"><i class="fa-solid fa-check"></i>${_drEsc(labels[status])}済み</span></div>`;
                 }

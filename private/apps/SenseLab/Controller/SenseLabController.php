@@ -64,16 +64,14 @@ class SenseLabController
             $errors[] = '理由はいずれか1つ以上入力してください。';
         }
 
-        $uploadDir = __DIR__ . '/../../../www/upload/sense_lab';
-        $uploadUrlBase = '/upload/sense_lab';
+        $uploadDir = __DIR__ . '/../../../www/uploads/sense_lab';
+        $uploadUrlBase = '/uploads/sense_lab';
         if (!is_dir($uploadDir)) {
             @mkdir($uploadDir, 0775, true);
         }
 
         $imagePath = null;
-        if (!isset($_FILES['image']) || ($_FILES['image']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
-            $errors[] = '画像は必須です。';
-        } else {
+        if (isset($_FILES['image']) && ($_FILES['image']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
             $file = $_FILES['image'];
             if ($file['error'] !== UPLOAD_ERR_OK) {
                 $errors[] = '画像アップロードに失敗しました。';
@@ -221,8 +219,8 @@ class SenseLabController
                     if (!isset($allowed[$mime])) {
                         $errors[] = '許可されている画像形式は JPG/PNG/GIF のみです。';
                     } else {
-                        $uploadDir = __DIR__ . '/../../../www/upload/sense_lab';
-                        $uploadUrlBase = '/upload/sense_lab';
+                        $uploadDir = __DIR__ . '/../../../www/uploads/sense_lab';
+                        $uploadUrlBase = '/uploads/sense_lab';
                         if (!is_dir($uploadDir)) {
                             @mkdir($uploadDir, 0775, true);
                         }

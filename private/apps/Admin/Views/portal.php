@@ -168,6 +168,34 @@ $cardDeco    = $isThemeHex ? '' : "text-{$themeTailwind}-500";
                             <p class="hidden md:block text-sm text-slate-400 leading-relaxed">sys_roles の登録・編集。制限表示時はアプリ割り当て。保存で全セッション破棄。</p>
                         </div>
                     </a>
+
+                    <!-- 友達管理 -->
+                    <a href="/admin/friends.php" class="app-card admin-portal-card group relative bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col items-center justify-center p-4 md:p-8 md:block aspect-square md:aspect-auto min-h-0">
+                        <div class="hidden md:block absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform card-deco <?= $cardDeco ?>">
+                            <i class="fa-solid fa-user-group text-6xl"></i>
+                        </div>
+                        <div class="relative z-10 flex flex-col items-center md:block">
+                            <div class="w-16 h-16 md:w-12 md:h-12 rounded-lg flex items-center justify-center mb-2 md:mb-6 transition-colors card-icon <?= $cardIconBg ?> <?= $cardIconText ?> <?= $cardIconHover ?>">
+                                <i class="fa-solid fa-user-group text-2xl md:text-base"></i>
+                            </div>
+                            <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-4 text-center md:text-left">友達管理</h3>
+                            <p class="hidden md:block text-sm text-slate-400 leading-relaxed">視聴履歴を共有する友達（知り合い）を1対1で登録。</p>
+                        </div>
+                    </a>
+
+                    <!-- グループ管理 -->
+                    <a href="/admin/friend_groups.php" class="app-card admin-portal-card group relative bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col items-center justify-center p-4 md:p-8 md:block aspect-square md:aspect-auto min-h-0">
+                        <div class="hidden md:block absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform card-deco <?= $cardDeco ?>">
+                            <i class="fa-solid fa-users-rectangle text-6xl"></i>
+                        </div>
+                        <div class="relative z-10 flex flex-col items-center md:block">
+                            <div class="w-16 h-16 md:w-12 md:h-12 rounded-lg flex items-center justify-center mb-2 md:mb-6 transition-colors card-icon <?= $cardIconBg ?> <?= $cardIconText ?> <?= $cardIconHover ?>">
+                                <i class="fa-solid fa-users-rectangle text-2xl md:text-base"></i>
+                            </div>
+                            <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-4 text-center md:text-left">グループ管理</h3>
+                            <p class="hidden md:block text-sm text-slate-400 leading-relaxed">視聴履歴を共有するユーザーグループの作成・編集。</p>
+                        </div>
+                    </a>
                 </div>
             </div>
         </div>

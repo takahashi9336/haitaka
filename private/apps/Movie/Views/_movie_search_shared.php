@@ -81,25 +81,39 @@ const MoviePreview = {
             providersHtml = '<div class="flex items-center gap-2 text-slate-400 text-xs py-2"><i class="fa-solid fa-spinner fa-spin"></i>配信情報を取得中...</div>';
         }
 
-        const isRegistered = m.user_status === 'watchlist' || m.user_status === 'watched';
+        const isWatched = m.user_status === 'watched';
+        const isWatchlist = m.user_status === 'watchlist';
+        const detailUrl = m.user_movie_id ? `/movie/detail.php?id=${m.user_movie_id}` : null;
         let actionsHtml;
-        if (isRegistered) {
-            const detailUrl = `/movie/detail.php?id=${m.user_movie_id}`;
-            const badge = m.user_status === 'watched'
-                ? '<span class="text-green-600 font-bold text-sm"><i class="fa-solid fa-check-circle mr-1"></i>見た済み</span>'
-                : '<span class="text-blue-600 font-bold text-sm"><i class="fa-solid fa-bookmark mr-1"></i>見たい済み</span>';
+        if (isWatched) {
             actionsHtml = `
-                <div class="flex items-center justify-between mb-3">${badge}</div>
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-green-600 font-bold text-sm"><i class="fa-solid fa-check-circle mr-1"></i>見た済み</span>
+                </div>
                 <a href="${detailUrl}" class="block w-full text-center px-4 py-2.5 mv-theme-btn text-white text-sm font-bold rounded-xl transition mb-2">
                     <i class="fa-solid fa-arrow-right mr-1.5"></i>映画の詳細を見る
                 </a>`;
+        } else if (isWatchlist) {
+            const detailLink = detailUrl
+                ? `<a href="${detailUrl}" class="flex-1 text-center px-4 py-2.5 border border-slate-200 text-slate-600 text-sm font-bold rounded-xl hover:bg-slate-50 transition"><i class="fa-solid fa-arrow-right mr-1.5"></i>詳細を見る</a>`
+                : '';
+            actionsHtml = `
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-amber-600 font-bold text-sm"><i class="fa-solid fa-bookmark mr-1"></i>見たい済み</span>
+                </div>
+                <div class="flex flex-wrap gap-2 mb-2" id="mpActions_${m.id}">
+                    ${detailLink}
+                    <button onclick="MoviePreview.addToList(${m.id}, 'watched')" class="flex-1 min-w-[140px] px-4 py-2.5 bg-green-500 hover:bg-green-600 text-white text-sm font-bold rounded-xl transition">
+                        <i class="fa-solid fa-eye mr-1.5"></i>見たリストに追加
+                    </button>
+                </div>`;
         } else {
             actionsHtml = `
                 <div class="flex flex-wrap gap-2 mb-2" id="mpActions_${m.id}">
-                    <button onclick="MoviePreview.addToList(${m.id}, 'watchlist')" class="flex-1 px-4 py-2.5 mv-theme-btn text-white text-sm font-bold rounded-xl transition">
+                    <button onclick="MoviePreview.addToList(${m.id}, 'watchlist')" class="flex-1 min-w-[140px] px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold rounded-xl transition">
                         <i class="fa-solid fa-bookmark mr-1.5"></i>見たいリストに追加
                     </button>
-                    <button onclick="MoviePreview.addToList(${m.id}, 'watched')" class="flex-1 px-4 py-2.5 bg-green-500 hover:bg-green-600 text-white text-sm font-bold rounded-xl transition">
+                    <button onclick="MoviePreview.addToList(${m.id}, 'watched')" class="flex-1 min-w-[140px] px-4 py-2.5 bg-green-500 hover:bg-green-600 text-white text-sm font-bold rounded-xl transition">
                         <i class="fa-solid fa-eye mr-1.5"></i>見たリストに追加
                     </button>
                 </div>`;
@@ -223,10 +237,23 @@ const MoviePreview = {
                     this.cache[tmdbId].user_status = status;
                     this.cache[tmdbId].user_movie_id = newId;
                 }
-                const badge = status === 'watched'
-                    ? '<span class="text-green-600 font-bold text-sm"><i class="fa-solid fa-check-circle mr-1"></i>追加しました</span>'
-                    : '<span class="text-blue-600 font-bold text-sm"><i class="fa-solid fa-bookmark mr-1"></i>追加しました</span>';
-                if (actionsEl) actionsEl.innerHTML = `<div class="text-center py-2">${badge}</div>`;
+                if (status === 'watched' && newId && actionsEl) {
+                    const prev = actionsEl.previousElementSibling;
+                    if (prev && prev.classList.contains('flex')) prev.remove();
+                    actionsEl.innerHTML = `
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-green-600 font-bold text-sm"><i class="fa-solid fa-check-circle mr-1"></i>見た済み</span>
+                        </div>
+                        <a href="/movie/detail.php?id=${newId}" class="block w-full text-center px-4 py-2.5 mv-theme-btn text-white text-sm font-bold rounded-xl transition mb-2">
+                            <i class="fa-solid fa-arrow-right mr-1.5"></i>映画の詳細を見る
+                        </a>`;
+                    actionsEl.className = 'mb-2';
+                } else if (actionsEl) {
+                    const badge = status === 'watched'
+                        ? '<span class="text-green-600 font-bold text-sm"><i class="fa-solid fa-check-circle mr-1"></i>追加しました</span>'
+                        : '<span class="text-amber-600 font-bold text-sm"><i class="fa-solid fa-bookmark mr-1"></i>追加しました</span>';
+                    if (actionsEl) actionsEl.innerHTML = `<div class="text-center py-2">${badge}</div>`;
+                }
                 if (this.onAdded) this.onAdded(status, tmdbId);
             } else {
                 App.toast(result.message || '追加に失敗しました');
