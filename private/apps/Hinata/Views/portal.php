@@ -169,7 +169,11 @@ function oshiImgSrc(?string $imageUrl): string {
                         </div>
                     </div>
                     <div class="flex items-center">
-                        <div class="flex items-center gap-4 bg-white rounded-xl border <?= $cardBorder ?> shadow-sm px-5 py-4 w-full min-h-[88px]">
+                        <div class="flex items-center gap-4 bg-white rounded-xl border <?= $cardBorder ?> shadow-sm px-5 py-4 w-full min-h-[88px] cursor-pointer hover:shadow-md transition"
+                             role="button"
+                             tabindex="0"
+                             onclick="location.href='/hinata/events.php?event_id=<?= (int)$nextEvent['id'] ?>'"
+                             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();location.href='/hinata/events.php?event_id=<?= (int)$nextEvent['id'] ?>'}">
                             <div class="w-10 h-10 rounded-lg text-white flex items-center justify-center shadow-md hinata-next-event-icon <?= $headerIconBg ?> shrink-0">
                                 <i class="fa-solid fa-calendar-day"></i>
                             </div>
@@ -186,11 +190,12 @@ function oshiImgSrc(?string $imageUrl): string {
                             </div>
                             <?php if ($days === 0 && in_array((int)($nextEvent['category'] ?? 0), [2, 3])): ?>
                             <a href="/hinata/meetgreet_report.php?event_id=<?= (int)$nextEvent['id'] ?>"
+                               onclick="event.stopPropagation()"
                                class="inline-flex items-center gap-1 text-[10px] font-bold text-white px-3 py-1.5 rounded-full transition active:scale-95 shrink-0 <?= $headerIconBg ?>"<?= $isThemeHex ? ' style="background: ' . htmlspecialchars($themePrimary) . ';"' : '' ?>>
                                 <i class="fa-solid fa-pen-to-square"></i>レポを書く
                             </a>
                             <?php endif; ?>
-                            <a href="/hinata/events.php" class="hidden md:inline-flex items-center justify-center w-8 h-8 rounded-full border <?= $cardBorder ?> <?= $cardIconText ?> hover:opacity-80 transition shrink-0"<?= $isThemeHex ? ' style="color: ' . htmlspecialchars($themePrimary) . ';"' : '' ?>>
+                            <a href="/hinata/events.php?event_id=<?= (int)$nextEvent['id'] ?>" onclick="event.stopPropagation()" class="hidden md:inline-flex items-center justify-center w-8 h-8 rounded-full border <?= $cardBorder ?> <?= $cardIconText ?> hover:opacity-80 transition shrink-0"<?= $isThemeHex ? ' style="color: ' . htmlspecialchars($themePrimary) . ';"' : '' ?>>
                                 <i class="fa-solid fa-chevron-right text-xs"></i>
                             </a>
                         </div>

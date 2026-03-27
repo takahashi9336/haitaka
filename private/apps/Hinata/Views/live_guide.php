@@ -91,6 +91,20 @@ $likelihoodLabels = [
                     <div id="songMiniEmbed" class="px-4 pb-3"></div>
                 </div>
 
+                <section class="bg-white p-6 rounded-xl border <?= $cardBorder ?> shadow-sm">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <h3 class="text-sm font-black text-slate-700 flex items-center gap-2">
+                                <i class="fa-solid fa-lightbulb text-amber-500"></i>
+                                ペンライトカラー表（初心者向け）
+                            </h3>
+                        </div>
+                        <a id="penlightLink" href="/hinata/penlight.php" class="shrink-0 text-[11px] font-black text-sky-600 hover:text-sky-700">
+                            開く <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                        </a>
+                    </div>
+                </section>
+
                 <div id="songsSection" class="space-y-6"></div>
 
                 <section id="collabSection" class="hidden bg-white p-6 rounded-xl border <?= $cardBorder ?> shadow-sm">
@@ -201,6 +215,13 @@ $likelihoodLabels = [
             window._liveGuideVideos = [];
             window._liveGuideSongs = [];
             const event = data.event || {};
+            // ペンライトカラー表への戻り先を保持（初参戦ガイドへ戻れるように）
+            const penlightLink = document.getElementById('penlightLink');
+            if (penlightLink && event.id) {
+                penlightLink.href = '/hinata/penlight.php?from=live_guide&event_id=' + encodeURIComponent(event.id);
+            } else if (penlightLink) {
+                penlightLink.href = '/hinata/penlight.php';
+            }
             document.getElementById('eventTitle').textContent = event.event_name || '';
             document.getElementById('eventDatePlace').textContent = [event.event_date, event.event_place].filter(Boolean).join(' ') || '';
             const urlLink = document.getElementById('eventUrlLink');
