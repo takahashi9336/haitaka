@@ -16,6 +16,7 @@ class YouTubeApiClient {
     public const PRESET_CHANNELS = [
         'UCR0V48DJyWbwEAdxLL5FjxA' => '日向坂46公式チャンネル',
         'UCOB24f8lQBCnVqPZXOkVpOg' => '日向坂ちゃんねる',
+        '@hinakoiofficial' => 'ひなこいYouTubeチャンネル',
     ];
 
     public function __construct() {
@@ -46,11 +47,46 @@ class YouTubeApiClient {
      * チャンネルの「アップロード動画」プレイリストIDを取得
      */
     public function getUploadsPlaylistId(string $channelId): ?string {
+        $resolved = $this->resolveChannelId($channelId);
+        if (!$resolved) return null;
+
         $data = $this->apiRequest('/channels', [
             'part' => 'contentDetails',
-            'id'   => $channelId,
+            'id'   => $resolved,
         ]);
         return $data['items'][0]['contentDetails']['relatedPlaylists']['uploads'] ?? null;
+    }
+
+    /**
+     * チャンネル指定（channelId / @handle / URL）を channelId(UC...) に解決する。
+     * - "UC..." はそのまま返す
+     * - "@handle" or "https://www.youtube.com/@handle" は forHandle で解決
+     */
+    public function resolveChannelId(string $channelInput): ?string {
+        $s = trim($channelInput);
+        if ($s === '') return null;
+
+        // Already a channelId
+        if (preg_match('/^UC[A-Za-z0-9_-]{20,}$/', $s)) {
+            return $s;
+        }
+
+        // URL -> @handle
+        if (preg_match('#youtube\.com/@([A-Za-z0-9_.-]+)#i', $s, $m)) {
+            $s = '@' . $m[1];
+        }
+
+        // @handle
+        if (preg_match('/^@([A-Za-z0-9_.-]+)$/', $s, $m)) {
+            $handle = $m[1];
+            $data = $this->apiRequest('/channels', [
+                'part' => 'id',
+                'forHandle' => $handle,
+            ]);
+            return $data['items'][0]['id'] ?? null;
+        }
+
+        return null;
     }
 
     /**

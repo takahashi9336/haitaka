@@ -1164,6 +1164,7 @@ class MediaController {
                 return;
             }
 
+            // channel_id は UC... のほか、@handle も許容（プリセット対応）
             $playlistId = $ytClient->getUploadsPlaylistId($channelId);
             if (!$playlistId) {
                 echo json_encode(['status' => 'error', 'message' => 'チャンネルのアップロードリストが取得できませんでした']);
@@ -1217,6 +1218,14 @@ class MediaController {
             if (empty($query)) {
                 echo json_encode(['status' => 'error', 'message' => '検索キーワードを入力してください']);
                 return;
+            }
+
+            // channel_id は UC... のほか、@handle も許容（プリセット対応）
+            if ($channelId) {
+                $resolved = $ytClient->resolveChannelId($channelId);
+                if ($resolved) {
+                    $channelId = $resolved;
+                }
             }
 
             $result = $ytClient->searchVideos($query, $maxResults, $pageToken, $channelId);
