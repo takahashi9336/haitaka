@@ -10,6 +10,7 @@ class DashboardFeedService {
 
     private const CACHE_TTL_SECONDS = 3600; // 1時間
     private const PALEO_MAX_ITEMS = 3;
+    private const RECENT_DAYS_DEFAULT = 7;
 
     private const URL_CURIOSITY = 'https://news.google.com/rss/search?q=科学+話題&hl=ja&gl=JP&ceid=JP:ja';
     // AI関連記事用: 「生成AI」をキーワードにした Google News RSS
@@ -38,8 +39,19 @@ class DashboardFeedService {
         if (empty($items)) {
             return null;
         }
-        $idx = array_rand($items);
-        return $items[$idx];
+
+        $recent = $this->filterItemsWithinDays($items, self::RECENT_DAYS_DEFAULT);
+        if (empty($recent)) {
+            // キャッシュが生きているが中身が古い場合があるため、1回だけ強制再取得する
+            $fresh = $this->getCachedOrFetch('curiosity', self::URL_CURIOSITY, null, true);
+            $recent = $this->filterItemsWithinDays($fresh ?? [], self::RECENT_DAYS_DEFAULT);
+        }
+        if (empty($recent)) {
+            return null;
+        }
+
+        $idx = array_rand($recent);
+        return $recent[$idx];
     }
 
     /**
@@ -52,8 +64,16 @@ class DashboardFeedService {
         if (empty($items)) {
             return null;
         }
-        $idx = array_rand($items);
-        return $items[$idx];
+        $recent = $this->filterItemsWithinDays($items, self::RECENT_DAYS_DEFAULT);
+        if (empty($recent)) {
+            $fresh = $this->getCachedOrFetch('ai_gen', self::URL_AI, null, true);
+            $recent = $this->filterItemsWithinDays($fresh ?? [], self::RECENT_DAYS_DEFAULT);
+        }
+        if (empty($recent)) {
+            return null;
+        }
+        $idx = array_rand($recent);
+        return $recent[$idx];
     }
 
     /**
@@ -70,9 +90,10 @@ class DashboardFeedService {
      * @param string $key キャッシュキー（curiosity / ai / paleo）
      * @param string $feedUrl RSS URL
      * @param int|null $maxItems 最大件数（paleo 用。null の場合は全件キャッシュ）
+     * @param bool $forceRefresh true の場合キャッシュを無視して再取得
      * @return array<int, array{title: string, url: string, pubDate: string}>|null
      */
-    private function getCachedOrFetch(string $key, string $feedUrl, ?int $maxItems = null): ?array {
+    private function getCachedOrFetch(string $key, string $feedUrl, ?int $maxItems = null, bool $forceRefresh = false): ?array {
         $cacheFile = $this->cacheDir . '/dashboard_feed_' . $key . '.json';
         // #region agent log
         $this->logDebug('H1', 'getCachedOrFetch_called', [
@@ -81,7 +102,7 @@ class DashboardFeedService {
             'cacheFileExists' => is_file($cacheFile),
         ]);
         // #endregion agent log
-        if (is_file($cacheFile) && (time() - filemtime($cacheFile)) < self::CACHE_TTL_SECONDS) {
+        if (!$forceRefresh && is_file($cacheFile) && (time() - filemtime($cacheFile)) < self::CACHE_TTL_SECONDS) {
             $raw = @file_get_contents($cacheFile);
             if ($raw !== false) {
                 $decoded = json_decode($raw, true);
@@ -112,6 +133,30 @@ class DashboardFeedService {
         }
         @file_put_contents($cacheFile, json_encode($items, JSON_UNESCAPED_UNICODE));
         return $items;
+    }
+
+    /**
+     * pubDate が直近 N 日以内の item のみに絞る（解釈できない日付は除外）。
+     * @param array<int, array{title: string, url: string, pubDate: string}> $items
+     * @return array<int, array{title: string, url: string, pubDate: string}>
+     */
+    private function filterItemsWithinDays(array $items, int $days): array {
+        $cutoff = time() - ($days * 86400);
+        $out = [];
+        foreach ($items as $it) {
+            $pub = trim((string)($it['pubDate'] ?? ''));
+            if ($pub === '') {
+                continue;
+            }
+            $ts = strtotime($pub);
+            if ($ts === false) {
+                continue;
+            }
+            if ($ts >= $cutoff) {
+                $out[] = $it;
+            }
+        }
+        return $out;
     }
 
     /**
