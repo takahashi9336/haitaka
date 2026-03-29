@@ -12,7 +12,27 @@ class DashboardFeedService {
     private const PALEO_MAX_ITEMS = 3;
     private const RECENT_DAYS_DEFAULT = 7;
 
-    private const URL_CURIOSITY = 'https://news.google.com/rss/search?q=科学+話題&hl=ja&gl=JP&ceid=JP:ja';
+    /**
+     * 好奇心ブースト用: 単一の「科学+話題」だと同種トレンド（健康・自動車・スポーツ等）に偏りやすいため、
+     * テーマを分けたクエリから毎回ランダムに1つ選ぶ。
+     *
+     * @var list<string>
+     */
+    private const CURIOSITY_SEARCH_QUERIES = [
+        '宇宙 天文学 最新',
+        '生物学 研究 発表',
+        '心理学 認知科学 研究',
+        '古生物学 化石 発見',
+        '気候 科学 研究',
+        '脳科学 神経 研究',
+        '考古学 発見',
+        '海洋 生物 科学',
+        '物理学 研究',
+        '化学 新発見',
+    ];
+
+    /** 上記テーマだけだと7日以内が空になりやすいので、最後の手段として広めの検索にフォールバックする */
+    private const CURIOSITY_FALLBACK_QUERY = '科学 最新';
     // AI関連記事用: 「生成AI」をキーワードにした Google News RSS
     private const URL_AI = 'https://news.google.com/rss/search?q=%E7%94%9F%E6%88%90AI&hl=ja&gl=JP&ceid=JP:ja';
     private const URL_PALEO = 'https://yuchrszk.blogspot.com/feeds/posts/default?alt=rss';
@@ -35,23 +55,42 @@ class DashboardFeedService {
      * @return array{title: string, url: string, pubDate: string}|null
      */
     public function getCuriosityItem(): ?array {
-        $items = $this->getCachedOrFetch('curiosity', self::URL_CURIOSITY);
+        $indices = range(0, count(self::CURIOSITY_SEARCH_QUERIES) - 1);
+        shuffle($indices);
+
+        foreach ($indices as $qi) {
+            $q = self::CURIOSITY_SEARCH_QUERIES[$qi];
+            $picked = $this->pickRecentFromCuriosityFeed('curiosity_q' . $qi, $q);
+            if ($picked !== null) {
+                return $picked;
+            }
+        }
+
+        return $this->pickRecentFromCuriosityFeed('curiosity_fallback', self::CURIOSITY_FALLBACK_QUERY);
+    }
+
+    /**
+     * 指定クエリの RSS から直近 N 日の記事を1件選ぶ。取れなければ null。
+     *
+     * @return array{title: string, url: string, pubDate: string}|null
+     */
+    private function pickRecentFromCuriosityFeed(string $cacheKey, string $searchQuery): ?array {
+        $feedUrl = $this->buildGoogleNewsRssUrl($searchQuery);
+        $items = $this->getCachedOrFetch($cacheKey, $feedUrl);
         if (empty($items)) {
             return null;
         }
 
         $recent = $this->filterItemsWithinDays($items, self::RECENT_DAYS_DEFAULT);
         if (empty($recent)) {
-            // キャッシュが生きているが中身が古い場合があるため、1回だけ強制再取得する
-            $fresh = $this->getCachedOrFetch('curiosity', self::URL_CURIOSITY, null, true);
+            $fresh = $this->getCachedOrFetch($cacheKey, $feedUrl, null, true);
             $recent = $this->filterItemsWithinDays($fresh ?? [], self::RECENT_DAYS_DEFAULT);
         }
         if (empty($recent)) {
             return null;
         }
 
-        $idx = array_rand($recent);
-        return $recent[$idx];
+        return $recent[array_rand($recent)];
     }
 
     /**
@@ -133,6 +172,16 @@ class DashboardFeedService {
         }
         @file_put_contents($cacheFile, json_encode($items, JSON_UNESCAPED_UNICODE));
         return $items;
+    }
+
+    private function buildGoogleNewsRssUrl(string $q): string {
+        // Google News の従来URLは語間が「+」。RFC3986（スペースを%20）だと取得に失敗することがあるためデフォルト方式を使う。
+        return 'https://news.google.com/rss/search?' . http_build_query([
+            'q' => $q,
+            'hl' => 'ja',
+            'gl' => 'JP',
+            'ceid' => 'JP:ja',
+        ]);
     }
 
     /**
