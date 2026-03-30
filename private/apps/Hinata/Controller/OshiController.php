@@ -20,12 +20,17 @@ use Core\Database;
  */
 class OshiController {
 
+    private Auth $auth;
+
+    public function __construct() {
+        $this->auth = new Auth();
+    }
+
     /**
      * 推し設定ページ
      */
     public function settings(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $memberModel = new MemberModel();
         $favModel = new FavoriteModel();
@@ -56,8 +61,7 @@ class OshiController {
      * 推し個別ページ
      */
     public function memberPage(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $memberId = (int)($_GET['id'] ?? 0);
         if (!$memberId) {

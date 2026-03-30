@@ -12,17 +12,21 @@ use App\Admin\Model\FriendGroupAdminModel;
 
 class AdminController {
 
+    private Auth $auth;
+
+    public function __construct() {
+        $this->auth = new Auth();
+    }
+
     public function index(): void {
-        $auth = new Auth();
-        $auth->requireAdmin();
+        $this->auth->requireAdmin();
 
         $user = $_SESSION['user'];
         require_once __DIR__ . '/../Views/portal.php';
     }
 
     public function users(): void {
-        $auth = new Auth();
-        $auth->requireAdmin();
+        $this->auth->requireAdmin();
 
         $user = $_SESSION['user'];
         $userModel = new UserModel();
@@ -37,8 +41,7 @@ class AdminController {
     }
 
     public function apps(): void {
-        $auth = new Auth();
-        $auth->requireAdmin();
+        $this->auth->requireAdmin();
 
         $user = $_SESSION['user'];
         $appModel = new AppModel();
@@ -47,7 +50,7 @@ class AdminController {
             $action = $_POST['action'] ?? '';
             if ($action === 'create') {
                 $parentId = !empty($_POST['parent_id']) ? (int)$_POST['parent_id'] : null;
-                $newId = $appModel->create([
+                $ok = $appModel->create([
                     'app_key' => $_POST['app_key'] ?? '',
                     'name' => $_POST['name'] ?? '',
                     'parent_id' => $parentId,
@@ -63,7 +66,8 @@ class AdminController {
                     'is_visible' => isset($_POST['is_visible']) ? 1 : 0,
                     'admin_only' => isset($_POST['admin_only']) ? 1 : 0,
                 ]);
-                if ($newId && $parentId) {
+                $newId = $ok ? (int)$appModel->lastInsertId() : 0;
+                if ($newId > 0 && $parentId) {
                     $roleAppModel = new RoleAppModel();
                     $roleAppModel->grantToRolesWithParent($newId, $parentId);
                 }
@@ -110,8 +114,7 @@ class AdminController {
     }
 
     public function roles(): void {
-        $auth = new Auth();
-        $auth->requireAdmin();
+        $this->auth->requireAdmin();
 
         $user = $_SESSION['user'];
         $roleModel = new RoleModel();
@@ -164,8 +167,7 @@ class AdminController {
     }
 
     public function friends(): void {
-        $auth = new Auth();
-        $auth->requireAdmin();
+        $this->auth->requireAdmin();
 
         $user = $_SESSION['user'];
         $userModel = new UserModel();
@@ -204,8 +206,7 @@ class AdminController {
     }
 
     public function friendGroups(): void {
-        $auth = new Auth();
-        $auth->requireAdmin();
+        $this->auth->requireAdmin();
 
         $user = $_SESSION['user'];
         $userModel = new UserModel();

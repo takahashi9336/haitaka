@@ -14,12 +14,17 @@ use Core\Logger;
  */
 class MovieController {
 
+    private Auth $auth;
+
+    public function __construct() {
+        $this->auth = new Auth();
+    }
+
     /**
      * ダッシュボード画面
      */
     public function dashboard(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $user = $_SESSION['user'];
 
@@ -217,8 +222,7 @@ class MovieController {
      * 映画検索結果ページ
      */
     public function searchPage(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $query = $_GET['q'] ?? '';
 
@@ -232,8 +236,7 @@ class MovieController {
      * 映画一覧画面
      */
     public function index(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $user = $_SESSION['user'];
         $tab = $_GET['tab'] ?? 'watchlist';
@@ -263,8 +266,7 @@ class MovieController {
      * 映画詳細画面
      */
     public function detail(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $user = $_SESSION['user'];
         $id = (int)($_GET['id'] ?? 0);
@@ -319,8 +321,7 @@ class MovieController {
      * 一括登録画面
      */
     public function import(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $user = $_SESSION['user'];
         $tmdb = new TmdbApiClient();
@@ -847,8 +848,7 @@ class MovieController {
      * 一括編集画面
      */
     public function bulkEdit(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $user = $_SESSION['user'];
         $tab = $_GET['tab'] ?? 'watchlist';

@@ -11,6 +11,11 @@ use Core\Logger;
 
 class DramaController {
     private const REC_CACHE_TTL = 21600; // 6時間
+    private Auth $auth;
+
+    public function __construct() {
+        $this->auth = new Auth();
+    }
 
     private function getRecCachePath(string $type, int $userId): string {
         $dir = __DIR__ . '/../../../cache/drama_rec';
@@ -41,8 +46,7 @@ class DramaController {
     }
 
     public function dashboard(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $user = $_SESSION['user'];
 
@@ -101,8 +105,7 @@ class DramaController {
      * 一括登録画面
      */
     public function import(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $user = $_SESSION['user'];
         $tmdb = new TmdbTvApiClient();
@@ -112,8 +115,7 @@ class DramaController {
     }
 
     public function index(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $user = $_SESSION['user'];
         $tab = $_GET['tab'] ?? 'wanna_watch';
@@ -144,8 +146,7 @@ class DramaController {
     }
 
     public function detail(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $user = $_SESSION['user'];
         $id = (int)($_GET['id'] ?? 0);
@@ -195,8 +196,7 @@ class DramaController {
     }
 
     public function searchPage(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $query = $_GET['q'] ?? '';
 
@@ -381,8 +381,7 @@ class DramaController {
         header('Content-Type: application/json');
 
         try {
-            $auth = new Auth();
-            $auth->requireLogin();
+            $this->auth->requireLogin();
 
             $input = json_decode(file_get_contents('php://input'), true);
             if (json_last_error() !== JSON_ERROR_NONE) {

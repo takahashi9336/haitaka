@@ -1,13 +1,15 @@
 <?php
 
-namespace Core;
+namespace App\Hinata\Model;
+
+use Core\BaseModel;
 
 /**
  * 汎用メディアアセット管理モデル
  * - com_media_assets / hn_media_metadata をまとめて扱う
  * - 将来の TikTok / Instagram 拡張もここに集約する想定
  *
- * 物理パス: haitaka/private/lib/MediaAssetModel.php
+ * 物理パス: haitaka/private/apps/Hinata/Model/MediaAssetModel.php
  */
 class MediaAssetModel extends BaseModel {
     protected string $table = 'com_media_assets';
@@ -147,7 +149,7 @@ class MediaAssetModel extends BaseModel {
 
     /**
      * asset_id で hn_media_metadata を取得 or 作成し、meta_id を返す
-     * 
+     *
      * ※ asset_id は UNIQUE KEY のため、1動画に1メタデータが原則
      * カテゴリは後から更新可能
      */

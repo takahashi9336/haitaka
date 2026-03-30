@@ -18,9 +18,14 @@ use Core\Auth;
  */
 class FocusNoteController {
 
+    private Auth $auth;
+
+    public function __construct() {
+        $this->auth = new Auth();
+    }
+
     public function dashboard(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $user = $_SESSION['user'];
         $today = date('Y-m-d');
@@ -43,16 +48,14 @@ class FocusNoteController {
     }
 
     public function goalSetting(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $user = $_SESSION['user'];
         require_once __DIR__ . '/../Views/goal_setting.php';
     }
 
     public function goalSettingForm(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $user = $_SESSION['user'];
 
@@ -83,8 +86,7 @@ class FocusNoteController {
     }
 
     public function monthly(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         try {
             $ym = $_GET['ym'] ?? date('Y-m') . '-01';
@@ -121,8 +123,7 @@ class FocusNoteController {
     }
 
     public function weekly(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         try {
             $weekParam = $_GET['week'] ?? '';

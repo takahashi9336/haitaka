@@ -19,7 +19,8 @@ use App\LiveTrip\Service\MapsDistanceMatrixService;
 use App\LiveTrip\Service\MapsDirectionsService;
 use App\LiveTrip\Service\MapsPlacesAutocompleteService;
 use App\LiveTrip\Service\MapsLinkResolveService;
-use App\Hinata\Model\EventModel as HinataEventModel;
+use App\LiveTrip\Service\HinataEventBridge;
+use App\LiveTrip\Service\TripPlanFilterService;
 use Core\Auth;
 use Core\Logger;
 
@@ -29,10 +30,15 @@ use Core\Logger;
  */
 class LiveTripController {
 
+    private Auth $auth;
+
+    public function __construct() {
+        $this->auth = new Auth();
+    }
+
     private function requireAccess(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
-        $auth->requireAdmin();
+        $this->auth->requireLogin();
+        $this->auth->requireAdmin();
     }
 
     public function index(): void {
@@ -58,28 +64,7 @@ class LiveTripController {
 
         $period = $_GET['period'] ?? 'all';
         $sort = $_GET['sort'] ?? 'date_desc';
-        $today = date('Y-m-d');
-
-        $trips = array_filter($trips, function ($t) use ($period, $today) {
-            $ed = $t['event_date'] ?? '';
-            if ($ed === '') return $period === 'all';
-            $lastDate = strpos($ed, '〜') !== false ? trim(substr($ed, strpos($ed, '〜') + 3)) : $ed;
-            $isUpcoming = $lastDate >= $today;
-            return match ($period) {
-                'upcoming' => $isUpcoming,
-                'past' => !$isUpcoming,
-                default => true,
-            };
-        });
-
-        usort($trips, function ($a, $b) use ($sort) {
-            $da = $a['event_date'] ?? '';
-            $db = $b['event_date'] ?? '';
-            $da = strpos($da, '〜') !== false ? trim(substr($da, 0, strpos($da, '〜'))) : $da;
-            $db = strpos($db, '〜') !== false ? trim(substr($db, 0, strpos($db, '〜'))) : $db;
-            $cmp = strcmp($da, $db);
-            return $sort === 'date_asc' ? $cmp : -$cmp;
-        });
+        $trips = (new TripPlanFilterService())->filterAndSort($trips, (string)$period, (string)$sort);
 
         $user = $_SESSION['user'];
         require_once __DIR__ . '/../Views/index.php';
@@ -160,9 +145,9 @@ class LiveTripController {
 
     public function createForm(): void {
         $this->requireAccess();
-        $hinataEventModel = new HinataEventModel();
+        $hinataBridge = new HinataEventBridge();
         $ltEventModel = new LtEventModel();
-        $hinataEvents = $hinataEventModel->getAllUpcomingEvents();
+        $hinataEvents = $hinataBridge->getAllUpcomingEvents();
         $ltEvents = $ltEventModel->getForSelect();
         $user = $_SESSION['user'];
         require_once __DIR__ . '/../Views/form.php';
@@ -209,7 +194,7 @@ class LiveTripController {
                 'impression' => $ev['event_type'] === 'generic' ? ($ev['impression'] ?: null) : null,
             ]);
             if ($ev['event_type'] === 'hinata' && $ev['hn_event_id']) {
-                $this->upsertHinataEventStatus($userId, $ev['hn_event_id'], $ev['seat_info'] ?: null, $ev['impression'] ?: null);
+                (new HinataEventBridge())->upsertUserEventStatus($userId, $ev['hn_event_id'], $ev['seat_info'] ?: null, $ev['impression'] ?: null);
             }
         }
         Logger::info("live_trip created id={$tripId} by=" . ($_SESSION['user']['id_name'] ?? ''));
@@ -237,9 +222,9 @@ class LiveTripController {
             $events = (new TripPlanEventModel())->getByTripPlanId($id, $userId);
         } catch (\Throwable $e) { }
         $trip = TripPlanModel::enrichTripWithEvents($trip, $events);
-        $hinataEventModel = new HinataEventModel();
+        $hinataBridge = new HinataEventBridge();
         $ltEventModel = new LtEventModel();
-        $hinataEvents = $hinataEventModel->getAllUpcomingEvents();
+        $hinataEvents = $hinataBridge->getAllUpcomingEvents();
         $ltEvents = $ltEventModel->getForSelect();
         $user = $_SESSION['user'];
         require_once __DIR__ . '/../Views/form.php';
@@ -287,7 +272,7 @@ class LiveTripController {
                         'seat_info' => null,
                         'impression' => null,
                     ]);
-                    $this->upsertHinataEventStatus($userId, $ev['hn_event_id'], $ev['seat_info'] ?: null, $ev['impression'] ?: null);
+                    (new HinataEventBridge())->upsertUserEventStatus($userId, $ev['hn_event_id'], $ev['seat_info'] ?: null, $ev['impression'] ?: null);
                 } else {
                     $tpeModel->create([
                         'trip_plan_id' => $id,
@@ -323,7 +308,7 @@ class LiveTripController {
                 $seatInfo = trim($row['seat_info'] ?? '') ?: null;
                 $impression = trim($row['impression'] ?? '') ?: null;
                 if ($eventType === 'hinata' && $hnEventId) {
-                    $this->upsertHinataEventStatus($userId, $hnEventId, $seatInfo, $impression);
+                    (new HinataEventBridge())->upsertUserEventStatus($userId, $hnEventId, $seatInfo, $impression);
                 } elseif ($tpeId) {
                     $tpe = $tpeModel->find($tpeId);
                     if ($tpe && (int)($tpe['trip_plan_id'] ?? 0) === $id) {
@@ -1118,22 +1103,6 @@ class LiveTripController {
 
         $geo = (new MapsGeocodeService())->geocode($geocodeTarget);
         return $geo ? ['lat' => $geo['latitude'], 'lng' => $geo['longitude']] : null;
-    }
-
-    private function upsertHinataEventStatus(int $userId, int $eventId, ?string $seatInfo, ?string $impression): void {
-        $pdo = \Core\Database::connect();
-        $sql = "INSERT INTO hn_user_events_status (user_id, event_id, status, seat_info, impression)
-                VALUES (:uid, :eid, 1, :seat_info, :impression)
-                ON DUPLICATE KEY UPDATE
-                  seat_info = VALUES(seat_info),
-                  impression = VALUES(impression)";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([
-            'uid' => $userId,
-            'eid' => $eventId,
-            'seat_info' => $seatInfo,
-            'impression' => $impression,
-        ]);
     }
 
     /**

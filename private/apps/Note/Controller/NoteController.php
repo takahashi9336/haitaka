@@ -11,13 +11,17 @@ use Core\Logger;
  * 物理パス: haitaka/private/apps/Note/Controller/NoteController.php
  */
 class NoteController {
+    private Auth $auth;
+
+    public function __construct() {
+        $this->auth = new Auth();
+    }
 
     /**
      * メモ一覧・管理画面
      */
     public function index(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         try {
             $noteModel = new NoteModel();

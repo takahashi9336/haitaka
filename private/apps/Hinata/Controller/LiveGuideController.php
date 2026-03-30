@@ -11,12 +11,17 @@ use Core\Auth;
  */
 class LiveGuideController {
 
+    private Auth $auth;
+
+    public function __construct() {
+        $this->auth = new Auth();
+    }
+
     /**
      * 初参戦ガイド一覧（一般ユーザー向け）
      */
     public function index(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $eventModel = new EventModel();
         $events = $eventModel->getUpcomingLiveEventsForGuide();
@@ -29,8 +34,7 @@ class LiveGuideController {
      * ライブガイド楽曲管理（管理者専用）
      */
     public function admin(): void {
-        $auth = new Auth();
-        $auth->requireHinataAdmin('/hinata/');
+        (new HinataAuth($this->auth))->requireHinataAdmin('/hinata/');
 
         $eventModel = new EventModel();
         $releaseModel = new ReleaseModel();

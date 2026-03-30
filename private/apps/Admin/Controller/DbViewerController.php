@@ -11,10 +11,14 @@ class DbViewerController {
     /** 一覧表示数の選択肢（数値＝件数、'all'＝すべて） */
     private const LIMIT_OPTIONS = [50, 100, 250, 500, 'all'];
     private const LIMIT_ALL_MAX = 10000; // 「すべて」の上限（負荷対策）
+    private Auth $auth;
+
+    public function __construct() {
+        $this->auth = new Auth();
+    }
 
     public function index(): void {
-        $auth = new Auth();
-        $auth->requireAdmin();
+        $this->auth->requireAdmin();
 
         $pdo = Database::connect();
         $tables = $this->getTableList($pdo);

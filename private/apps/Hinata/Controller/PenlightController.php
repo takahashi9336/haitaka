@@ -12,9 +12,14 @@ use Core\Auth;
  * ペンライトカラー表（初心者向け）
  */
 class PenlightController {
+    private Auth $auth;
+
+    public function __construct() {
+        $this->auth = new Auth();
+    }
+
     public function index(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $model = new MemberModel();
         $members = $model->getMembersForBook(); // 現役+卒業（カラー付き）

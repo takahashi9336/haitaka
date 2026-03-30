@@ -18,12 +18,17 @@ use Core\Logger;
  */
 class SongController {
 
+    private Auth $auth;
+
+    public function __construct() {
+        $this->auth = new Auth();
+    }
+
     /**
      * 楽曲トップ：リリース一覧／全曲一覧タブ
      */
     public function index(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $releaseModel = new ReleaseModel();
         $songModel = new SongModel();
@@ -76,8 +81,7 @@ class SongController {
      * 楽曲個別紹介
      */
     public function detail(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $songId = (int)($_GET['id'] ?? 0);
         if ($songId === 0) {
@@ -169,9 +173,8 @@ class SongController {
      * 楽曲の参加メンバー編集画面（管理者専用）
      */
     public function memberEdit(): void {
-        $auth = new Auth();
         // 日向坂ポータル管理者（admin / hinata_admin）のみ
-        $auth->requireHinataAdmin('/hinata/');
+        (new HinataAuth($this->auth))->requireHinataAdmin('/hinata/');
 
         $songId = (int)($_GET['song_id'] ?? 0);
         if ($songId === 0) {
@@ -221,9 +224,8 @@ class SongController {
      */
     public function saveMembers(): void {
         header('Content-Type: application/json');
-        $auth = new Auth();
         // 日向坂ポータル管理者（admin / hinata_admin）のみJSON APIを許可
-        if (!$auth->check() || !$auth->isHinataAdmin()) {
+        if (!$this->auth->check() || !(new HinataAuth($this->auth))->isHinataAdmin()) {
             http_response_code(403);
             echo json_encode(['status' => 'error', 'message' => '権限がありません']);
             return;

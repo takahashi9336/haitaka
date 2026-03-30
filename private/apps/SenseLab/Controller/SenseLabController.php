@@ -8,10 +8,15 @@ use App\SenseLab\Model\SenseQuickEntryModel;
 
 class SenseLabController
 {
+    private Auth $auth;
+
+    public function __construct() {
+        $this->auth = new Auth();
+    }
+
     public function index(): void
     {
-        $auth = new Auth();
-        $auth->requireAdmin();
+        $this->auth->requireAdmin();
 
         $user = $_SESSION['user'];
 
@@ -28,8 +33,7 @@ class SenseLabController
 
     public function new(): void
     {
-        $auth = new Auth();
-        $auth->requireAdmin();
+        $this->auth->requireAdmin();
 
         $user = $_SESSION['user'];
         $errors = $_SESSION['sense_lab_errors'] ?? [];
@@ -40,8 +44,7 @@ class SenseLabController
 
     public function create(): void
     {
-        $auth = new Auth();
-        $auth->requireAdmin();
+        $this->auth->requireAdmin();
 
         $user = $_SESSION['user'];
         $errors = [];
@@ -127,8 +130,7 @@ class SenseLabController
 
     public function show(): void
     {
-        $auth = new Auth();
-        $auth->requireAdmin();
+        $this->auth->requireAdmin();
 
         $user = $_SESSION['user'];
         $id = (int)($_GET['id'] ?? 0);
@@ -146,8 +148,7 @@ class SenseLabController
 
     public function edit(): void
     {
-        $auth = new Auth();
-        $auth->requireAdmin();
+        $this->auth->requireAdmin();
 
         $user = $_SESSION['user'];
         $id = (int)($_GET['id'] ?? 0);
@@ -168,8 +169,7 @@ class SenseLabController
 
     public function update(): void
     {
-        $auth = new Auth();
-        $auth->requireAdmin();
+        $this->auth->requireAdmin();
 
         $user = $_SESSION['user'];
         $id = (int)($_POST['id'] ?? 0);
@@ -261,8 +261,7 @@ class SenseLabController
 
     public function delete(): void
     {
-        $auth = new Auth();
-        $auth->requireAdmin();
+        $this->auth->requireAdmin();
 
         $user = $_SESSION['user'];
         $id = (int)($_POST['id'] ?? 0);

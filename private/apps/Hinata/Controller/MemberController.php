@@ -6,7 +6,7 @@ use App\Hinata\Model\MemberModel;
 use App\Hinata\Model\MemberActivityModel;
 use Core\Auth;
 use Core\Database;
-use Core\MediaAssetModel;
+use App\Hinata\Model\MediaAssetModel;
 use Core\Logger;
 
 /**
@@ -15,9 +15,14 @@ use Core\Logger;
  */
 class MemberController {
 
+    private Auth $auth;
+
+    public function __construct() {
+        $this->auth = new Auth();
+    }
+
     public function index(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
         
         try {
             $model = new MemberModel();
@@ -30,8 +35,7 @@ class MemberController {
     }
 
     public function admin(): void {
-        $auth = new Auth();
-        $auth->requireHinataAdmin('/hinata/');
+        (new HinataAuth($this->auth))->requireHinataAdmin('/hinata/');
         
         $model = new MemberModel();
         $members = $model->getAllWithColors();
@@ -49,8 +53,7 @@ class MemberController {
         header('Content-Type: application/json');
         try {
             // セッションおよび認証を必ず初期化しておく（favorite_level取得にuser_idが必要なため）
-            $auth = new Auth();
-            if (!$auth->check()) {
+            if (!$this->auth->check()) {
                 http_response_code(401);
                 echo json_encode(['status' => 'error', 'message' => 'unauthorized']);
                 return;

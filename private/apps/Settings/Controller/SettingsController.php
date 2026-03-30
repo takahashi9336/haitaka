@@ -8,10 +8,15 @@ use Core\RoleModel;
 use Core\SessionManager;
 
 class SettingsController {
+
+    private Auth $auth;
+
+    public function __construct() {
+        $this->auth = new Auth();
+    }
     
     public function index(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $user = $_SESSION['user'];
 
@@ -22,8 +27,7 @@ class SettingsController {
         header('Content-Type: application/json');
 
         try {
-            $auth = new Auth();
-            if (!$auth->check()) {
+            if (!$this->auth->check()) {
                 echo json_encode(['status' => 'error', 'message' => 'セッション切れ']);
                 exit;
             }
@@ -57,8 +61,7 @@ class SettingsController {
 
     public function adminReset(): void {
         header('Content-Type: application/json');
-        $auth = new Auth();
-        if (!$auth->check() || !$auth->isAdmin()) {
+        if (!$this->auth->check() || !$this->auth->isAdmin()) {
             echo json_encode(['status' => 'error', 'message' => '権限なし']);
             exit;
         }
@@ -79,8 +82,7 @@ class SettingsController {
 
     public function createUser(): void {
         header('Content-Type: application/json');
-        $auth = new Auth();
-        if (!$auth->check() || !$auth->isAdmin()) {
+        if (!$this->auth->check() || !$this->auth->isAdmin()) {
             echo json_encode(['status' => 'error', 'message' => '権限なし']);
             exit;
         }
@@ -117,8 +119,7 @@ class SettingsController {
 
     public function adminUpdateRole(): void {
         header('Content-Type: application/json');
-        $auth = new Auth();
-        if (!$auth->check() || !$auth->isAdmin()) {
+        if (!$this->auth->check() || !$this->auth->isAdmin()) {
             echo json_encode(['status' => 'error', 'message' => '権限なし']);
             exit;
         }

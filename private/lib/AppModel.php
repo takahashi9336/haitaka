@@ -6,12 +6,30 @@ namespace Core;
  * アプリ・画面マスタ（sys_apps）システム用モデル
  * ユーザー隔離なし
  */
-class AppModel {
-    protected \PDO $pdo;
+class AppModel extends BaseModel {
     protected string $table = 'sys_apps';
+    protected array $fields = [
+        'id',
+        'app_key',
+        'name',
+        'parent_id',
+        'route_prefix',
+        'path',
+        'icon_class',
+        'theme_primary',
+        'theme_light',
+        'default_route',
+        'description',
+        'is_system',
+        'sort_order',
+        'is_visible',
+        'admin_only',
+    ];
+
+    protected bool $isUserIsolated = false;
 
     public function __construct() {
-        $this->pdo = Database::connect();
+        parent::__construct();
     }
 
     /**
@@ -26,10 +44,7 @@ class AppModel {
      * ID指定取得
      */
     public function findById(int $id): ?array {
-        $stmt = $this->pdo->prepare("SELECT * FROM {$this->table} WHERE id = :id");
-        $stmt->execute(['id' => $id]);
-        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
-        return $row ?: null;
+        return $this->find($id);
     }
 
     /**
@@ -86,39 +101,5 @@ class AppModel {
         $stmt = $this->pdo->prepare("SELECT 1 FROM {$this->table} WHERE parent_id = :pid LIMIT 1");
         $stmt->execute(['pid' => $parentId]);
         return (bool)$stmt->fetch();
-    }
-
-    public function create(array $data): int|false {
-        $cols = ['app_key','name','parent_id','route_prefix','path','icon_class','theme_primary','theme_light','default_route','description','is_system','sort_order','is_visible','admin_only'];
-        $filtered = array_intersect_key($data, array_flip($cols));
-        $filtered['parent_id'] = $filtered['parent_id'] ?? null;
-        $filtered['sort_order'] = (int)($filtered['sort_order'] ?? 0);
-        $filtered['is_visible'] = (int)($filtered['is_visible'] ?? 1);
-        $filtered['admin_only'] = (int)($filtered['admin_only'] ?? 0);
-        $filtered['is_system'] = (int)($filtered['is_system'] ?? 0);
-        $keys = array_keys($filtered);
-        $sql = "INSERT INTO {$this->table} (" . implode(',', $keys) . ") VALUES (:" . implode(',:', $keys) . ")";
-        $ok = $this->pdo->prepare($sql)->execute($filtered);
-        return $ok ? (int)$this->pdo->lastInsertId() : false;
-    }
-
-    public function update(int $id, array $data): bool {
-        $cols = ['app_key','name','parent_id','route_prefix','path','icon_class','theme_primary','theme_light','default_route','description','is_system','sort_order','is_visible','admin_only'];
-        $filtered = array_intersect_key($data, array_flip($cols));
-        if (empty($filtered)) {
-            return true;
-        }
-        $sets = [];
-        foreach (array_keys($filtered) as $k) {
-            $sets[] = "{$k} = :{$k}";
-        }
-        $filtered['id'] = $id;
-        $sql = "UPDATE {$this->table} SET " . implode(', ', $sets) . " WHERE id = :id";
-        return $this->pdo->prepare($sql)->execute($filtered);
-    }
-
-    public function delete(int $id): bool {
-        $stmt = $this->pdo->prepare("DELETE FROM {$this->table} WHERE id = :id");
-        return $stmt->execute(['id' => $id]);
     }
 }

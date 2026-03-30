@@ -3,7 +3,7 @@
 namespace App\FriendsActivity\Service;
 
 use Core\Database;
-use Core\FriendGroupModel;
+use App\FriendsActivity\Model\FriendGroupModel;
 
 /**
  * 友人の視聴履歴を3アプリ（アニメ・映画・ドラマ）横断で取得するサービス

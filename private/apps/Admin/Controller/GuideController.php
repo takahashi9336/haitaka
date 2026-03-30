@@ -7,9 +7,14 @@ use Core\GuideModel;
 
 class GuideController {
 
+    private Auth $auth;
+
+    public function __construct() {
+        $this->auth = new Auth();
+    }
+
     public function index(): void {
-        $auth = new Auth();
-        $auth->requireAdmin();
+        $this->auth->requireAdmin();
 
         $model = new GuideModel();
         $guides = $model->getAll();
@@ -18,8 +23,7 @@ class GuideController {
     }
 
     public function edit(?int $id = null): void {
-        $auth = new Auth();
-        $auth->requireAdmin();
+        $this->auth->requireAdmin();
 
         $model = new GuideModel();
         $guide = $id ? $model->find($id) : [];
@@ -75,8 +79,7 @@ class GuideController {
     }
 
     public function delete(): void {
-        $auth = new Auth();
-        $auth->requireAdmin();
+        $this->auth->requireAdmin();
 
         $id = (int)($_POST['id'] ?? $_GET['id'] ?? 0);
         if ($id) {

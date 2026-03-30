@@ -10,7 +10,7 @@ use App\Hinata\Model\SetlistModel;
 use Core\Auth;
 use Core\Database;
 use Core\Logger;
-use Core\MediaAssetModel;
+use App\Hinata\Model\MediaAssetModel;
 
 /**
  * 日向坂イベント制御コントローラ
@@ -18,9 +18,14 @@ use Core\MediaAssetModel;
  */
 class EventController {
 
+    private Auth $auth;
+
+    public function __construct() {
+        $this->auth = new Auth();
+    }
+
     public function index(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $eventModel = new EventModel();
         $mgModel = new MeetGreetModel();
@@ -66,9 +71,8 @@ class EventController {
     }
 
     public function admin(): void {
-        $auth = new Auth();
         // 日向坂ポータル内の管理者（admin / hinata_admin）のみ許可
-        $auth->requireHinataAdmin('/hinata/');
+        (new HinataAuth($this->auth))->requireHinataAdmin('/hinata/');
 
         $memberModel = new MemberModel();
         $eventModel = new EventModel();

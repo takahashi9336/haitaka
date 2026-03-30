@@ -12,12 +12,17 @@ use Core\Auth;
 
 class MeetGreetController {
 
+    private Auth $auth;
+
+    public function __construct() {
+        $this->auth = new Auth();
+    }
+
     /**
      * 一覧表示
      */
     public function index(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $model = new MeetGreetModel();
         $memberModel = new MemberModel();
@@ -131,8 +136,7 @@ class MeetGreetController {
      * レポページ表示
      */
     public function reportPage(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $slotId = (int)($_GET['slot_id'] ?? 0);
         $eventId = (int)($_GET['event_id'] ?? 0);

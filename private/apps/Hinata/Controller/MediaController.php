@@ -4,7 +4,7 @@ namespace App\Hinata\Controller;
 
 use Core\Auth;
 use Core\Database;
-use Core\MediaAssetModel;
+use App\Hinata\Model\MediaAssetModel;
 use Core\Logger;
 
 /**
@@ -13,6 +13,12 @@ use Core\Logger;
  */
 class MediaController {
     
+    private Auth $auth;
+
+    public function __construct() {
+        $this->auth = new Auth();
+    }
+
     /**
      * カテゴリ定義（hn_media_metadata.category のバリエーション）
      */
@@ -56,8 +62,7 @@ class MediaController {
      * 動画一覧画面の表示
      */
     public function list(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $memberModel = new \App\Hinata\Model\MemberModel();
         $categories = $this->getMediaCategories();
@@ -184,9 +189,8 @@ class MediaController {
      * 動画・メンバー紐付け管理画面（管理者専用）
      */
     public function mediaMemberAdmin(): void {
-        $auth = new Auth();
         // 日向坂ポータル管理者（admin / hinata_admin）のみ
-        $auth->requireHinataAdmin('/hinata/');
+        (new HinataAuth($this->auth))->requireHinataAdmin('/hinata/');
         $memberModel = new \App\Hinata\Model\MemberModel();
         $categories = $this->getMediaCategories();
         $members = $memberModel->getAllWithColors();
@@ -211,8 +215,7 @@ class MediaController {
      * 動画設定管理画面（カテゴリ変更など）（管理者専用）
      */
     public function mediaSettingsAdmin(): void {
-        $auth = new Auth();
-        $auth->requireHinataAdmin('/hinata/');
+        (new HinataAuth($this->auth))->requireHinataAdmin('/hinata/');
         $categories = $this->getMediaCategories();
         $user = $_SESSION['user'];
         require_once __DIR__ . '/../Views/media_settings_admin.php';
@@ -225,8 +228,7 @@ class MediaController {
     public function updateMetadata(): void {
         header('Content-Type: application/json');
         try {
-            $auth = new Auth();
-            if (!$auth->check() || !$auth->isHinataAdmin()) {
+            if (!$this->auth->check() || !(new HinataAuth($this->auth))->isHinataAdmin()) {
                 echo json_encode(['status' => 'error', 'message' => '権限がありません']);
                 return;
             }
@@ -281,8 +283,7 @@ class MediaController {
     public function deleteMedia(): void {
         header('Content-Type: application/json');
         try {
-            $auth = new Auth();
-            if (!$auth->check() || !$auth->isHinataAdmin()) {
+            if (!$this->auth->check() || !(new HinataAuth($this->auth))->isHinataAdmin()) {
                 echo json_encode(['status' => 'error', 'message' => '権限がありません']);
                 return;
             }
@@ -326,8 +327,7 @@ class MediaController {
     public function listMediaCategories(): void {
         header('Content-Type: application/json');
         try {
-            $auth = new Auth();
-            if (!$auth->check()) {
+            if (!$this->auth->check()) {
                 echo json_encode(['status' => 'error', 'message' => '権限がありません']);
                 return;
             }
@@ -346,8 +346,7 @@ class MediaController {
     public function createMediaCategory(): void {
         header('Content-Type: application/json');
         try {
-            $auth = new Auth();
-            if (!$auth->check() || !$auth->isHinataAdmin()) {
+            if (!$this->auth->check() || !(new HinataAuth($this->auth))->isHinataAdmin()) {
                 echo json_encode(['status' => 'error', 'message' => '権限がありません']);
                 return;
             }
@@ -385,8 +384,7 @@ class MediaController {
     public function renameMediaCategory(): void {
         header('Content-Type: application/json');
         try {
-            $auth = new Auth();
-            if (!$auth->check() || !$auth->isHinataAdmin()) {
+            if (!$this->auth->check() || !(new HinataAuth($this->auth))->isHinataAdmin()) {
                 echo json_encode(['status' => 'error', 'message' => '権限がありません']);
                 return;
             }
@@ -439,9 +437,8 @@ class MediaController {
      * 動画・楽曲紐付け管理画面（管理者専用）
      */
     public function mediaSongAdmin(): void {
-        $auth = new Auth();
         // 日向坂ポータル管理者（admin / hinata_admin）のみ
-        $auth->requireHinataAdmin('/hinata/');
+        (new HinataAuth($this->auth))->requireHinataAdmin('/hinata/');
         $releaseModel = new \App\Hinata\Model\ReleaseModel();
         $categories = $this->getMediaCategories();
         $releases = $releaseModel->getAllReleases();
@@ -464,8 +461,7 @@ class MediaController {
     public function listMediaForLink(): void {
         header('Content-Type: application/json');
         try {
-            $auth = new Auth();
-            if (!$auth->check() || !$auth->isHinataAdmin()) {
+            if (!$this->auth->check() || !(new HinataAuth($this->auth))->isHinataAdmin()) {
                 echo json_encode(['status' => 'error', 'message' => '権限がありません']);
                 return;
             }
@@ -562,8 +558,7 @@ class MediaController {
     public function getMediaMembers(): void {
         header('Content-Type: application/json');
         try {
-            $auth = new Auth();
-            if (!$auth->check() || !$auth->isHinataAdmin()) {
+            if (!$this->auth->check() || !(new HinataAuth($this->auth))->isHinataAdmin()) {
                 echo json_encode(['status' => 'error', 'message' => '権限がありません']);
                 return;
             }
@@ -594,8 +589,7 @@ class MediaController {
     public function saveMediaMembers(): void {
         header('Content-Type: application/json');
         try {
-            $auth = new Auth();
-            if (!$auth->check() || !$auth->isHinataAdmin()) {
+            if (!$this->auth->check() || !(new HinataAuth($this->auth))->isHinataAdmin()) {
                 echo json_encode(['status' => 'error', 'message' => '権限がありません']);
                 return;
             }
@@ -641,8 +635,7 @@ class MediaController {
     public function getMediaLinkedSong(): void {
         header('Content-Type: application/json');
         try {
-            $auth = new Auth();
-            if (!$auth->check() || !$auth->isHinataAdmin()) {
+            if (!$this->auth->check() || !(new HinataAuth($this->auth))->isHinataAdmin()) {
                 echo json_encode(['status' => 'error', 'message' => '権限がありません']);
                 return;
             }
@@ -680,8 +673,7 @@ class MediaController {
     public function getSongMembersForMedia(): void {
         header('Content-Type: application/json');
         try {
-            $auth = new Auth();
-            if (!$auth->check() || !$auth->isHinataAdmin()) {
+            if (!$this->auth->check() || !(new HinataAuth($this->auth))->isHinataAdmin()) {
                 echo json_encode(['status' => 'error', 'message' => '権限がありません']);
                 return;
             }
@@ -747,8 +739,7 @@ class MediaController {
     public function saveMediaSongLink(): void {
         header('Content-Type: application/json');
         try {
-            $auth = new Auth();
-            if (!$auth->check() || !$auth->isHinataAdmin()) {
+            if (!$this->auth->check() || !(new HinataAuth($this->auth))->isHinataAdmin()) {
                 echo json_encode(['status' => 'error', 'message' => '権限がありません']);
                 return;
             }
@@ -1125,8 +1116,7 @@ class MediaController {
      * メディア登録画面の表示
      */
     public function registerPage(): void {
-        $auth = new Auth();
-        $auth->requireHinataAdmin('/hinata/');
+        (new HinataAuth($this->auth))->requireHinataAdmin('/hinata/');
 
         $categories = $this->getMediaCategories();
         $ytClient = new \App\Hinata\Model\YouTubeApiClient();
@@ -1143,8 +1133,7 @@ class MediaController {
     public function youtubeChannelVideos(): void {
         header('Content-Type: application/json');
         try {
-            $auth = new Auth();
-            if (!$auth->check() || !$auth->isHinataAdmin()) {
+            if (!$this->auth->check() || !(new HinataAuth($this->auth))->isHinataAdmin()) {
                 echo json_encode(['status' => 'error', 'message' => '権限がありません']);
                 return;
             }
@@ -1198,8 +1187,7 @@ class MediaController {
     public function youtubeSearch(): void {
         header('Content-Type: application/json');
         try {
-            $auth = new Auth();
-            if (!$auth->check() || !$auth->isHinataAdmin()) {
+            if (!$this->auth->check() || !(new HinataAuth($this->auth))->isHinataAdmin()) {
                 echo json_encode(['status' => 'error', 'message' => '権限がありません']);
                 return;
             }
@@ -1255,8 +1243,7 @@ class MediaController {
     public function fetchOembed(): void {
         header('Content-Type: application/json; charset=utf-8');
         try {
-            $auth = new Auth();
-            if (!$auth->check() || !$auth->isHinataAdmin()) {
+            if (!$this->auth->check() || !(new HinataAuth($this->auth))->isHinataAdmin()) {
                 echo json_encode(['status' => 'error', 'message' => '権限がありません']);
                 return;
             }
@@ -1372,8 +1359,7 @@ class MediaController {
     public function bulkRegister(): void {
         header('Content-Type: application/json; charset=utf-8');
         try {
-            $auth = new Auth();
-            if (!$auth->check() || !$auth->isHinataAdmin()) {
+            if (!$this->auth->check() || !(new HinataAuth($this->auth))->isHinataAdmin()) {
                 echo json_encode(['status' => 'error', 'message' => '権限がありません']);
                 return;
             }

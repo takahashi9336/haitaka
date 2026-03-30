@@ -18,13 +18,18 @@ use Core\Logger;
  */
 class ReleaseController {
 
+    private Auth $auth;
+
+    public function __construct() {
+        $this->auth = new Auth();
+    }
+
     /**
      * リリース管理画面の表示（管理者専用）
      */
     public function admin(): void {
-        $auth = new Auth();
         // 日向坂ポータル管理者（admin / hinata_admin）のみ
-        $auth->requireHinataAdmin('/hinata/');
+        (new HinataAuth($this->auth))->requireHinataAdmin('/hinata/');
 
         $releaseModel = new ReleaseModel();
         $editionModel = new ReleaseEditionModel();
@@ -47,8 +52,7 @@ class ReleaseController {
      * リリース詳細（公開）：収録曲一覧を表示
      */
     public function show(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $releaseId = (int)($_GET['id'] ?? 0);
         if ($releaseId === 0) {
@@ -73,9 +77,8 @@ class ReleaseController {
      * リリース別アーティスト写真の登録画面（管理者専用）
      */
     public function artistPhotos(): void {
-        $auth = new Auth();
         // 日向坂ポータル管理者（admin / hinata_admin）のみ
-        $auth->requireHinataAdmin('/hinata/');
+        (new HinataAuth($this->auth))->requireHinataAdmin('/hinata/');
 
         $releaseId = (int)($_GET['release_id'] ?? 0);
         if ($releaseId === 0) {
@@ -106,9 +109,8 @@ class ReleaseController {
      */
     public function saveReleaseMemberImages(): void {
         header('Content-Type: application/json');
-        $auth = new Auth();
         // 日向坂ポータル管理者（admin / hinata_admin）のみ
-        $auth->requireHinataAdmin('/hinata/');
+        (new HinataAuth($this->auth))->requireHinataAdmin('/hinata/');
 
         try {
             $input = json_decode(file_get_contents('php://input'), true);

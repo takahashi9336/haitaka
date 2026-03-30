@@ -1,6 +1,8 @@
 <?php
 
-namespace Core;
+namespace App\FriendsActivity\Model;
+
+use Core\Database;
 
 /**
  * 友達・ユーザーグループから「閲覧可能なユーザーID」を取得するモデル
@@ -55,3 +57,4 @@ class FriendGroupModel {
         return array_map('intval', array_column($stmt->fetchAll(\PDO::FETCH_ASSOC), 'user_id'));
     }
 }
+

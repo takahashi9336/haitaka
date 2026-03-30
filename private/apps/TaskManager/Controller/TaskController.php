@@ -10,10 +10,15 @@ use Core\Validator;
 use Core\Logger;
 
 class TaskController {
+
+    private Auth $auth;
+
+    public function __construct() {
+        $this->auth = new Auth();
+    }
     
     public function index(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
         $model = new TaskModel();
         $tasks = $model->getAllTasks();
         $catModel = new CategoryModel();

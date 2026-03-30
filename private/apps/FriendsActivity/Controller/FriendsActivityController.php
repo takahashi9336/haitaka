@@ -7,9 +7,14 @@ use App\FriendsActivity\Service\FriendsActivityService;
 
 class FriendsActivityController {
 
+    private Auth $auth;
+
+    public function __construct() {
+        $this->auth = new Auth();
+    }
+
     public function activity(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $items = [];
         $viewableUsers = [];

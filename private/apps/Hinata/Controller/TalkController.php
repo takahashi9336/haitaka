@@ -14,12 +14,17 @@ use Core\Database;
  */
 class TalkController {
 
+    private Auth $auth;
+
+    public function __construct() {
+        $this->auth = new Auth();
+    }
+
     /**
      * 一覧表示
      */
     public function index(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
         
         $memberModel = new MemberModel();
         $netaModel = new NetaModel();

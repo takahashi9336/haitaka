@@ -21,9 +21,14 @@ use Core\Database;
  * 物理パス: haitaka/private/apps/Hinata/Controller/HinataController.php
  */
 class HinataController {
+    private Auth $auth;
+
+    public function __construct() {
+        $this->auth = new Auth();
+    }
+
     public function portal(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $netaModel = new NetaModel();
         $eventModel = new EventModel();

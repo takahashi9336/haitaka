@@ -11,10 +11,14 @@ use Core\Database;
  */
 class DbExportController {
     use DbSchemaTrait;
+    private Auth $auth;
+
+    public function __construct() {
+        $this->auth = new Auth();
+    }
 
     public function index(): void {
-        $auth = new Auth();
-        $auth->requireAdmin();
+        $this->auth->requireAdmin();
 
         $download = $_GET['download'] ?? '';
         if ($download === 'all_create') {

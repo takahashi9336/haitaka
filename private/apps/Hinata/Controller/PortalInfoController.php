@@ -13,9 +13,14 @@ use Core\Auth;
  */
 class PortalInfoController {
 
+    private Auth $auth;
+
+    public function __construct() {
+        $this->auth = new Auth();
+    }
+
     public function admin(): void {
-        $auth = new Auth();
-        $auth->requireHinataAdmin('/hinata/');
+        (new HinataAuth($this->auth))->requireHinataAdmin('/hinata/');
 
         $topicModel = new TopicModel();
         $announcementModel = new AnnouncementModel();

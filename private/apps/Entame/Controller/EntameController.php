@@ -9,9 +9,14 @@ use Core\Auth;
 use Core\Logger;
 
 class EntameController {
+    private Auth $auth;
+
+    public function __construct() {
+        $this->auth = new Auth();
+    }
+
     public function dashboard(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $user = $_SESSION['user'];
         $userId = (int)($user['id'] ?? 0);

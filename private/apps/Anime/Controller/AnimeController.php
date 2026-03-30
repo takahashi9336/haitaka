@@ -15,6 +15,12 @@ use Core\Logger;
  */
 class AnimeController {
 
+    private Auth $auth;
+
+    public function __construct() {
+        $this->auth = new Auth();
+    }
+
     /**
      * 現在の年月から Annict の season 文字列を生成する（例: 2025-spring）
      */
@@ -39,8 +45,7 @@ class AnimeController {
      * ダッシュボード（ローカル DB から取得）
      */
     public function dashboard(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $user = $_SESSION['user'];
         $userId = (int)($user['id'] ?? 0);
@@ -89,8 +94,7 @@ class AnimeController {
      * リスト画面（ローカル DB から取得）
      */
     public function list(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $tab = $_GET['tab'] ?? 'watching';
         $allowedTabs = ['wanna_watch', 'watching', 'watched'];
@@ -120,8 +124,7 @@ class AnimeController {
      * 作品詳細（ローカル DB 優先、なければ Annict から取得）
      */
     public function detail(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $annictWorkId = (int)($_GET['id'] ?? 0);
         if ($annictWorkId <= 0) {
@@ -328,8 +331,7 @@ class AnimeController {
      * 今期アニメ一覧画面
      */
     public function currentSeasonList(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $user = $_SESSION['user'] ?? [];
         $userId = (int)($user['id'] ?? 0);
@@ -386,8 +388,7 @@ class AnimeController {
      * 一括登録画面
      */
     public function import(): void {
-        $auth = new Auth();
-        $auth->requireLogin();
+        $this->auth->requireLogin();
 
         $user = $_SESSION['user'] ?? [];
         $userId = (int)($user['id'] ?? 0);

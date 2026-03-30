@@ -7,9 +7,14 @@ use App\Admin\Model\ImprovementItemModel;
 
 class ImprovementController {
 
+    private Auth $auth;
+
+    public function __construct() {
+        $this->auth = new Auth();
+    }
+
     public function index(): void {
-        $auth = new Auth();
-        $auth->requireAdmin();
+        $this->auth->requireAdmin();
 
         $model = new ImprovementItemModel();
         $statusFilter = trim($_GET['status'] ?? '') ?: null;
@@ -25,8 +30,7 @@ class ImprovementController {
     }
 
     public function update(): void {
-        $auth = new Auth();
-        $auth->requireAdmin();
+        $this->auth->requireAdmin();
 
         $id = (int)($_POST['id'] ?? 0);
         $action = $_POST['action'] ?? '';
@@ -76,8 +80,7 @@ class ImprovementController {
     }
 
     public function create(): void {
-        $auth = new Auth();
-        $auth->requireAdmin();
+        $this->auth->requireAdmin();
 
         $screenName = trim($_POST['screen_name'] ?? '');
         $content = trim($_POST['content'] ?? '');
@@ -102,8 +105,7 @@ class ImprovementController {
     }
 
     public function delete(): void {
-        $auth = new Auth();
-        $auth->requireAdmin();
+        $this->auth->requireAdmin();
 
         $id = (int)($_POST['id'] ?? $_GET['id'] ?? 0);
         if ($id) {
