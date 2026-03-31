@@ -80,6 +80,7 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
         .lt-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; display: flex; align-items: center; justify-content: center; }
         .lt-modal-overlay.hidden { display: none; }
         .lt-modal { background: white; border-radius: 1rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); max-width: 28rem; width: 100%; max-height: 90vh; overflow-y: auto; }
+        .lt-timeline-view-btn.is-active { background: var(--lt-theme); color: #fff; border-color: var(--lt-theme); }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden text-slate-800 <?= $bodyBgClass ?>"<?= $bodyStyle ? ' style="' . htmlspecialchars($bodyStyle) . '"' : '' ?>>
@@ -160,7 +161,134 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
             </div>
                 <?php if (!empty($mergedTimeline)): ?>
                 <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
-                    <p class="text-xs font-bold text-slate-500 mb-3">タイムライン</p>
+                    <div class="flex items-center justify-between gap-2 mb-3">
+                        <p class="text-xs font-bold text-slate-500">タイムライン</p>
+                        <div class="flex items-center gap-2">
+                            <button type="button" class="lt-timeline-summary-view-btn lt-timeline-view-btn px-3 py-1.5 rounded-lg border border-slate-200 text-[11px] font-bold text-slate-600 hover:bg-slate-50" data-view="calendar">日表示</button>
+                            <button type="button" class="lt-timeline-summary-view-btn lt-timeline-view-btn px-3 py-1.5 rounded-lg border border-slate-200 text-[11px] font-bold text-slate-600 hover:bg-slate-50" data-view="list">リスト</button>
+                        </div>
+                    </div>
+
+                    <?php
+                    $dayStartMinSummary = 6 * 60;
+                    $dayEndMinSummary = 24 * 60;
+                    $pxPerMinSummary = 1; // 1時間=60px（要望: 半分）
+                    $laneHeightSummary = ($dayEndMinSummary - $dayStartMinSummary) * $pxPerMinSummary;
+                    $timelineByDaySummary = [];
+                    foreach ($mergedTimeline ?? [] as $m) {
+                        $d = $m['date'] ?? '';
+                        $t = $m['time'] ?? '';
+                        if (!$d || !$t || $t === '99:99') continue;
+                        if (!preg_match('/^(\d{1,2}):(\d{2})$/', trim($t), $mmS)) continue;
+                        $startMin = ((int)$mmS[1]) * 60 + (int)$mmS[2];
+                        $timelineByDaySummary[$d] ??= [];
+                        $timelineByDaySummary[$d][] = $m + ['_startMin' => $startMin];
+                    }
+                    ksort($timelineByDaySummary);
+                    ?>
+
+                    <div class="lt-summary-timeline-calendar hidden space-y-5">
+                        <?php foreach ($timelineByDaySummary as $day => $rows): ?>
+                            <?php
+                            $dayLabel = $day;
+                            if (!empty($eventDates) && $day) {
+                                $firstEv = $eventDates[0];
+                                $lastEv = $eventDates[count($eventDates) - 1];
+                                if (in_array($day, $eventDates, true)) $dayLabel .= '（当日）';
+                                elseif ($day < $firstEv) $dayLabel .= '（前日）';
+                                elseif ($day > $lastEv) $dayLabel .= '（翌日）';
+                            }
+                            $sameStartBuckets = [];
+                            foreach ($rows as $r) {
+                                $k = (string)($r['_startMin'] ?? 0);
+                                $sameStartBuckets[$k] ??= 0;
+                                $sameStartBuckets[$k]++;
+                            }
+                            $sameStartIndex = [];
+                            ?>
+                            <div class="lt-summary-day">
+                                <p class="text-xs font-bold text-slate-500 mb-2"><?= htmlspecialchars($dayLabel) ?></p>
+                                <div class="grid grid-cols-[48px_1fr] gap-3">
+                                    <div class="text-[11px] text-slate-500 font-mono">
+                                        <?php for ($h = 6; $h <= 23; $h++): ?>
+                                            <div class="h-[60px] flex items-start justify-end pr-1"><?= sprintf('%02d:00', $h) ?></div>
+                                        <?php endfor; ?>
+                                    </div>
+                                    <div class="relative rounded-lg border border-slate-200 bg-white overflow-hidden" style="height: <?= (int)$laneHeightSummary ?>px;">
+                                        <?php for ($h = 6; $h <= 23; $h++): ?>
+                                            <div class="absolute left-0 right-0 border-t border-slate-100" style="top: <?= (int)(($h*60 - $dayStartMinSummary) * $pxPerMinSummary) ?>px;"></div>
+                                        <?php endfor; ?>
+                                        <?php foreach ($rows as $m): ?>
+                                            <?php
+                                            $startMin = (int)($m['_startMin'] ?? 0);
+                                            $dur = (int)($m['duration_min'] ?? 30);
+                                            if ($dur <= 0) $dur = 30;
+                                            $endMin = $startMin + $dur;
+                                            $visStart = max($startMin, $dayStartMinSummary);
+                                            $visEnd = min($endMin, $dayEndMinSummary);
+                                            if ($visEnd <= $visStart) continue;
+                                            $top = ($visStart - $dayStartMinSummary) * $pxPerMinSummary;
+                                            $height = ($visEnd - $visStart) * $pxPerMinSummary;
+                                            if ($height < 16) $height = 16;
+                                            if ($top + $height > $laneHeightSummary) $height = max(16, $laneHeightSummary - $top);
+
+                                            $bucketKey = (string)$startMin;
+                                            $sameStartIndex[$bucketKey] ??= 0;
+                                            $idx = $sameStartIndex[$bucketKey]++;
+                                            $bucketCount = (int)($sameStartBuckets[$bucketKey] ?? 1);
+                                            $cols = $bucketCount >= 2 ? 2 : 1;
+                                            $col = $cols === 2 ? ($idx % 2) : 0;
+                                            $left = $cols === 2 ? (8 + $col * 50) : 8;
+                                            $widthStyle = $cols === 2 ? 'width: calc(50% - 12px);' : 'right: 8px;';
+
+                                            $bg = $m['type'] === 'transport' ? 'bg-sky-50 border-sky-200' : 'bg-emerald-50 border-emerald-200';
+                                            $label = '';
+                                            $sub = '';
+                                            $itemId = 0;
+                                            if ($m['type'] === 'timeline') {
+                                                $ti = $m['data'] ?? [];
+                                                $itemId = (int)($ti['id'] ?? 0);
+                                                $label = (string)($ti['label'] ?? '');
+                                                $sub = (string)($ti['memo'] ?? '');
+                                            } else {
+                                                $tl = $m['data'] ?? [];
+                                                $itemId = (int)($tl['id'] ?? 0);
+                                                $label = trim(($tl['transport_type'] ?? '') . ' ' . ($tl['route_memo'] ?? ''));
+                                                $sub = trim(($tl['departure'] ?? '') . ($tl['arrival'] ? ' → ' . ($tl['arrival'] ?? '') : ''));
+                                            }
+                                            ?>
+                                            <div class="lt-event absolute rounded-lg border shadow-sm <?= $bg ?> p-2 text-[11px] text-slate-700 overflow-hidden cursor-pointer"
+                                                 data-lt-type="<?= htmlspecialchars($m['type']) ?>"
+                                                 data-lt-id="<?= (int)$itemId ?>"
+                                                 data-lt-date="<?= htmlspecialchars($day) ?>"
+                                                 data-lt-time="<?= htmlspecialchars($m['time']) ?>"
+                                                 data-lt-duration="<?= (int)$dur ?>"
+                                                 data-lt-label="<?= htmlspecialchars($label, ENT_QUOTES) ?>"
+                                                 data-lt-memo="<?= htmlspecialchars($sub, ENT_QUOTES) ?>"
+                                                 data-lt-scheduled-date="<?= htmlspecialchars((string)($m['date'] ?? '')) ?>"
+                                                 data-lt-transport-type="<?= htmlspecialchars((string)(($m['data']['transport_type'] ?? '')), ENT_QUOTES) ?>"
+                                                 data-lt-route-memo="<?= htmlspecialchars((string)(($m['data']['route_memo'] ?? '')), ENT_QUOTES) ?>"
+                                                 data-lt-departure="<?= htmlspecialchars((string)(($m['data']['departure'] ?? '')), ENT_QUOTES) ?>"
+                                                 data-lt-arrival="<?= htmlspecialchars((string)(($m['data']['arrival'] ?? '')), ENT_QUOTES) ?>"
+                                                 data-lt-duration-min-transport="<?= (int)(($m['data']['duration_min'] ?? 0)) ?>"
+                                                 data-lt-amount="<?= (int)(($m['data']['amount'] ?? 0)) ?>"
+                                                 data-lt-maps-link="<?= htmlspecialchars((string)(($m['data']['maps_link'] ?? '')), ENT_QUOTES) ?>"
+                                                 style="top: <?= (int)$top ?>px; left: <?= (int)$left ?>px; <?= $widthStyle ?> height: <?= (int)$height ?>px;">
+                                                <div class="flex items-center gap-2 min-w-0">
+                                                    <span class="font-mono font-bold text-slate-600 shrink-0"><?= htmlspecialchars($m['time']) ?></span>
+                                                    <span class="font-bold truncate flex-1 min-w-0"><?= htmlspecialchars($label) ?></span>
+                                                    <span class="text-slate-400 font-normal shrink-0">(<?= (int)$dur ?>m)</span>
+                                                </div>
+                                                <?php if ($sub !== ''): ?><div class="text-[10px] text-slate-500 mt-1 truncate"><?= htmlspecialchars($sub) ?></div><?php endif; ?>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+
+                    <div class="lt-summary-timeline-list">
                     <?php
                     $lastDate = '';
                     foreach ($mergedTimeline as $m):
@@ -191,6 +319,7 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
                         </div>
                     </div>
                     <?php endforeach; ?>
+                    </div>
                 </div>
                 <?php endif; ?>
             <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
@@ -890,19 +1019,217 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
 
         <div class="lt-tab-panel max-w-4xl" data-panel="timeline" id="panel-timeline">
         <div class="space-y-4">
-            <h2 class="font-bold text-slate-700 flex items-center gap-2">
-                <i class="fa-solid fa-clock text-slate-400"></i> タイムライン
-            </h2>
+            <div class="flex items-center justify-between gap-2">
+                <h2 class="font-bold text-slate-700 flex items-center gap-2">
+                    <i class="fa-solid fa-clock text-slate-400"></i> タイムライン
+                </h2>
+                <div class="flex items-center gap-2">
+                    <button type="button" class="lt-timeline-view-btn px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50" data-view="calendar" title="Googleカレンダー風">日表示</button>
+                    <button type="button" class="lt-timeline-view-btn px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50" data-view="list" title="一覧表示">リスト</button>
+                </div>
+            </div>
             <form method="post" action="/live_trip/timeline_store.php" class="flex flex-wrap gap-2 p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
                 <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
                 <input type="hidden" name="tab" value="timeline">
                 <div><label class="block text-xs font-bold text-slate-500 mb-1">日付</label><input type="date" name="scheduled_date" class="border border-slate-200 rounded px-3 py-2 text-sm w-36" title="未入力時は当日"></div>
                 <div><label class="block text-xs font-bold text-slate-500 mb-1">項目</label><input type="text" name="label" placeholder="開場、開演など" class="border border-slate-200 rounded px-3 py-2 text-sm w-32" required></div>
                 <div><label class="block text-xs font-bold text-slate-500 mb-1">時刻</label><input type="time" name="scheduled_time" class="border border-slate-200 rounded px-3 py-2 text-sm w-32"></div>
+                <div><label class="block text-xs font-bold text-slate-500 mb-1">終了</label><input type="time" name="end_time" class="border border-slate-200 rounded px-3 py-2 text-sm w-32" title="未指定なら30分扱い"></div>
+                <div><label class="block text-xs font-bold text-slate-500 mb-1">所要(分)</label><input type="number" name="duration_min" min="1" class="border border-slate-200 rounded px-3 py-2 text-sm w-28" placeholder="30"></div>
                 <input type="text" name="memo" placeholder="メモ" class="border border-slate-200 rounded px-3 py-2 text-sm flex-1 min-w-24">
                 <button type="submit" class="lt-theme-btn text-white px-3 py-2 rounded text-sm">追加</button>
             </form>
             <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
+            <?php
+            $dayStartMin = 6 * 60;
+            $dayEndMin = 24 * 60;
+            $pxPerMin = 1; // 1時間=60px（半分）
+            $laneHeight = ($dayEndMin - $dayStartMin) * $pxPerMin;
+
+            $timelineByDay = [];
+            foreach ($mergedTimeline ?? [] as $m) {
+                $d = $m['date'] ?? '';
+                $t = $m['time'] ?? '';
+                if (!$d || !$t || $t === '99:99') continue;
+                if (!preg_match('/^(\d{1,2}):(\d{2})$/', trim($t), $mm)) continue;
+                $startMin = ((int)$mm[1]) * 60 + (int)$mm[2];
+                $timelineByDay[$d] ??= [];
+                $timelineByDay[$d][] = $m + ['_startMin' => $startMin];
+            }
+            ksort($timelineByDay);
+            ?>
+            <div class="lt-timeline-calendar hidden space-y-6">
+                <?php foreach ($timelineByDay as $day => $rows): ?>
+                    <?php
+                    $dayLabel = $day;
+                    if (!empty($eventDates) && $day) {
+                        $firstEv = $eventDates[0];
+                        $lastEv = $eventDates[count($eventDates) - 1];
+                        if (in_array($day, $eventDates, true)) $dayLabel .= '（当日）';
+                        elseif ($day < $firstEv) $dayLabel .= '（前日）';
+                        elseif ($day > $lastEv) $dayLabel .= '（翌日）';
+                    }
+                    $sameStartBuckets = [];
+                    foreach ($rows as $r) {
+                        $k = (string)($r['_startMin'] ?? 0);
+                        $sameStartBuckets[$k] ??= 0;
+                        $sameStartBuckets[$k]++;
+                    }
+                    $sameStartIndex = [];
+                    ?>
+                    <div class="lt-day">
+                        <p class="text-xs font-bold text-slate-500 mb-2"><?= htmlspecialchars($dayLabel) ?></p>
+                        <div class="lt-day-grid grid grid-cols-[52px_1fr] gap-3">
+                            <div class="lt-time-col text-[11px] text-slate-500 font-mono">
+                                <?php for ($h = 6; $h <= 23; $h++): ?>
+                                    <div class="h-[60px] flex items-start justify-end pr-1"><?= sprintf('%02d:00', $h) ?></div>
+                                <?php endfor; ?>
+                            </div>
+                            <div class="lt-lane relative rounded-lg border border-slate-200 bg-white overflow-hidden" style="height: <?= (int)$laneHeight ?>px;">
+                                <?php for ($h = 6; $h <= 23; $h++): ?>
+                                    <div class="absolute left-0 right-0 border-t border-slate-100" style="top: <?= (int)(($h*60 - $dayStartMin) * $pxPerMin) ?>px;"></div>
+                                <?php endfor; ?>
+                                <?php foreach ($rows as $m): ?>
+                                    <?php
+                                    $startMin = (int)($m['_startMin'] ?? 0);
+                                    $dur = (int)($m['duration_min'] ?? 30);
+                                    if ($dur <= 0) $dur = 30;
+                                    $endMin = $startMin + $dur;
+                                    $visStart = max($startMin, $dayStartMin);
+                                    $visEnd = min($endMin, $dayEndMin);
+                                    if ($visEnd <= $visStart) continue;
+                                    $top = ($visStart - $dayStartMin) * $pxPerMin;
+                                    $height = ($visEnd - $visStart) * $pxPerMin;
+                                    if ($height < 18) $height = 18;
+                                    if ($top + $height > $laneHeight) $height = max(18, $laneHeight - $top);
+
+                                    $bucketKey = (string)$startMin;
+                                    $sameStartIndex[$bucketKey] ??= 0;
+                                    $idx = $sameStartIndex[$bucketKey]++;
+                                    $bucketCount = (int)($sameStartBuckets[$bucketKey] ?? 1);
+                                    $cols = $bucketCount >= 2 ? 2 : 1;
+                                    $col = $cols === 2 ? ($idx % 2) : 0;
+                                    $left = $cols === 2 ? (8 + $col * 50) : 8;
+                                    $right = $cols === 2 ? 8 : 8;
+                                    $widthStyle = $cols === 2 ? 'width: calc(50% - 12px);' : 'right: 8px;';
+
+                                    $bg = $m['type'] === 'transport' ? 'bg-sky-50 border-sky-200' : 'bg-emerald-50 border-emerald-200';
+                                    $label = '';
+                                    $sub = '';
+                                    if ($m['type'] === 'timeline') {
+                                        $ti = $m['data'] ?? [];
+                                        $label = (string)($ti['label'] ?? '');
+                                        $sub = (string)($ti['memo'] ?? '');
+                                    } else {
+                                        $tl = $m['data'] ?? [];
+                                        $label = trim(($tl['transport_type'] ?? '') . ' ' . ($tl['route_memo'] ?? ''));
+                                        $sub = trim(($tl['departure'] ?? '') . ($tl['arrival'] ? ' → ' . ($tl['arrival'] ?? '') : ''));
+                                    }
+                                    ?>
+                                    <div class="lt-event absolute rounded-lg border shadow-sm <?= $bg ?> p-2 text-xs text-slate-700 overflow-hidden cursor-pointer"
+                                         data-lt-type="<?= htmlspecialchars($m['type']) ?>"
+                                         data-lt-id="<?= (int)(($m['data']['id'] ?? 0)) ?>"
+                                         data-lt-date="<?= htmlspecialchars($day) ?>"
+                                         data-lt-time="<?= htmlspecialchars($m['time']) ?>"
+                                         data-lt-duration="<?= (int)$dur ?>"
+                                         data-lt-label="<?= htmlspecialchars($label, ENT_QUOTES) ?>"
+                                         data-lt-memo="<?= htmlspecialchars($sub, ENT_QUOTES) ?>"
+                                         data-lt-scheduled-date="<?= htmlspecialchars((string)($m['date'] ?? '')) ?>"
+                                         data-lt-transport-type="<?= htmlspecialchars((string)(($m['data']['transport_type'] ?? '')), ENT_QUOTES) ?>"
+                                         data-lt-route-memo="<?= htmlspecialchars((string)(($m['data']['route_memo'] ?? '')), ENT_QUOTES) ?>"
+                                         data-lt-departure="<?= htmlspecialchars((string)(($m['data']['departure'] ?? '')), ENT_QUOTES) ?>"
+                                         data-lt-arrival="<?= htmlspecialchars((string)(($m['data']['arrival'] ?? '')), ENT_QUOTES) ?>"
+                                         data-lt-duration-min-transport="<?= (int)(($m['data']['duration_min'] ?? 0)) ?>"
+                                         data-lt-amount="<?= (int)(($m['data']['amount'] ?? 0)) ?>"
+                                         data-lt-maps-link="<?= htmlspecialchars((string)(($m['data']['maps_link'] ?? '')), ENT_QUOTES) ?>"
+                                         style="top: <?= (int)$top ?>px; left: <?= (int)$left ?>px; <?= $widthStyle ?> height: <?= (int)$height ?>px;">
+                                        <div class="flex items-start justify-between gap-2">
+                                            <div class="min-w-0">
+                                                <div class="flex items-center gap-2 min-w-0">
+                                                    <span class="font-mono font-bold text-slate-600 shrink-0"><?= htmlspecialchars($m['time']) ?></span>
+                                                    <span class="font-bold truncate flex-1 min-w-0"><?= htmlspecialchars($label) ?></span>
+                                                    <span class="text-slate-400 font-normal shrink-0">(<?= (int)$dur ?>m)</span>
+                                                </div>
+                                            </div>
+                                            <div class="shrink-0 flex gap-1">
+                                                <?php if ($m['type'] === 'timeline'): $ti = $m['data']; ?>
+                                                    <button type="button" class="timeline-edit-btn text-slate-500 text-[11px] hover:text-slate-700" title="編集" data-id="<?= (int)$ti['id'] ?>"><i class="fa-solid fa-pen"></i></button>
+                                                    <form method="post" action="/live_trip/timeline_delete.php" class="inline" onsubmit="return confirm('削除しますか？');">
+                                                        <input type="hidden" name="id" value="<?= (int)$ti['id'] ?>">
+                                                        <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
+                                                        <input type="hidden" name="tab" value="timeline">
+                                                        <button type="submit" class="text-red-500 text-[11px]"><i class="fa-solid fa-trash-can"></i></button>
+                                                    </form>
+                                                <?php else: $tl = $m['data']; ?>
+                                                    <button type="button" class="transport-timeline-edit-btn text-slate-500 text-[11px] hover:text-slate-700" title="時刻を編集"><i class="fa-solid fa-pen"></i></button>
+                                                    <form method="post" action="/live_trip/transport_delete.php" class="inline" onsubmit="return confirm('削除しますか？');">
+                                                        <input type="hidden" name="id" value="<?= (int)$tl['id'] ?>">
+                                                        <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
+                                                        <input type="hidden" name="tab" value="timeline">
+                                                        <button type="submit" class="text-red-500 text-[11px]"><i class="fa-solid fa-trash-can"></i></button>
+                                                    </form>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+                                        <?php if ($sub !== ''): ?><div class="text-[11px] text-slate-500 mt-1 truncate"><?= htmlspecialchars($sub) ?></div><?php endif; ?>
+
+                                        <?php if ($m['type'] === 'timeline'): $ti = $m['data']; ?>
+                                        <?php
+                                            $st = trim($ti['scheduled_time'] ?? '');
+                                            $prefillEnd = '';
+                                            if (preg_match('/^(\d{1,2}):(\d{2})/', $st, $mm3)) {
+                                                $sm = ((int)$mm3[1]) * 60 + (int)$mm3[2];
+                                                $em = $sm + (int)$dur;
+                                                if ($em > 0 && $em <= 24*60) {
+                                                    $prefillEnd = sprintf('%02d:%02d', intdiv($em, 60), $em % 60);
+                                                }
+                                            }
+                                        ?>
+                                        <form method="post" action="/live_trip/timeline_update.php" class="timeline-edit-form edit-form hidden flex flex-wrap gap-2 items-center p-2 bg-slate-50 rounded mt-2">
+                                            <input type="hidden" name="id" value="<?= (int)$ti['id'] ?>">
+                                            <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
+                                            <input type="hidden" name="tab" value="timeline">
+                                            <div><label class="block text-xs font-bold text-slate-500 mb-0.5">日付</label><input type="date" name="scheduled_date" value="<?= htmlspecialchars($ti['scheduled_date'] ?? '') ?>" class="border border-slate-200 rounded px-2 py-1 text-sm w-32"></div>
+                                            <input type="text" name="label" value="<?= htmlspecialchars($ti['label'] ?? '') ?>" class="border border-slate-200 rounded px-2 py-1 text-sm w-28" required>
+                                            <input type="time" name="scheduled_time" value="<?php $st = $ti['scheduled_time'] ?? ''; echo htmlspecialchars(preg_match('/^(\d{1,2}):(\d{2})/', trim($st), $m4) ? sprintf('%02d:%02d', (int)$m4[1], (int)$m4[2]) : ''); ?>" class="border border-slate-200 rounded px-2 py-1 text-sm w-32">
+                                            <input type="time" name="end_time" value="<?= htmlspecialchars($prefillEnd) ?>" class="border border-slate-200 rounded px-2 py-1 text-sm w-32" title="未指定なら30分扱い">
+                                            <input type="number" name="duration_min" min="1" value="<?= (int)$dur ?>" class="border border-slate-200 rounded px-2 py-1 text-sm w-24" title="所要時間(分)。指定すると終了より優先">
+                                            <input type="text" name="memo" value="<?= htmlspecialchars($ti['memo'] ?? '') ?>" placeholder="メモ" class="border border-slate-200 rounded px-2 py-1 text-sm flex-1 min-w-24">
+                                            <button type="submit" class="lt-theme-btn text-white px-3 py-1 rounded text-sm">保存</button>
+                                            <button type="button" class="timeline-cancel-btn px-3 py-1 border border-slate-200 rounded text-sm">キャンセル</button>
+                                        </form>
+                                        <?php endif; ?>
+                                        <?php if ($m['type'] === 'transport'): $tl = $m['data']; ?>
+                                        <form method="post" action="/live_trip/transport_update.php" class="transport-timeline-edit-form edit-form hidden flex flex-wrap gap-2 items-center p-2 bg-slate-50 rounded mt-2">
+                                            <input type="hidden" name="id" value="<?= (int)$tl['id'] ?>">
+                                            <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
+                                            <input type="hidden" name="tab" value="timeline">
+                                            <input type="hidden" name="departure_date" value="<?= htmlspecialchars($tl['departure_date'] ?? '') ?>">
+                                            <input type="hidden" name="transport_type" value="<?= htmlspecialchars($tl['transport_type'] ?? '') ?>">
+                                            <input type="hidden" name="route_memo" value="<?= htmlspecialchars($tl['route_memo'] ?? '') ?>">
+                                            <input type="hidden" name="departure" value="<?= htmlspecialchars($tl['departure'] ?? '') ?>">
+                                            <input type="hidden" name="arrival" value="<?= htmlspecialchars($tl['arrival'] ?? '') ?>">
+                                            <input type="hidden" name="duration_min" value="<?= (int)($tl['duration_min'] ?? 0) ?>">
+                                            <input type="hidden" name="amount" value="<?= (int)($tl['amount'] ?? 0) ?>">
+                                            <input type="hidden" name="maps_link" value="<?= htmlspecialchars($tl['maps_link'] ?? '') ?>">
+                                            <label class="text-sm font-bold text-slate-600">出発時刻:</label>
+                                            <input type="time" name="scheduled_time" value="<?php $st = $tl['scheduled_time'] ?? ''; echo htmlspecialchars(preg_match('/^(\d{1,2}):(\d{2})/', trim($st), $m5) ? sprintf('%02d:%02d', (int)$m5[1], (int)$m5[2]) : ''); ?>" class="border border-slate-200 rounded px-2 py-1 text-sm w-32">
+                                            <button type="submit" class="lt-theme-btn text-white px-3 py-1 rounded text-sm">保存</button>
+                                            <button type="button" class="transport-timeline-cancel-btn px-3 py-1 border border-slate-200 rounded text-sm">キャンセル</button>
+                                        </form>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+                <?php if (empty($timelineByDay)): ?>
+                    <p class="text-slate-500 text-sm">タイムラインがありません。</p>
+                <?php endif; ?>
+            </div>
+
+            <div class="lt-timeline-list">
             <?php
             $lastDate = '';
             foreach ($mergedTimeline ?? [] as $m):
@@ -959,6 +1286,18 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
                     <div><label class="block text-xs font-bold text-slate-500 mb-0.5">日付</label><input type="date" name="scheduled_date" value="<?= htmlspecialchars($ti['scheduled_date'] ?? '') ?>" class="border border-slate-200 rounded px-2 py-1 text-sm w-32"></div>
                     <input type="text" name="label" value="<?= htmlspecialchars($ti['label'] ?? '') ?>" class="border border-slate-200 rounded px-2 py-1 text-sm w-28" required>
                     <input type="time" name="scheduled_time" value="<?php $st = $ti['scheduled_time'] ?? ''; echo htmlspecialchars(preg_match('/^(\d{1,2}):(\d{2})/', trim($st), $m) ? sprintf('%02d:%02d', (int)$m[1], (int)$m[2]) : ''); ?>" class="border border-slate-200 rounded px-2 py-1 text-sm w-32">
+                    <?php
+                        $dur = (int)($m['duration_min'] ?? 30);
+                        if ($dur <= 0) $dur = 30;
+                        $prefillEnd = '';
+                        if (preg_match('/^(\d{1,2}):(\d{2})/', trim($ti['scheduled_time'] ?? ''), $mm6)) {
+                            $sm = ((int)$mm6[1]) * 60 + (int)$mm6[2];
+                            $em = $sm + $dur;
+                            if ($em > 0 && $em <= 24*60) $prefillEnd = sprintf('%02d:%02d', intdiv($em, 60), $em % 60);
+                        }
+                    ?>
+                    <input type="time" name="end_time" value="<?= htmlspecialchars($prefillEnd) ?>" class="border border-slate-200 rounded px-2 py-1 text-sm w-32" title="未指定なら30分扱い">
+                    <input type="number" name="duration_min" min="1" value="<?= (int)$dur ?>" class="border border-slate-200 rounded px-2 py-1 text-sm w-24" title="所要時間(分)。指定すると終了より優先">
                     <input type="text" name="memo" value="<?= htmlspecialchars($ti['memo'] ?? '') ?>" placeholder="メモ" class="border border-slate-200 rounded px-2 py-1 text-sm flex-1 min-w-24">
                     <button type="submit" class="lt-theme-btn text-white px-3 py-1 rounded text-sm">保存</button>
                     <button type="button" class="timeline-cancel-btn px-3 py-1 border border-slate-200 rounded text-sm">キャンセル</button>
@@ -985,6 +1324,7 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
                 <?php endif; ?>
             </div>
             <?php endforeach; ?>
+            </div>
             </div>
         </div>
         </div>
@@ -1081,6 +1421,90 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
                     </form>
                 </div>
                 <?php endif; ?>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="lt-timeline-modal" class="lt-modal-overlay hidden" aria-hidden="true">
+    <div class="lt-modal m-4" role="dialog" aria-labelledby="lt-timeline-modal-title">
+        <div class="p-5">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="lt-timeline-modal-title" class="font-bold text-slate-700">予定を編集</h3>
+                <button type="button" id="lt-timeline-modal-close" class="text-slate-400 hover:text-slate-600 p-1" aria-label="閉じる"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="space-y-4">
+                <div class="text-xs text-slate-500">
+                    <span id="lt-timeline-modal-meta"></span>
+                </div>
+
+                <form method="post" action="/live_trip/timeline_update.php" id="lt-timeline-modal-form-timeline" class="space-y-3 hidden">
+                    <input type="hidden" name="id" id="lt-timeline-modal-timeline-id" value="">
+                    <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
+                    <input type="hidden" name="tab" value="timeline">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">日付</label>
+                            <input type="date" name="scheduled_date" id="lt-timeline-modal-date" class="w-full border border-slate-200 rounded px-3 py-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">開始</label>
+                            <input type="time" name="scheduled_time" id="lt-timeline-modal-start" class="w-full border border-slate-200 rounded px-3 py-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">終了</label>
+                            <input type="time" name="end_time" id="lt-timeline-modal-end" class="w-full border border-slate-200 rounded px-3 py-2 text-sm" title="未指定なら30分扱い">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">所要(分)</label>
+                            <input type="number" name="duration_min" id="lt-timeline-modal-duration" min="1" class="w-full border border-slate-200 rounded px-3 py-2 text-sm" placeholder="30">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">項目</label>
+                        <input type="text" name="label" id="lt-timeline-modal-label" class="w-full border border-slate-200 rounded px-3 py-2 text-sm" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">メモ</label>
+                        <input type="text" name="memo" id="lt-timeline-modal-memo" class="w-full border border-slate-200 rounded px-3 py-2 text-sm">
+                    </div>
+                    <div class="flex justify-end gap-2 pt-1">
+                        <button type="button" class="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50" data-modal-cancel>キャンセル</button>
+                        <button type="submit" class="lt-theme-btn text-white px-4 py-2 rounded-lg text-sm font-bold">保存</button>
+                    </div>
+                </form>
+
+                <form method="post" action="/live_trip/transport_update.php" id="lt-timeline-modal-form-transport" class="space-y-3 hidden">
+                    <input type="hidden" name="id" id="lt-timeline-modal-transport-id" value="">
+                    <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
+                    <input type="hidden" name="tab" value="timeline">
+                    <input type="hidden" name="departure_date" id="lt-timeline-modal-transport-date" value="">
+                    <input type="hidden" name="transport_type" id="lt-timeline-modal-transport-type" value="">
+                    <input type="hidden" name="route_memo" id="lt-timeline-modal-route-memo" value="">
+                    <input type="hidden" name="departure" id="lt-timeline-modal-departure" value="">
+                    <input type="hidden" name="arrival" id="lt-timeline-modal-arrival" value="">
+                    <input type="hidden" name="duration_min" id="lt-timeline-modal-transport-duration" value="">
+                    <input type="hidden" name="amount" id="lt-timeline-modal-amount" value="">
+                    <input type="hidden" name="maps_link" id="lt-timeline-modal-maps-link" value="">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">出発</label>
+                            <input type="time" name="scheduled_time" id="lt-timeline-modal-transport-start" class="w-full border border-slate-200 rounded px-3 py-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">到着</label>
+                            <input type="time" id="lt-timeline-modal-transport-end" class="w-full border border-slate-200 rounded px-3 py-2 text-sm" title="所要(分)から自動計算。直接入力も可">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-xs font-bold text-slate-500 mb-1">所要(分)</label>
+                            <input type="number" id="lt-timeline-modal-transport-duration-edit" min="1" class="w-full border border-slate-200 rounded px-3 py-2 text-sm" placeholder="30">
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-2 pt-1">
+                        <button type="button" class="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50" data-modal-cancel>キャンセル</button>
+                        <button type="submit" class="lt-theme-btn text-white px-4 py-2 rounded-lg text-sm font-bold">保存</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -1250,12 +1674,223 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
     if (defaultTab && !location.hash) location.hash = defaultTab;
     window.switchTab = switchTab;
 
+    function setTimelineView(view) {
+        var panel = document.getElementById('panel-timeline');
+        if (!panel) return;
+        var cal = panel.querySelector('.lt-timeline-calendar');
+        var list = panel.querySelector('.lt-timeline-list');
+        if (cal) cal.classList.toggle('hidden', view !== 'calendar');
+        if (list) list.classList.toggle('hidden', view === 'calendar');
+        panel.querySelectorAll('.lt-timeline-view-btn').forEach(function(btn){
+            btn.classList.toggle('is-active', btn.dataset.view === view);
+        });
+        try { localStorage.setItem('ltTimelineView', view); } catch (e) {}
+    }
+    var initialView = 'calendar';
+    try {
+        var saved = localStorage.getItem('ltTimelineView');
+        if (saved === 'calendar' || saved === 'list') initialView = saved;
+    } catch (e) {}
+    setTimelineView(initialView);
+    document.querySelectorAll('.lt-timeline-view-btn').forEach(function(btn){
+        btn.addEventListener('click', function(){
+            setTimelineView(this.dataset.view || 'calendar');
+        });
+    });
+
+    function setSummaryTimelineView(view) {
+        var root = document.querySelector('.lt-summary-timeline-calendar')?.closest('.p-4');
+        if (!root) return;
+        var cal = root.querySelector('.lt-summary-timeline-calendar');
+        var list = root.querySelector('.lt-summary-timeline-list');
+        if (cal) cal.classList.toggle('hidden', view !== 'calendar');
+        if (list) list.classList.toggle('hidden', view === 'calendar');
+        root.querySelectorAll('.lt-timeline-summary-view-btn').forEach(function(btn){
+            btn.classList.toggle('is-active', btn.dataset.view === view);
+        });
+        try { localStorage.setItem('ltTimelineSummaryView', view); } catch (e) {}
+    }
+    var initialSummaryView = 'list';
+    try {
+        var savedSummary = localStorage.getItem('ltTimelineSummaryView');
+        if (savedSummary === 'calendar' || savedSummary === 'list') initialSummaryView = savedSummary;
+    } catch (e) {}
+    setSummaryTimelineView(initialSummaryView);
+    document.querySelectorAll('.lt-timeline-summary-view-btn').forEach(function(btn){
+        btn.addEventListener('click', function(){
+            setSummaryTimelineView(this.dataset.view || 'list');
+        });
+    });
+
+    function openTimelineModalFromEvent(el) {
+        var type = el.getAttribute('data-lt-type') || '';
+        var id = parseInt(el.getAttribute('data-lt-id') || '0', 10) || 0;
+        if (!type || !id) return;
+
+        var modal = document.getElementById('lt-timeline-modal');
+        var closeBtn = document.getElementById('lt-timeline-modal-close');
+        var meta = document.getElementById('lt-timeline-modal-meta');
+        var formTimeline = document.getElementById('lt-timeline-modal-form-timeline');
+        var formTransport = document.getElementById('lt-timeline-modal-form-transport');
+        if (!modal || !formTimeline || !formTransport) return;
+
+        function show() {
+            modal.classList.remove('hidden');
+            modal.setAttribute('aria-hidden', 'false');
+        }
+        function hide() {
+            modal.classList.add('hidden');
+            modal.setAttribute('aria-hidden', 'true');
+        }
+        closeBtn?.addEventListener('click', hide, { once: true });
+        modal.addEventListener('click', function(e){ if (e.target === modal) hide(); }, { once: true });
+        modal.querySelectorAll('[data-modal-cancel]').forEach(function(b){ b.addEventListener('click', hide, { once: true }); });
+        document.addEventListener('keydown', function(e){ if (e.key === 'Escape') hide(); }, { once: true });
+
+        var date = el.getAttribute('data-lt-date') || el.getAttribute('data-lt-scheduled-date') || '';
+        var time = el.getAttribute('data-lt-time') || '';
+        var dur = parseInt(el.getAttribute('data-lt-duration') || '30', 10) || 30;
+        var label = el.getAttribute('data-lt-label') || '';
+        var memo = el.getAttribute('data-lt-memo') || '';
+
+        if (meta) meta.textContent = (date ? (date + ' ') : '') + (time ? time : '') + (dur ? ('（' + dur + '分）') : '');
+
+        formTimeline.classList.add('hidden');
+        formTransport.classList.add('hidden');
+
+        if (type === 'timeline') {
+            formTimeline.classList.remove('hidden');
+            (document.getElementById('lt-timeline-modal-timeline-id')).value = String(id);
+            (document.getElementById('lt-timeline-modal-date')).value = date;
+            (document.getElementById('lt-timeline-modal-start')).value = time;
+            (document.getElementById('lt-timeline-modal-duration')).value = String(dur);
+            (document.getElementById('lt-timeline-modal-label')).value = label;
+            (document.getElementById('lt-timeline-modal-memo')).value = memo;
+
+            // end_time を開始+dur でプリセット
+            var endInput = document.getElementById('lt-timeline-modal-end');
+            if (endInput && time && dur) {
+                var m = /^(\d{1,2}):(\d{2})$/.exec(time);
+                if (m) {
+                    var s = parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+                    var e = s + dur;
+                    if (e > 0 && e <= 24*60) {
+                        var hh = String(Math.floor(e/60)).padStart(2,'0');
+                        var mm = String(e%60).padStart(2,'0');
+                        endInput.value = hh + ':' + mm;
+                    } else {
+                        endInput.value = '';
+                    }
+                }
+            }
+
+            // 変更に応じて end_time / duration を扱いやすくする
+            var startInput = document.getElementById('lt-timeline-modal-start');
+            var durationInput = document.getElementById('lt-timeline-modal-duration');
+            if (startInput && durationInput && endInput) {
+                var recalcEnd = function() {
+                    var t = (startInput.value || '').trim();
+                    var d = parseInt((durationInput.value || '').trim(), 10);
+                    if (!t || !d || d <= 0) return;
+                    var m = /^(\d{1,2}):(\d{2})$/.exec(t);
+                    if (!m) return;
+                    var s = parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+                    var e = s + d;
+                    if (e > 0 && e <= 24*60) {
+                        endInput.value = String(Math.floor(e/60)).padStart(2,'0') + ':' + String(e%60).padStart(2,'0');
+                    }
+                };
+                startInput.oninput = recalcEnd;
+                durationInput.oninput = recalcEnd;
+                endInput.oninput = function() {
+                    var t = (startInput.value || '').trim();
+                    var e = (endInput.value || '').trim();
+                    var m1 = /^(\d{1,2}):(\d{2})$/.exec(t);
+                    var m2 = /^(\d{1,2}):(\d{2})$/.exec(e);
+                    if (!m1 || !m2) return;
+                    var sMin = parseInt(m1[1],10)*60 + parseInt(m1[2],10);
+                    var eMin = parseInt(m2[1],10)*60 + parseInt(m2[2],10);
+                    var diff = eMin - sMin;
+                    if (diff > 0) durationInput.value = String(diff);
+                };
+            }
+        } else if (type === 'transport') {
+            formTransport.classList.remove('hidden');
+            (document.getElementById('lt-timeline-modal-transport-id')).value = String(id);
+            (document.getElementById('lt-timeline-modal-transport-start')).value = time;
+            (document.getElementById('lt-timeline-modal-transport-date')).value = date;
+            (document.getElementById('lt-timeline-modal-transport-type')).value = el.getAttribute('data-lt-transport-type') || '';
+            (document.getElementById('lt-timeline-modal-route-memo')).value = el.getAttribute('data-lt-route-memo') || '';
+            (document.getElementById('lt-timeline-modal-departure')).value = el.getAttribute('data-lt-departure') || '';
+            (document.getElementById('lt-timeline-modal-arrival')).value = el.getAttribute('data-lt-arrival') || '';
+            (document.getElementById('lt-timeline-modal-transport-duration')).value = el.getAttribute('data-lt-duration-min-transport') || '';
+            (document.getElementById('lt-timeline-modal-amount')).value = el.getAttribute('data-lt-amount') || '';
+            (document.getElementById('lt-timeline-modal-maps-link')).value = el.getAttribute('data-lt-maps-link') || '';
+
+            var tStart = document.getElementById('lt-timeline-modal-transport-start');
+            var tEnd = document.getElementById('lt-timeline-modal-transport-end');
+            var tDurEdit = document.getElementById('lt-timeline-modal-transport-duration-edit');
+            var tDurHidden = document.getElementById('lt-timeline-modal-transport-duration');
+            var initDur = parseInt((el.getAttribute('data-lt-duration-min-transport') || '').trim(), 10);
+            if (!initDur || initDur <= 0) initDur = 30;
+            if (tDurEdit) tDurEdit.value = String(initDur);
+            if (tDurHidden) tDurHidden.value = String(initDur);
+
+            var recalcTransportEnd = function() {
+                if (!tStart || !tEnd || !tDurEdit) return;
+                var t = (tStart.value || '').trim();
+                var d = parseInt((tDurEdit.value || '').trim(), 10);
+                if (!t || !d || d <= 0) return;
+                var m = /^(\d{1,2}):(\d{2})$/.exec(t);
+                if (!m) return;
+                var s = parseInt(m[1],10)*60 + parseInt(m[2],10);
+                var e = s + d;
+                if (e > 0 && e <= 24*60) {
+                    tEnd.value = String(Math.floor(e/60)).padStart(2,'0') + ':' + String(e%60).padStart(2,'0');
+                } else {
+                    tEnd.value = '';
+                }
+                if (tDurHidden) tDurHidden.value = String(d);
+            };
+            var recalcTransportDur = function() {
+                if (!tStart || !tEnd || !tDurEdit) return;
+                var s = (tStart.value || '').trim();
+                var e = (tEnd.value || '').trim();
+                var m1 = /^(\d{1,2}):(\d{2})$/.exec(s);
+                var m2 = /^(\d{1,2}):(\d{2})$/.exec(e);
+                if (!m1 || !m2) return;
+                var sMin = parseInt(m1[1],10)*60 + parseInt(m1[2],10);
+                var eMin = parseInt(m2[1],10)*60 + parseInt(m2[2],10);
+                var diff = eMin - sMin;
+                if (diff > 0) {
+                    tDurEdit.value = String(diff);
+                    if (tDurHidden) tDurHidden.value = String(diff);
+                }
+            };
+            tStart && (tStart.oninput = recalcTransportEnd);
+            tDurEdit && (tDurEdit.oninput = recalcTransportEnd);
+            tEnd && (tEnd.oninput = recalcTransportDur);
+            recalcTransportEnd();
+        } else {
+            return;
+        }
+        show();
+    }
+
     document.addEventListener('click', function(e) {
+        var ev = e.target.closest('.lt-timeline-calendar .lt-event, .lt-summary-timeline-calendar .lt-event');
+        if (ev) {
+            // 削除/編集ボタンやフォーム操作は従来挙動優先
+            if (e.target.closest('button') || e.target.closest('form') || e.target.closest('a')) return;
+            openTimelineModalFromEvent(ev);
+            return;
+        }
+
         var editBtn = e.target.closest('.expense-edit-btn, .hotel-edit-btn, .destination-edit-btn, .transport-edit-btn, .timeline-edit-btn, .transport-timeline-edit-btn');
         if (editBtn) {
-            var item = editBtn.closest('.expense-item, .hotel-item, .destination-item, .transport-item, .timeline-row');
+            var item = editBtn.closest('.expense-item, .hotel-item, .destination-item, .transport-item, .timeline-row, .lt-event');
             if (!item) return;
-            var view = item.querySelector('.expense-view, .hotel-view, .destination-view, .transport-view, .timeline-view');
+            var view = item.querySelector('.expense-view, .hotel-view, .destination-view, .transport-view, .timeline-view, .lt-event-view');
             var form = item.querySelector('.expense-edit-form, .hotel-edit-form, .destination-edit-form, .transport-edit-form, .timeline-edit-form, .transport-timeline-edit-form');
             if (view) view.style.display = 'none';
             if (form) { form.classList.remove('hidden'); }
@@ -1264,9 +1899,9 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
         if (cancelBtn) {
             var form = cancelBtn.closest('.edit-form');
             if (!form) return;
-            var item = form.closest('.expense-item, .hotel-item, .destination-item, .transport-item, .timeline-row');
+            var item = form.closest('.expense-item, .hotel-item, .destination-item, .transport-item, .timeline-row, .lt-event');
             if (!item) return;
-            var view = item.querySelector('.expense-view, .hotel-view, .destination-view, .transport-view, .timeline-view');
+            var view = item.querySelector('.expense-view, .hotel-view, .destination-view, .transport-view, .timeline-view, .lt-event-view');
             if (view) view.style.display = '';
             form.classList.add('hidden');
         }

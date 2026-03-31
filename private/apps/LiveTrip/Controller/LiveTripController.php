@@ -31,6 +31,7 @@ use Core\Logger;
 class LiveTripController {
 
     private Auth $auth;
+    private const DEFAULT_TIMELINE_DURATION_MIN = 30;
 
     public function __construct() {
         $this->auth = new Auth();
@@ -699,11 +700,14 @@ class LiveTripController {
         if (!$this->canAccessTrip($tripPlanId, $userId)) { header('Location: /live_trip/'); exit; }
         $model = new TimelineItemModel();
         $schDate = trim($_POST['scheduled_date'] ?? '') ?: null;
+        $scheduledTime = trim($_POST['scheduled_time'] ?? '');
+        $durationMin = $this->calcDurationMinFromPost($scheduledTime, $_POST['end_time'] ?? null, $_POST['duration_min'] ?? null);
         $model->create([
             'trip_plan_id' => $tripPlanId,
             'scheduled_date' => $schDate,
             'label' => trim($_POST['label'] ?? ''),
-            'scheduled_time' => trim($_POST['scheduled_time'] ?? ''),
+            'scheduled_time' => $scheduledTime,
+            'duration_min' => $durationMin,
             'memo' => trim($_POST['memo'] ?? ''),
         ]);
         $this->redirectToShow($tripPlanId, 'timeline');
@@ -720,10 +724,13 @@ class LiveTripController {
         $row = $model->find($id);
         if (!$row || (int)$row['trip_plan_id'] !== $tripPlanId) { header('Location: /live_trip/'); exit; }
         $schDate = trim($_POST['scheduled_date'] ?? '') ?: null;
+        $scheduledTime = trim($_POST['scheduled_time'] ?? '');
+        $durationMin = $this->calcDurationMinFromPost($scheduledTime, $_POST['end_time'] ?? null, $_POST['duration_min'] ?? null);
         $model->update($id, [
             'scheduled_date' => $schDate,
             'label' => trim($_POST['label'] ?? ''),
-            'scheduled_time' => trim($_POST['scheduled_time'] ?? ''),
+            'scheduled_time' => $scheduledTime,
+            'duration_min' => $durationMin,
             'memo' => trim($_POST['memo'] ?? ''),
         ]);
         $this->redirectToShow($tripPlanId, 'timeline');
@@ -814,16 +821,58 @@ class LiveTripController {
         foreach ($timelineItems as $t) {
             $date = $t['scheduled_date'] ?? $firstEv;
             $time = trim($t['scheduled_time'] ?? '') ?: '99:99';
-            $items[] = ['type' => 'timeline', 'date' => $date, 'time' => $time, 'sortKey' => $date . ' ' . $time, 'data' => $t];
+            $durationMin = isset($t['duration_min']) && $t['duration_min'] !== '' ? (int)$t['duration_min'] : self::DEFAULT_TIMELINE_DURATION_MIN;
+            $durationMin = $durationMin > 0 ? $durationMin : self::DEFAULT_TIMELINE_DURATION_MIN;
+            $items[] = [
+                'type' => 'timeline',
+                'date' => $date,
+                'time' => $time,
+                'duration_min' => $durationMin,
+                'sortKey' => $date . ' ' . $time,
+                'data' => $t
+            ];
         }
         foreach ($transportLegs as $t) {
             $st = trim($t['scheduled_time'] ?? '');
             if ($st === '') continue;
             $dd = $t['departure_date'] ?? $firstEv;
-            $items[] = ['type' => 'transport', 'date' => $dd, 'time' => $st, 'sortKey' => $dd . ' ' . $st, 'data' => $t];
+            $durationMin = isset($t['duration_min']) && $t['duration_min'] !== '' ? (int)$t['duration_min'] : self::DEFAULT_TIMELINE_DURATION_MIN;
+            $durationMin = $durationMin > 0 ? $durationMin : self::DEFAULT_TIMELINE_DURATION_MIN;
+            $items[] = [
+                'type' => 'transport',
+                'date' => $dd,
+                'time' => $st,
+                'duration_min' => $durationMin,
+                'sortKey' => $dd . ' ' . $st,
+                'data' => $t
+            ];
         }
         usort($items, fn($a, $b) => strcmp($a['sortKey'], $b['sortKey']));
         return $items;
+    }
+
+    private function calcDurationMinFromPost(string $scheduledTime, mixed $endTimeRaw, mixed $durationMinRaw): ?int {
+        $duration = null;
+        if ($durationMinRaw !== null && $durationMinRaw !== '' && is_numeric($durationMinRaw)) {
+            $d = (int)$durationMinRaw;
+            if ($d > 0) {
+                return $d;
+            }
+        }
+
+        $endTime = is_string($endTimeRaw) ? trim($endTimeRaw) : '';
+        if ($scheduledTime === '' || $endTime === '') {
+            return null;
+        }
+
+        if (!preg_match('/^(\d{1,2}):(\d{2})$/', $scheduledTime, $m1)) return null;
+        if (!preg_match('/^(\d{1,2}):(\d{2})$/', $endTime, $m2)) return null;
+
+        $sMin = ((int)$m1[1]) * 60 + (int)$m1[2];
+        $eMin = ((int)$m2[1]) * 60 + (int)$m2[2];
+        $diff = $eMin - $sMin;
+        if ($diff <= 0) return null;
+        return $diff;
     }
 
     private function isAjaxRequest(): bool {
