@@ -283,5 +283,121 @@ class SenseLabController
         header('Location: /sense_lab/');
         exit;
     }
+
+    public function quickEdit(): void
+    {
+        $this->auth->requireAdmin();
+
+        $user = $_SESSION['user'];
+        $id = (int)($_GET['id'] ?? 0);
+
+        $quickModel = new SenseQuickEntryModel();
+        $quick = $quickModel->findByIdAndUser($id, $user['id']);
+        if (!$quick) {
+            http_response_code(404);
+            echo 'Not found';
+            return;
+        }
+
+        $errors = $_SESSION['sense_lab_errors'] ?? [];
+        unset($_SESSION['sense_lab_errors']);
+
+        require_once __DIR__ . '/../Views/quick_edit.php';
+    }
+
+    public function quickUpdate(): void
+    {
+        $this->auth->requireAdmin();
+
+        $user = $_SESSION['user'];
+        $id = (int)($_POST['id'] ?? 0);
+
+        $quickModel = new SenseQuickEntryModel();
+        $quick = $quickModel->findByIdAndUser($id, $user['id']);
+        if (!$quick) {
+            http_response_code(404);
+            echo 'Not found';
+            return;
+        }
+
+        $errors = [];
+        $note = trim($_POST['note'] ?? '');
+        $categoryHint = trim($_POST['category_hint'] ?? '');
+        $reason1 = trim($_POST['reason_1'] ?? '');
+        $reason2 = trim($_POST['reason_2'] ?? '');
+        $reason3 = trim($_POST['reason_3'] ?? '');
+        if ($note === '') {
+            $errors[] = 'メモは必須です。';
+        }
+        if ($categoryHint === '') {
+            $categoryHint = null;
+        }
+
+        $imagePath = $quick['image_path'] ?? null;
+        $oldImagePath = $imagePath;
+        $hasNewImage = isset($_FILES['image']) && ($_FILES['image']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
+        if ($hasNewImage) {
+            $file = $_FILES['image'];
+            if (($file['error'] ?? UPLOAD_ERR_OK) === UPLOAD_ERR_OK) {
+                $maxSize = 2 * 1024 * 1024;
+                if (($file['size'] ?? 0) > $maxSize) {
+                    $errors[] = '画像サイズは2MB以内にしてください。';
+                } else {
+                    $finfo = new \finfo(FILEINFO_MIME_TYPE);
+                    $mime = $finfo->file($file['tmp_name']);
+                    $allowed = [
+                        'image/jpeg' => 'jpg',
+                        'image/png' => 'png',
+                        'image/gif' => 'gif',
+                    ];
+                    if (!isset($allowed[$mime])) {
+                        $errors[] = '許可されている画像形式は JPG/PNG/GIF のみです。';
+                    } else {
+                        $uploadDir = dirname(__DIR__, 4) . '/www/uploads/sense_lab';
+                        $uploadUrlBase = '/uploads/sense_lab';
+                        if (!is_dir($uploadDir)) {
+                            @mkdir($uploadDir, 0775, true);
+                        }
+                        $ext = $allowed[$mime];
+                        $basename = date('Ymd_His') . '_' . bin2hex(random_bytes(4));
+                        $filename = $basename . '.' . $ext;
+                        $destPath = $uploadDir . '/' . $filename;
+                        if (!move_uploaded_file($file['tmp_name'], $destPath)) {
+                            $errors[] = '画像ファイルの保存に失敗しました。';
+                        } else {
+                            $imagePath = $uploadUrlBase . '/' . $filename;
+                        }
+                    }
+                }
+            } elseif (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+                $errors[] = '画像アップロードに失敗しました。';
+            }
+        }
+
+        if ($errors) {
+            $_SESSION['sense_lab_errors'] = $errors;
+            header('Location: /sense_lab/quick_edit.php?id=' . $id);
+            exit;
+        }
+
+        $quickModel->updateByIdAndUser($id, $user['id'], [
+            'note' => $note,
+            'category_hint' => $categoryHint,
+            'image_path' => $imagePath,
+            'reason_1' => $reason1 !== '' ? $reason1 : null,
+            'reason_2' => $reason2 !== '' ? $reason2 : null,
+            'reason_3' => $reason3 !== '' ? $reason3 : null,
+        ]);
+
+        if ($hasNewImage && $oldImagePath && $oldImagePath !== $imagePath) {
+            $path = dirname(__DIR__, 4) . '/www' . $oldImagePath;
+            if (is_file($path)) {
+                @unlink($path);
+            }
+        }
+
+        header('Location: /sense_lab/');
+        exit;
+    }
 }
 

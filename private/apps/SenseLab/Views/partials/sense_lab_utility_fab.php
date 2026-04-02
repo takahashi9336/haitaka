@@ -35,6 +35,12 @@
             <textarea id="senseLabFabNote" name="note" rows="3"
                       class="w-full border border-slate-200 rounded-lg p-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-200 resize-none min-h-[70px]"
                       placeholder="何が『いい』と感じた？ 1〜3行でざっくりメモ（後で画像や理由3つに仕上げます）"></textarea>
+            <div>
+                <label for="senseLabFabImage" class="block text-[10px] font-black text-slate-400 tracking-wider mb-1">画像（任意）</label>
+                <input type="file" id="senseLabFabImage" name="image" accept="image/*"
+                       class="block w-full text-xs text-slate-700" data-sense-lab-compress="0">
+                <p class="mt-1 text-[10px] text-slate-400 font-bold">JPG/PNG/GIF、最大2MB（超える場合は自動でJPEGに圧縮）。</p>
+            </div>
             <div class="flex gap-2 items-center">
                 <select id="senseLabFabCategory" name="category_hint"
                         class="h-8 border border-slate-200 rounded-lg px-2 text-[11px] text-slate-600 bg-slate-50 outline-none">
@@ -120,20 +126,34 @@ document.addEventListener('DOMContentLoaded', function() {
         const pageTitle = title.replace(/\s*[-|]\s*MyPlatform.*$/i, '').trim() || title;
         const sourceUrl = window.location.pathname + (window.location.search || '');
         const categoryHint = categorySelect.value || '';
+        const imageInput = document.getElementById('senseLabFabImage');
+        const imageFile = imageInput && imageInput.files && imageInput.files[0] ? imageInput.files[0] : null;
 
         try {
-            const res = await App.post('/sense_lab/api/quick_save.php', {
-                note,
-                app_key: appKey,
-                page_title: pageTitle,
-                source_url: sourceUrl,
-                category_hint: categoryHint
+            const formData = new FormData();
+            formData.append('note', note);
+            formData.append('app_key', appKey || '');
+            formData.append('page_title', pageTitle || '');
+            formData.append('source_url', sourceUrl || '');
+            formData.append('category_hint', categoryHint || '');
+            if (imageFile) {
+                formData.append('image', imageFile);
+            }
+
+            const response = await fetch('/sense_lab/api/quick_save.php', {
+                method: 'POST',
+                body: formData
             });
+            const res = await response.json();
             if (res.status === 'success') {
                 App.toast('クイックスクラップを保存しました');
                 noteInput.value = '';
                 categorySelect.value = '';
+                if (imageInput) imageInput.value = '';
                 closePanel();
+                if (res.quick_entry_id) {
+                    location.href = '/sense_lab/quick_edit.php?id=' + encodeURIComponent(res.quick_entry_id);
+                }
             } else {
                 App.toast(res.message || '保存に失敗しました');
             }

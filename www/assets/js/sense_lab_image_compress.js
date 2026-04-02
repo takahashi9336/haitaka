@@ -114,5 +114,9 @@
         });
     }
 
-    bind(document.getElementById('image'));
+    // Sense Lab内（新規/編集/ユーティリティ等）で複数の画像inputに適用する
+    document.querySelectorAll('input[type="file"][accept^="image/"], input[type="file"][accept*="image/"]').forEach(function (el) {
+        // data属性が未指定でも既存の new.php(#image) を拾えるように全体に適用（重複bindは内部でガード）
+        bind(el);
+    });
 })();

@@ -173,7 +173,20 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                                         <?= htmlspecialchars($q['page_title'], ENT_QUOTES, 'UTF-8') ?>
                                     </p>
                                 <?php endif; ?>
-                                <p class="whitespace-pre-wrap leading-relaxed"><?= nl2br(htmlspecialchars($q['note'], ENT_QUOTES, 'UTF-8')) ?></p>
+                                <div class="flex gap-3">
+                                    <?php if (!empty($q['image_path'])): ?>
+                                        <a href="/sense_lab/quick_edit.php?id=<?= (int)$q['id'] ?>" class="shrink-0">
+                                            <img src="<?= htmlspecialchars($q['image_path'], ENT_QUOTES, 'UTF-8') ?>" alt=""
+                                                 class="w-16 h-16 rounded-lg object-cover border border-slate-200 bg-slate-50">
+                                        </a>
+                                    <?php endif; ?>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="whitespace-pre-wrap leading-relaxed"><?= nl2br(htmlspecialchars($q['note'], ENT_QUOTES, 'UTF-8')) ?></p>
+                                        <div class="mt-2 flex items-center justify-end gap-3 text-[10px] font-black tracking-wider">
+                                            <a href="/sense_lab/quick_edit.php?id=<?= (int)$q['id'] ?>" class="text-slate-500 hover:text-slate-800 transition">編集</a>
+                                        </div>
+                                    </div>
+                                </div>
                                 <?php if (!empty($q['source_url'])): ?>
                                     <p class="mt-1 text-[10px] text-slate-400 truncate">
                                         <?= htmlspecialchars($q['source_url'], ENT_QUOTES, 'UTF-8') ?>
