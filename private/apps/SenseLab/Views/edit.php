@@ -91,7 +91,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                             <label for="image" class="block text-[10px] font-black text-slate-400 tracking-wider mb-1">画像を差し替える（任意）</label>
                             <input type="file" name="image" id="image" accept="image/*"
                                    class="block w-full text-sm text-slate-700">
-                            <p class="mt-1 text-xs text-slate-400">未選択の場合は既存の画像をそのまま利用します。</p>
+                            <p class="mt-1 text-xs text-slate-400">未選択の場合は既存の画像をそのまま利用します。JPG/PNG/GIF、最大2MB（超える場合は自動でJPEGに圧縮）。</p>
                         </div>
                     </div>
                 </section>
@@ -160,6 +160,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
     </div>
 </main>
 
+<script src="/assets/js/sense_lab_image_compress.js?v=1"></script>
 <script src="/assets/js/core.js?v=2"></script>
 <script>
     const btn = document.getElementById('mobileMenuBtn');
