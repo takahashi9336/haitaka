@@ -126,6 +126,15 @@ class Auth {
         return ($_SESSION['user']['role'] ?? '') === 'admin';
     }
 
+    /**
+     * 日向坂ポータル管理者（admin または hinata_admin）
+     * www/hinata/api/*.php などスタンドアロンAPIで利用。
+     */
+    public function isHinataAdmin(): bool {
+        $role = $_SESSION['user']['role'] ?? '';
+        return $role === 'admin' || $role === 'hinata_admin';
+    }
+
     public function logout(): void {
         $idName = $_SESSION['user']['id_name'] ?? '';
         Logger::info("logout id_name=$idName");

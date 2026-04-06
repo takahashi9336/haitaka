@@ -19,7 +19,6 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
     <style>
         :root { --task-theme: <?= htmlspecialchars($themePrimaryHex) ?>; }
         .tab-btn.active { color: var(--task-theme); border-bottom-color: var(--task-theme); }
-        .task-pull-refresh { color: var(--task-theme); }
         .task-quick-add-btn { background-color: var(--task-theme); }
         .task-quick-add-btn:hover { filter: brightness(1.08); }
     </style>
@@ -90,12 +89,6 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         </div>
 
         <div id="mainScroll" class="flex-1 overflow-y-auto p-3 md:p-6 custom-scroll relative">
-
-            <!-- Pull-to-Refresh -->
-            <div id="pullToRefresh" class="md:hidden absolute top-0 left-0 right-0 flex flex-col items-center justify-center transition-all duration-300 pointer-events-none task-pull-refresh" style="height: 60px; transform: translateY(-60px); opacity: 0;">
-                <i id="pullIcon" class="fa-solid fa-arrow-down text-2xl mb-1 transition-transform duration-300"></i>
-                <span id="pullText" class="text-xs font-bold">引っ張って更新</span>
-            </div>
 
             <!-- Mobile quick add toggle -->
             <button id="quickAddToggle" onclick="toggleQuickAdd()" class="w-full text-white px-4 py-3 rounded-xl font-black text-sm mb-4 shadow-lg transition-all flex items-center justify-center gap-2 task-quick-add-btn">
@@ -896,40 +889,6 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
     }
 
     // ============================================================
-    // Pull-to-Refresh (Mobile)
-    // ============================================================
-    function initPullToRefresh() {
-        if (window.innerWidth > 768) return;
-        const mainScroll = $('mainScroll'), pi = $('pullToRefresh'), pIcon = $('pullIcon'), pText = $('pullText');
-        let startY = 0, curY = 0, pulling = false;
-        const threshold = 80;
-
-        mainScroll.addEventListener('touchstart', e => {
-            if (mainScroll.scrollTop === 0) { startY = e.touches[0].clientY; pulling = true; }
-        }, { passive: true });
-        mainScroll.addEventListener('touchmove', e => {
-            if (!pulling) return;
-            curY = e.touches[0].clientY;
-            const dist = curY - startY;
-            if (dist > 0 && mainScroll.scrollTop === 0) {
-                const d = Math.min(dist, threshold * 1.5), p = Math.min(d / threshold, 1);
-                pi.style.transform = `translateY(${d - 60}px)`; pi.style.opacity = p;
-                pIcon.style.transform = `rotate(${p * 180}deg)`;
-                if (d >= threshold) { pText.textContent = '離して更新'; pIcon.classList.replace('fa-arrow-down', 'fa-rotate-right'); }
-                else { pText.textContent = '引っ張って更新'; pIcon.classList.replace('fa-rotate-right', 'fa-arrow-down'); }
-            }
-        }, { passive: true });
-        mainScroll.addEventListener('touchend', () => {
-            if (!pulling) return;
-            if ((curY - startY) >= threshold && mainScroll.scrollTop === 0) {
-                pText.textContent = '更新中...'; pIcon.className = 'fa-solid fa-spinner fa-spin text-2xl mb-1';
-                setTimeout(() => location.reload(), 300);
-            } else { pi.style.transform = 'translateY(-60px)'; pi.style.opacity = '0'; pIcon.style.transform = 'rotate(0deg)'; }
-            pulling = false; startY = 0; curY = 0;
-        }, { passive: true });
-    }
-
-    // ============================================================
     // Init
     // ============================================================
     window.onload = () => {
@@ -969,7 +928,6 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         renderStats();
         renderList();
         initCalendar();
-        initPullToRefresh();
 
         // Auto-open task from URL param
         const taskId = new URLSearchParams(window.location.search).get('task_id');

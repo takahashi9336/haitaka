@@ -8,6 +8,7 @@ require_once __DIR__ . '/../../../private/bootstrap.php';
 
 use Core\Auth;
 use Core\Logger;
+use App\Hinata\Model\MediaAssetModel;
 
 header('Content-Type: application/json');
 
@@ -60,7 +61,7 @@ $publicUrl = '/uploads/thumbnails/' . $filename;
 
 try {
     if ($assetId) {
-        $mediaModel = new \Core\MediaAssetModel();
+        $mediaModel = new MediaAssetModel();
         $mediaModel->update($assetId, ['thumbnail_url' => $publicUrl]);
     }
     echo json_encode(['status' => 'success', 'thumbnail_url' => $publicUrl]);

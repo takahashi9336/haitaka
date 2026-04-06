@@ -251,7 +251,7 @@ $announceTypes = AnnouncementModel::TYPES;
             <?php endif; ?>
         </div>
     </main>
-    <script src="/assets/js/core.js?v=2"></script>
+    <script src="/assets/js/core.js?v=3"></script>
     <script>
         document.getElementById('mobileMenuBtn').onclick = () => document.getElementById('sidebar').classList.add('mobile-open');
 
@@ -305,7 +305,7 @@ $announceTypes = AnnouncementModel::TYPES;
             const fd = new FormData();
             fd.append('file', this.files[0]);
             try {
-                const res = await fetch('api/upload_topic_image.php', { method: 'POST', body: fd });
+                const res = await fetch('/hinata/api/upload_topic_image.php', { method: 'POST', body: fd });
                 const json = await res.json();
                 if (json.status === 'success' && json.image_url) {
                     document.getElementById('t_image_url').value = json.image_url;
@@ -323,7 +323,7 @@ $announceTypes = AnnouncementModel::TYPES;
             const fd = new FormData(e.target);
             const data = Object.fromEntries(fd.entries());
             data.is_active = document.getElementById('t_active').checked ? 1 : 0;
-            const res = await App.post('api/save_topic.php', data);
+            const res = await App.post('/hinata/api/save_topic.php', data);
             if (res.status === 'success') location.reload(); else alert('エラー: ' + (res.message || ''));
         };
         <?php elseif ($tab === 'announcements'): ?>
@@ -378,7 +378,7 @@ $announceTypes = AnnouncementModel::TYPES;
             const fd = new FormData();
             fd.append('file', this.files[0]);
             try {
-                const res = await fetch('api/upload_announcement_image.php', { method: 'POST', body: fd });
+                const res = await fetch('/hinata/api/upload_announcement_image.php', { method: 'POST', body: fd });
                 const json = await res.json();
                 if (json.status === 'success' && json.image_url) {
                     document.getElementById('a_image_url').value = json.image_url;
@@ -396,7 +396,7 @@ $announceTypes = AnnouncementModel::TYPES;
             const fd = new FormData(e.target);
             const data = Object.fromEntries(fd.entries());
             data.is_active = document.getElementById('a_active').checked ? 1 : 0;
-            const res = await App.post('api/save_announcement.php', data);
+            const res = await App.post('/hinata/api/save_announcement.php', data);
             if (res.status === 'success') location.reload(); else alert('エラー: ' + (res.message || ''));
         };
         <?php else: ?>
@@ -429,7 +429,7 @@ $announceTypes = AnnouncementModel::TYPES;
         }
 
         function loadDeadlines(eventId) {
-            fetch('api/event_applications.php?event_id=' + eventId)
+            fetch('/hinata/api/event_applications.php?event_id=' + eventId)
                 .then(r => r.json())
                 .then(data => {
                     const rows = data.applications || [];
@@ -477,7 +477,7 @@ $announceTypes = AnnouncementModel::TYPES;
                     application_url: row.querySelector('.deadline-url').value || null,
                 });
             });
-            const res = await App.post('api/save_event_applications.php', { event_id: currentDeadlineEventId, rows });
+            const res = await App.post('/hinata/api/save_event_applications.php', { event_id: currentDeadlineEventId, rows });
             if (res.status === 'success') {
                 loadDeadlines(currentDeadlineEventId);
                 alert('保存しました');

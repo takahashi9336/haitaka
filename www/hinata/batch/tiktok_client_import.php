@@ -32,7 +32,7 @@ require_once __DIR__ . '/../../../private/bootstrap.php';
 
 use Core\Database;
 use Core\Logger;
-use Core\MediaAssetModel;
+use App\Hinata\Model\MediaAssetModel;
 
 /**
  * 共有トークンを取得する

@@ -53,11 +53,39 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
-            if (!response.ok) throw new Error('Network error');
-            return await response.json();
+            const text = await response.text();
+            let json = null;
+            try {
+                json = text ? JSON.parse(text) : null;
+            } catch (_) {
+                json = null;
+            }
+            if (!response.ok) {
+                const msg =
+                    (json && typeof json.message === 'string' && json.message !== '')
+                        ? json.message
+                        : (json && typeof json.error === 'string' && json.error !== '')
+                            ? json.error
+                            : `HTTP ${response.status}`;
+                return {
+                    status: 'error',
+                    message: msg,
+                    http_status: response.status,
+                };
+            }
+            if (json && typeof json === 'object') {
+                return json;
+            }
+            return { status: 'error', message: 'サーバの応答が不正です' };
         } catch (error) {
             console.error('API Error:', error);
-            return { status: 'error', message: error.message };
+            const name = error && error.name;
+            const m = error && error.message ? String(error.message) : '';
+            const msg =
+                name === 'TypeError' && (m.includes('fetch') || m.includes('Load failed') || m.includes('NetworkError'))
+                    ? '接続できませんでした（ネットワークまたはサーバ障害）'
+                    : m || '通信エラー';
+            return { status: 'error', message: msg };
         }
     },
 

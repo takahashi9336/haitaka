@@ -12,8 +12,7 @@ class HinataAuth {
     }
 
     public function isHinataAdmin(): bool {
-        $role = $_SESSION['user']['role'] ?? '';
-        return $role === 'admin' || $role === 'hinata_admin';
+        return $this->auth->isHinataAdmin();
     }
 
     public function requireHinataAdmin(string $redirectUrl = '/index.php'): void {

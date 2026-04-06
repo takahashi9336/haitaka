@@ -15,7 +15,7 @@ require_once __DIR__ . '/../../../private/bootstrap.php';
 use Core\Auth;
 use Core\Database;
 use Core\Logger;
-use Core\MediaAssetModel;
+use App\Hinata\Model\MediaAssetModel;
 use App\Hinata\Model\YouTubeApiClient;
 
 if (!$isCli) {
