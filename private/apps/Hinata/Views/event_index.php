@@ -290,14 +290,18 @@ $allCategories = [
                                         <i class="fa-solid fa-flag text-[8px]"></i>
                                         <span><?= in_array($e['id'], $attendedEventIds ?? []) ? '参戦済み' : '参戦した' ?></span>
                                     </button>
-                                    <button onclick="loadSetlist(<?= $e['id'] ?>)" class="text-[10px] font-bold text-slate-400 hover:text-slate-600 px-3 py-1.5 rounded-full border border-slate-200 hover:border-slate-300 transition flex items-center gap-1">
+                                    <a href="/hinata/setlist.php?event_id=<?= (int)$e['id'] ?>" class="text-[10px] font-bold text-slate-400 hover:text-slate-600 px-3 py-1.5 rounded-full border border-slate-200 hover:border-slate-300 transition inline-flex items-center gap-1">
                                         <i class="fa-solid fa-list-ol text-[8px]"></i>セットリスト
+                                    </a>
+                                    <button onclick="loadShadowNarration(<?= $e['id'] ?>)" class="text-[10px] font-bold text-slate-400 hover:text-slate-600 px-3 py-1.5 rounded-full border border-slate-200 hover:border-slate-300 transition flex items-center gap-1">
+                                        <i class="fa-solid fa-microphone-lines text-[8px]"></i>影ナレ
                                     </button>
                                     <a href="/hinata/live_guide.php?event_id=<?= (int)$e['id'] ?>" class="text-[10px] font-bold text-sky-600 hover:text-sky-700 px-3 py-1.5 rounded-full border border-sky-200 hover:border-sky-300 transition flex items-center gap-1">
                                         <i class="fa-solid fa-music text-[8px]"></i>初参戦ガイド
                                     </a>
                                 </div>
                                 <div id="setlist-<?= $e['id'] ?>" class="hidden"></div>
+                                <div id="shadow-narration-<?= $e['id'] ?>" class="hidden"></div>
                                 <?php endif; ?>
                                 <?php if (!empty($eventSlots[$e['id']])): ?>
                                     <div class="bg-white rounded-xl border border-emerald-100 shadow-sm overflow-hidden">
@@ -547,10 +551,12 @@ $allCategories = [
                 h += '<div class="flex items-center gap-2 mb-3">';
                 h += '<button onclick="toggleAttendanceSlide(' + e.id + ', this)" class="attendance-btn text-[10px] font-bold px-3 py-1.5 rounded-full border transition flex items-center gap-1 ' + (att ? 'bg-sky-500 text-white border-sky-500' : 'bg-white text-slate-500 border-slate-200 hover:border-sky-300') + '" data-attended="' + (att ? '1' : '0') + '">';
                 h += '<i class="fa-solid fa-flag text-[8px]"></i><span>' + (att ? '参戦済み' : '参戦した') + '</span></button>';
-                h += '<button onclick="loadSetlistSlide(' + e.id + ')" class="text-[10px] font-bold text-slate-400 hover:text-slate-600 px-3 py-1.5 rounded-full border border-slate-200 hover:border-slate-300 transition flex items-center gap-1"><i class="fa-solid fa-list-ol text-[8px]"></i>セットリスト</button>';
+                h += '<a href="/hinata/setlist.php?event_id=' + e.id + '" class="text-[10px] font-bold text-slate-400 hover:text-slate-600 px-3 py-1.5 rounded-full border border-slate-200 hover:border-slate-300 transition inline-flex items-center gap-1"><i class="fa-solid fa-list-ol text-[8px]"></i>セットリスト</a>';
+                h += '<button onclick="loadShadowNarrationSlide(' + e.id + ')" class="text-[10px] font-bold text-slate-400 hover:text-slate-600 px-3 py-1.5 rounded-full border border-slate-200 hover:border-slate-300 transition flex items-center gap-1"><i class="fa-solid fa-microphone-lines text-[8px]"></i>影ナレ</button>';
                 h += '<a href="/hinata/live_guide.php?event_id=' + e.id + '" class="text-[10px] font-bold text-sky-600 hover:text-sky-700 px-3 py-1.5 rounded-full border border-sky-200 hover:border-sky-300 transition flex items-center gap-1"><i class="fa-solid fa-music text-[8px]"></i>初参戦ガイド</a>';
                 h += '</div>';
                 h += '<div id="setlist-slide-' + e.id + '" class="hidden"></div>';
+                h += '<div id="shadow-narration-slide-' + e.id + '" class="hidden"></div>';
             }
 
             var slots = eventSlotsData[e.id];
@@ -630,6 +636,8 @@ $allCategories = [
         }
 
         function loadSetlistSlide(eventId) {
+            window.location.href = '/hinata/setlist.php?event_id=' + eventId;
+            return;
             var container = document.getElementById('setlist-slide-' + eventId);
             if (!container) return;
             if (!container.classList.contains('hidden')) { container.classList.add('hidden'); return; }
@@ -642,14 +650,28 @@ $allCategories = [
                         container.innerHTML = '<p class="text-xs text-slate-400 py-2">セットリストは未登録です</p>';
                         return;
                     }
+                    var songCount = 0;
+                    res.data.setlist.forEach(function(item) { var t = item.entry_type || 'song'; if (t === 'song') songCount++; });
                     var html = '<div class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">';
-                    html += '<div class="px-4 py-2 bg-indigo-50 flex items-center gap-2"><i class="fa-solid fa-list-ol text-indigo-500 text-xs"></i><span class="text-[10px] font-bold text-indigo-700 tracking-wider">セットリスト</span><span class="text-[10px] text-indigo-400 ml-auto">' + res.data.setlist.length + '曲</span></div>';
+                    html += '<div class="px-4 py-2 bg-indigo-50 flex items-center gap-2"><i class="fa-solid fa-list-ol text-indigo-500 text-xs"></i><span class="text-[10px] font-bold text-indigo-700 tracking-wider">セットリスト</span><span class="text-[10px] text-indigo-400 ml-auto">' + songCount + '曲</span></div>';
                     html += '<ol class="divide-y divide-slate-50">';
                     var lastEncore = false;
                     res.data.setlist.forEach(function(item, i) {
-                        if (item.encore && !lastEncore) html += '<li class="px-4 py-1.5 bg-slate-50 text-center"><span class="text-[9px] font-black text-slate-400 tracking-wider">ENCORE</span></li>';
-                        lastEncore = !!item.encore;
-                        html += '<li class="px-4 py-2 flex items-center gap-3 text-xs"><span class="text-slate-400 w-5 text-right font-mono">' + (i+1) + '</span><a href="/hinata/song.php?id=' + item.song_id + '" class="flex-1 font-bold text-slate-800 hover:text-sky-600 transition truncate">' + _esc(item.song_title) + '</a><span class="text-[10px] text-slate-400 shrink-0">' + _esc(item.release_title) + '</span></li>';
+                        var t = item.entry_type || 'song';
+                        var isSong = t === 'song';
+                        if (isSong && item.encore && !lastEncore) html += '<li class="px-4 py-1.5 bg-slate-50 text-center"><span class="text-[9px] font-black text-slate-400 tracking-wider">ENCORE</span></li>';
+                        if (isSong) lastEncore = !!item.encore;
+                        var leftNo = '<span class="text-slate-400 w-5 text-right font-mono">' + (i+1) + '</span>';
+                        if (isSong) {
+                            var centerBadge = item.center_member_name ? ('<span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full shrink-0">C:' + _esc(item.center_member_name) + '</span>') : '';
+                            html += '<li class="px-4 py-2 flex items-center gap-3 text-xs">' + leftNo + '<a href="/hinata/song.php?id=' + item.song_id + '" class="flex-1 font-bold text-slate-800 hover:text-sky-600 transition truncate">' + _esc(item.song_title) + '</a>' + centerBadge + '<span class="text-[10px] text-slate-400 shrink-0">' + _esc(item.release_title) + '</span></li>';
+                        } else {
+                            var label = (item.label || '').trim();
+                            var kind = (item.block_kind || '').trim();
+                            var kindText = (t === 'mc') ? 'MC' : (kind ? kind : 'BLOCK');
+                            if (!label) label = kindText;
+                            html += '<li class="px-4 py-2 flex items-center gap-3 text-xs">' + leftNo + '<span class="flex-1 font-bold text-slate-700 truncate">' + _esc(label) + '</span><span class="text-[10px] text-slate-400 shrink-0">' + _esc(kindText) + '</span></li>';
+                        }
                     });
                     html += '</ol></div>';
                     container.innerHTML = html;
@@ -1170,6 +1192,8 @@ $allCategories = [
         }
 
         function loadSetlist(eventId) {
+            window.location.href = '/hinata/setlist.php?event_id=' + eventId;
+            return;
             var container = document.getElementById('setlist-' + eventId); if (!container) return;
             if (!container.classList.contains('hidden')) { container.classList.add('hidden'); return; }
             container.innerHTML = '<p class="text-xs text-slate-400 py-2"><i class="fa-solid fa-spinner fa-spin mr-1"></i>読み込み中...</p>';
@@ -1183,13 +1207,26 @@ $allCategories = [
                     <?php endif; ?>
                     return;
                 }
+                var songCount = 0;
+                res.data.setlist.forEach(function(item) { var t = item.entry_type || 'song'; if (t === 'song') songCount++; });
                 var html = '<div class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">';
-                html += '<div class="px-4 py-2 bg-indigo-50 flex items-center gap-2"><i class="fa-solid fa-list-ol text-indigo-500 text-xs"></i><span class="text-[10px] font-bold text-indigo-700 tracking-wider">セットリスト</span><span class="text-[10px] text-indigo-400 ml-auto">' + res.data.setlist.length + '曲</span></div>';
+                html += '<div class="px-4 py-2 bg-indigo-50 flex items-center gap-2"><i class="fa-solid fa-list-ol text-indigo-500 text-xs"></i><span class="text-[10px] font-bold text-indigo-700 tracking-wider">セットリスト</span><span class="text-[10px] text-indigo-400 ml-auto">' + songCount + '曲</span></div>';
                 html += '<ol class="divide-y divide-slate-50">'; var lastEncore = false;
                 res.data.setlist.forEach(function(item, i) {
-                    if (item.encore && !lastEncore) html += '<li class="px-4 py-1.5 bg-slate-50 text-center"><span class="text-[9px] font-black text-slate-400 tracking-wider">ENCORE</span></li>';
-                    lastEncore = !!item.encore;
-                    html += '<li class="px-4 py-2 flex items-center gap-3 text-xs"><span class="text-slate-400 w-5 text-right font-mono">' + (i+1) + '</span><a href="/hinata/song.php?id=' + item.song_id + '" class="flex-1 font-bold text-slate-800 hover:text-sky-600 transition truncate">' + _esc(item.song_title) + '</a><span class="text-[10px] text-slate-400 shrink-0">' + _esc(item.release_title) + '</span></li>';
+                    var t = item.entry_type || 'song';
+                    var isSong = t === 'song';
+                    if (isSong && item.encore && !lastEncore) html += '<li class="px-4 py-1.5 bg-slate-50 text-center"><span class="text-[9px] font-black text-slate-400 tracking-wider">ENCORE</span></li>';
+                    if (isSong) lastEncore = !!item.encore;
+                    if (isSong) {
+                        var centerBadge = item.center_member_name ? ('<span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full shrink-0">C:' + _esc(item.center_member_name) + '</span>') : '';
+                        html += '<li class="px-4 py-2 flex items-center gap-3 text-xs"><span class="text-slate-400 w-5 text-right font-mono">' + (i+1) + '</span><a href="/hinata/song.php?id=' + item.song_id + '" class="flex-1 font-bold text-slate-800 hover:text-sky-600 transition truncate">' + _esc(item.song_title) + '</a>' + centerBadge + '<span class="text-[10px] text-slate-400 shrink-0">' + _esc(item.release_title) + '</span></li>';
+                    } else {
+                        var label = (item.label || '').trim();
+                        var kind = (item.block_kind || '').trim();
+                        var kindText = (t === 'mc') ? 'MC' : (kind ? kind : 'BLOCK');
+                        if (!label) label = kindText;
+                        html += '<li class="px-4 py-2 flex items-center gap-3 text-xs"><span class="text-slate-400 w-5 text-right font-mono">' + (i+1) + '</span><span class="flex-1 font-bold text-slate-700 truncate">' + _esc(label) + '</span><span class="text-[10px] text-slate-400 shrink-0">' + _esc(kindText) + '</span></li>';
+                    }
                 });
                 html += '</ol>';
                 <?php if (in_array(($user['role'] ?? ''), ['admin', 'hinata_admin'], true)): ?>
@@ -1197,6 +1234,60 @@ $allCategories = [
                 <?php endif; ?>
                 html += '</div>';
                 container.innerHTML = html;
+            });
+        }
+
+        // ---- Shadow Narration (event-level) ----
+        function _renderShadowNarrationBox(eventId, memberNames, memo, canEdit) {
+            var nameText = memberNames && memberNames.length ? memberNames.join('、') : '未登録';
+            var html = '<div class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">';
+            html += '<div class="px-4 py-2 bg-slate-50 flex items-center gap-2"><i class="fa-solid fa-microphone-lines text-slate-500 text-xs"></i><span class="text-[10px] font-bold text-slate-600 tracking-wider">影ナレ</span></div>';
+            html += '<div class="p-4 space-y-2">';
+            html += '<div class="text-xs font-bold text-slate-700">' + _esc(nameText) + '</div>';
+            if (memo) html += '<div class="text-[10px] text-slate-500 whitespace-pre-wrap">' + _esc(memo) + '</div>';
+            if (canEdit) {
+                html += '<button onclick="openShadowNarrationEditor(' + eventId + ', this.closest(\\\".shadow-wrap\\\"))" class="text-[10px] font-bold text-sky-600 hover:text-sky-700 transition"><i class="fa-solid fa-pen mr-0.5"></i>編集</button>';
+            }
+            html += '</div></div>';
+            return html;
+        }
+
+        function loadShadowNarration(eventId) {
+            var container = document.getElementById('shadow-narration-' + eventId); if (!container) return;
+            if (!container.classList.contains('hidden')) { container.classList.add('hidden'); return; }
+            container.classList.remove('hidden');
+            container.innerHTML = '<p class="text-xs text-slate-400 py-2"><i class="fa-solid fa-spinner fa-spin mr-1"></i>読み込み中...</p>';
+            fetch('/hinata/api/get_event_shadow_narration.php?event_id=' + eventId).then(function(r) { return r.json(); }).then(function(res) {
+                if (res.status !== 'success') { container.innerHTML = '<p class="text-xs text-slate-400 py-2">影ナレを取得できませんでした</p>'; return; }
+                var names = (res.data.members || []).map(function(m) { return m.name; });
+                var memo = res.data.memo || '';
+                <?php if (in_array(($user['role'] ?? ''), ['admin', 'hinata_admin'], true)): ?>
+                var canEdit = true;
+                <?php else: ?>
+                var canEdit = false;
+                <?php endif; ?>
+                container.className = container.className.replace(/\\bshadow-wrap\\b/g, '').trim() + ' shadow-wrap';
+                container.innerHTML = _renderShadowNarrationBox(eventId, names, memo, canEdit);
+            });
+        }
+
+        function loadShadowNarrationSlide(eventId) {
+            var container = document.getElementById('shadow-narration-slide-' + eventId);
+            if (!container) return;
+            if (!container.classList.contains('hidden')) { container.classList.add('hidden'); return; }
+            container.classList.remove('hidden');
+            container.innerHTML = '<p class="text-xs text-slate-400 py-2"><i class="fa-solid fa-spinner fa-spin mr-1"></i>読み込み中...</p>';
+            fetch('/hinata/api/get_event_shadow_narration.php?event_id=' + eventId).then(function(r) { return r.json(); }).then(function(res) {
+                if (res.status !== 'success') { container.innerHTML = '<p class="text-xs text-slate-400 py-2">影ナレを取得できませんでした</p>'; return; }
+                var names = (res.data.members || []).map(function(m) { return m.name; });
+                var memo = res.data.memo || '';
+                <?php if (in_array(($user['role'] ?? ''), ['admin', 'hinata_admin'], true)): ?>
+                var canEdit = true;
+                <?php else: ?>
+                var canEdit = false;
+                <?php endif; ?>
+                container.className = container.className.replace(/\\bshadow-wrap\\b/g, '').trim() + ' shadow-wrap';
+                container.innerHTML = _renderShadowNarrationBox(eventId, names, memo, canEdit);
             });
         }
 
@@ -1210,6 +1301,15 @@ $allCategories = [
             JSON_UNESCAPED_UNICODE
         ) ?>;
 
+        var allMembers = <?= json_encode(
+            (function() {
+                $memberModel = new \App\Hinata\Model\MemberModel();
+                $members = $memberModel->getActiveMembersWithColors();
+                return array_map(fn($m) => ['id' => $m['id'], 'name' => $m['name']], $members);
+            })(),
+            JSON_UNESCAPED_UNICODE
+        ) ?>;
+
         function openSetlistEditor(eventId) {
             var container = document.getElementById('setlist-' + eventId); if (!container) return;
             fetch('/hinata/api/get_event_setlist.php?event_id=' + eventId).then(function(r) { return r.json(); }).then(function(res) {
@@ -1217,24 +1317,183 @@ $allCategories = [
                 var html = '<div class="bg-white rounded-xl border border-sky-100 shadow-sm p-4 space-y-3">';
                 html += '<h4 class="text-[10px] font-black text-slate-500 tracking-wider">セットリスト編集</h4>';
                 html += '<div id="setlist-editor-items-' + eventId + '" class="space-y-1">';
-                existing.forEach(function(item, i) { html += setlistItemRow(eventId, i, item.song_id, item.encore); });
+                existing.forEach(function(item, i) { html += setlistItemRow(eventId, i, item); });
                 html += '</div><div class="flex items-center gap-2">';
                 html += '<button onclick="addSetlistItem(' + eventId + ')" class="text-[10px] font-bold text-sky-600 bg-sky-50 px-3 py-1.5 rounded-full hover:bg-sky-100 transition"><i class="fa-solid fa-plus mr-1"></i>曲を追加</button>';
                 html += '<button onclick="saveSetlist(' + eventId + ')" class="text-[10px] font-bold text-white bg-sky-500 px-4 py-1.5 rounded-full hover:bg-sky-600 transition"><i class="fa-solid fa-check mr-1"></i>保存</button>';
                 html += '</div></div>';
                 container.innerHTML = html; container.classList.remove('hidden');
+                bindSetlistEditor(eventId);
             });
         }
-        function setlistItemRow(eventId, index, selectedSongId, isEncore) {
-            var opts = '<option value="">-- 楽曲を選択 --</option>';
-            allSongs.forEach(function(s) { opts += '<option value="' + s.id + '"' + (s.id == selectedSongId ? ' selected' : '') + '>' + _esc(s.title) + ' (' + _esc(s.release_title) + ')</option>'; });
-            return '<div class="flex items-center gap-2" data-index="' + index + '"><span class="text-[10px] text-slate-400 w-5 text-right">' + (index+1) + '</span><select class="setlist-song-select flex-1 border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-sky-200">' + opts + '</select><label class="flex items-center gap-1 text-[10px] text-slate-500 shrink-0"><input type="checkbox" class="setlist-encore-check"' + (isEncore ? ' checked' : '') + '> EN</label><button onclick="this.parentElement.remove()" class="text-slate-300 hover:text-red-400 text-xs"><i class="fa-solid fa-xmark"></i></button></div>';
+        var blockKindOptions = {
+            announcement: '告知',
+            dance_session: 'ダンスセッション',
+            session_other: 'セッション',
+            other: 'その他'
+        };
+
+        function _memberOptions(selectedId) {
+            var opts = '<option value="">-- 未設定 --</option>';
+            allMembers.forEach(function(m) { opts += '<option value="' + m.id + '"' + (m.id == selectedId ? ' selected' : '') + '>' + _esc(m.name) + '</option>'; });
+            return opts;
         }
-        function addSetlistItem(eventId) { var list = document.getElementById('setlist-editor-items-' + eventId); list.insertAdjacentHTML('beforeend', setlistItemRow(eventId, list.children.length, '', false)); }
+
+        function _blockKindOptions(selected) {
+            var opts = '';
+            Object.keys(blockKindOptions).forEach(function(k) {
+                opts += '<option value="' + _esc(k) + '"' + (k === selected ? ' selected' : '') + '>' + _esc(blockKindOptions[k]) + '</option>';
+            });
+            return opts;
+        }
+
+        function setlistItemRow(eventId, index, item) {
+            var opts = '<option value="">-- 楽曲を選択 --</option>';
+            var t = (item && item.entry_type) ? item.entry_type : 'song';
+            var songId = item && item.song_id ? item.song_id : '';
+            var isEncore = item && item.encore ? 1 : 0;
+            var label = item && item.label ? item.label : '';
+            var blockKind = item && item.block_kind ? item.block_kind : 'session_other';
+            var centerId = item && item.center_member_id ? item.center_member_id : '';
+            allSongs.forEach(function(s) { opts += '<option value="' + s.id + '"' + (s.id == songId ? ' selected' : '') + '>' + _esc(s.title) + ' (' + _esc(s.release_title) + ')</option>'; });
+            var typeSel =
+                '<select class="setlist-type-select w-24 border border-slate-200 rounded-lg px-2 py-1.5 text-xs bg-white">' +
+                '<option value="song"' + (t === 'song' ? ' selected' : '') + '>曲</option>' +
+                '<option value="mc"' + (t === 'mc' ? ' selected' : '') + '>MC</option>' +
+                '<option value="block"' + (t === 'block' ? ' selected' : '') + '>ブロック</option>' +
+                '</select>';
+
+            return '' +
+                '<div class="setlist-row flex flex-col gap-2 p-2 bg-slate-50 rounded-lg" data-index="' + index + '">' +
+                    '<div class="flex items-center gap-2">' +
+                        '<span class="text-[10px] text-slate-400 w-5 text-right">' + (index+1) + '</span>' +
+                        typeSel +
+                        '<button onclick="this.closest(\\\".setlist-row\\\").remove()" class="ml-auto text-slate-300 hover:text-red-400 text-xs"><i class="fa-solid fa-xmark"></i></button>' +
+                    '</div>' +
+                    '<div class="row-song flex items-center gap-2">' +
+                        '<select class="setlist-song-select flex-1 border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-sky-200 bg-white">' + opts + '</select>' +
+                        '<select class="setlist-center-select w-40 border border-slate-200 rounded-lg px-2 py-1.5 text-xs bg-white">' + _memberOptions(centerId) + '</select>' +
+                        '<label class="flex items-center gap-1 text-[10px] text-slate-500 shrink-0"><input type="checkbox" class="setlist-encore-check"' + (isEncore ? ' checked' : '') + '> EN</label>' +
+                    '</div>' +
+                    '<div class="row-mc hidden">' +
+                        '<input type="text" class="setlist-label-input w-full border border-slate-200 rounded-lg px-2 py-2 text-xs bg-white" placeholder="MC（任意のラベル）" value="' + _esc(label) + '">' +
+                    '</div>' +
+                    '<div class="row-block hidden grid grid-cols-1 sm:grid-cols-2 gap-2">' +
+                        '<select class="setlist-block-kind w-full border border-slate-200 rounded-lg px-2 py-2 text-xs bg-white">' + _blockKindOptions(blockKind) + '</select>' +
+                        '<input type="text" class="setlist-label-input w-full border border-slate-200 rounded-lg px-2 py-2 text-xs bg-white" placeholder="告知/セッション名など（任意）" value="' + _esc(label) + '">' +
+                    '</div>' +
+                '</div>';
+        }
+
+        function bindSetlistEditor(eventId) {
+            var list = document.getElementById('setlist-editor-items-' + eventId);
+            if (!list || list.dataset.bound === '1') return;
+            list.dataset.bound = '1';
+
+            function updateRow(row) {
+                var tSel = row.querySelector('.setlist-type-select');
+                var t = tSel ? tSel.value : 'song';
+                var songEl = row.querySelector('.row-song');
+                var mcEl = row.querySelector('.row-mc');
+                var blockEl = row.querySelector('.row-block');
+                if (songEl) songEl.classList.toggle('hidden', t !== 'song');
+                if (mcEl) mcEl.classList.toggle('hidden', t !== 'mc');
+                if (blockEl) blockEl.classList.toggle('hidden', t !== 'block');
+            }
+
+            list.addEventListener('change', function(ev) {
+                if (ev.target && ev.target.classList && ev.target.classList.contains('setlist-type-select')) {
+                    var row = ev.target.closest('.setlist-row');
+                    if (row) updateRow(row);
+                }
+            });
+
+            list.querySelectorAll('.setlist-row').forEach(function(row) { updateRow(row); });
+        }
+
+        function addSetlistItem(eventId) {
+            var list = document.getElementById('setlist-editor-items-' + eventId);
+            if (!list) return;
+            list.insertAdjacentHTML('beforeend', setlistItemRow(eventId, list.children.length, { entry_type: 'song' }));
+            bindSetlistEditor(eventId);
+            var rows = list.querySelectorAll('.setlist-row');
+            var row = rows[rows.length - 1];
+            if (row) {
+                var tSel = row.querySelector('.setlist-type-select');
+                if (tSel) tSel.dispatchEvent(new Event('change'));
+            }
+        }
         function saveSetlist(eventId) {
             var list = document.getElementById('setlist-editor-items-' + eventId); var items = [];
-            list.querySelectorAll('[data-index]').forEach(function(row, i) { var select = row.querySelector('.setlist-song-select'), encore = row.querySelector('.setlist-encore-check'); if (select && select.value) items.push({ song_id: parseInt(select.value), sort_order: i+1, encore: encore && encore.checked ? 1 : 0 }); });
+            list.querySelectorAll('.setlist-row').forEach(function(row, i) {
+                var tSel = row.querySelector('.setlist-type-select');
+                var t = tSel ? tSel.value : 'song';
+                if (t === 'song') {
+                    var select = row.querySelector('.setlist-song-select');
+                    if (!select || !select.value) return;
+                    var encore = row.querySelector('.setlist-encore-check');
+                    var centerSel = row.querySelector('.setlist-center-select');
+                    var it = { entry_type: 'song', song_id: parseInt(select.value), sort_order: i+1, encore: encore && encore.checked ? 1 : 0 };
+                    if (centerSel && centerSel.value) it.center_member_id = parseInt(centerSel.value);
+                    items.push(it);
+                } else if (t === 'mc') {
+                    var labelInp = row.querySelector('.setlist-label-input');
+                    var label = labelInp ? (labelInp.value || '').trim() : '';
+                    items.push({ entry_type: 'mc', sort_order: i+1, label: label || null });
+                } else if (t === 'block') {
+                    var kindSel = row.querySelector('.setlist-block-kind');
+                    var labelInp2 = row.querySelector('.setlist-label-input');
+                    var label2 = labelInp2 ? (labelInp2.value || '').trim() : '';
+                    var bk = kindSel ? kindSel.value : 'session_other';
+                    items.push({ entry_type: 'block', sort_order: i+1, block_kind: bk, label: label2 || null });
+                }
+            });
             App.post('/hinata/api/save_setlist.php', { event_id: eventId, items: items }, function(res) { if (res.status === 'success') { App.toast('セットリストを保存しました', 'success'); loadSetlist(eventId); } else { App.toast(res.message || 'エラー', 'error'); } });
+        }
+
+        function openShadowNarrationEditor(eventId, wrapEl) {
+            if (!wrapEl) return;
+            wrapEl.innerHTML = '<p class="text-xs text-slate-400 py-2"><i class="fa-solid fa-spinner fa-spin mr-1"></i>読み込み中...</p>';
+            fetch('/hinata/api/get_event_shadow_narration.php?event_id=' + eventId).then(function(r) { return r.json(); }).then(function(res) {
+                var memberIds = (res.status === 'success' && res.data && res.data.member_ids) ? res.data.member_ids : [];
+                var memo = (res.status === 'success' && res.data && res.data.memo) ? (res.data.memo || '') : '';
+
+                var opts = '';
+                allMembers.forEach(function(m) {
+                    var sel = memberIds.indexOf(parseInt(m.id)) !== -1 ? ' selected' : '';
+                    opts += '<option value="' + m.id + '"' + sel + '>' + _esc(m.name) + '</option>';
+                });
+
+                var html = '<div class="bg-white rounded-xl border border-sky-100 shadow-sm p-4 space-y-3">';
+                html += '<h4 class="text-[10px] font-black text-slate-500 tracking-wider">影ナレ編集</h4>';
+                html += '<div><label class="block text-[9px] font-bold text-slate-400 mb-1">メンバー（複数可）</label><select multiple class="shadow-member-select w-full border border-slate-200 rounded-lg px-2 py-2 text-xs bg-white min-h-[96px]">' + opts + '</select></div>';
+                html += '<div><label class="block text-[9px] font-bold text-slate-400 mb-1">メモ（任意）</label><input type="text" class="shadow-memo w-full border border-slate-200 rounded-lg px-2 py-2 text-xs bg-white" value="' + _esc(memo) + '" placeholder="補足など"></div>';
+                html += '<div class="flex items-center gap-2">';
+                html += '<button onclick="saveShadowNarration(' + eventId + ', this.closest(\\\".shadow-wrap\\\"))" class="text-[10px] font-bold text-white bg-sky-500 px-4 py-1.5 rounded-full hover:bg-sky-600 transition"><i class="fa-solid fa-check mr-1"></i>保存</button>';
+                html += '<button onclick="loadShadowNarration(' + eventId + '); loadShadowNarrationSlide(' + eventId + ');" class="text-[10px] font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full hover:bg-slate-200 transition">戻る</button>';
+                html += '</div></div>';
+                wrapEl.innerHTML = html;
+            });
+        }
+
+        function saveShadowNarration(eventId, wrapEl) {
+            if (!wrapEl) return;
+            var sel = wrapEl.querySelector('.shadow-member-select');
+            var memoEl = wrapEl.querySelector('.shadow-memo');
+            var memberIds = [];
+            if (sel) {
+                Array.prototype.slice.call(sel.options).forEach(function(o) { if (o.selected) memberIds.push(parseInt(o.value)); });
+            }
+            var memo = memoEl ? (memoEl.value || '').trim() : '';
+            App.post('/hinata/api/save_event_shadow_narration.php', { event_id: eventId, member_ids: memberIds, memo: memo || null }, function(res) {
+                if (res.status === 'success') {
+                    App.toast('影ナレを保存しました', 'success');
+                    loadShadowNarration(eventId);
+                    loadShadowNarrationSlide(eventId);
+                } else {
+                    App.toast(res.message || 'エラー', 'error');
+                }
+            });
         }
         <?php endif; ?>
     </script>

@@ -156,7 +156,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
 
     <!-- モーダル：リリース登録・編集 -->
     <div id="releaseModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 md:p-8">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 md:p-8">
             <div class="flex items-center justify-between mb-6">
                 <h2 id="modalTitle" class="text-xl font-black text-slate-800">リリース登録</h2>
                 <button id="btnCloseModal" class="text-slate-400 hover:text-slate-600 transition">
@@ -228,6 +228,17 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                     </div>
                 </div>
 
+                <div class="border-t border-slate-100 pt-4 mt-4">
+                    <div class="flex items-center justify-between gap-2 mb-2">
+                        <h3 class="text-sm font-black text-slate-700">収録曲</h3>
+                        <button type="button" id="btnAddSongRow" class="text-xs font-bold <?= $cardIconText ?> hover:opacity-80 flex items-center gap-1"<?= $cardDecoStyle ? ' style="' . htmlspecialchars($cardDecoStyle) . '"' : '' ?>>
+                            <i class="fa-solid fa-plus"></i> 楽曲を追加
+                        </button>
+                    </div>
+                    <p class="text-xs text-slate-500 mb-3">曲名を入力した行だけ保存されます。リリース編集時は一覧から外した楽曲は削除されます。参加メンバー・フォーメーションは各楽曲ページの「参加メンバー編集」から設定できます。</p>
+                    <div id="songRowsContainer" class="space-y-3 max-h-[40vh] overflow-y-auto pr-1"></div>
+                </div>
+
                 <div>
                     <label class="block text-xs font-bold text-slate-600 mb-2">説明・備考</label>
                     <textarea name="description" id="f_description" rows="3" class="w-full border <?= $cardBorder ?> rounded-xl px-4 py-3 text-sm outline-none bg-slate-50"></textarea>
@@ -246,18 +257,103 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
     </div>
 
     <script>
+        const TRACK_TYPE_OPTIONS = <?= json_encode($trackTypesDisplay ?? [], JSON_UNESCAPED_UNICODE) ?>;
+        const CARD_BORDER_CLASS = <?= json_encode($cardBorder ?? 'border-slate-200', JSON_UNESCAPED_UNICODE) ?>;
         const releaseModal = document.getElementById('releaseModal');
         const releaseForm = document.getElementById('releaseForm');
         const modalTitle = document.getElementById('modalTitle');
         const btnNewRelease = document.getElementById('btnNewRelease');
         const btnCloseModal = document.getElementById('btnCloseModal');
         const btnCancelModal = document.getElementById('btnCancelModal');
+        const songRowsContainer = document.getElementById('songRowsContainer');
+        const btnAddSongRow = document.getElementById('btnAddSongRow');
+
+        function escapeHtml(str) {
+            const d = document.createElement('div');
+            d.textContent = str == null ? '' : String(str);
+            return d.innerHTML;
+        }
+
+        function clearSongRows() {
+            if (songRowsContainer) songRowsContainer.innerHTML = '';
+        }
+
+        function addSongRow(song) {
+            if (!songRowsContainer) return;
+            song = song || {};
+            const row = document.createElement('div');
+            row.className = 'song-row border border-slate-100 rounded-xl p-3 bg-slate-50/50 space-y-2';
+            const sid = song.id != null && song.id !== '' ? String(song.id) : '';
+            const title = song.title != null ? String(song.title) : '';
+            const kana = song.title_kana != null ? String(song.title_kana) : '';
+            const tn = song.track_number != null && song.track_number !== '' ? String(song.track_number) : '';
+            let tt = song.track_type != null ? String(song.track_type) : 'other';
+            if (!Object.prototype.hasOwnProperty.call(TRACK_TYPE_OPTIONS, tt)) {
+                tt = 'other';
+            }
+            const lyricist = song.lyricist != null ? String(song.lyricist) : '';
+            const composer = song.composer != null ? String(song.composer) : '';
+
+            let typeOpts = '';
+            Object.keys(TRACK_TYPE_OPTIONS).forEach((k) => {
+                const sel = k === tt ? ' selected' : '';
+                typeOpts += '<option value="' + escapeHtml(k) + '"' + sel + '>' + escapeHtml(TRACK_TYPE_OPTIONS[k]) + '</option>';
+            });
+
+            row.innerHTML =
+                '<input type="hidden" class="song-field-id" value="' + escapeHtml(sid) + '">' +
+                '<div class="flex flex-col sm:flex-row gap-2 sm:items-start">' +
+                '<input type="text" class="song-field-title flex-1 h-10 border ' + CARD_BORDER_CLASS + ' rounded-lg px-3 text-sm outline-none bg-white" placeholder="曲名（必須）" value="' + escapeHtml(title) + '">' +
+                '<button type="button" class="btn-remove-song shrink-0 h-10 px-3 rounded-lg border border-red-100 text-red-500 text-xs font-bold hover:bg-red-50 transition">削除</button>' +
+                '</div>' +
+                '<div class="grid grid-cols-1 sm:grid-cols-3 gap-2">' +
+                '<input type="text" class="song-field-kana h-9 border ' + CARD_BORDER_CLASS + ' rounded-lg px-2 text-xs outline-none bg-white" placeholder="よみがな" value="' + escapeHtml(kana) + '">' +
+                '<input type="number" min="1" class="song-field-trackno h-9 border ' + CARD_BORDER_CLASS + ' rounded-lg px-2 text-xs outline-none bg-white" placeholder="トラックNo." value="' + escapeHtml(tn) + '">' +
+                '<select class="song-field-type h-9 border ' + CARD_BORDER_CLASS + ' rounded-lg px-2 text-xs outline-none bg-white">' + typeOpts + '</select>' +
+                '</div>' +
+                '<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">' +
+                '<input type="text" class="song-field-lyricist h-9 border ' + CARD_BORDER_CLASS + ' rounded-lg px-2 text-xs outline-none bg-white" placeholder="作詞" value="' + escapeHtml(lyricist) + '">' +
+                '<input type="text" class="song-field-composer h-9 border ' + CARD_BORDER_CLASS + ' rounded-lg px-2 text-xs outline-none bg-white" placeholder="作曲" value="' + escapeHtml(composer) + '">' +
+                '</div>';
+
+            songRowsContainer.appendChild(row);
+            row.querySelector('.btn-remove-song').addEventListener('click', () => row.remove());
+        }
+
+        function collectSongs() {
+            const out = [];
+            if (!songRowsContainer) return out;
+            songRowsContainer.querySelectorAll('.song-row').forEach((row) => {
+                const title = (row.querySelector('.song-field-title') && row.querySelector('.song-field-title').value || '').trim();
+                if (!title) return;
+                const o = { title };
+                const idRaw = (row.querySelector('.song-field-id') && row.querySelector('.song-field-id').value || '').trim();
+                if (idRaw) o.id = parseInt(idRaw, 10);
+                const kana = (row.querySelector('.song-field-kana') && row.querySelector('.song-field-kana').value || '').trim();
+                if (kana) o.title_kana = kana;
+                const tn = (row.querySelector('.song-field-trackno') && row.querySelector('.song-field-trackno').value || '').trim();
+                if (tn !== '') o.track_number = parseInt(tn, 10);
+                const sel = row.querySelector('.song-field-type');
+                o.track_type = sel ? sel.value : 'other';
+                ['lyricist', 'composer'].forEach((key) => {
+                    const el = row.querySelector('.song-field-' + key);
+                    const v = el && (el.value || '').trim();
+                    if (v) o[key] = v;
+                });
+                out.push(o);
+            });
+            return out;
+        }
+
+        btnAddSongRow && btnAddSongRow.addEventListener('click', () => addSongRow({}));
 
         // 新規登録モーダル
         btnNewRelease.addEventListener('click', () => {
             releaseForm.reset();
             document.getElementById('release_id').value = '';
             document.querySelectorAll('.edition-input').forEach((input) => updateEditionPreview(input.dataset.edition, ''));
+            clearSongRows();
+            addSongRow({});
             modalTitle.textContent = 'リリース登録';
             releaseModal.classList.remove('hidden');
         });
@@ -290,6 +386,8 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 document.getElementById('edition_type_a').focus();
                 return;
             }
+
+            data.songs = collectSongs();
 
             try {
                 const response = await fetch('/hinata/api/save_release.php', {
@@ -385,6 +483,13 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                         const el = document.getElementById('edition_' + ed.edition);
                         if (el) { el.value = ed.jacket_image_url || ''; updateEditionPreview(ed.edition, ed.jacket_image_url || ''); }
                     });
+                    clearSongRows();
+                    const songList = d.songs || [];
+                    if (songList.length) {
+                        songList.forEach((s) => addSongRow(s));
+                    } else {
+                        addSongRow({});
+                    }
                     modalTitle.textContent = 'リリース編集';
                     releaseModal.classList.remove('hidden');
                 } catch (err) {

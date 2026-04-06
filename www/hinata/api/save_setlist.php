@@ -1,7 +1,7 @@
 <?php
 /**
  * ????????API???????
- * POST: { event_id, items: [{ song_id, sort_order, encore?, memo? }] }
+ * POST: { event_id, items: [{ entry_type, sort_order, song_id?, encore?, label?, block_kind?, center_member_id?, center_member_ids?, memo? }] }
  */
 require_once __DIR__ . '/../../../private/bootstrap.php';
 

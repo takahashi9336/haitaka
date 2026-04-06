@@ -41,7 +41,7 @@ class ReleaseController {
 
         $members = $memberModel->getAllWithColors();
         $releaseTypes = ReleaseModel::RELEASE_TYPES;
-        $trackTypes = SongModel::TRACK_TYPES;
+        $trackTypesDisplay = SongModel::TRACK_TYPES_DISPLAY;
         $editionLabels = ReleaseEditionModel::EDITIONS;
 
         $user = $_SESSION['user'];
@@ -190,37 +190,82 @@ class ReleaseController {
                 $editionModel->saveForRelease($releaseId, $input['editions']);
             }
 
-            // 収録曲の保存（オプション）
-            if (!empty($input['songs']) && is_array($input['songs'])) {
+            // 収録曲の保存（キー `songs` があるときのみ同期。未送信の従来クライアントは楽曲を変更しない）
+            $isEditRelease = !empty($input['id']);
+            if (array_key_exists('songs', $input) && is_array($input['songs'])) {
+                $allowedTrackTypes = array_keys(SongModel::TRACK_TYPES_DISPLAY);
+                $keptSongIds = [];
+
                 foreach ($input['songs'] as $songData) {
+                    $title = trim((string)($songData['title'] ?? ''));
+                    if ($title === '') {
+                        continue;
+                    }
+
+                    $tt = (string)($songData['track_type'] ?? 'other');
+                    if (!in_array($tt, $allowedTrackTypes, true)) {
+                        $tt = 'other';
+                    }
+
+                    $rawTn = $songData['track_number'] ?? null;
+                    $trackNumber = ($rawTn === null || $rawTn === '') ? null : (int)$rawTn;
+
+                    $mediaMetaId = $songData['media_meta_id'] ?? null;
+                    if ($mediaMetaId === null || $mediaMetaId === '') {
+                        $mediaMetaId = null;
+                    } else {
+                        $mediaMetaId = (int)$mediaMetaId;
+                    }
+
                     $songRecord = [
                         'release_id' => $releaseId,
-                        'media_meta_id' => $songData['media_meta_id'] ?? null,
-                        'title' => $songData['title'] ?? '',
-                        'title_kana' => $songData['title_kana'] ?? null,
-                        'track_type' => $songData['track_type'] ?? 'other',
-                        'track_number' => $songData['track_number'] ?? null,
-                        'lyricist' => $songData['lyricist'] ?? null,
-                        'composer' => $songData['composer'] ?? null,
-                        'duration' => $songData['duration'] ?? null,
-                        'memo' => $songData['memo'] ?? null,
-                        'apple_music_url' => $songData['apple_music_url'] ?? null,
-                        'spotify_url' => $songData['spotify_url'] ?? null,
+                        'media_meta_id' => $mediaMetaId,
+                        'title' => $title,
+                        'title_kana' => isset($songData['title_kana']) && trim((string)$songData['title_kana']) !== ''
+                            ? trim((string)$songData['title_kana']) : null,
+                        'track_type' => $tt,
+                        'track_number' => $trackNumber,
+                        'lyricist' => isset($songData['lyricist']) && trim((string)$songData['lyricist']) !== ''
+                            ? trim((string)$songData['lyricist']) : null,
+                        'composer' => isset($songData['composer']) && trim((string)$songData['composer']) !== ''
+                            ? trim((string)$songData['composer']) : null,
+                        'duration' => isset($songData['duration']) && trim((string)$songData['duration']) !== ''
+                            ? trim((string)$songData['duration']) : null,
+                        'memo' => isset($songData['memo']) && trim((string)$songData['memo']) !== ''
+                            ? trim((string)$songData['memo']) : null,
+                        'apple_music_url' => isset($songData['apple_music_url']) && trim((string)$songData['apple_music_url']) !== ''
+                            ? trim((string)$songData['apple_music_url']) : null,
+                        'spotify_url' => isset($songData['spotify_url']) && trim((string)$songData['spotify_url']) !== ''
+                            ? trim((string)$songData['spotify_url']) : null,
                     ];
 
                     if (!empty($songData['id'])) {
-                        // 楽曲更新
                         $songId = (int)$songData['id'];
+                        $existing = $songModel->find($songId);
+                        if (!$existing || (int)$existing['release_id'] !== $releaseId) {
+                            throw new \Exception('楽曲IDが不正です（別リリースの楽曲は更新できません）');
+                        }
                         $songModel->update($songId, $songRecord);
                     } else {
-                        // 楽曲新規作成
                         $songModel->create($songRecord);
                         $songId = (int)$pdo->lastInsertId();
                     }
+                    $keptSongIds[] = $songId;
 
-                    // 参加メンバーの保存
                     if (!empty($songData['members']) && is_array($songData['members'])) {
                         $songMemberModel->bulkInsertMembers($songId, $songData['members']);
+                    }
+                }
+
+                if ($isEditRelease) {
+                    if ($keptSongIds === []) {
+                        $stmt = $pdo->prepare('DELETE FROM hn_songs WHERE release_id = ?');
+                        $stmt->execute([$releaseId]);
+                    } else {
+                        $placeholders = implode(',', array_fill(0, count($keptSongIds), '?'));
+                        $sql = "DELETE FROM hn_songs WHERE release_id = ? AND id NOT IN ({$placeholders})";
+                        $stmt = $pdo->prepare($sql);
+                        $stmt->execute(array_merge([$releaseId], $keptSongIds));
                     }
                 }
             }
