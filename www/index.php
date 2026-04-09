@@ -564,6 +564,34 @@ try {
                     </div>
                 </div>
 
+                <!-- メモ（リスト）へのショートカット -->
+                <div class="mt-4">
+                    <div class="bg-white rounded-xl border <?= $noteTheme['cardBorder'] ?> shadow-sm p-4">
+                        <div class="flex items-center justify-between gap-3 mb-2">
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-lg flex items-center justify-center <?= $noteTheme['cardIconBg'] ?> <?= $noteTheme['cardIconText'] ?>"<?= $noteTheme['cardIconStyle'] ? ' style="' . htmlspecialchars($noteTheme['cardIconStyle']) . '"' : '' ?>>
+                                    <i class="fa-solid fa-list-check text-sm"></i>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] font-black tracking-wider text-slate-400">メモ</p>
+                                    <p class="text-sm font-black text-slate-800">各リストへ</p>
+                                </div>
+                            </div>
+                            <a href="/note/" class="text-xs font-black <?= $noteTheme['cardIconText'] ?> hover:opacity-80 transition"<?= $noteTheme['cardDecoStyle'] ? ' style="' . htmlspecialchars($noteTheme['cardDecoStyle']) . '"' : '' ?>>
+                                メモを開く <i class="fa-solid fa-arrow-right ml-1"></i>
+                            </a>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <a class="px-3 py-1.5 rounded-full border border-slate-200 text-xs font-black text-slate-700 hover:bg-slate-50 transition" href="/note/?tab=list&kind=todo">やること</a>
+                            <a class="px-3 py-1.5 rounded-full border border-slate-200 text-xs font-black text-slate-700 hover:bg-slate-50 transition" href="/note/?tab=list&kind=question">疑問・仮説</a>
+                            <a class="px-3 py-1.5 rounded-full border border-slate-200 text-xs font-black text-slate-700 hover:bg-slate-50 transition" href="/note/?tab=list&kind=first_time">はじめて</a>
+                            <a class="px-3 py-1.5 rounded-full border border-slate-200 text-xs font-black text-slate-700 hover:bg-slate-50 transition" href="/note/?tab=list&kind=fun">おもろかったこと</a>
+                            <a class="px-3 py-1.5 rounded-full border border-slate-200 text-xs font-black text-slate-700 hover:bg-slate-50 transition" href="/note/?tab=list&kind=book">書籍メモ</a>
+                            <a class="px-3 py-1.5 rounded-full border border-slate-200 text-xs font-black text-slate-700 hover:bg-slate-50 transition" href="/note/?tab=list&kind=generic_list">汎用リスト</a>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </main>

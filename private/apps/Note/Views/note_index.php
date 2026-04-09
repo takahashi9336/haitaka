@@ -117,6 +117,29 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             color: rgba(0,0,0,0.4);
         }
 
+        /* リスト種別別デザイン（提案レイアウト.html参考） */
+        .custom-card {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .custom-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .timeline-container { position: relative; }
+        .timeline-container::before {
+            content: '';
+            position: absolute;
+            left: 7px;
+            top: 10px;
+            bottom: 10px;
+            width: 2px;
+            background: #cbd5e1; /* slate-300 */
+            border-radius: 2px;
+        }
+        .solved-gradient {
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        }
+
         /* モーダルアニメーション（日向坂メンバー風・0.4秒版） */
         #detailModal {
             opacity: 0;
@@ -203,8 +226,18 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         <div class="flex-1 overflow-y-auto p-6 md:p-12">
             <div class="max-w-7xl mx-auto">
 
+                <!-- 主タブ: メモ / リスト -->
+                <div class="mb-4 flex gap-2 border-b border-slate-200">
+                    <button id="mainTabMemo" class="main-tab-btn px-4 py-2 text-sm font-black border-b-2 border-[var(--note-theme)] text-[var(--note-theme)]" data-main-tab="memo">
+                        <i class="fa-solid fa-lightbulb mr-1"></i> 汎用メモ
+                    </button>
+                    <button id="mainTabList" class="main-tab-btn px-4 py-2 text-sm font-black border-b-2 border-transparent text-slate-400 hover:text-slate-600" data-main-tab="list">
+                        <i class="fa-solid fa-list-check mr-1"></i> リスト
+                    </button>
+                </div>
+
                 <!-- クイックメモ追加 -->
-                <div class="mb-6">
+                <div class="mb-6" id="quickMemoSection">
                     <div class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
                         <div class="p-4">
                             <input type="text" id="quickMemoTitle" placeholder="タイトル（任意）"
@@ -237,6 +270,24 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                     <h3 class="text-xl font-bold text-slate-800 mb-2">メモがありません</h3>
                 </div>
                 <div id="notesGrid" class="notes-grid"></div>
+
+                <!-- リスト管理 -->
+                <div id="listSection" class="hidden">
+                    <div class="mb-3 flex items-center justify-between gap-3">
+                        <div id="listKindChips" class="flex gap-2 overflow-x-auto pb-2"></div>
+                        <button id="btnNewListEntry" class="shrink-0 px-4 py-2 note-theme-btn text-white text-xs font-black rounded-lg shadow-sm transition">
+                            <i class="fa-solid fa-plus mr-1"></i> 追加
+                        </button>
+                    </div>
+
+                    <div id="listEmptyState" class="text-center py-16 hidden">
+                        <div class="w-20 h-20 bg-slate-100 rounded-xl flex items-center justify-center mx-auto mb-6">
+                            <i class="fa-solid fa-list text-4xl text-slate-300"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-slate-800 mb-2">リストがありません</h3>
+                    </div>
+                    <div id="listGrid" class="space-y-2"></div>
+                </div>
             </div>
         </div>
     </main>
@@ -322,6 +373,78 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         </div>
     </div>
 
+    <!-- リスト詳細モーダル -->
+    <div id="listDetailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl max-w-4xl w-full max-h-[92vh] overflow-y-auto shadow-2xl" id="listDetailModalContent">
+            <div class="p-6">
+                <input type="hidden" id="listDetailId">
+                <input type="hidden" id="listDetailKind">
+
+                <div class="flex items-start justify-between gap-3 mb-3">
+                    <div class="min-w-0">
+                        <h2 class="text-lg font-black text-slate-800">リスト編集</h2>
+                        <p class="text-xs text-slate-400" id="listDetailMeta"></p>
+                    </div>
+                    <button type="button" id="btnCloseListModal" class="p-2 text-slate-400 hover:text-slate-600 transition">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+
+                <div id="listDetailFields" class="space-y-3"></div>
+
+                <div class="mt-6 pt-4 border-t border-slate-200">
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-2">
+                            <button id="listColorPickerToggleBtn" type="button"
+                                    class="p-2 text-slate-500 hover:text-blue-500 transition rounded-lg hover:bg-slate-50"
+                                    title="色を変更">
+                                <i class="fa-solid fa-palette"></i>
+                            </button>
+                            <button id="listPinBtn" type="button"
+                                    class="p-2 text-slate-500 hover-note-theme transition rounded-lg hover:bg-slate-50"
+                                    title="ピン留め">
+                                <i class="fa-solid fa-thumbtack"></i>
+                            </button>
+                            <button id="listArchiveBtn" type="button"
+                                    class="p-2 text-slate-500 hover:text-amber-600 transition rounded-lg hover:bg-slate-50"
+                                    title="アーカイブ">
+                                <i class="fa-solid fa-box-archive"></i>
+                            </button>
+                            <button id="listRestoreBtn" type="button"
+                                    class="p-2 text-slate-500 hover:text-green-600 transition rounded-lg hover:bg-slate-50 hidden"
+                                    title="復元">
+                                <i class="fa-solid fa-box-open"></i>
+                            </button>
+                            <button id="listDeleteBtn" type="button"
+                                    class="p-2 text-slate-500 hover:text-red-500 transition rounded-lg hover:bg-slate-50"
+                                    title="削除">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+
+                        <button id="btnSaveListModal" type="button"
+                                class="px-6 py-2 note-theme-btn text-white text-sm font-bold rounded-lg transition shadow-sm">
+                            完了
+                        </button>
+                    </div>
+
+                    <div id="listInlineColorPicker" class="inline-color-picker flex-wrap gap-3 p-4 bg-slate-50 rounded-lg mt-3">
+                        <div class="color-swatch" data-color="#ffffff" style="background-color: #ffffff; border: 2px solid #e2e8f0;"></div>
+                        <div class="color-swatch" data-color="#fef3c7" style="background-color: #fef3c7;"></div>
+                        <div class="color-swatch" data-color="#fecaca" style="background-color: #fecaca;"></div>
+                        <div class="color-swatch" data-color="#bfdbfe" style="background-color: #bfdbfe;"></div>
+                        <div class="color-swatch" data-color="#bbf7d0" style="background-color: #bbf7d0;"></div>
+                        <div class="color-swatch" data-color="#ddd6fe" style="background-color: #ddd6fe;"></div>
+                        <div class="color-swatch" data-color="#fbcfe8" style="background-color: #fbcfe8;"></div>
+                        <div class="color-swatch" data-color="#fed7aa" style="background-color: #fed7aa;"></div>
+                        <div class="color-swatch" data-color="#e0e7ff" style="background-color: #e0e7ff;"></div>
+                        <div class="color-swatch" data-color="#f3f4f6" style="background-color: #f3f4f6;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="/assets/js/core.js?v=2"></script>
     <script>
         // テキストエリアの高さを内容に合わせて自動伸長
@@ -346,6 +469,18 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             if (!raw) return '';
             return String(raw).replace(/\r\n|\r/g, '\n').replace(/\n{2,}/g, '\n').trim();
         }
+
+        function updateViewTabButtons(tab) {
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                const isActive = b.dataset.tab === tab;
+                b.classList.toggle('border-[var(--note-theme)]', isActive);
+                b.classList.toggle('text-[var(--note-theme)]', isActive);
+                b.classList.toggle('border-transparent', !isActive);
+                b.classList.toggle('text-slate-400', !isActive);
+            });
+        }
+
+        const LIST_KINDS = <?= json_encode($listKinds ?? [], JSON_UNESCAPED_UNICODE) ?>;
 
         const NoteManager = {
             currentNoteId: null,
@@ -430,13 +565,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
 
             switchTab(tab) {
                 this.viewMode = tab;
-                document.querySelectorAll('.tab-btn').forEach(b => {
-                    const isActive = b.dataset.tab === tab;
-                    b.classList.toggle('border-[var(--note-theme)]', isActive);
-                    b.classList.toggle('text-[var(--note-theme)]', isActive);
-                    b.classList.toggle('border-transparent', !isActive);
-                    b.classList.toggle('text-slate-400', !isActive);
-                });
+                updateViewTabButtons(tab);
                 this.renderNotesGrid();
             },
 
@@ -637,6 +766,538 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             }
         };
 
+        const ListManager = {
+            mainTab: 'memo',
+            viewMode: 'active',
+            listKind: 'todo',
+            listKinds: LIST_KINDS,
+            entriesByKind: <?= json_encode($listEntries ?? [], JSON_UNESCAPED_UNICODE) ?>,
+            archivedEntriesByKind: <?= json_encode($archivedListEntries ?? [], JSON_UNESCAPED_UNICODE) ?>,
+            currentEntryId: null,
+            currentBgColor: '#ffffff',
+
+            parsePayloadIfNeeded(entry) {
+                if (!entry || typeof entry !== 'object') return entry;
+                if (typeof entry.payload === 'string') {
+                    try {
+                        const p = JSON.parse(entry.payload);
+                        entry.payload = (p && typeof p === 'object') ? p : {};
+                    } catch (_) {
+                        entry.payload = {};
+                    }
+                }
+                if (!entry.payload || typeof entry.payload !== 'object') entry.payload = {};
+                return entry;
+            },
+
+            getCurrentList() {
+                const src = this.viewMode === 'active' ? this.entriesByKind : this.archivedEntriesByKind;
+                return (src && src[this.listKind]) ? src[this.listKind] : [];
+            },
+
+            getEntry(id) {
+                const all = (this.entriesByKind[this.listKind] || []).concat(this.archivedEntriesByKind[this.listKind] || []);
+                return all.find(e => e.id == id);
+            },
+
+            switchMain(tab) {
+                this.mainTab = tab;
+                document.querySelectorAll('.main-tab-btn').forEach(b => {
+                    const isActive = b.dataset.mainTab === tab;
+                    b.classList.toggle('border-[var(--note-theme)]', isActive);
+                    b.classList.toggle('text-[var(--note-theme)]', isActive);
+                    b.classList.toggle('border-transparent', !isActive);
+                    b.classList.toggle('text-slate-400', !isActive);
+                });
+
+                document.getElementById('quickMemoSection').classList.toggle('hidden', tab !== 'memo');
+                document.getElementById('notesEmptyState').classList.toggle('hidden', tab !== 'memo' || (NoteManager.viewMode === 'active' ? NoteManager.notes.length : NoteManager.archivedNotes.length) !== 0);
+                document.getElementById('notesGrid').classList.toggle('hidden', tab !== 'memo');
+                document.getElementById('listSection').classList.toggle('hidden', tab !== 'list');
+
+                if (tab === 'memo') {
+                    NoteManager.renderNotesGrid();
+                } else {
+                    this.renderKindChips();
+                    this.renderListGrid();
+                }
+            },
+
+            switchKind(kind) {
+                if (!this.listKinds || !Object.prototype.hasOwnProperty.call(this.listKinds, kind)) return;
+                this.listKind = kind;
+                this.renderKindChips();
+                this.renderListGrid();
+            },
+
+            renderKindChips() {
+                const box = document.getElementById('listKindChips');
+                if (!box) return;
+                const kinds = this.listKinds || {};
+                const html = Object.keys(kinds).map(k => {
+                    const active = k === this.listKind;
+                    const cls = active
+                        ? 'bg-[var(--note-theme)] text-white border-[var(--note-theme)]'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50';
+                    return '<button type="button" class="list-kind-chip shrink-0 px-3 py-1.5 rounded-full border text-xs font-black transition ' + cls + '" data-kind="' + escapeHtml(k) + '">' +
+                        escapeHtml(kinds[k]) + '</button>';
+                }).join('');
+                box.innerHTML = html;
+                box.querySelectorAll('.list-kind-chip').forEach(btn => {
+                    btn.addEventListener('click', () => this.switchKind(btn.dataset.kind));
+                });
+            },
+
+            renderEntry(kind, entry, viewMode) {
+                entry = this.parsePayloadIfNeeded(entry);
+                const bgColor = escapeHtml(entry.bg_color || '#ffffff');
+                const dateStr = formatNoteDate(entry.created_at);
+                const p = entry.payload || {};
+
+                const getHeadingText = () => {
+                    if (kind === 'todo' || kind === 'generic_list') {
+                        const items = Array.isArray(p.items) ? p.items : [];
+                        for (const it of items) {
+                            const t = (it && typeof it.text === 'string') ? it.text.trim() : '';
+                            if (t) return t;
+                        }
+                        return '';
+                    }
+                    if (kind === 'question') return (typeof p.question === 'string' ? p.question.trim() : '');
+                    if (kind === 'first_time') return (typeof p.what === 'string' ? p.what.trim() : '');
+                    if (kind === 'fun') return (typeof p.hook === 'string' ? p.hook.trim() : '');
+                    if (kind === 'book') return (typeof p.title === 'string' ? p.title.trim() : '');
+                    return '';
+                };
+                const headingText = getHeadingText();
+                const headingEscaped = escapeHtml(headingText);
+
+                // 一覧表示では操作アイコン類は表示しない（操作はモーダル側に集約）
+                const pinBadge = entry.is_pinned
+                    ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black border border-slate-200 bg-white/70 text-slate-700">ピン</span>'
+                    : '';
+
+                // first_time: timeline
+                if (kind === 'first_time') {
+                    const what = escapeHtml(p.what || '');
+                    const memo = escapeHtml(p.memo || '');
+                    const dateLabel = escapeHtml((p.occurred_at || '').replace(/-/g, '.'));
+                    const dotStyle = 'background-color: var(--note-theme); border-color: rgba(245,158,11,0.12);';
+                    return '<div class="list-entry relative pl-8" data-entry-id="' + entry.id + '">' +
+                        '<div class="absolute left-0 top-1.5 w-4 h-4 rounded-full border-4 z-10" style="' + dotStyle + '"></div>' +
+                        '<div class="custom-card bg-white rounded-2xl p-5 border border-slate-100 shadow-sm cursor-pointer" style="background-color:' + bgColor + ';">' +
+                        '<div class="flex justify-between items-start mb-2 gap-3">' +
+                        '<div class="min-w-0">' +
+                        (what ? '<h3 class="font-bold text-slate-800 truncate">' + what + '</h3>' : '<h3 class="font-bold text-slate-800 truncate">(無題)</h3>') +
+                        '</div>' +
+                        '<div class="shrink-0 flex items-center gap-2">' + pinBadge +
+                        (dateLabel ? '<span class="text-[10px] font-black text-slate-400 bg-slate-50 px-2 py-1 rounded">' + dateLabel + '</span>' : '') +
+                        '</div>' +
+                        '</div>' +
+                        (memo ? '<p class="text-sm text-slate-600 leading-relaxed">' + memo + '</p>' : '') +
+                        '</div>' +
+                        '</div>';
+                }
+
+                // question: Q&A card (solved/in-progress)
+                if (kind === 'question') {
+                    const q = escapeHtml(p.question || '');
+                    const h = escapeHtml(p.hypothesis || '');
+                    const a = escapeHtml(p.answer || '');
+                    const solved = !!a;
+                    const headClass = solved ? 'solved-gradient border-b border-green-100' : 'bg-slate-50 border-b border-slate-100';
+                    const statusHtml = solved
+                        ? '<div class="flex items-center gap-2 mb-1"><i class="fa-solid fa-circle-check text-green-500 text-[10px]"></i><span class="text-[10px] font-black text-green-600 uppercase tracking-widest">Solved</span></div>'
+                        : '<div class="flex items-center gap-2 mb-1"><span class="w-2 h-2 rounded-full bg-amber-400"></span><span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">In Progress</span></div>';
+                    const answerHtml = solved
+                        ? '<div class="bg-green-50 p-3 rounded-xl border border-green-100"><span class="text-[10px] font-bold text-green-600 block mb-1 uppercase">Answer</span><p class="text-sm text-slate-700 leading-relaxed">' + a + '</p></div>'
+                        : '<div class="text-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200"><p class="text-[11px] text-slate-400 font-bold">回答を調査中...</p></div>';
+                    return '<div class="list-entry custom-card bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col cursor-pointer" data-entry-id="' + entry.id + '">' +
+                        '<div class="p-5 ' + headClass + '">' + statusHtml +
+                        '<h3 class="font-bold text-slate-800">' + (q || headingEscaped || '(無題)') + '</h3>' +
+                        '<div class="mt-2 flex items-center justify-end gap-2">' + pinBadge + '</div>' +
+                        '</div>' +
+                        '<div class="p-5 space-y-4 flex-1">' +
+                        (h ? '<div class="relative pl-4 border-l-2 border-slate-200"><span class="text-[10px] font-bold text-slate-400 block mb-1 uppercase">Hypothesis</span><p class="text-xs text-slate-500 italic">' + h + '</p></div>' : '') +
+                        answerHtml +
+                        '</div>' +
+                        '<div class="px-4 py-3 border-t border-slate-100 flex items-center justify-between">' +
+                        '<span class="text-[10px] text-slate-400">' + dateStr + '</span>' +
+                        '</div>' +
+                        '</div>';
+                }
+
+                // book: split layout
+                if (kind === 'book') {
+                    const bt = escapeHtml(p.title || headingText || '');
+                    const why = escapeHtml(p.why_read || '');
+                    const notes = escapeHtml(p.notes || '');
+                    return '<div class="list-entry custom-card bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden cursor-pointer" data-entry-id="' + entry.id + '">' +
+                        '<div class="flex flex-col md:flex-row">' +
+                        '<div class="md:w-1/3 p-6 bg-slate-900 text-white flex flex-col justify-between">' +
+                        '<div><h3 class="text-lg font-black tracking-tight mb-2">' + (bt || '(無題)') + '</h3></div>' +
+                        '<div class="mt-6 flex items-center justify-between gap-2"><span class="text-[10px] font-black px-2 py-1 bg-white/10 rounded uppercase">Book</span>' + (pinBadge ? '<span class="text-[10px] font-black px-2 py-1 bg-white/10 rounded">' + pinBadge.replace(/<[^>]*>/g,'') + '</span>' : '') + '</div>' +
+                        '</div>' +
+                        '<div class="md:w-2/3 p-6 grid grid-cols-1 sm:grid-cols-2 gap-6 bg-white" style="background-color:' + bgColor + ';">' +
+                        '<div><div class="flex items-center gap-2 mb-2"><i class="fa-solid fa-bullseye text-slate-300 text-xs"></i><span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Why read?</span></div>' +
+                        '<p class="text-sm text-slate-600 leading-relaxed">' + (why || '—') + '</p></div>' +
+                        '<div class="relative pl-6 border-l border-slate-100"><div class="flex items-center gap-2 mb-2"><i class="fa-solid fa-bolt text-amber-500 text-xs"></i><span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Notes</span></div>' +
+                        '<p class="text-sm text-slate-700 font-bold leading-relaxed italic">' + (notes || '—') + '</p></div>' +
+                        '</div>' +
+                        '</div>' +
+                        '<div class="px-4 py-3 border-t border-slate-100 flex items-center justify-between">' +
+                        '<span class="text-[10px] text-slate-400">' + dateStr + '</span>' +
+                        '</div>' +
+                        '</div>';
+                }
+
+                // default: list row
+                let preview = '';
+                if (kind === 'todo' || kind === 'generic_list') {
+                    const items = Array.isArray(p.items) ? p.items : [];
+                    preview = items.slice(0, 4).map(it => {
+                        const t = escapeHtml(it?.text || '');
+                        if (!t) return '';
+                        if (kind === 'todo') {
+                            const done = it?.done ? ' checked' : '';
+                            return '<label class="flex items-center gap-2 text-sm"><input type="checkbox" disabled' + done + '> <span>' + t + '</span></label>';
+                        }
+                        return '<div class="text-sm">・' + t + '</div>';
+                    }).join('');
+                } else if (kind === 'fun') {
+                    const hook = escapeHtml(p.hook || '');
+                    const detail = escapeHtml(p.detail || '');
+                    preview = '<div class="text-sm text-slate-700 font-bold">' + (hook || headingEscaped || '(無題)') + '</div>' +
+                        (detail ? '<div class="text-xs text-slate-500 mt-1">' + detail + '</div>' : '');
+                } else {
+                    preview = headingEscaped ? '<div class="text-sm text-slate-700">' + headingEscaped + '</div>' : '';
+                }
+
+                return '<div class="list-entry list-row border border-slate-100 rounded-xl shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition" style="background-color:' + bgColor + ';" data-entry-id="' + entry.id + '">' +
+                    '<div class="px-4 py-3 flex items-start gap-3">' +
+                    '<div class="flex-1 min-w-0">' +
+                    '<div class="flex items-center gap-2 mb-1">' +
+                    (headingEscaped ? '<h3 class="font-black text-slate-800 text-sm truncate">' + headingEscaped + '</h3>' : '<h3 class="font-black text-slate-800 text-sm truncate">(無題)</h3>') +
+                    pinBadge +
+                    '</div>' +
+                    '<div class="text-slate-700 text-sm">' + preview + '</div>' +
+                    '<div class="text-[10px] text-slate-400 mt-2">' + dateStr + '</div>' +
+                    '</div>' +
+                    '</div></div>';
+            },
+
+            renderListGrid() {
+                const grid = document.getElementById('listGrid');
+                const emptyState = document.getElementById('listEmptyState');
+                if (!grid || !emptyState) return;
+                const list = this.getCurrentList();
+                if (!list || list.length === 0) {
+                    grid.innerHTML = '';
+                    emptyState.classList.remove('hidden');
+                    return;
+                }
+                emptyState.classList.add('hidden');
+                // kindごとにコンテナレイアウトを切替
+                grid.className = '';
+                if (this.listKind === 'question') {
+                    grid.className = 'grid grid-cols-1 md:grid-cols-2 gap-6';
+                } else if (this.listKind === 'first_time') {
+                    grid.className = 'timeline-container ml-2 space-y-8';
+                } else if (this.listKind === 'book') {
+                    grid.className = 'space-y-4';
+                } else {
+                    grid.className = 'space-y-2';
+                }
+
+                grid.innerHTML = list.map(e => this.renderEntry(this.listKind, e, this.viewMode)).join('');
+
+                grid.querySelectorAll('.list-entry').forEach(card => {
+                    card.addEventListener('click', (e) => {
+                        const id = parseInt(card.dataset.entryId, 10);
+                        this.openModal(id);
+                    });
+                });
+            },
+
+            openModal(entryIdOrNull) {
+                const modal = document.getElementById('listDetailModal');
+                const content = document.getElementById('listDetailModalContent');
+                modal.classList.remove('hidden');
+
+                const isNew = !entryIdOrNull;
+                const entry = isNew ? null : this.getEntry(entryIdOrNull);
+                this.currentEntryId = entry ? entry.id : null;
+                this.currentBgColor = entry?.bg_color || '#ffffff';
+                content.style.backgroundColor = this.currentBgColor;
+
+                document.getElementById('listDetailId').value = entry ? entry.id : '';
+                document.getElementById('listDetailKind').value = this.listKind;
+                document.getElementById('listDetailMeta').textContent = entry ? ('作成: ' + entry.created_at + (entry.updated_at !== entry.created_at ? ' / 更新: ' + entry.updated_at : '')) : '';
+
+                const pinBtn = document.getElementById('listPinBtn');
+                pinBtn.classList.toggle('note-theme-text', !!entry?.is_pinned);
+                document.getElementById('listRestoreBtn').classList.toggle('hidden', this.viewMode !== 'archived');
+                document.getElementById('listArchiveBtn').classList.toggle('hidden', this.viewMode !== 'active');
+
+                this.renderModalFields(entry?.payload || {});
+                this.closeListColorPicker();
+            },
+
+            closeModal() {
+                document.getElementById('listDetailModal').classList.add('hidden');
+                this.currentEntryId = null;
+            },
+
+            renderModalFields(payload) {
+                const box = document.getElementById('listDetailFields');
+                if (!box) return;
+                const p = payload || {};
+
+                if (this.listKind === 'todo' || this.listKind === 'generic_list') {
+                    const items = Array.isArray(p.items) ? p.items : [];
+                    const rows = items.length ? items : [{ id: null, text: '', done: 0 }];
+                    const isTodo = this.listKind === 'todo';
+                    box.innerHTML =
+                        '<div class="flex items-center justify-between gap-2">' +
+                        '<h3 class="text-sm font-black text-slate-700">項目</h3>' +
+                        '<button type="button" id="btnAddListItem" class="text-xs font-black note-theme-link hover:opacity-80 transition"><i class="fa-solid fa-plus mr-1"></i>追加</button>' +
+                        '</div>' +
+                        '<div id="listItemRows" class="space-y-2"></div>';
+
+                    const rowsBox = document.getElementById('listItemRows');
+                    const addRow = (it) => {
+                        const row = document.createElement('div');
+                        row.className = 'flex items-center gap-2';
+                        const idVal = it?.id != null ? String(it.id) : '';
+                        const textVal = it?.text != null ? String(it.text) : '';
+                        const done = !!it?.done;
+                        row.innerHTML =
+                            '<input type="hidden" class="li-id" value="' + escapeHtml(idVal) + '">' +
+                            (isTodo ? '<input type="checkbox" class="li-done" ' + (done ? 'checked' : '') + '>' : '') +
+                            '<input type="text" class="li-text flex-1 h-10 border border-slate-200 rounded-lg px-3 text-sm outline-none bg-white" placeholder="項目" value="' + escapeHtml(textVal) + '">' +
+                            '<button type="button" class="btnRemoveLi h-10 px-3 rounded-lg border border-red-100 text-red-500 text-xs font-black hover:bg-red-50 transition">削除</button>';
+                        rowsBox.appendChild(row);
+                        row.querySelector('.btnRemoveLi').addEventListener('click', () => row.remove());
+                    };
+                    rows.forEach(addRow);
+                    document.getElementById('btnAddListItem').addEventListener('click', () => addRow({ id: null, text: '', done: 0 }));
+                    return;
+                }
+
+                if (this.listKind === 'question') {
+                    box.innerHTML =
+                        '<div class="space-y-2">' +
+                        '<div><label class="block text-xs font-black text-slate-600 mb-1">疑問</label><textarea id="q_question" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white" rows="7">' + escapeHtml(p.question || '') + '</textarea></div>' +
+                        '<div><label class="block text-xs font-black text-slate-600 mb-1">仮説</label><textarea id="q_hypothesis" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white" rows="7">' + escapeHtml(p.hypothesis || '') + '</textarea></div>' +
+                        '<div><label class="block text-xs font-black text-slate-600 mb-1">回答</label><textarea id="q_answer" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white" rows="7">' + escapeHtml(p.answer || '') + '</textarea></div>' +
+                        '<div><label class="block text-xs font-black text-slate-600 mb-1">仮説とのギャップ</label><textarea id="q_gap" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white" rows="7">' + escapeHtml(p.gap || '') + '</textarea></div>' +
+                        '<div><label class="block text-xs font-black text-slate-600 mb-1">他への転用</label><textarea id="q_transfer" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white" rows="7">' + escapeHtml(p.transfer || '') + '</textarea></div>' +
+                        '</div>';
+                    return;
+                }
+                if (this.listKind === 'first_time') {
+                    box.innerHTML =
+                        '<div class="grid grid-cols-1 sm:grid-cols-3 gap-2">' +
+                        '<div class="sm:col-span-1"><label class="block text-xs font-black text-slate-600 mb-1">日付</label><input id="ft_date" type="date" class="w-full h-10 border border-slate-200 rounded-lg px-3 text-sm bg-white" value="' + escapeHtml(p.occurred_at || '') + '"></div>' +
+                        '<div class="sm:col-span-2"><label class="block text-xs font-black text-slate-600 mb-1">何をした</label><input id="ft_what" type="text" class="w-full h-10 border border-slate-200 rounded-lg px-3 text-sm bg-white" value="' + escapeHtml(p.what || '') + '"></div>' +
+                        '</div>' +
+                        '<div><label class="block text-xs font-black text-slate-600 mb-1 mt-2">メモ</label><textarea id="ft_memo" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white" rows="7">' + escapeHtml(p.memo || '') + '</textarea></div>';
+                    return;
+                }
+                if (this.listKind === 'fun') {
+                    box.innerHTML =
+                        '<div class="space-y-2">' +
+                        '<div><label class="block text-xs font-black text-slate-600 mb-1">ひとこと</label><input id="fun_hook" type="text" class="w-full h-10 border border-slate-200 rounded-lg px-3 text-sm bg-white" value="' + escapeHtml(p.hook || '') + '"></div>' +
+                        '<div><label class="block text-xs font-black text-slate-600 mb-1">詳細</label><textarea id="fun_detail" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white" rows="7">' + escapeHtml(p.detail || '') + '</textarea></div>' +
+                        '</div>';
+                    return;
+                }
+                if (this.listKind === 'book') {
+                    box.innerHTML =
+                        '<div class="space-y-2">' +
+                        '<div><label class="block text-xs font-black text-slate-600 mb-1">書籍名</label><input id="book_title" type="text" class="w-full h-10 border border-slate-200 rounded-lg px-3 text-sm bg-white" value="' + escapeHtml(p.title || '') + '"></div>' +
+                        '<div><label class="block text-xs font-black text-slate-600 mb-1">なぜ読んだ</label><textarea id="book_why" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white" rows="7">' + escapeHtml(p.why_read || '') + '</textarea></div>' +
+                        '<div><label class="block text-xs font-black text-slate-600 mb-1">感想メモ</label><textarea id="book_notes" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white" rows="7">' + escapeHtml(p.notes || '') + '</textarea></div>' +
+                        '</div>';
+                    return;
+                }
+
+                box.innerHTML = '<p class="text-sm text-slate-500">この種別は未対応です。</p>';
+            },
+
+            collectPayloadFromModal() {
+                if (this.listKind === 'todo' || this.listKind === 'generic_list') {
+                    const rows = Array.from(document.querySelectorAll('#listItemRows > div'));
+                    const items = [];
+                    rows.forEach(r => {
+                        const text = (r.querySelector('.li-text')?.value || '').trim();
+                        if (!text) return;
+                        const id = (r.querySelector('.li-id')?.value || '').trim() || null;
+                        const done = this.listKind === 'todo' ? (r.querySelector('.li-done')?.checked ? 1 : 0) : undefined;
+                        const it = { id, text };
+                        if (this.listKind === 'todo') it.done = done;
+                        items.push(it);
+                    });
+                    return { items };
+                }
+                if (this.listKind === 'question') {
+                    return {
+                        question: (document.getElementById('q_question')?.value || '').trim(),
+                        hypothesis: (document.getElementById('q_hypothesis')?.value || '').trim(),
+                        gap: (document.getElementById('q_gap')?.value || '').trim(),
+                        answer: (document.getElementById('q_answer')?.value || '').trim(),
+                        transfer: (document.getElementById('q_transfer')?.value || '').trim(),
+                    };
+                }
+                if (this.listKind === 'first_time') {
+                    return {
+                        occurred_at: (document.getElementById('ft_date')?.value || '').trim(),
+                        what: (document.getElementById('ft_what')?.value || '').trim(),
+                        memo: (document.getElementById('ft_memo')?.value || '').trim(),
+                    };
+                }
+                if (this.listKind === 'fun') {
+                    return {
+                        hook: (document.getElementById('fun_hook')?.value || '').trim(),
+                        detail: (document.getElementById('fun_detail')?.value || '').trim(),
+                    };
+                }
+                if (this.listKind === 'book') {
+                    return {
+                        title: (document.getElementById('book_title')?.value || '').trim(),
+                        why_read: (document.getElementById('book_why')?.value || '').trim(),
+                        notes: (document.getElementById('book_notes')?.value || '').trim(),
+                    };
+                }
+                return {};
+            },
+
+            async saveFromModal() {
+                const idRaw = (document.getElementById('listDetailId').value || '').trim();
+                const payload = this.collectPayloadFromModal();
+                const bg_color = this.currentBgColor || '#ffffff';
+
+                try {
+                    if (!idRaw) {
+                        const res = await App.post('/note/api/list_save.php', { list_kind: this.listKind, payload, bg_color });
+                        if (res.status !== 'success') { alert('エラー: ' + (res.message || '保存に失敗しました')); return; }
+                        const entry = this.parsePayloadIfNeeded(res.entry);
+                        if (entry) {
+                            this.entriesByKind[this.listKind] = [entry, ...(this.entriesByKind[this.listKind] || [])];
+                        }
+                    } else {
+                        const id = parseInt(idRaw, 10);
+                        const res = await App.post('/note/api/list_update.php', { id, payload, bg_color });
+                        if (res.status !== 'success') { alert('エラー: ' + (res.message || '更新に失敗しました')); return; }
+                        const list = this.viewMode === 'active' ? (this.entriesByKind[this.listKind] || []) : (this.archivedEntriesByKind[this.listKind] || []);
+                        const idx = list.findIndex(e => e.id == id);
+                        if (idx >= 0) list[idx] = { ...list[idx], payload, bg_color };
+                    }
+                    this.renderListGrid();
+                    this.closeModal();
+                } catch (e) {
+                    console.error(e);
+                    alert('エラーが発生しました');
+                }
+            },
+
+            switchViewMode(tab) {
+                this.viewMode = tab;
+                updateViewTabButtons(tab);
+                this.renderListGrid();
+            },
+
+            async togglePin(id) {
+                try {
+                    const res = await App.post('/note/api/list_toggle_pin.php', { id });
+                    if (res.status !== 'success') { alert('エラー: ' + (res.message || 'ピン留めに失敗しました')); return; }
+                    const listA = this.entriesByKind[this.listKind] || [];
+                    const listB = this.archivedEntriesByKind[this.listKind] || [];
+                    [listA, listB].forEach(list => {
+                        const idx = list.findIndex(e => e.id == id);
+                        if (idx >= 0) list[idx] = { ...list[idx], is_pinned: list[idx].is_pinned ? 0 : 1 };
+                    });
+                    this.renderListGrid();
+                } catch (e) { console.error(e); alert('エラーが発生しました'); }
+            },
+
+            async archive(id) {
+                try {
+                    const res = await App.post('/note/api/list_update.php', { id, status: 'archived' });
+                    if (res.status !== 'success') { alert('エラー: ' + (res.message || 'アーカイブに失敗しました')); return; }
+                    const cur = this.entriesByKind[this.listKind] || [];
+                    const idx = cur.findIndex(e => e.id == id);
+                    if (idx >= 0) {
+                        const entry = { ...cur[idx], status: 'archived' };
+                        this.entriesByKind[this.listKind] = cur.filter(e => e.id != id);
+                        this.archivedEntriesByKind[this.listKind] = [entry, ...(this.archivedEntriesByKind[this.listKind] || [])];
+                    }
+                    this.renderListGrid();
+                    if (this.currentEntryId == id) this.closeModal();
+                } catch (e) { console.error(e); alert('エラーが発生しました'); }
+            },
+
+            async restore(id) {
+                try {
+                    const res = await App.post('/note/api/list_update.php', { id, status: 'active' });
+                    if (res.status !== 'success') { alert('エラー: ' + (res.message || '復元に失敗しました')); return; }
+                    const cur = this.archivedEntriesByKind[this.listKind] || [];
+                    const idx = cur.findIndex(e => e.id == id);
+                    if (idx >= 0) {
+                        const entry = { ...cur[idx], status: 'active' };
+                        this.archivedEntriesByKind[this.listKind] = cur.filter(e => e.id != id);
+                        this.entriesByKind[this.listKind] = [entry, ...(this.entriesByKind[this.listKind] || [])];
+                    }
+                    this.renderListGrid();
+                    if (this.currentEntryId == id) this.closeModal();
+                } catch (e) { console.error(e); alert('エラーが発生しました'); }
+            },
+
+            async remove(id) {
+                if (!confirm('このリストを削除してもよろしいですか?')) return;
+                try {
+                    const res = await App.post('/note/api/list_delete.php', { id });
+                    if (res.status !== 'success') { alert('エラー: ' + (res.message || '削除に失敗しました')); return; }
+                    this.entriesByKind[this.listKind] = (this.entriesByKind[this.listKind] || []).filter(e => e.id != id);
+                    this.archivedEntriesByKind[this.listKind] = (this.archivedEntriesByKind[this.listKind] || []).filter(e => e.id != id);
+                    this.renderListGrid();
+                    if (this.currentEntryId == id) this.closeModal();
+                } catch (e) { console.error(e); alert('エラーが発生しました'); }
+            },
+
+            toggleListColorPicker() {
+                const picker = document.getElementById('listInlineColorPicker');
+                if (picker.classList.contains('active')) picker.classList.remove('active');
+                else { picker.classList.add('active'); this.updateListColorPickerSelection(); }
+            },
+            closeListColorPicker() {
+                document.getElementById('listInlineColorPicker').classList.remove('active');
+            },
+            updateListColorPickerSelection() {
+                const currentColor = this.currentBgColor || '#ffffff';
+                document.querySelectorAll('#listInlineColorPicker .color-swatch').forEach(swatch => {
+                    swatch.classList.toggle('selected', (swatch.dataset.color || '').toLowerCase() === String(currentColor).toLowerCase());
+                });
+            },
+            async changeListColor(color) {
+                this.currentBgColor = color;
+                document.getElementById('listDetailModalContent').style.backgroundColor = color;
+                this.updateListColorPickerSelection();
+                const idRaw = (document.getElementById('listDetailId').value || '').trim();
+                if (!idRaw) return;
+                try {
+                    const id = parseInt(idRaw, 10);
+                    const res = await App.post('/note/api/list_update.php', { id, bg_color: color });
+                    if (res.status !== 'success') return;
+                    const list = this.viewMode === 'active' ? (this.entriesByKind[this.listKind] || []) : (this.archivedEntriesByKind[this.listKind] || []);
+                    const idx = list.findIndex(e => e.id == id);
+                    if (idx >= 0) list[idx] = { ...list[idx], bg_color: color };
+                    const card = document.querySelector('.note-card[data-entry-id="' + id + '"]');
+                    if (card) card.style.backgroundColor = color;
+                } catch (e) { console.error(e); }
+            },
+        };
+
         const QuickMemo = {
             input: null,
             titleInput: null,
@@ -697,9 +1358,51 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         document.addEventListener('DOMContentLoaded', () => {
             QuickMemo.init();
             document.getElementById('detailContent')?.addEventListener('input', () => autoResizeTextarea(document.getElementById('detailContent')));
-            document.getElementById('tabActive').addEventListener('click', () => NoteManager.switchTab('active'));
-            document.getElementById('tabArchived').addEventListener('click', () => NoteManager.switchTab('archived'));
+            const applyViewMode = (tab) => {
+                if (ListManager.mainTab === 'list') {
+                    ListManager.switchViewMode(tab);
+                } else {
+                    NoteManager.switchTab(tab);
+                }
+            };
+            document.getElementById('tabActive').addEventListener('click', () => applyViewMode('active'));
+            document.getElementById('tabArchived').addEventListener('click', () => applyViewMode('archived'));
             NoteManager.renderNotesGrid();
+
+            // 主タブ
+            document.getElementById('mainTabMemo').addEventListener('click', () => ListManager.switchMain('memo'));
+            document.getElementById('mainTabList').addEventListener('click', () => ListManager.switchMain('list'));
+
+            // リスト: 新規
+            document.getElementById('btnNewListEntry').addEventListener('click', () => ListManager.openModal(null));
+
+            // リストモーダル: close/save/actions
+            const listModal = document.getElementById('listDetailModal');
+            listModal.addEventListener('click', (e) => { if (e.target === listModal) ListManager.closeModal(); });
+            document.getElementById('btnCloseListModal').addEventListener('click', () => ListManager.closeModal());
+            document.getElementById('btnSaveListModal').addEventListener('click', () => ListManager.saveFromModal());
+            document.getElementById('listColorPickerToggleBtn').addEventListener('click', (e) => { e.stopPropagation(); ListManager.toggleListColorPicker(); });
+            document.querySelectorAll('#listInlineColorPicker .color-swatch').forEach(s => s.addEventListener('click', (e) => { e.stopPropagation(); ListManager.changeListColor(s.dataset.color); }));
+            document.getElementById('listPinBtn').addEventListener('click', async () => {
+                if (!ListManager.currentEntryId) return;
+                await ListManager.togglePin(ListManager.currentEntryId);
+                const entry = ListManager.getEntry(ListManager.currentEntryId);
+                if (entry) document.getElementById('listPinBtn').classList.toggle('note-theme-text', !!entry.is_pinned);
+            });
+            document.getElementById('listArchiveBtn').addEventListener('click', async () => { if (ListManager.currentEntryId) await ListManager.archive(ListManager.currentEntryId); });
+            document.getElementById('listRestoreBtn').addEventListener('click', async () => { if (ListManager.currentEntryId) await ListManager.restore(ListManager.currentEntryId); });
+            document.getElementById('listDeleteBtn').addEventListener('click', async () => { if (ListManager.currentEntryId) await ListManager.remove(ListManager.currentEntryId); });
+
+            // URLパラメータで直接リスト種別を開く（/note?tab=list&kind=todo）
+            const params = new URLSearchParams(location.search || '');
+            const tab = params.get('tab');
+            const kind = params.get('kind');
+            if (tab === 'list') {
+                ListManager.switchMain('list');
+                if (kind) {
+                    ListManager.switchKind(kind);
+                }
+            }
         });
     </script>
 </body>

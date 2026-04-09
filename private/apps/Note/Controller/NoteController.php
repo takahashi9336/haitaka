@@ -2,6 +2,7 @@
 
 namespace App\Note\Controller;
 
+use App\Note\Model\NoteListEntryModel;
 use App\Note\Model\NoteModel;
 use Core\Auth;
 use Core\Logger;
@@ -27,11 +28,27 @@ class NoteController {
             $noteModel = new NoteModel();
             $notes = $noteModel->getActiveNotes();
             $archivedNotes = $noteModel->getArchivedNotes();
+
+            $listEntryModel = new NoteListEntryModel();
+            $listKinds = NoteListEntryModel::LIST_KINDS;
+            $listEntries = [];
+            $archivedListEntries = [];
+            foreach (array_keys($listKinds) as $kind) {
+                $listEntries[$kind] = $listEntryModel->getActiveByKind($kind);
+                $archivedListEntries[$kind] = $listEntryModel->getArchivedByKind($kind);
+            }
         } catch (\Exception $e) {
             // テーブルが存在しない場合など、エラーが発生した場合は空配列を返す
             Logger::errorWithContext('Note error', $e);
             $notes = [];
             $archivedNotes = [];
+            $listKinds = NoteListEntryModel::LIST_KINDS;
+            $listEntries = [];
+            $archivedListEntries = [];
+            foreach (array_keys($listKinds) as $kind) {
+                $listEntries[$kind] = [];
+                $archivedListEntries[$kind] = [];
+            }
         }
         
         $user = $_SESSION['user'];
@@ -213,6 +230,174 @@ class NoteController {
             echo json_encode([
                 'status' => 'error', 
                 'message' => $e->getMessage()
+            ], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    /**
+     * リストエントリ新規保存
+     */
+    public function listStore(): void {
+        header('Content-Type: application/json');
+
+        try {
+            $rawInput = file_get_contents('php://input');
+            $input = json_decode($rawInput, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new \Exception('Invalid JSON: ' . json_last_error_msg());
+            }
+            if (!is_array($input)) {
+                throw new \Exception('Invalid input format');
+            }
+
+            $model = new NoteListEntryModel();
+            $kind = (string)($input['list_kind'] ?? '');
+            if (!$model->isValidListKind($kind)) {
+                throw new \Exception('list_kind が不正です');
+            }
+
+            $payload = $input['payload'] ?? [];
+            if (!is_array($payload)) $payload = [];
+
+            $ok = $model->createEntry([
+                'list_kind' => $kind,
+                'payload' => $payload,
+                'bg_color' => $input['bg_color'] ?? '#ffffff',
+                'is_pinned' => $input['is_pinned'] ?? 0,
+                'status' => 'active',
+            ]);
+            if (!$ok) {
+                throw new \Exception('保存に失敗しました');
+            }
+
+            $id = (int)$model->lastInsertId();
+            $row = $model->find($id);
+            if (is_array($row) && isset($row['payload']) && is_string($row['payload'])) {
+                $decoded = json_decode($row['payload'], true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    $row['payload'] = $decoded;
+                } else {
+                    $row['payload'] = [];
+                }
+            }
+            echo json_encode([
+                'status' => 'success',
+                'message' => '保存しました',
+                'id' => $id,
+                'entry' => $row,
+            ], JSON_UNESCAPED_UNICODE);
+        } catch (\Exception $e) {
+            echo json_encode([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    /**
+     * リストエントリ更新
+     */
+    public function listUpdate(): void {
+        header('Content-Type: application/json');
+
+        try {
+            $rawInput = file_get_contents('php://input');
+            $input = json_decode($rawInput, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new \Exception('Invalid JSON: ' . json_last_error_msg());
+            }
+            if (empty($input['id'])) {
+                throw new \Exception('IDが指定されていません');
+            }
+
+            $model = new NoteListEntryModel();
+            $update = [];
+            if (array_key_exists('payload', $input)) $update['payload'] = $input['payload'];
+            if (array_key_exists('bg_color', $input)) $update['bg_color'] = $input['bg_color'];
+            if (array_key_exists('is_pinned', $input)) $update['is_pinned'] = $input['is_pinned'];
+            if (array_key_exists('status', $input)) $update['status'] = $input['status'];
+
+            $ok = $model->updateEntry((int)$input['id'], $update);
+            if (!$ok) {
+                throw new \Exception('更新に失敗しました');
+            }
+
+            echo json_encode([
+                'status' => 'success',
+                'message' => '更新しました',
+            ], JSON_UNESCAPED_UNICODE);
+        } catch (\Exception $e) {
+            echo json_encode([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    /**
+     * リストエントリ削除
+     */
+    public function listDelete(): void {
+        header('Content-Type: application/json');
+
+        try {
+            $rawInput = file_get_contents('php://input');
+            $input = json_decode($rawInput, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new \Exception('Invalid JSON: ' . json_last_error_msg());
+            }
+            if (empty($input['id'])) {
+                throw new \Exception('IDが指定されていません');
+            }
+
+            $model = new NoteListEntryModel();
+            $ok = $model->delete((int)$input['id']);
+            if (!$ok) {
+                throw new \Exception('削除に失敗しました');
+            }
+
+            echo json_encode([
+                'status' => 'success',
+                'message' => '削除しました',
+            ], JSON_UNESCAPED_UNICODE);
+        } catch (\Exception $e) {
+            echo json_encode([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    /**
+     * リストエントリ ピン留めトグル
+     */
+    public function listTogglePin(): void {
+        header('Content-Type: application/json');
+
+        try {
+            $rawInput = file_get_contents('php://input');
+            $input = json_decode($rawInput, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new \Exception('Invalid JSON: ' . json_last_error_msg());
+            }
+            if (empty($input['id'])) {
+                throw new \Exception('IDが指定されていません');
+            }
+
+            $model = new NoteListEntryModel();
+            $ok = $model->togglePin((int)$input['id']);
+            if (!$ok) {
+                throw new \Exception('ピン留めの変更に失敗しました');
+            }
+
+            echo json_encode([
+                'status' => 'success',
+                'message' => 'ピン留めを変更しました',
+            ], JSON_UNESCAPED_UNICODE);
+        } catch (\Exception $e) {
+            echo json_encode([
+                'status' => 'error',
+                'message' => $e->getMessage(),
             ], JSON_UNESCAPED_UNICODE);
         }
     }

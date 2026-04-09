@@ -148,8 +148,11 @@ $allMembersJson = json_encode(array_map(function ($m) {
                                 <label class="block text-[10px] font-bold text-slate-500 mb-1">メンバー</label>
                                 <select id="addMemberId" class="w-full h-10 border <?= $cardBorder ?> rounded-lg px-3 text-sm bg-white">
                                     <?php
+                                    // セレクト用に一時的に $members を差し替える（テーブル描画用の $members を破壊しない）
+                                    $membersForTable = $members;
                                     $members = $allMembers;
                                     require __DIR__ . '/partials/member_select_options.php';
+                                    $members = $membersForTable;
                                     ?>
                                 </select>
                             </div>

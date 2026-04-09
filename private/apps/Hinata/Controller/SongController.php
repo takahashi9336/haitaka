@@ -261,10 +261,10 @@ class SongController {
             }
 
             $songMemberModel = new SongMemberModel();
-            $songMemberModel->bulkInsertMembers($songId, $members);
+            $inserted = $songMemberModel->bulkInsertMembers($songId, $members);
 
-            Logger::info("hn_song_members bulkSave song_id={$songId} count=" . count($members) . " by=" . ($_SESSION['user']['id_name'] ?? 'guest'));
-            echo json_encode(['status' => 'success']);
+            Logger::info("hn_song_members bulkSave song_id={$songId} count=" . count($members) . " inserted={$inserted} by=" . ($_SESSION['user']['id_name'] ?? 'guest'));
+            echo json_encode(['status' => 'success', 'inserted' => $inserted]);
         } catch (\Exception $e) {
             http_response_code(400);
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
