@@ -47,62 +47,91 @@ class AdminController {
         $appModel = new AppModel();
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $action = $_POST['action'] ?? '';
-            if ($action === 'create') {
-                $parentId = !empty($_POST['parent_id']) ? (int)$_POST['parent_id'] : null;
-                $ok = $appModel->create([
-                    'app_key' => $_POST['app_key'] ?? '',
-                    'name' => $_POST['name'] ?? '',
-                    'parent_id' => $parentId,
-                    'route_prefix' => $_POST['route_prefix'] ?? '',
-                    'path' => $_POST['path'] ?? null,
-                    'icon_class' => $_POST['icon_class'] ?? null,
-                    'theme_primary' => $_POST['theme_primary'] ?? null,
-                    'theme_light' => $_POST['theme_light'] ?? null,
-                    'default_route' => $_POST['default_route'] ?? null,
-                    'description' => $_POST['description'] ?? null,
-                    'is_system' => isset($_POST['is_system']) ? 1 : 0,
-                    'sort_order' => (int)($_POST['sort_order'] ?? 0),
-                    'is_visible' => isset($_POST['is_visible']) ? 1 : 0,
-                    'admin_only' => isset($_POST['admin_only']) ? 1 : 0,
-                ]);
-                $newId = $ok ? (int)$appModel->lastInsertId() : 0;
-                if ($newId > 0 && $parentId) {
-                    $roleAppModel = new RoleAppModel();
-                    $roleAppModel->grantToRolesWithParent($newId, $parentId);
-                }
-                SessionManager::invalidateAllSessions();
-            } elseif ($action === 'update' && isset($_POST['id'])) {
-                $appModel->update((int)$_POST['id'], [
-                    'app_key' => $_POST['app_key'] ?? '',
-                    'name' => $_POST['name'] ?? '',
-                    'parent_id' => !empty($_POST['parent_id']) ? (int)$_POST['parent_id'] : null,
-                    'route_prefix' => $_POST['route_prefix'] ?? '',
-                    'path' => $_POST['path'] ?? null,
-                    'icon_class' => $_POST['icon_class'] ?? null,
-                    'theme_primary' => $_POST['theme_primary'] ?? null,
-                    'theme_light' => $_POST['theme_light'] ?? null,
-                    'default_route' => $_POST['default_route'] ?? null,
-                    'description' => $_POST['description'] ?? null,
-                    'is_system' => isset($_POST['is_system']) ? 1 : 0,
-                    'sort_order' => (int)($_POST['sort_order'] ?? 0),
-                    'is_visible' => isset($_POST['is_visible']) ? 1 : 0,
-                    'admin_only' => isset($_POST['admin_only']) ? 1 : 0,
-                ]);
-                SessionManager::invalidateAllSessions();
-            } elseif ($action === 'delete' && isset($_POST['id'])) {
-                $id = (int)$_POST['id'];
-                $app = $appModel->findById($id);
-                if ($app) {
-                    if (!empty($app['is_system'])) {
-                        $_SESSION['admin_error'] = 'システム固定のアプリは削除できません。';
-                    } elseif ($appModel->hasChildren($id)) {
-                        $_SESSION['admin_error'] = '子画面があるアプリは先に子を削除してください。';
-                    } else {
-                        $appModel->delete($id);
-                        SessionManager::invalidateAllSessions();
+            $action = (string)($_POST['action'] ?? '');
+            $nullIfEmpty = static function ($v): ?string {
+                if ($v === null) return null;
+                $s = trim((string)$v);
+                return $s === '' ? null : $s;
+            };
+
+            try {
+                if ($action === 'create') {
+                    $parentId = !empty($_POST['parent_id']) ? (int)$_POST['parent_id'] : null;
+                    $data = [
+                        'app_key' => trim((string)($_POST['app_key'] ?? '')),
+                        'name' => trim((string)($_POST['name'] ?? '')),
+                        'parent_id' => $parentId,
+                        'route_prefix' => trim((string)($_POST['route_prefix'] ?? '')),
+                        'path' => $nullIfEmpty($_POST['path'] ?? null),
+                        'icon_class' => $nullIfEmpty($_POST['icon_class'] ?? null),
+                        'theme_primary' => $nullIfEmpty($_POST['theme_primary'] ?? null),
+                        'theme_light' => $nullIfEmpty($_POST['theme_light'] ?? null),
+                        'default_route' => $nullIfEmpty($_POST['default_route'] ?? null),
+                        'description' => $nullIfEmpty($_POST['description'] ?? null),
+                        'is_system' => isset($_POST['is_system']) ? 1 : 0,
+                        'sort_order' => (int)($_POST['sort_order'] ?? 0),
+                        'is_visible' => isset($_POST['is_visible']) ? 1 : 0,
+                        'admin_only' => isset($_POST['admin_only']) ? 1 : 0,
+                    ];
+                    // 子画面以外では path は基本使わないので、空なら NULL に寄せる
+                    if ($parentId === null) {
+                        $data['path'] = $data['path'] ?: null;
+                    }
+
+                    $appModel->create($data);
+                    $newId = (int)$appModel->lastInsertId();
+                    if ($newId > 0 && $parentId) {
+                        $roleAppModel = new RoleAppModel();
+                        $roleAppModel->grantToRolesWithParent($newId, $parentId);
+                    }
+                    SessionManager::invalidateAllSessions();
+                } elseif ($action === 'update' && isset($_POST['id'])) {
+                    $parentId = !empty($_POST['parent_id']) ? (int)$_POST['parent_id'] : null;
+                    $data = [
+                        'app_key' => trim((string)($_POST['app_key'] ?? '')),
+                        'name' => trim((string)($_POST['name'] ?? '')),
+                        'parent_id' => $parentId,
+                        'route_prefix' => trim((string)($_POST['route_prefix'] ?? '')),
+                        'path' => $nullIfEmpty($_POST['path'] ?? null),
+                        'icon_class' => $nullIfEmpty($_POST['icon_class'] ?? null),
+                        'theme_primary' => $nullIfEmpty($_POST['theme_primary'] ?? null),
+                        'theme_light' => $nullIfEmpty($_POST['theme_light'] ?? null),
+                        'default_route' => $nullIfEmpty($_POST['default_route'] ?? null),
+                        'description' => $nullIfEmpty($_POST['description'] ?? null),
+                        'is_system' => isset($_POST['is_system']) ? 1 : 0,
+                        'sort_order' => (int)($_POST['sort_order'] ?? 0),
+                        'is_visible' => isset($_POST['is_visible']) ? 1 : 0,
+                        'admin_only' => isset($_POST['admin_only']) ? 1 : 0,
+                    ];
+                    if ($parentId === null) {
+                        $data['path'] = $data['path'] ?: null;
+                    }
+                    $appModel->update((int)$_POST['id'], $data);
+                    SessionManager::invalidateAllSessions();
+                } elseif ($action === 'delete' && isset($_POST['id'])) {
+                    $id = (int)$_POST['id'];
+                    $app = $appModel->findById($id);
+                    if ($app) {
+                        if (!empty($app['is_system'])) {
+                            $_SESSION['admin_error'] = 'システム固定のアプリは削除できません。';
+                        } elseif ($appModel->hasChildren($id)) {
+                            $_SESSION['admin_error'] = '子画面があるアプリは先に子を削除してください。';
+                        } else {
+                            $appModel->delete($id);
+                            SessionManager::invalidateAllSessions();
+                        }
                     }
                 }
+            } catch (\PDOException $e) {
+                // DB制約違反等（app_key重複、カラム不足、NOT NULL、FK等）
+                $msg = $e->getMessage();
+                if (str_contains($msg, 'Duplicate entry') && str_contains($msg, 'uk_app_key')) {
+                    $_SESSION['admin_error'] = 'app_key が既に存在します。別の app_key を指定してください。';
+                } else {
+                    $_SESSION['admin_error'] = '保存に失敗しました: ' . $msg;
+                }
+            } catch (\Throwable $e) {
+                $_SESSION['admin_error'] = '保存に失敗しました: ' . $e->getMessage();
             }
             header('Location: /admin/apps.php');
             exit;

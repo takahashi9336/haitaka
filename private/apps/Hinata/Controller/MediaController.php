@@ -222,6 +222,38 @@ class MediaController {
     }
 
     /**
+     * 動画管理（楽曲/メンバー/設定）統合画面（管理者専用）
+     * 旧URLは維持しつつ、初期タブだけ切り替えて同一Viewを描画する。
+     *
+     * @param string $initialTab 'song'|'member'|'settings'
+     */
+    public function mediaAdmin(string $initialTab = 'member'): void {
+        (new HinataAuth($this->auth))->requireHinataAdmin('/hinata/');
+
+        $tab = in_array($initialTab, ['song', 'member', 'settings'], true) ? $initialTab : 'member';
+
+        $categories = $this->getMediaCategories();
+
+        $memberModel = new \App\Hinata\Model\MemberModel();
+        $members = $memberModel->getAllWithColors();
+
+        $releaseModel = new \App\Hinata\Model\ReleaseModel();
+        $releases = $releaseModel->getAllReleases();
+        $releasesWithSongs = [];
+        foreach ($releases as $r) {
+            $full = $releaseModel->getReleaseWithSongs((int)$r['id']);
+            if ($full) {
+                $releasesWithSongs[] = $full;
+            }
+        }
+        $trackTypesDisplay = \App\Hinata\Model\SongModel::TRACK_TYPES_DISPLAY;
+
+        $user = $_SESSION['user'];
+        $initialTab = $tab;
+        require_once __DIR__ . '/../Views/media_admin.php';
+    }
+
+    /**
      * 動画メタデータ更新API（カテゴリ変更など）
      * POST: { meta_id: int, category: string }
      */
