@@ -66,6 +66,19 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                         </div>
                     </a>
 
+                    <a href="/health/training_menu.php" class="app-card group relative bg-white rounded-xl border <?= $cardBorder ?> shadow-sm overflow-hidden flex flex-col items-center justify-center p-4 md:p-8 md:block aspect-square md:aspect-auto min-h-0">
+                        <div class="hidden md:block absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform <?= $cardDeco ?>">
+                            <i class="fa-solid fa-dumbbell text-6xl"></i>
+                        </div>
+                        <div class="relative z-10 flex flex-col items-center md:block">
+                            <div class="w-16 h-16 md:w-12 md:h-12 rounded-lg flex items-center justify-center mb-2 md:mb-6 transition-colors <?= $cardIconBg ?> <?= $cardIconText ?> <?= $cardIconHover ?>"<?= $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>>
+                                <i class="fa-solid fa-dumbbell text-2xl md:text-base"></i>
+                            </div>
+                            <h3 class="text-[10px] md:text-xl font-bold md:font-black text-slate-800 md:mb-4 text-center md:text-left">トレーニングメニュー</h3>
+                            <p class="hidden md:block text-sm text-slate-400 leading-relaxed">メニューと回数を記録し、動画を参照。</p>
+                        </div>
+                    </a>
+
                     <div class="app-card disabled group relative bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col items-center justify-center p-4 md:p-8 md:block aspect-square md:aspect-auto min-h-0">
                         <div class="hidden md:block absolute top-0 right-0 p-6 opacity-10 <?= $cardDeco ?>">
                             <i class="fa-solid fa-calendar-week text-6xl"></i>

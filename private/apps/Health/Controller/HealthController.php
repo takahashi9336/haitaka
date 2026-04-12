@@ -24,5 +24,12 @@ class HealthController {
         $user = $_SESSION['user'];
         require_once __DIR__ . '/../Views/kitchen_stock.php';
     }
+
+    public function trainingMenu(): void {
+        $this->auth->requireLogin();
+
+        $user = $_SESSION['user'];
+        require_once __DIR__ . '/../Views/training_menu.php';
+    }
 }
 
