@@ -145,7 +145,7 @@ $dashboardAiItem = null;
 $dashboardPaleoItems = [];
 try {
     $feedService = new \App\Dashboard\Service\DashboardFeedService();
-    $dashboardCuriosityItem = $feedService->getCuriosityItem();
+    $dashboardCuriosityItem = $feedService->getCuriosityItem((int) ($user['id'] ?? 0));
     $dashboardAiItem = $feedService->getAiItem();
     $dashboardPaleoItems = $feedService->getPaleoItems();
 } catch (\Throwable $e) {

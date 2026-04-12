@@ -11,10 +11,12 @@ class DashboardFeedService {
     private const CACHE_TTL_SECONDS = 3600; // 1時間
     private const PALEO_MAX_ITEMS = 3;
     private const RECENT_DAYS_DEFAULT = 7;
+    /** 好奇心ブーストで「直近に出した URL」を覚えておく最大件数（重複回避用） */
+    private const CURIOSITY_SHOWN_URL_MAX = 24;
 
     /**
      * 好奇心ブースト用: 単一の「科学+話題」だと同種トレンド（健康・自動車・スポーツ等）に偏りやすいため、
-     * テーマを分けたクエリから毎回ランダムに1つ選ぶ。
+     * テーマを分けたクエリから日付・ユーザー単位で決定的に1つ試す。
      *
      * @var list<string>
      */
@@ -51,30 +53,127 @@ class DashboardFeedService {
     }
 
     /**
-     * 今日の好奇心ブースト用に、科学・話題系 RSS からランダムで1件返す。
+     * 今日の好奇心ブースト用に、科学・話題系 RSS から1件返す。
+     * 同一ユーザー・同一日（JST）は同じ記事（リロードしても変わらない）。直近表示URLは除外する。
+     *
      * @return array{title: string, url: string, pubDate: string}|null
      */
-    public function getCuriosityItem(): ?array {
+    public function getCuriosityItem(int $userId): ?array {
+        $dateKey = $this->getCuriosityDateKeyJst();
+        $baseSeed = $dateKey . '|' . $userId . '|curiosity';
+        $excluded = $this->getCuriosityExcludeUrlsPriorDays($userId, $dateKey);
+
         $indices = range(0, count(self::CURIOSITY_SEARCH_QUERIES) - 1);
-        shuffle($indices);
+        usort($indices, function (int $a, int $b) use ($baseSeed): int {
+            $ca = crc32($baseSeed . '|theme|' . $a);
+            $cb = crc32($baseSeed . '|theme|' . $b);
+            return ($ca <=> $cb) ?: ($a <=> $b);
+        });
 
         foreach ($indices as $qi) {
             $q = self::CURIOSITY_SEARCH_QUERIES[$qi];
-            $picked = $this->pickRecentFromCuriosityFeed('curiosity_q' . $qi, $q);
+            $pickSeed = $baseSeed . '|q' . $qi;
+            $picked = $this->pickRecentFromCuriosityFeed('curiosity_q' . $qi, $q, $pickSeed, $excluded);
             if ($picked !== null) {
+                $this->recordCuriosityShownUrl($userId, (string) $picked['url'], $dateKey);
                 return $picked;
             }
         }
 
-        return $this->pickRecentFromCuriosityFeed('curiosity_fallback', self::CURIOSITY_FALLBACK_QUERY);
+        $picked = $this->pickRecentFromCuriosityFeed(
+            'curiosity_fallback',
+            self::CURIOSITY_FALLBACK_QUERY,
+            $baseSeed . '|fallback',
+            $excluded
+        );
+        if ($picked !== null) {
+            $this->recordCuriosityShownUrl($userId, (string) $picked['url'], $dateKey);
+        }
+        return $picked;
+    }
+
+    private function getCuriosityDateKeyJst(): string {
+        $tz = new \DateTimeZone('Asia/Tokyo');
+        return (new \DateTimeImmutable('now', $tz))->format('Y-m-d');
+    }
+
+    /**
+     * 今日より前の日に表示した URL のみ返す（同日再読込で候補から消えないようにする）。
+     *
+     * @return list<string>
+     */
+    private function getCuriosityExcludeUrlsPriorDays(int $userId, string $todayKey): array {
+        $entries = $this->readCuriosityShownEntries($userId);
+        $out = [];
+        foreach ($entries as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $d = (string) ($row['d'] ?? '');
+            $u = (string) ($row['u'] ?? '');
+            if ($u === '' || $d === '') {
+                continue;
+            }
+            if ($d !== $todayKey) {
+                $out[] = $u;
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * @return list<array{d: string, u: string}>
+     */
+    private function readCuriosityShownEntries(int $userId): array {
+        $file = $this->cacheDir . '/dashboard_curiosity_shown_' . $userId . '.json';
+        if (!is_file($file)) {
+            return [];
+        }
+        $raw = @file_get_contents($file);
+        if ($raw === false) {
+            return [];
+        }
+        $decoded = json_decode($raw, true);
+        if (!is_array($decoded)) {
+            return [];
+        }
+        $out = [];
+        foreach ($decoded as $row) {
+            if (is_array($row) && isset($row['d'], $row['u']) && is_string($row['d']) && is_string($row['u'])) {
+                $out[] = ['d' => $row['d'], 'u' => $row['u']];
+            } elseif (is_string($row) && $row !== '') {
+                // 旧形式（URL のみ）: 日付不明のため除外対象に含めない
+                continue;
+            }
+        }
+        return $out;
+    }
+
+    private function recordCuriosityShownUrl(int $userId, string $url, string $todayKey): void {
+        $file = $this->cacheDir . '/dashboard_curiosity_shown_' . $userId . '.json';
+        $merged = [['d' => $todayKey, 'u' => $url]];
+        foreach ($this->readCuriosityShownEntries($userId) as $row) {
+            if (($row['u'] ?? '') === $url) {
+                continue;
+            }
+            $merged[] = $row;
+        }
+        $merged = array_slice($merged, 0, self::CURIOSITY_SHOWN_URL_MAX);
+        @file_put_contents($file, json_encode($merged, JSON_UNESCAPED_UNICODE));
     }
 
     /**
      * 指定クエリの RSS から直近 N 日の記事を1件選ぶ。取れなければ null。
      *
+     * @param list<string> $excludedUrls
      * @return array{title: string, url: string, pubDate: string}|null
      */
-    private function pickRecentFromCuriosityFeed(string $cacheKey, string $searchQuery): ?array {
+    private function pickRecentFromCuriosityFeed(
+        string $cacheKey,
+        string $searchQuery,
+        string $pickSeed,
+        array $excludedUrls = []
+    ): ?array {
         $feedUrl = $this->buildGoogleNewsRssUrl($searchQuery);
         $items = $this->getCachedOrFetch($cacheKey, $feedUrl);
         if (empty($items)) {
@@ -90,7 +189,42 @@ class DashboardFeedService {
             return null;
         }
 
-        return $recent[array_rand($recent)];
+        $pool = $this->filterOutExcludedUrls($recent, $excludedUrls);
+        if (empty($pool)) {
+            $pool = $recent;
+        }
+
+        $idx = $this->stableIndexFromSeed($pickSeed, count($pool));
+        return $pool[$idx];
+    }
+
+    /**
+     * @param array<int, array{title: string, url: string, pubDate: string}> $items
+     * @param list<string> $excludedUrls
+     * @return array<int, array{title: string, url: string, pubDate: string}>
+     */
+    private function filterOutExcludedUrls(array $items, array $excludedUrls): array {
+        if ($excludedUrls === []) {
+            return array_values($items);
+        }
+        $set = array_fill_keys($excludedUrls, true);
+        $out = [];
+        foreach ($items as $it) {
+            $u = (string) ($it['url'] ?? '');
+            if ($u !== '' && !isset($set[$u])) {
+                $out[] = $it;
+            }
+        }
+        return $out;
+    }
+
+    private function stableIndexFromSeed(string $seed, int $count): int {
+        if ($count <= 0) {
+            return 0;
+        }
+        $h = crc32($seed);
+        $mod = $count;
+        return ((int) ($h % $mod) + $mod) % $mod;
     }
 
     /**
