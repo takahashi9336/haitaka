@@ -108,8 +108,65 @@ class LiveTripController {
             $checklistItems = (new ChecklistItemModel())->getByTripPlanId($id);
         } catch (\Throwable $e) { /* テーブル未作成時 */ }
         $mergedTimeline = $this->mergeTimelineWithTransport($timelineItems, $transportLegs, $events);
+
+        // ユーザー別「自宅」
+        $homePlace = null;
+        try {
+            $homePlace = (new \App\LiveTrip\Model\UserPlaceModel())->getByUserAndKey($userId, 'home');
+        } catch (\Throwable $e) { }
+
         $user = $_SESSION['user'];
         require_once __DIR__ . '/../Views/show.php';
+    }
+
+    /**
+     * ユーザー別「自宅」保存
+     */
+    public function storeHomePlace(): void {
+        $this->requireAccess();
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { header('Location: /live_trip/'); exit; }
+
+        \Core\Database::connect();
+        $userId = (int) $_SESSION['user']['id'];
+        $tripPlanId = (int) ($_POST['trip_plan_id'] ?? 0);
+
+        $label = trim((string)($_POST['label'] ?? '')) ?: '自宅';
+        $address = trim((string)($_POST['address'] ?? '')) ?: null;
+        $placeId = trim((string)($_POST['place_id'] ?? '')) ?: null;
+        $lat = trim((string)($_POST['latitude'] ?? '')) ?: null;
+        $lng = trim((string)($_POST['longitude'] ?? '')) ?: null;
+
+        // place_id はあるが緯度経度が無い場合は補完
+        if ($placeId && (!$lat || !$lng)) {
+            try {
+                $geo = (new \App\LiveTrip\Service\MapsGeocodeService())->geocodeByPlaceId($placeId);
+                if ($geo) {
+                    $lat = $geo['latitude'] ?? $lat;
+                    $lng = $geo['longitude'] ?? $lng;
+                    $address = $geo['formatted_address'] ?? $address;
+                }
+            } catch (\Throwable $e) { }
+        }
+
+        try {
+            (new \App\LiveTrip\Model\UserPlaceModel())->upsertHome($userId, [
+                'label' => $label,
+                'address' => $address,
+                'place_id' => $placeId,
+                'latitude' => $lat,
+                'longitude' => $lng,
+            ]);
+            $_SESSION['flash_success'] = '自宅を登録しました。';
+        } catch (\Throwable $e) {
+            $_SESSION['flash_error'] = '自宅の登録に失敗しました。';
+        }
+
+        if ($tripPlanId > 0) {
+            header('Location: /live_trip/show.php?id=' . $tripPlanId . '#transport');
+        } else {
+            header('Location: /live_trip/');
+        }
+        exit;
     }
 
     public function shiori(): void {
@@ -1250,6 +1307,29 @@ class LiveTripController {
         $destination = trim($_GET['destination'] ?? '');
         $mode = trim($_GET['mode'] ?? 'transit');
         $departureDate = trim($_GET['departure_date'] ?? '') ?: null;
+        $debug = (string)($_GET['debug'] ?? '') === '1';
+
+        // #region agent log
+        try {
+            // repo root: private/apps/LiveTrip/Controller -> (Controller -> LiveTrip -> apps -> private -> root)
+            $debugLogPath = dirname(__DIR__, 4) . '/.cursor/debug-572306.log';
+            $payload = [
+                'sessionId' => '572306',
+                'runId' => 'pre-fix',
+                'hypothesisId' => 'H4',
+                'location' => 'private/apps/LiveTrip/Controller/LiveTripController.php',
+                'message' => 'directionsPolyline_request',
+                'data' => [
+                    'originLen' => strlen($origin),
+                    'destinationLen' => strlen($destination),
+                    'mode' => $mode,
+                    'departureDate' => $departureDate,
+                ],
+                'timestamp' => (int) floor(microtime(true) * 1000),
+            ];
+            @file_put_contents($debugLogPath, json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . PHP_EOL, FILE_APPEND);
+        } catch (\Throwable $e) { }
+        // #endregion agent log
 
         if ($origin === '' || $destination === '') {
             echo json_encode(['status' => 'error', 'message' => 'origin/destination を指定してください']);
@@ -1262,9 +1342,53 @@ class LiveTripController {
         $svc = new MapsDirectionsService();
         $route = $svc->getOverviewPolyline($origin, $destination, $mode, $departureDate);
         if ($route === null) {
-            echo json_encode(['status' => 'error', 'message' => '取得できませんでした']);
+            // #region agent log
+            try {
+                // repo root: private/apps/LiveTrip/Controller -> (Controller -> LiveTrip -> apps -> private -> root)
+                $debugLogPath = dirname(__DIR__, 4) . '/.cursor/debug-572306.log';
+                $payload = [
+                    'sessionId' => '572306',
+                    'runId' => 'pre-fix',
+                    'hypothesisId' => 'H4',
+                    'location' => 'private/apps/LiveTrip/Controller/LiveTripController.php',
+                    'message' => 'directionsPolyline_routeNull',
+                    'data' => [
+                        'mode' => $mode,
+                        'departureDate' => $departureDate,
+                    ],
+                    'timestamp' => (int) floor(microtime(true) * 1000),
+                ];
+                @file_put_contents($debugLogPath, json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . PHP_EOL, FILE_APPEND);
+            } catch (\Throwable $e) { }
+            // #endregion agent log
+            $payload = ['status' => 'error', 'message' => '取得できませんでした'];
+            if ($debug) {
+                $payload['debug'] = [
+                    'directions' => $svc->getLastError(),
+                ];
+            }
+            echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }
+        // #region agent log
+        try {
+            // repo root: private/apps/LiveTrip/Controller -> (Controller -> LiveTrip -> apps -> private -> root)
+            $debugLogPath = dirname(__DIR__, 4) . '/.cursor/debug-572306.log';
+            $payload = [
+                'sessionId' => '572306',
+                'runId' => 'pre-fix',
+                'hypothesisId' => 'H4',
+                'location' => 'private/apps/LiveTrip/Controller/LiveTripController.php',
+                'message' => 'directionsPolyline_ok',
+                'data' => [
+                    'polylineLen' => strlen((string)($route['polyline'] ?? '')),
+                    'durationMin' => (int)($route['duration_min'] ?? 0),
+                ],
+                'timestamp' => (int) floor(microtime(true) * 1000),
+            ];
+            @file_put_contents($debugLogPath, json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . PHP_EOL, FILE_APPEND);
+        } catch (\Throwable $e) { }
+        // #endregion agent log
         echo json_encode(['status' => 'ok', 'route' => $route]);
         exit;
     }

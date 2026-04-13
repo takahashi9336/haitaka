@@ -2,6 +2,26 @@
 (function () {
   'use strict';
 
+  // #region agent log
+  function ltDbg(hypothesisId, message, data) {
+    try {
+      fetch('http://127.0.0.1:7242/ingest/a55992ae-4f4b-4b96-a011-9dd68f0025d2', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '572306' },
+        body: JSON.stringify({
+          sessionId: '572306',
+          runId: 'pre-fix',
+          hypothesisId: hypothesisId,
+          location: 'www/assets/js/live_trip_map.js',
+          message: message,
+          data: data || {},
+          timestamp: Date.now(),
+        }),
+      }).catch(function () {});
+    } catch (e) {}
+  }
+  // #endregion agent log
+
   function onReady(fn) {
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', fn);
@@ -54,10 +74,33 @@
   onReady(function () {
     var mapEl = document.getElementById('ltMap');
     var data = window.__LT_MAP_DATA__ || null;
+    // #region agent log
+    ltDbg('H2', 'bootstrap', {
+      hasMapEl: !!mapEl,
+      hasData: !!data,
+      tripId: data && data.tripId ? data.tripId : null,
+      venue: data && data.venue ? { has: true, lat: data.venue.lat, lng: data.venue.lng } : { has: false },
+      counts: data
+        ? {
+            hotels: Array.isArray(data.hotels) ? data.hotels.length : null,
+            destinations: Array.isArray(data.destinations) ? data.destinations.length : null,
+            timeline: Array.isArray(data.timeline) ? data.timeline.length : null,
+            transportLegs: Array.isArray(data.transportLegs) ? data.transportLegs.length : null,
+          }
+        : null,
+    });
+    // #endregion agent log
     if (!mapEl || !data) return;
 
     waitForGoogleMaps(12000)
       .then(function () {
+        // #region agent log
+        ltDbg('H2', 'googleMapsReady', {
+          hasGoogle: !!window.google,
+          hasMap: !!(window.google && google.maps && typeof google.maps.Map === 'function'),
+          hasGeometry: !!(window.google && google.maps && google.maps.geometry),
+        });
+        // #endregion agent log
         var markersByKey = new Map();
         var layers = {
           venue: [],
@@ -81,7 +124,7 @@
 
         var map = new google.maps.Map(mapEl, {
           center: defaultCenter,
-          zoom: 13,
+          zoom: 12,
           gestureHandling: 'greedy',
           mapTypeControl: false,
           streetViewControl: false,
@@ -129,7 +172,19 @@
               added++;
             }
           });
-          if (added > 0) map.fitBounds(bounds, { top: 40, right: 30, bottom: 40, left: 30 });
+          if (added > 0) {
+            map.fitBounds(bounds, { top: 40, right: 30, bottom: 40, left: 30 });
+            // 近距離の複数点だと寄りすぎるので、上限ズームを設ける
+            var MAX_FIT_ZOOM = 13;
+            google.maps.event.addListenerOnce(map, 'idle', function () {
+              try {
+                if (typeof map.getZoom === 'function' && typeof map.setZoom === 'function') {
+                  var z = map.getZoom();
+                  if (typeof z === 'number' && z > MAX_FIT_ZOOM) map.setZoom(MAX_FIT_ZOOM);
+                }
+              } catch (e) {}
+            });
+          }
         }
 
         var info = new google.maps.InfoWindow();
@@ -206,6 +261,16 @@
           });
         });
 
+        // #region agent log
+        ltDbg('H1', 'layersAfterMarkerCreate', {
+          venue: layers.venue.length,
+          hotels: layers.hotels.length,
+          destinations: layers.destinations.length,
+          timeline: layers.timeline.length,
+          transport: layers.transport.length,
+        });
+        // #endregion agent log
+
         // Default view
         hideAllLayers();
         setLayerVisible('venue', true);
@@ -224,7 +289,17 @@
         var transportLoaded = false;
         var transportLoading = null;
         function ensureTransportRoutes() {
-          if (transportLoaded) return Promise.resolve(true);
+          // #region agent log
+          ltDbg('H3', 'ensureTransportRoutes_enter', {
+            transportLoaded: transportLoaded,
+            hasTransportLoading: !!transportLoading,
+            legsCount: Array.isArray(data.transportLegs) ? data.transportLegs.length : null,
+            currentPolylines: layers.transport.length,
+          });
+          // #endregion agent log
+          // "Loaded" should mean we actually have something to show.
+          // If previous attempt resulted in 0 polylines, allow retry on next click.
+          if (transportLoaded && layers.transport.length > 0) return Promise.resolve(true);
           if (transportLoading) return transportLoading;
 
           var legs = Array.isArray(data.transportLegs) ? data.transportLegs : [];
@@ -233,12 +308,24 @@
             return Promise.resolve(true);
           }
 
+          // reset state for (re)try
+          transportLoaded = false;
+
           transportLoading = Promise.all(
             legs.map(function (leg) {
               var id = leg && leg.id ? leg.id : 0;
               var origin = (leg && leg.departure) || '';
               var destination = (leg && leg.arrival) || '';
-              if (!origin || !destination) return Promise.resolve(null);
+              if (!origin || !destination) {
+                // #region agent log
+                ltDbg('H3', 'transportLeg_skip_empty', {
+                  legId: id,
+                  originLen: origin ? origin.length : 0,
+                  destinationLen: destination ? destination.length : 0,
+                });
+                // #endregion agent log
+                return Promise.resolve(null);
+              }
 
               var mode = modeFromTransportType(leg.transport_type);
               var depDate = (leg && leg.departure_date) || '';
@@ -249,13 +336,101 @@
                 encodeURIComponent(destination) +
                 '&mode=' +
                 encodeURIComponent(mode) +
-                (depDate ? '&departure_date=' + encodeURIComponent(depDate) : '');
+                (depDate ? '&departure_date=' + encodeURIComponent(depDate) : '') +
+                '&debug=1';
+
+              // #region agent log
+              ltDbg('H3', 'transportFetchAttempt_ltDbg', {
+                legId: id,
+                originLen: origin.length,
+                destinationLen: destination.length,
+                mode: mode,
+                hasDepDate: !!depDate,
+              });
+              // #endregion agent log
+
+              // #region agent log
+              try {
+                fetch(
+                  '/live_trip/api/debug_log.php?sessionId=572306&msg=transportFetchAttempt&layer=transport&legId=' +
+                    encodeURIComponent(String(id)) +
+                    '&originLen=' +
+                    encodeURIComponent(String(origin.length)) +
+                    '&destinationLen=' +
+                    encodeURIComponent(String(destination.length)) +
+                    '&mode=' +
+                    encodeURIComponent(String(mode)),
+                  { method: 'GET', headers: { 'X-Requested-With': 'XMLHttpRequest' } }
+                ).catch(function () {});
+              } catch (e) {}
+              // #endregion agent log
 
               return fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
                 .then(function (r) {
-                  return r.json();
+                  return r
+                    .text()
+                    .then(function (t) {
+                      var json = null;
+                      try {
+                        json = JSON.parse(t);
+                      } catch (e) {
+                        // #region agent log
+                        ltDbg('H3', 'transportFetch_parseError', {
+                          legId: id,
+                          httpStatus: r && typeof r.status === 'number' ? r.status : null,
+                          contentType: r && r.headers && typeof r.headers.get === 'function' ? String(r.headers.get('content-type') || '') : null,
+                          textHead: String(t || '').slice(0, 200),
+                        });
+                        // #endregion agent log
+                        return null;
+                      }
+                      // #region agent log
+                      ltDbg('H3', 'transportFetch_http', {
+                        legId: id,
+                        httpStatus: r && typeof r.status === 'number' ? r.status : null,
+                        ok: !!(r && r.ok),
+                      });
+                      // #endregion agent log
+                      return json;
+                    })
+                    .catch(function () {
+                      return null;
+                    });
                 })
                 .then(function (json) {
+                  // #region agent log
+                  ltDbg('H3', 'transportFetchJson_ltDbg', {
+                    legId: id,
+                    ok: !!(json && json.status === 'ok' && json.route && json.route.polyline),
+                    status: json && json.status ? String(json.status) : null,
+                    message: json && json.message ? String(json.message) : null,
+                    debugDirectionsStatus:
+                      json && json.debug && json.debug.directions && json.debug.directions.status
+                        ? String(json.debug.directions.status)
+                        : null,
+                    debugDirectionsErrorMessage:
+                      json && json.debug && json.debug.directions && json.debug.directions.error_message
+                        ? String(json.debug.directions.error_message)
+                        : null,
+                    hasRoute: !!(json && json.route),
+                    hasPolyline: !!(json && json.route && json.route.polyline),
+                  });
+                  // #endregion agent log
+                  // #region agent log
+                  try {
+                    fetch(
+                      '/live_trip/api/debug_log.php?sessionId=572306&msg=transportFetchResult&layer=transport&legId=' +
+                        encodeURIComponent(String(id)) +
+                        '&originLen=' +
+                        encodeURIComponent(String(origin.length)) +
+                        '&destinationLen=' +
+                        encodeURIComponent(String(destination.length)) +
+                        '&mode=' +
+                        encodeURIComponent(String(mode)),
+                      { method: 'GET', headers: { 'X-Requested-With': 'XMLHttpRequest' } }
+                    ).catch(function () {});
+                  } catch (e) {}
+                  // #endregion agent log
                   if (!json || json.status !== 'ok' || !json.route || !json.route.polyline) return null;
                   if (!google.maps.geometry || !google.maps.geometry.encoding) return null;
                   var path = google.maps.geometry.encoding.decodePath(String(json.route.polyline));
@@ -275,9 +450,14 @@
                 });
             })
           ).then(function () {
-            transportLoaded = true;
+            // Mark loaded only if we actually drew any route.
+            transportLoaded = layers.transport.length > 0;
             transportLoading = null;
             return true;
+          }).catch(function () {
+            transportLoaded = false;
+            transportLoading = null;
+            return false;
           });
 
           return transportLoading;
@@ -287,6 +467,26 @@
         document.querySelectorAll('[data-lt-map-layer]').forEach(function (btn) {
           btn.addEventListener('click', function () {
             var layer = this.getAttribute('data-lt-map-layer');
+            // #region agent log
+            ltDbg('H3', 'layerButton', {
+              layer: layer,
+              layerCounts: {
+                venue: layers.venue.length,
+                hotels: layers.hotels.length,
+                destinations: layers.destinations.length,
+                timeline: layers.timeline.length,
+                transport: layers.transport.length,
+              },
+            });
+            // #endregion agent log
+            // #region agent log
+            try {
+              fetch('/live_trip/api/debug_log.php?sessionId=572306&msg=layerButton&layer=' + encodeURIComponent(layer || ''), {
+                method: 'GET',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+              }).catch(function () {});
+            } catch (e) {}
+            // #endregion agent log
             if (!layer) return;
             if (layer === 'transport') {
               ensureTransportRoutes().finally(function () {
@@ -308,6 +508,9 @@
           var original = window.switchTab;
           window.switchTab = function (tab) {
             original(tab);
+            // #region agent log
+            ltDbg('H3', 'switchTabHook', { tab: tab });
+            // #endregion agent log
             try {
               if (tab === 'destination') {
                 hideAllLayers();
@@ -372,6 +575,9 @@
       })
       .catch(function () {
         // no-op（キー未設定や読み込み失敗時）
+        // #region agent log
+        ltDbg('H2', 'googleMapsNotReady', {});
+        // #endregion agent log
       });
   });
 })();

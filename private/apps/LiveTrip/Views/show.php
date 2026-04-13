@@ -88,6 +88,20 @@ if ($firstEv) {
         ];
     }
 }
+// 会場座標が無い場合は、会場名から最低限の補完（当日利用のUX優先）
+if ($venue === null && $eventPlace !== '' && $mapsJsApiKey !== '') {
+    try {
+        $geo = (new \App\LiveTrip\Service\MapsGeocodeService())->geocode($eventPlace);
+        if ($geo && !empty($geo['latitude']) && !empty($geo['longitude'])) {
+            $venue = [
+                'id' => 'venue',
+                'name' => (string)$eventPlace,
+                'lat' => (float)$geo['latitude'],
+                'lng' => (float)$geo['longitude'],
+            ];
+        }
+    } catch (\Throwable $e) { /* noop */ }
+}
 $hotelsForMap = [];
 foreach ($hotelStays ?? [] as $h) {
     $lat = trim((string)($h['latitude'] ?? ''));
@@ -159,6 +173,38 @@ $ltMapData = [
     'transportLegs' => $transportForMap,
     'theme' => (string)($themePrimaryHex ?? '#10b981'),
 ];
+
+$hasVenueForMap = ($venue !== null);
+$hasDestinationsForMap = !empty($destinationsForMap);
+$hasTimelineForMap = !empty($timelineForMap);
+$hasTransportForMap = !empty($transportForMap);
+
+// #region agent log
+try {
+    // repo root: private/apps/LiveTrip/Views -> (Views -> LiveTrip -> apps -> private -> root)
+    $debugLogPath = dirname(__DIR__, 4) . '/.cursor/debug-572306.log';
+    $payload = [
+        'sessionId' => '572306',
+        'runId' => 'pre-fix',
+        'hypothesisId' => 'H1',
+        'location' => 'private/apps/LiveTrip/Views/show.php',
+        'message' => 'ltMapDataPrepared',
+        'data' => [
+            'tripId' => (int)($trip['id'] ?? 0),
+            'hasMapsJsApiKey' => ($mapsJsApiKey !== ''),
+            'venue' => $venue ? ['has' => true, 'lat' => $venue['lat'], 'lng' => $venue['lng']] : ['has' => false],
+            'counts' => [
+                'hotels' => count($hotelsForMap),
+                'destinations' => count($destinationsForMap),
+                'timeline' => count($timelineForMap),
+                'transportLegs' => count($transportForMap),
+            ],
+        ],
+        'timestamp' => (int) floor(microtime(true) * 1000),
+    ];
+    @file_put_contents($debugLogPath, json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . PHP_EOL, FILE_APPEND);
+} catch (\Throwable $e) { }
+// #endregion agent log
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -237,8 +283,8 @@ $ltMapData = [
         <button type="button" class="lt-tab shrink-0" data-tab="checklist"><i class="fa-solid fa-list-check mr-1 text-slate-400"></i>チェックリスト</button>
     </div>
 
-    <div class="px-4 sm:px-6 pt-4 sm:pt-5 max-w-4xl w-full">
-        <div class="grid gap-3 sm:gap-4 sm:grid-cols-[1fr_1.2fr]">
+    <div class="px-4 sm:px-6 pt-4 sm:pt-5 max-w-6xl w-full">
+        <div class="grid gap-3 sm:gap-4 sm:grid-cols-[1fr_2fr]">
             <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
@@ -282,17 +328,29 @@ $ltMapData = [
                 </div>
             </div>
 
-            <div class="p-0 bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+            <div class="p-0 bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden min-w-0">
                 <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between gap-3">
                     <p class="text-xs font-bold text-slate-500">地図</p>
                     <div class="flex items-center gap-2">
-                        <button type="button" class="px-3 py-1.5 rounded-lg border border-slate-200 text-[11px] font-bold text-slate-600 hover:bg-slate-50" data-lt-map-layer="venue">会場</button>
-                        <button type="button" class="px-3 py-1.5 rounded-lg border border-slate-200 text-[11px] font-bold text-slate-600 hover:bg-slate-50" data-lt-map-layer="destinations">目的地</button>
-                        <button type="button" class="px-3 py-1.5 rounded-lg border border-slate-200 text-[11px] font-bold text-slate-600 hover:bg-slate-50" data-lt-map-layer="timeline">予定</button>
-                        <button type="button" class="px-3 py-1.5 rounded-lg border border-slate-200 text-[11px] font-bold text-slate-600 hover:bg-slate-50" data-lt-map-layer="transport">ルート</button>
+                        <button type="button"
+                                class="px-3 py-1.5 rounded-lg border border-slate-200 text-[11px] font-bold <?= $hasVenueForMap ? 'text-slate-600 hover:bg-slate-50' : 'text-slate-300 cursor-not-allowed' ?>"
+                                data-lt-map-layer="venue"
+                                <?= $hasVenueForMap ? '' : 'disabled title="会場の座標が未登録です"' ?>>会場</button>
+                        <button type="button"
+                                class="px-3 py-1.5 rounded-lg border border-slate-200 text-[11px] font-bold <?= $hasDestinationsForMap ? 'text-slate-600 hover:bg-slate-50' : 'text-slate-300 cursor-not-allowed' ?>"
+                                data-lt-map-layer="destinations"
+                                <?= $hasDestinationsForMap ? '' : 'disabled title="目的地に座標付きのスポットがありません"' ?>>目的地</button>
+                        <button type="button"
+                                class="px-3 py-1.5 rounded-lg border border-slate-200 text-[11px] font-bold <?= $hasTimelineForMap ? 'text-slate-600 hover:bg-slate-50' : 'text-slate-300 cursor-not-allowed' ?>"
+                                data-lt-map-layer="timeline"
+                                <?= $hasTimelineForMap ? '' : 'disabled title="タイムラインに場所付きの予定がありません"' ?>>予定</button>
+                        <button type="button"
+                                class="px-3 py-1.5 rounded-lg border border-slate-200 text-[11px] font-bold <?= $hasTransportForMap ? 'text-slate-600 hover:bg-slate-50' : 'text-slate-300 cursor-not-allowed' ?>"
+                                data-lt-map-layer="transport"
+                                <?= $hasTransportForMap ? '' : 'disabled title="移動に発/着が入っていません"' ?>>ルート</button>
                     </div>
                 </div>
-                <div id="ltMap" class="w-full" style="height: 260px;"></div>
+                <div id="ltMap" class="w-full" style="height: 320px;"></div>
                 <?php if ($mapsJsApiKey === ''): ?>
                     <div class="p-4 text-sm text-slate-500 border-t border-slate-200">
                         Google Maps APIキーが未設定のため、地図は表示できません。
@@ -1023,6 +1081,11 @@ $ltMapData = [
         <div class="lt-tab-panel max-w-4xl" data-panel="transport" id="panel-transport">
         <?php
         $transportCandidates = [];
+        // 自宅（ユーザー別に保存）
+        $homeAddress = trim((string)($homePlace['address'] ?? ''));
+        if ($homeAddress !== '') {
+            $transportCandidates[] = ['label' => '自宅', 'value' => $homeAddress];
+        }
         foreach ($trip['events'] ?? [] as $ev) {
             $p = trim($ev['event_place'] ?? $ev['hn_event_place'] ?? '');
             if ($p !== '') $transportCandidates[] = ['label' => $p . ' (会場)', 'value' => $p];
@@ -1042,6 +1105,32 @@ $ltMapData = [
             </h2>
             <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
                 <p class="text-sm text-slate-600 mb-3">移動を追加する際に交通費も登録できます。費用タブで集計を確認できます。</p>
+                <details class="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                    <summary class="cursor-pointer text-sm font-bold text-slate-600">自宅を登録（ユーザー別）</summary>
+                    <div class="mt-3">
+                        <form method="post" action="/live_trip/home_place_store.php" class="space-y-2">
+                            <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
+                            <input type="hidden" name="label" value="自宅">
+                            <input type="hidden" name="place_id" id="home-place-id" value="<?= htmlspecialchars((string)($homePlace['place_id'] ?? '')) ?>">
+                            <input type="hidden" name="latitude" id="home-lat" value="<?= htmlspecialchars((string)($homePlace['latitude'] ?? '')) ?>">
+                            <input type="hidden" name="longitude" id="home-lng" value="<?= htmlspecialchars((string)($homePlace['longitude'] ?? '')) ?>">
+                            <input type="hidden" name="address" id="home-address-hidden" value="<?= htmlspecialchars((string)($homePlace['address'] ?? '')) ?>">
+                            <div class="relative">
+                                <label class="block text-xs font-bold text-slate-500 mb-1">住所 / 施設名</label>
+                                <input type="text" id="home-address-input" class="w-full border border-slate-200 rounded px-3 py-2 text-sm" autocomplete="off"
+                                       placeholder="例: 渋谷駅 / 東京都渋谷区..." value="<?= htmlspecialchars((string)($homePlace['address'] ?? '')) ?>">
+                                <div id="home-address-suggestions" class="hidden absolute left-0 right-0 top-full mt-0.5 z-20 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"></div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button type="submit" class="lt-theme-btn text-white px-3 py-2 rounded text-sm">自宅を保存</button>
+                                <?php if (!empty($homePlace['address'])): ?>
+                                    <span class="text-xs text-slate-500">現在: <?= htmlspecialchars((string)$homePlace['address']) ?></span>
+                                <?php endif; ?>
+                            </div>
+                            <p class="text-xs text-slate-500">「登録済みから選ぶ」に自宅が表示されます。</p>
+                        </form>
+                    </div>
+                </details>
                 <form id="transport-add-form" method="post" action="/live_trip/transport_store.php" class="space-y-3">
                 <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
                 <input type="hidden" name="tab" value="transport">
@@ -2457,6 +2546,16 @@ $ltMapData = [
     attachPlacesAutocompleteForDestination('destination-name', 'destination-address', 'destination-place-id', 'destination-name-suggestions');
     attachPlacesAutocompleteForTimeline('timeline-location', 'timeline-place-id', 'timeline-lat', 'timeline-lng', 'timeline-location-address', 'timeline-location-suggestions');
     attachPlacesAutocompleteForTimeline('lt-timeline-modal-location-label', 'lt-timeline-modal-place-id', 'lt-timeline-modal-lat', 'lt-timeline-modal-lng', 'lt-timeline-modal-location-address', 'lt-timeline-modal-location-suggestions');
+    // 自宅登録（住所入力→ place_id を保持。緯度経度は保存時に place_id から補完）
+    (function() {
+        var input = document.getElementById('home-address-input');
+        var hiddenAddress = document.getElementById('home-address-hidden');
+        if (input && hiddenAddress) {
+            input.addEventListener('input', function() { hiddenAddress.value = (input.value || '').trim(); });
+            if (!hiddenAddress.value) hiddenAddress.value = (input.value || '').trim();
+        }
+        attachPlacesAutocompleteForTimeline('home-address-input', 'home-place-id', 'home-lat', 'home-lng', 'home-address-hidden', 'home-address-suggestions');
+    })();
 })();
 </script>
 <script src="/assets/js/live_trip_map.js" defer></script>

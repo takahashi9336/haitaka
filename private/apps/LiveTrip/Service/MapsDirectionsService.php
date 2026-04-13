@@ -10,6 +10,8 @@ use App\LiveTrip\Model\MapsApiUsageModel;
  */
 class MapsDirectionsService {
     private string $apiKey = '';
+    /** @var array{status?:string,error_message?:string,mode?:string}|null */
+    private ?array $lastError = null;
     private const DIRECTIONS_URL = 'https://maps.googleapis.com/maps/api/directions/json';
 
     private const MODES = [
@@ -45,6 +47,11 @@ class MapsDirectionsService {
 
     public function isConfigured(): bool {
         return !empty($this->apiKey);
+    }
+
+    /** @return array{status?:string,error_message?:string,mode?:string}|null */
+    public function getLastError(): ?array {
+        return $this->lastError;
     }
 
     /**
@@ -182,6 +189,7 @@ class MapsDirectionsService {
      * @return array{polyline: string, bounds: array{ne: array{lat: float, lng: float}, sw: array{lat: float, lng: float}}, duration_min: int, duration: string, distance: string}|null
      */
     private function fetchRoute(string $origin, string $destination, string $mode, ?int $departureTime = null): ?array {
+        $this->lastError = null;
         $params = [
             'origin' => $origin,
             'destination' => $destination,
@@ -201,25 +209,156 @@ class MapsDirectionsService {
             'http' => ['timeout' => 10],
         ]);
         $json = @file_get_contents($url, false, $ctx);
-        if ($json === false) return null;
+        if ($json === false) {
+            $this->lastError = ['status' => 'HTTP_ERROR', 'error_message' => 'file_get_contents failed', 'mode' => $mode];
+            // #region agent log
+            try {
+                $debugLogPath = dirname(__DIR__, 4) . '/.cursor/debug-572306.log';
+                $payload = [
+                    'sessionId' => '572306',
+                    'runId' => 'pre-fix',
+                    'hypothesisId' => 'H6',
+                    'location' => 'private/apps/LiveTrip/Service/MapsDirectionsService.php',
+                    'message' => 'fetchRoute_fileGetContentsFalse',
+                    'data' => [
+                        'mode' => $mode,
+                        'hasDepartureTime' => ($departureTime !== null),
+                    ],
+                    'timestamp' => (int) floor(microtime(true) * 1000),
+                ];
+                @file_put_contents($debugLogPath, json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . PHP_EOL, FILE_APPEND);
+            } catch (\Throwable $e) { }
+            // #endregion agent log
+            return null;
+        }
 
         $data = json_decode($json, true);
         $status = $data['status'] ?? '';
-        if ($status !== 'OK') return null;
+        if ($status !== 'OK') {
+            $this->lastError = [
+                'status' => (string) $status,
+                'error_message' => (string) ($data['error_message'] ?? ''),
+                'mode' => $mode,
+            ];
+            // #region agent log
+            try {
+                $debugLogPath = dirname(__DIR__, 4) . '/.cursor/debug-572306.log';
+                $payload = [
+                    'sessionId' => '572306',
+                    'runId' => 'pre-fix',
+                    'hypothesisId' => 'H6',
+                    'location' => 'private/apps/LiveTrip/Service/MapsDirectionsService.php',
+                    'message' => 'fetchRoute_statusNotOk',
+                    'data' => [
+                        'status' => (string)$status,
+                        'error_message' => (string)($data['error_message'] ?? ''),
+                        'mode' => $mode,
+                        'hasDepartureTime' => ($departureTime !== null),
+                        'routesCount' => is_array($data['routes'] ?? null) ? count($data['routes']) : null,
+                    ],
+                    'timestamp' => (int) floor(microtime(true) * 1000),
+                ];
+                @file_put_contents($debugLogPath, json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . PHP_EOL, FILE_APPEND);
+            } catch (\Throwable $e) { }
+            // #endregion agent log
+            return null;
+        }
 
         $route = $data['routes'][0] ?? null;
-        if (!$route) return null;
+        if (!$route) {
+            $this->lastError = ['status' => 'NO_ROUTE', 'error_message' => 'routes[0] missing', 'mode' => $mode];
+            // #region agent log
+            try {
+                $debugLogPath = dirname(__DIR__, 4) . '/.cursor/debug-572306.log';
+                $payload = [
+                    'sessionId' => '572306',
+                    'runId' => 'pre-fix',
+                    'hypothesisId' => 'H6',
+                    'location' => 'private/apps/LiveTrip/Service/MapsDirectionsService.php',
+                    'message' => 'fetchRoute_noRoute0',
+                    'data' => [
+                        'mode' => $mode,
+                    ],
+                    'timestamp' => (int) floor(microtime(true) * 1000),
+                ];
+                @file_put_contents($debugLogPath, json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . PHP_EOL, FILE_APPEND);
+            } catch (\Throwable $e) { }
+            // #endregion agent log
+            return null;
+        }
 
         $polyline = $route['overview_polyline']['points'] ?? '';
-        if ($polyline === '') return null;
+        if ($polyline === '') {
+            $this->lastError = ['status' => 'NO_POLYLINE', 'error_message' => 'overview_polyline missing', 'mode' => $mode];
+            // #region agent log
+            try {
+                $debugLogPath = dirname(__DIR__, 4) . '/.cursor/debug-572306.log';
+                $payload = [
+                    'sessionId' => '572306',
+                    'runId' => 'pre-fix',
+                    'hypothesisId' => 'H6',
+                    'location' => 'private/apps/LiveTrip/Service/MapsDirectionsService.php',
+                    'message' => 'fetchRoute_polylineEmpty',
+                    'data' => [
+                        'mode' => $mode,
+                        'hasOverviewPolyline' => isset($route['overview_polyline']),
+                    ],
+                    'timestamp' => (int) floor(microtime(true) * 1000),
+                ];
+                @file_put_contents($debugLogPath, json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . PHP_EOL, FILE_APPEND);
+            } catch (\Throwable $e) { }
+            // #endregion agent log
+            return null;
+        }
 
         $b = $route['bounds'] ?? null;
         $ne = $b['northeast'] ?? null;
         $sw = $b['southwest'] ?? null;
-        if (!$ne || !$sw) return null;
+        if (!$ne || !$sw) {
+            $this->lastError = ['status' => 'NO_BOUNDS', 'error_message' => 'bounds missing', 'mode' => $mode];
+            // #region agent log
+            try {
+                $debugLogPath = dirname(__DIR__, 4) . '/.cursor/debug-572306.log';
+                $payload = [
+                    'sessionId' => '572306',
+                    'runId' => 'pre-fix',
+                    'hypothesisId' => 'H6',
+                    'location' => 'private/apps/LiveTrip/Service/MapsDirectionsService.php',
+                    'message' => 'fetchRoute_boundsMissing',
+                    'data' => [
+                        'mode' => $mode,
+                        'hasBounds' => ($b !== null),
+                    ],
+                    'timestamp' => (int) floor(microtime(true) * 1000),
+                ];
+                @file_put_contents($debugLogPath, json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . PHP_EOL, FILE_APPEND);
+            } catch (\Throwable $e) { }
+            // #endregion agent log
+            return null;
+        }
 
         $leg = $route['legs'][0] ?? null;
-        if (!$leg) return null;
+        if (!$leg) {
+            $this->lastError = ['status' => 'NO_LEG', 'error_message' => 'legs[0] missing', 'mode' => $mode];
+            // #region agent log
+            try {
+                $debugLogPath = dirname(__DIR__, 4) . '/.cursor/debug-572306.log';
+                $payload = [
+                    'sessionId' => '572306',
+                    'runId' => 'pre-fix',
+                    'hypothesisId' => 'H6',
+                    'location' => 'private/apps/LiveTrip/Service/MapsDirectionsService.php',
+                    'message' => 'fetchRoute_legMissing',
+                    'data' => [
+                        'mode' => $mode,
+                    ],
+                    'timestamp' => (int) floor(microtime(true) * 1000),
+                ];
+                @file_put_contents($debugLogPath, json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . PHP_EOL, FILE_APPEND);
+            } catch (\Throwable $e) { }
+            // #endregion agent log
+            return null;
+        }
 
         $duration = $leg['duration']['text'] ?? '';
         $distance = $leg['distance']['text'] ?? '';
