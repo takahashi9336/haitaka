@@ -21,32 +21,144 @@ foreach ($mergedTimeline ?? [] as $m) {
     }
 }
 $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode($eventPlace) : '#';
-
-$staticMapSvc = new \App\LiveTrip\Service\MapsStaticMapService();
-$venueMapUrl = null;
 $firstEv = $trip['events'][0] ?? null;
-if ($firstEv && ($lat = trim($firstEv['venue_latitude'] ?? '')) !== '' && ($lng = trim($firstEv['venue_longitude'] ?? '')) !== '') {
-    $venueMapUrl = $staticMapSvc->getStaticMapUrl($lat, $lng, 320, 120);
-}
-$hotelMapUrls = [];
-foreach ($hotelStays ?? [] as $h) {
-    $lat = trim($h['latitude'] ?? '');
-    $lng = trim($h['longitude'] ?? '');
-    if ($lat !== '' && $lng !== '') {
-        $url = $staticMapSvc->getStaticMapUrl($lat, $lng, 320, 120);
-        if ($url) $hotelMapUrls[(int)$h['id']] = $url;
-    }
-}
-$destinationMapUrls = [];
-foreach ($destinations ?? [] as $d) {
-    $lat = trim($d['latitude'] ?? '');
-    $lng = trim($d['longitude'] ?? '');
-    if ($lat !== '' && $lng !== '') {
-        $url = $staticMapSvc->getStaticMapUrl($lat, $lng, 320, 120);
-        if ($url) $destinationMapUrls[(int)$d['id']] = $url;
-    }
-}
 $destinationModel = new \App\LiveTrip\Model\DestinationModel();
+
+// Google Maps JavaScript API（キーはリファラ制限運用を前提）
+$mapsJsApiKey = (string)($_ENV['GOOGLE_MAPS_API_KEY'] ?? '');
+
+// 「次の予定」（モバイルダッシュボード用）
+$nextItem = null;
+$nextNavLabel = '';
+$nextNavDestination = '';
+try {
+    $now = new \DateTimeImmutable('now', new \DateTimeZone('Asia/Tokyo'));
+    $best = null;
+    foreach ($mergedTimeline ?? [] as $m) {
+        $d = (string)($m['date'] ?? '');
+        $t = (string)($m['time'] ?? '');
+        if ($d === '' || $t === '' || $t === '99:99') continue;
+        $dt = \DateTimeImmutable::createFromFormat('Y-m-d H:i', $d . ' ' . $t, new \DateTimeZone('Asia/Tokyo'));
+        if (!$dt) continue;
+        $diff = $dt->getTimestamp() - $now->getTimestamp();
+        // 未来優先。過去は「次の日」とみなす（当日利用向け）
+        $score = $diff >= 0 ? $diff : (abs($diff) + 86400);
+        if ($best === null || $score < $best['score']) {
+            $best = ['score' => $score, 'm' => $m, 'dt' => $dt];
+        }
+    }
+    if ($best) {
+        $m = $best['m'];
+        $nextItem = $m;
+        if (($m['type'] ?? '') === 'timeline') {
+            $ti = $m['data'] ?? [];
+            $nextNavLabel = trim((string)($ti['location_label'] ?? '')) ?: trim((string)($ti['label'] ?? ''));
+            $dest = trim((string)($ti['location_address'] ?? '')) ?: $nextNavLabel;
+            $placeId = trim((string)($ti['place_id'] ?? ''));
+            $lat = trim((string)($ti['latitude'] ?? ''));
+            $lng = trim((string)($ti['longitude'] ?? ''));
+            if ($placeId !== '') {
+                $nextNavDestination = 'https://www.google.com/maps/dir/?api=1&destination_place_id=' . rawurlencode($placeId) . '&travelmode=transit';
+            } elseif ($lat !== '' && $lng !== '') {
+                $nextNavDestination = 'https://www.google.com/maps/dir/?api=1&destination=' . rawurlencode($lat . ',' . $lng) . '&travelmode=transit';
+            } elseif ($dest !== '') {
+                $nextNavDestination = 'https://www.google.com/maps/dir/?api=1&destination=' . rawurlencode($dest) . '&travelmode=transit';
+            }
+        }
+        if ($nextNavDestination === '' && $eventPlace !== '') {
+            $nextNavLabel = $nextNavLabel ?: '会場';
+            $nextNavDestination = 'https://www.google.com/maps/dir/?api=1&destination=' . rawurlencode($eventPlace) . '&travelmode=transit';
+        }
+    }
+} catch (\Throwable $e) {
+    // 表示用なので握りつぶし
+}
+
+// 共通Mapへ渡すデータ
+$venue = null;
+if ($firstEv) {
+    $lat = trim((string)($firstEv['venue_latitude'] ?? ''));
+    $lng = trim((string)($firstEv['venue_longitude'] ?? ''));
+    if ($lat !== '' && $lng !== '') {
+        $venue = [
+            'id' => 'venue',
+            'name' => (string)($firstEv['event_place'] ?? $firstEv['hn_event_place'] ?? $eventPlace ?? '会場'),
+            'lat' => (float)$lat,
+            'lng' => (float)$lng,
+        ];
+    }
+}
+$hotelsForMap = [];
+foreach ($hotelStays ?? [] as $h) {
+    $lat = trim((string)($h['latitude'] ?? ''));
+    $lng = trim((string)($h['longitude'] ?? ''));
+    if ($lat === '' || $lng === '') continue;
+    $hotelsForMap[] = [
+        'id' => (int)($h['id'] ?? 0),
+        'name' => (string)($h['hotel_name'] ?? ''),
+        'lat' => (float)$lat,
+        'lng' => (float)$lng,
+        'address' => (string)($h['address'] ?? ''),
+        'place_id' => (string)($h['place_id'] ?? ''),
+    ];
+}
+$destinationsForMap = [];
+foreach ($destinations ?? [] as $d) {
+    $lat = trim((string)($d['latitude'] ?? ''));
+    $lng = trim((string)($d['longitude'] ?? ''));
+    if ($lat === '' || $lng === '') continue;
+    $destinationsForMap[] = [
+        'id' => (int)($d['id'] ?? 0),
+        'name' => (string)($d['name'] ?? ''),
+        'lat' => (float)$lat,
+        'lng' => (float)$lng,
+        'address' => (string)($d['address'] ?? ''),
+        'place_id' => (string)($d['place_id'] ?? ''),
+        'type' => (string)($d['destination_type'] ?? 'other'),
+    ];
+}
+$timelineForMap = [];
+foreach ($mergedTimeline ?? [] as $m) {
+    if (($m['type'] ?? '') !== 'timeline') continue;
+    $ti = $m['data'] ?? [];
+    $lat = trim((string)($ti['latitude'] ?? ''));
+    $lng = trim((string)($ti['longitude'] ?? ''));
+    if ($lat === '' || $lng === '') continue;
+    $timelineForMap[] = [
+        'id' => (int)($ti['id'] ?? 0),
+        'label' => (string)($ti['label'] ?? ''),
+        'scheduled_date' => (string)($ti['scheduled_date'] ?? ($m['date'] ?? '')),
+        'scheduled_time' => (string)($ti['scheduled_time'] ?? ($m['time'] ?? '')),
+        'lat' => (float)$lat,
+        'lng' => (float)$lng,
+        'place_id' => (string)($ti['place_id'] ?? ''),
+        'location_label' => (string)($ti['location_label'] ?? ''),
+        'location_address' => (string)($ti['location_address'] ?? ''),
+    ];
+}
+$transportForMap = [];
+foreach ($transportLegs ?? [] as $t) {
+    $dep = trim((string)($t['departure'] ?? ''));
+    $arr = trim((string)($t['arrival'] ?? ''));
+    if ($dep === '' || $arr === '') continue;
+    $transportForMap[] = [
+        'id' => (int)($t['id'] ?? 0),
+        'departure' => $dep,
+        'arrival' => $arr,
+        'departure_date' => (string)($t['departure_date'] ?? ''),
+        'scheduled_time' => (string)($t['scheduled_time'] ?? ''),
+        'transport_type' => (string)($t['transport_type'] ?? ''),
+    ];
+}
+$ltMapData = [
+    'tripId' => (int)($trip['id'] ?? 0),
+    'venue' => $venue,
+    'hotels' => $hotelsForMap,
+    'destinations' => $destinationsForMap,
+    'timeline' => $timelineForMap,
+    'transportLegs' => $transportForMap,
+    'theme' => (string)($themePrimaryHex ?? '#10b981'),
+];
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -58,6 +170,9 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <?php if ($mapsJsApiKey !== ''): ?>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=<?= htmlspecialchars($mapsJsApiKey) ?>&language=ja&region=JP&libraries=geometry"></script>
+    <?php endif; ?>
     <style>
         :root { --lt-theme: <?= htmlspecialchars($themePrimaryHex) ?>; }
         .lt-theme-btn { background-color: var(--lt-theme); }
@@ -120,6 +235,71 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
         <button type="button" class="lt-tab shrink-0" data-tab="transport"><i class="fa-solid fa-train mr-1 text-slate-400"></i>移動</button>
         <button type="button" class="lt-tab shrink-0" data-tab="timeline"><i class="fa-solid fa-clock mr-1 text-slate-400"></i>タイムライン</button>
         <button type="button" class="lt-tab shrink-0" data-tab="checklist"><i class="fa-solid fa-list-check mr-1 text-slate-400"></i>チェックリスト</button>
+    </div>
+
+    <div class="px-4 sm:px-6 pt-4 sm:pt-5 max-w-4xl w-full">
+        <div class="grid gap-3 sm:gap-4 sm:grid-cols-[1fr_1.2fr]">
+            <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="text-xs font-bold text-slate-500">次の予定</p>
+                        <?php if (!empty($nextItem) && ($nextItem['type'] ?? '') === 'timeline'): $ti = $nextItem['data'] ?? []; ?>
+                            <p class="font-bold text-slate-800 mt-1 truncate"><?= htmlspecialchars((string)($ti['label'] ?? '')) ?></p>
+                            <p class="text-sm text-slate-600 truncate">
+                                <?= htmlspecialchars((string)($ti['scheduled_date'] ?? ($nextItem['date'] ?? ''))) ?>
+                                <?= htmlspecialchars((string)($ti['scheduled_time'] ?? ($nextItem['time'] ?? ''))) ?>
+                                <?php if (!empty($ti['location_label'] ?? '')): ?>
+                                    · <?= htmlspecialchars((string)$ti['location_label']) ?>
+                                <?php endif; ?>
+                            </p>
+                        <?php elseif (!empty($nextItem) && ($nextItem['type'] ?? '') === 'transport'): $tl = $nextItem['data'] ?? []; ?>
+                            <p class="font-bold text-slate-800 mt-1 truncate"><i class="fa-solid fa-train text-slate-400 mr-1"></i><?= htmlspecialchars(trim((string)($tl['transport_type'] ?? '') . ' ' . (string)($tl['route_memo'] ?? ''))) ?></p>
+                            <p class="text-sm text-slate-600 truncate">
+                                <?= htmlspecialchars((string)($nextItem['date'] ?? '')) ?> <?= htmlspecialchars((string)($nextItem['time'] ?? '')) ?>
+                                <?php if (($tl['departure'] ?? '') || ($tl['arrival'] ?? '')): ?>
+                                    · <?= htmlspecialchars((string)($tl['departure'] ?? '')) ?> → <?= htmlspecialchars((string)($tl['arrival'] ?? '')) ?>
+                                <?php endif; ?>
+                            </p>
+                        <?php else: ?>
+                            <p class="text-slate-500 text-sm mt-1">次の予定がありません。</p>
+                        <?php endif; ?>
+                    </div>
+                    <div class="shrink-0 flex gap-2">
+                        <?php if ($nextNavDestination !== ''): ?>
+                            <a href="<?= htmlspecialchars($nextNavDestination) ?>" target="_blank" rel="noopener" class="lt-theme-btn text-white px-3 py-2 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap">
+                                <i class="fa-solid fa-location-arrow mr-1"></i>ナビ起動
+                            </a>
+                        <?php endif; ?>
+                        <button type="button" class="px-3 py-2 border border-slate-200 rounded-lg text-xs sm:text-sm font-bold hover:bg-slate-50 whitespace-nowrap js-switch-tab" data-tab="timeline">
+                            <i class="fa-solid fa-clock mr-1 text-slate-400"></i>開く
+                        </button>
+                    </div>
+                </div>
+                <div class="mt-3 flex flex-wrap gap-2">
+                    <button type="button" class="px-3 py-1.5 rounded-full border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 js-switch-tab" data-tab="destination"><i class="fa-solid fa-map-location-dot text-slate-400 mr-1"></i>目的地</button>
+                    <button type="button" class="px-3 py-1.5 rounded-full border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 js-switch-tab" data-tab="transport"><i class="fa-solid fa-train text-slate-400 mr-1"></i>移動</button>
+                    <button type="button" class="px-3 py-1.5 rounded-full border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 js-switch-tab" data-tab="hotel"><i class="fa-solid fa-hotel text-slate-400 mr-1"></i>宿泊</button>
+                </div>
+            </div>
+
+            <div class="p-0 bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between gap-3">
+                    <p class="text-xs font-bold text-slate-500">地図</p>
+                    <div class="flex items-center gap-2">
+                        <button type="button" class="px-3 py-1.5 rounded-lg border border-slate-200 text-[11px] font-bold text-slate-600 hover:bg-slate-50" data-lt-map-layer="venue">会場</button>
+                        <button type="button" class="px-3 py-1.5 rounded-lg border border-slate-200 text-[11px] font-bold text-slate-600 hover:bg-slate-50" data-lt-map-layer="destinations">目的地</button>
+                        <button type="button" class="px-3 py-1.5 rounded-lg border border-slate-200 text-[11px] font-bold text-slate-600 hover:bg-slate-50" data-lt-map-layer="timeline">予定</button>
+                        <button type="button" class="px-3 py-1.5 rounded-lg border border-slate-200 text-[11px] font-bold text-slate-600 hover:bg-slate-50" data-lt-map-layer="transport">ルート</button>
+                    </div>
+                </div>
+                <div id="ltMap" class="w-full" style="height: 260px;"></div>
+                <?php if ($mapsJsApiKey === ''): ?>
+                    <div class="p-4 text-sm text-slate-500 border-t border-slate-200">
+                        Google Maps APIキーが未設定のため、地図は表示できません。
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
     </div>
 
     <div class="p-4 sm:p-6 max-w-4xl lt-tab-panels min-w-0">
@@ -245,11 +425,21 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
                                             $label = '';
                                             $sub = '';
                                             $itemId = 0;
+                                            $placeIdAttr = '';
+                                            $latAttr = '';
+                                            $lngAttr = '';
+                                            $locLabelAttr = '';
+                                            $locAddrAttr = '';
                                             if ($m['type'] === 'timeline') {
                                                 $ti = $m['data'] ?? [];
                                                 $itemId = (int)($ti['id'] ?? 0);
                                                 $label = (string)($ti['label'] ?? '');
                                                 $sub = (string)($ti['memo'] ?? '');
+                                                $placeIdAttr = (string)($ti['place_id'] ?? '');
+                                                $latAttr = (string)($ti['latitude'] ?? '');
+                                                $lngAttr = (string)($ti['longitude'] ?? '');
+                                                $locLabelAttr = (string)($ti['location_label'] ?? '');
+                                                $locAddrAttr = (string)($ti['location_address'] ?? '');
                                             } else {
                                                 $tl = $m['data'] ?? [];
                                                 $itemId = (int)($tl['id'] ?? 0);
@@ -265,6 +455,11 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
                                                  data-lt-duration="<?= (int)$dur ?>"
                                                  data-lt-label="<?= htmlspecialchars($label, ENT_QUOTES) ?>"
                                                  data-lt-memo="<?= htmlspecialchars($sub, ENT_QUOTES) ?>"
+                                                 data-lt-place-id="<?= htmlspecialchars($placeIdAttr, ENT_QUOTES) ?>"
+                                                 data-lt-lat="<?= htmlspecialchars($latAttr, ENT_QUOTES) ?>"
+                                                 data-lt-lng="<?= htmlspecialchars($lngAttr, ENT_QUOTES) ?>"
+                                                 data-lt-location-label="<?= htmlspecialchars($locLabelAttr, ENT_QUOTES) ?>"
+                                                 data-lt-location-address="<?= htmlspecialchars($locAddrAttr, ENT_QUOTES) ?>"
                                                  data-lt-scheduled-date="<?= htmlspecialchars((string)($m['date'] ?? '')) ?>"
                                                  data-lt-transport-type="<?= htmlspecialchars((string)(($m['data']['transport_type'] ?? '')), ENT_QUOTES) ?>"
                                                  data-lt-route-memo="<?= htmlspecialchars((string)(($m['data']['route_memo'] ?? '')), ENT_QUOTES) ?>"
@@ -340,11 +535,7 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
                             <i class="fa-solid fa-door-open text-slate-400 mr-1"></i><?php if (!empty($dc['開場'])): ?>開場 <?= htmlspecialchars($dc['開場']) ?><?php endif; ?><?php if (!empty($dc['開場']) && !empty($dc['開演'])): ?>　<?php endif; ?><?php if (!empty($dc['開演'])): ?><i class="fa-solid fa-star text-slate-400 ml-2 mr-1"></i>開演 <?= htmlspecialchars($dc['開演']) ?><?php endif; ?>
                         </p>
                         <?php endif; ?>
-                        <?php if ($ev === ($trip['events'][0] ?? null) && $venueMapUrl): ?>
-                        <a href="<?= htmlspecialchars($eventPlaceForMaps) ?>" target="_blank" rel="noopener" class="block mt-2 rounded-lg overflow-hidden border border-slate-200 max-w-[320px]">
-                            <img src="<?= htmlspecialchars($venueMapUrl) ?>" alt="会場" width="320" height="120" class="w-full h-auto">
-                        </a>
-                        <?php endif; ?>
+                        <?php /* Static Map は共通Mapへ統合 */ ?>
                     </div>
                     <?php endforeach; ?>
                     <?php if (empty($trip['events'] ?? [])): ?>
@@ -353,11 +544,7 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
                     <a href="<?= htmlspecialchars($eventPlaceForMaps) ?>" target="_blank" rel="noopener" class="text-sky-600 font-medium text-sm mt-1 inline-flex items-center gap-1"><?= htmlspecialchars($eventPlace) ?> <i class="fa-solid fa-external-link text-xs"></i></a>
                     <a href="https://www.google.com/maps/dir/?api=1&destination=<?= rawurlencode($eventPlace) ?>&travelmode=transit" target="_blank" rel="noopener" class="text-sky-600 text-sm ml-2 inline-flex items-center gap-1"><i class="fa-solid fa-train text-slate-400"></i>電車で案内</a>
                     <?php endif; ?>
-                    <?php if ($venueMapUrl): ?>
-                    <a href="<?= htmlspecialchars($eventPlaceForMaps) ?>" target="_blank" rel="noopener" class="block mt-2 rounded-lg overflow-hidden border border-slate-200 max-w-[320px]">
-                        <img src="<?= htmlspecialchars($venueMapUrl) ?>" alt="会場" width="320" height="120" class="w-full h-auto">
-                    </a>
-                    <?php endif; ?>
+                    <?php /* Static Map は共通Mapへ統合 */ ?>
                     <?php endif; ?>
                 </div>
                 <?php if (!empty($hotelStays)): ?>
@@ -365,16 +552,11 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
                     <p class="text-xs font-bold text-slate-500 mb-3">宿泊</p>
                     <?php foreach ($hotelStays as $h):
                         $mapsUrl = (new \App\LiveTrip\Model\HotelStayModel())->getGoogleMapsUrl($h);
-                        $hotelMapUrl = $hotelMapUrls[(int)$h['id']] ?? null;
                     ?>
                     <div class="mb-3 last:mb-0">
                         <p class="font-bold"><?= htmlspecialchars($h['hotel_name']) ?></p>
                         <?php if ($mapsUrl !== '#'): ?><a href="<?= htmlspecialchars($mapsUrl) ?>" target="_blank" rel="noopener" class="text-sky-600 text-sm">地図で開く</a><a href="https://www.google.com/maps/dir/?api=1&destination=<?= rawurlencode($h['address'] ?: $h['hotel_name']) ?>&travelmode=transit" target="_blank" rel="noopener" class="text-sky-600 text-sm ml-2"><i class="fa-solid fa-train text-slate-400"></i>電車で案内</a><?php endif; ?>
-                        <?php if ($hotelMapUrl): ?>
-                        <a href="<?= htmlspecialchars($mapsUrl !== '#' ? $mapsUrl : '#') ?>" target="_blank" rel="noopener" class="block mt-2 rounded-lg overflow-hidden border border-slate-200 max-w-[320px]">
-                            <img src="<?= htmlspecialchars($hotelMapUrl) ?>" alt="<?= htmlspecialchars($h['hotel_name']) ?>" width="320" height="120" class="w-full h-auto">
-                        </a>
-                        <?php endif; ?>
+                        <?php /* Static Map は共通Mapへ統合 */ ?>
                         <?php if ($h['reservation_no']): ?><p class="text-sm">予約番号: <?= htmlspecialchars($h['reservation_no']) ?></p><?php endif; ?>
                     </div>
                     <?php endforeach; ?>
@@ -385,17 +567,12 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
                     <p class="text-xs font-bold text-slate-500 mb-3">目的地</p>
                     <?php foreach ($destinations as $d):
                         $dMapsUrl = $destinationModel->getGoogleMapsUrl($d);
-                        $dMapUrl = $destinationMapUrls[(int)$d['id']] ?? null;
                         $dTypeLabel = \App\LiveTrip\Model\DestinationModel::$types[$d['destination_type'] ?? 'other'] ?? 'その他';
                     ?>
                     <div class="mb-3 last:mb-0">
                         <p class="font-bold"><?= htmlspecialchars($d['name']) ?> <span class="text-xs font-normal text-slate-500"><?= htmlspecialchars($dTypeLabel) ?></span></p>
                         <?php if ($dMapsUrl !== '#'): ?><a href="<?= htmlspecialchars($dMapsUrl) ?>" target="_blank" rel="noopener" class="text-sky-600 text-sm">地図で開く</a><a href="https://www.google.com/maps/dir/?api=1&destination=<?= rawurlencode($d['address'] ?? $d['name']) ?>&travelmode=transit" target="_blank" rel="noopener" class="text-sky-600 text-sm ml-2"><i class="fa-solid fa-train text-slate-400"></i>電車で案内</a><?php endif; ?>
-                        <?php if ($dMapUrl): ?>
-                        <a href="<?= htmlspecialchars($dMapsUrl !== '#' ? $dMapsUrl : '#') ?>" target="_blank" rel="noopener" class="block mt-2 rounded-lg overflow-hidden border border-slate-200 max-w-[320px]">
-                            <img src="<?= htmlspecialchars($dMapUrl) ?>" alt="<?= htmlspecialchars($d['name']) ?>" width="320" height="120" class="w-full h-auto">
-                        </a>
-                        <?php endif; ?>
+                        <?php /* Static Map は共通Mapへ統合 */ ?>
                         <?php if (!empty($d['visit_date'])): ?><p class="text-sm">訪問予定: <?= htmlspecialchars($d['visit_date']) ?><?= !empty($d['visit_time']) ? ' ' . htmlspecialchars($d['visit_time']) : '' ?></p><?php endif; ?>
                     </div>
                     <?php endforeach; ?>
@@ -673,7 +850,6 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
             <div class="space-y-4">
                 <?php foreach ($hotelStays ?? [] as $h): 
                     $mapsUrl = (new \App\LiveTrip\Model\HotelStayModel())->getGoogleMapsUrl($h);
-                    $hotelMapUrl = $hotelMapUrls[(int)$h['id']] ?? null;
                 ?>
                 <div class="hotel-item p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
                     <div class="hotel-view">
@@ -697,11 +873,7 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
                             </span>
                         </div>
                         <?php if ($h['address']): ?><p class="text-sm text-slate-500"><?= htmlspecialchars($h['address']) ?></p><?php endif; ?>
-                        <?php if ($hotelMapUrl): ?>
-                        <a href="<?= htmlspecialchars($mapsUrl !== '#' ? $mapsUrl : '#') ?>" target="_blank" rel="noopener" class="block mt-2 rounded-lg overflow-hidden border border-slate-200 max-w-[320px]">
-                            <img src="<?= htmlspecialchars($hotelMapUrl) ?>" alt="<?= htmlspecialchars($h['hotel_name']) ?>" width="320" height="120" class="w-full h-auto">
-                        </a>
-                        <?php endif; ?>
+                        <?php /* Static Map は共通Mapへ統合 */ ?>
                         <?php if ($h['distance_from_home'] || $h['time_from_home']): ?>
                         <p class="text-sm">自宅から: <?= htmlspecialchars($h['distance_from_home'] ?? '') ?> <?= htmlspecialchars($h['time_from_home'] ?? '') ?></p>
                         <?php endif; ?>
@@ -794,7 +966,6 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
             <div class="space-y-4">
                 <?php foreach ($destinations ?? [] as $d):
                     $mapsUrl = $destinationModel->getGoogleMapsUrl($d);
-                    $destMapUrl = $destinationMapUrls[(int)$d['id']] ?? null;
                     $typeLabel = \App\LiveTrip\Model\DestinationModel::$types[$d['destination_type'] ?? 'other'] ?? 'その他';
                 ?>
                 <div class="destination-item p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
@@ -820,11 +991,7 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
                             </span>
                         </div>
                         <?php if (!empty($d['address'])): ?><p class="text-sm text-slate-500"><?= htmlspecialchars($d['address']) ?></p><?php endif; ?>
-                        <?php if ($destMapUrl): ?>
-                        <a href="<?= htmlspecialchars($mapsUrl !== '#' ? $mapsUrl : '#') ?>" target="_blank" rel="noopener" class="block mt-2 rounded-lg overflow-hidden border border-slate-200 max-w-[320px]">
-                            <img src="<?= htmlspecialchars($destMapUrl) ?>" alt="<?= htmlspecialchars($d['name']) ?>" width="320" height="120" class="w-full h-auto">
-                        </a>
-                        <?php endif; ?>
+                        <?php /* Static Map は共通Mapへ統合 */ ?>
                         <?php if (!empty($d['visit_date'])): ?><p class="text-sm">訪問予定: <?= htmlspecialchars($d['visit_date']) ?><?= !empty($d['visit_time']) ? ' ' . htmlspecialchars($d['visit_time']) : '' ?></p><?php endif; ?>
                         <?php if (!empty($d['memo'])): ?><p class="text-sm text-slate-600"><?= htmlspecialchars($d['memo']) ?></p><?php endif; ?>
                     </div>
@@ -1033,6 +1200,15 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
                 <input type="hidden" name="tab" value="timeline">
                 <div><label class="block text-xs font-bold text-slate-500 mb-1">日付</label><input type="date" name="scheduled_date" class="border border-slate-200 rounded px-3 py-2 text-sm w-36" title="未入力時は当日"></div>
                 <div><label class="block text-xs font-bold text-slate-500 mb-1">項目</label><input type="text" name="label" placeholder="開場、開演など" class="border border-slate-200 rounded px-3 py-2 text-sm w-32" required></div>
+                <div class="relative flex-1 min-w-48">
+                    <label class="block text-xs font-bold text-slate-500 mb-1">場所</label>
+                    <input type="text" id="timeline-location" name="location_label" placeholder="会場、ホテル、駅、店名など" class="border border-slate-200 rounded px-3 py-2 text-sm w-full" autocomplete="off">
+                    <div id="timeline-location-suggestions" class="hidden absolute left-0 right-0 top-full mt-0.5 z-20 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"></div>
+                    <input type="hidden" id="timeline-location-address" name="location_address" value="">
+                    <input type="hidden" id="timeline-place-id" name="place_id" value="">
+                    <input type="hidden" id="timeline-lat" name="latitude" value="">
+                    <input type="hidden" id="timeline-lng" name="longitude" value="">
+                </div>
                 <div><label class="block text-xs font-bold text-slate-500 mb-1">時刻</label><input type="time" name="scheduled_time" class="border border-slate-200 rounded px-3 py-2 text-sm w-32"></div>
                 <div><label class="block text-xs font-bold text-slate-500 mb-1">終了</label><input type="time" name="end_time" class="border border-slate-200 rounded px-3 py-2 text-sm w-32" title="未指定なら30分扱い"></div>
                 <div><label class="block text-xs font-bold text-slate-500 mb-1">所要(分)</label><input type="number" name="duration_min" min="1" class="border border-slate-200 rounded px-3 py-2 text-sm w-28" placeholder="30"></div>
@@ -1116,10 +1292,20 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
                                     $bg = $m['type'] === 'transport' ? 'bg-sky-50 border-sky-200' : 'bg-emerald-50 border-emerald-200';
                                     $label = '';
                                     $sub = '';
+                                    $placeIdAttr = '';
+                                    $latAttr = '';
+                                    $lngAttr = '';
+                                    $locLabelAttr = '';
+                                    $locAddrAttr = '';
                                     if ($m['type'] === 'timeline') {
                                         $ti = $m['data'] ?? [];
                                         $label = (string)($ti['label'] ?? '');
                                         $sub = (string)($ti['memo'] ?? '');
+                                        $placeIdAttr = (string)($ti['place_id'] ?? '');
+                                        $latAttr = (string)($ti['latitude'] ?? '');
+                                        $lngAttr = (string)($ti['longitude'] ?? '');
+                                        $locLabelAttr = (string)($ti['location_label'] ?? '');
+                                        $locAddrAttr = (string)($ti['location_address'] ?? '');
                                     } else {
                                         $tl = $m['data'] ?? [];
                                         $label = trim(($tl['transport_type'] ?? '') . ' ' . ($tl['route_memo'] ?? ''));
@@ -1134,6 +1320,11 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
                                          data-lt-duration="<?= (int)$dur ?>"
                                          data-lt-label="<?= htmlspecialchars($label, ENT_QUOTES) ?>"
                                          data-lt-memo="<?= htmlspecialchars($sub, ENT_QUOTES) ?>"
+                                         data-lt-place-id="<?= htmlspecialchars($placeIdAttr, ENT_QUOTES) ?>"
+                                         data-lt-lat="<?= htmlspecialchars($latAttr, ENT_QUOTES) ?>"
+                                         data-lt-lng="<?= htmlspecialchars($lngAttr, ENT_QUOTES) ?>"
+                                         data-lt-location-label="<?= htmlspecialchars($locLabelAttr, ENT_QUOTES) ?>"
+                                         data-lt-location-address="<?= htmlspecialchars($locAddrAttr, ENT_QUOTES) ?>"
                                          data-lt-scheduled-date="<?= htmlspecialchars((string)($m['date'] ?? '')) ?>"
                                          data-lt-transport-type="<?= htmlspecialchars((string)(($m['data']['transport_type'] ?? '')), ENT_QUOTES) ?>"
                                          data-lt-route-memo="<?= htmlspecialchars((string)(($m['data']['route_memo'] ?? '')), ENT_QUOTES) ?>"
@@ -1189,6 +1380,11 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
                                             <input type="hidden" name="id" value="<?= (int)$ti['id'] ?>">
                                             <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
                                             <input type="hidden" name="tab" value="timeline">
+                                            <input type="hidden" name="place_id" value="<?= htmlspecialchars($ti['place_id'] ?? '') ?>">
+                                            <input type="hidden" name="latitude" value="<?= htmlspecialchars($ti['latitude'] ?? '') ?>">
+                                            <input type="hidden" name="longitude" value="<?= htmlspecialchars($ti['longitude'] ?? '') ?>">
+                                            <input type="hidden" name="location_label" value="<?= htmlspecialchars($ti['location_label'] ?? '') ?>">
+                                            <input type="hidden" name="location_address" value="<?= htmlspecialchars($ti['location_address'] ?? '') ?>">
                                             <div><label class="block text-xs font-bold text-slate-500 mb-0.5">日付</label><input type="date" name="scheduled_date" value="<?= htmlspecialchars($ti['scheduled_date'] ?? '') ?>" class="border border-slate-200 rounded px-2 py-1 text-sm w-32"></div>
                                             <input type="text" name="label" value="<?= htmlspecialchars($ti['label'] ?? '') ?>" class="border border-slate-200 rounded px-2 py-1 text-sm w-28" required>
                                             <input type="time" name="scheduled_time" value="<?php $st = $ti['scheduled_time'] ?? ''; echo htmlspecialchars(preg_match('/^(\d{1,2}):(\d{2})/', trim($st), $m4) ? sprintf('%02d:%02d', (int)$m4[1], (int)$m4[2]) : ''); ?>" class="border border-slate-200 rounded px-2 py-1 text-sm w-32">
@@ -1248,7 +1444,16 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
             ?>
             <p class="text-xs font-bold text-slate-500 <?= $isFirstGroup ? 'mt-0' : 'mt-4' ?> mb-2"><?= htmlspecialchars($dayLabel) ?></p>
             <?php endif; ?>
-            <div class="timeline-row py-2 border-b border-slate-100 <?= $m['type'] === 'timeline' ? 'timeline-item' : '' ?>">
+            <div class="timeline-row py-2 border-b border-slate-100 <?= $m['type'] === 'timeline' ? 'timeline-item' : '' ?>"
+                 data-lt-type="<?= htmlspecialchars((string)($m['type'] ?? '')) ?>"
+                 data-lt-id="<?= (int)(($m['data']['id'] ?? 0)) ?>"
+                 data-lt-date="<?= htmlspecialchars((string)($m['date'] ?? '')) ?>"
+                 data-lt-time="<?= htmlspecialchars((string)($m['time'] ?? '')) ?>"
+                 data-lt-place-id="<?= htmlspecialchars((string)(($m['type'] ?? '') === 'timeline' ? (($m['data']['place_id'] ?? '') ?: '') : ''), ENT_QUOTES) ?>"
+                 data-lt-lat="<?= htmlspecialchars((string)(($m['type'] ?? '') === 'timeline' ? (($m['data']['latitude'] ?? '') ?: '') : ''), ENT_QUOTES) ?>"
+                 data-lt-lng="<?= htmlspecialchars((string)(($m['type'] ?? '') === 'timeline' ? (($m['data']['longitude'] ?? '') ?: '') : ''), ENT_QUOTES) ?>"
+                 data-lt-location-label="<?= htmlspecialchars((string)(($m['type'] ?? '') === 'timeline' ? (($m['data']['location_label'] ?? '') ?: '') : ''), ENT_QUOTES) ?>"
+                 data-lt-location-address="<?= htmlspecialchars((string)(($m['type'] ?? '') === 'timeline' ? (($m['data']['location_address'] ?? '') ?: '') : ''), ENT_QUOTES) ?>">
                 <div class="timeline-view flex justify-between items-center">
                     <span class="font-mono font-bold text-emerald-600 w-14 shrink-0"><?= htmlspecialchars($m['time'] !== '99:99' ? $m['time'] : '') ?></span>
                     <span class="flex-1">
@@ -1283,6 +1488,11 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
                     <input type="hidden" name="id" value="<?= (int)$ti['id'] ?>">
                     <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
                     <input type="hidden" name="tab" value="timeline">
+                    <input type="hidden" name="place_id" value="<?= htmlspecialchars($ti['place_id'] ?? '') ?>">
+                    <input type="hidden" name="latitude" value="<?= htmlspecialchars($ti['latitude'] ?? '') ?>">
+                    <input type="hidden" name="longitude" value="<?= htmlspecialchars($ti['longitude'] ?? '') ?>">
+                    <input type="hidden" name="location_label" value="<?= htmlspecialchars($ti['location_label'] ?? '') ?>">
+                    <input type="hidden" name="location_address" value="<?= htmlspecialchars($ti['location_address'] ?? '') ?>">
                     <div><label class="block text-xs font-bold text-slate-500 mb-0.5">日付</label><input type="date" name="scheduled_date" value="<?= htmlspecialchars($ti['scheduled_date'] ?? '') ?>" class="border border-slate-200 rounded px-2 py-1 text-sm w-32"></div>
                     <input type="text" name="label" value="<?= htmlspecialchars($ti['label'] ?? '') ?>" class="border border-slate-200 rounded px-2 py-1 text-sm w-28" required>
                     <input type="time" name="scheduled_time" value="<?php $st = $ti['scheduled_time'] ?? ''; echo htmlspecialchars(preg_match('/^(\d{1,2}):(\d{2})/', trim($st), $m) ? sprintf('%02d:%02d', (int)$m[1], (int)$m[2]) : ''); ?>" class="border border-slate-200 rounded px-2 py-1 text-sm w-32">
@@ -1442,6 +1652,10 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
                     <input type="hidden" name="id" id="lt-timeline-modal-timeline-id" value="">
                     <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
                     <input type="hidden" name="tab" value="timeline">
+                    <input type="hidden" name="place_id" id="lt-timeline-modal-place-id" value="">
+                    <input type="hidden" name="latitude" id="lt-timeline-modal-lat" value="">
+                    <input type="hidden" name="longitude" id="lt-timeline-modal-lng" value="">
+                    <input type="hidden" name="location_address" id="lt-timeline-modal-location-address" value="">
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="block text-xs font-bold text-slate-500 mb-1">日付</label>
@@ -1463,6 +1677,11 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
                     <div>
                         <label class="block text-xs font-bold text-slate-500 mb-1">項目</label>
                         <input type="text" name="label" id="lt-timeline-modal-label" class="w-full border border-slate-200 rounded px-3 py-2 text-sm" required>
+                    </div>
+                    <div class="relative">
+                        <label class="block text-xs font-bold text-slate-500 mb-1">場所</label>
+                        <input type="text" name="location_label" id="lt-timeline-modal-location-label" class="w-full border border-slate-200 rounded px-3 py-2 text-sm" autocomplete="off" placeholder="会場、ホテル、駅、店名など">
+                        <div id="lt-timeline-modal-location-suggestions" class="hidden absolute left-0 right-0 top-full mt-0.5 z-20 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"></div>
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-500 mb-1">メモ</label>
@@ -1513,6 +1732,7 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
 <script>
 (function() {
     var tripId = <?= (int)$trip['id'] ?>;
+    window.__LT_MAP_DATA__ = <?= json_encode($ltMapData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
     function esc(s) { var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
     function rowHtml(ci) {
@@ -1766,6 +1986,11 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
             (document.getElementById('lt-timeline-modal-duration')).value = String(dur);
             (document.getElementById('lt-timeline-modal-label')).value = label;
             (document.getElementById('lt-timeline-modal-memo')).value = memo;
+            (document.getElementById('lt-timeline-modal-location-label')).value = el.getAttribute('data-lt-location-label') || '';
+            (document.getElementById('lt-timeline-modal-location-address')).value = el.getAttribute('data-lt-location-address') || '';
+            (document.getElementById('lt-timeline-modal-place-id')).value = el.getAttribute('data-lt-place-id') || '';
+            (document.getElementById('lt-timeline-modal-lat')).value = el.getAttribute('data-lt-lat') || '';
+            (document.getElementById('lt-timeline-modal-lng')).value = el.getAttribute('data-lt-lng') || '';
 
             // end_time を開始+dur でプリセット
             var endInput = document.getElementById('lt-timeline-modal-end');
@@ -2165,11 +2390,76 @@ $destinationModel = new \App\LiveTrip\Model\DestinationModel();
             if (container.children.length > 0) container.classList.remove('hidden');
         });
     }
+
+    function attachPlacesAutocompleteForTimeline(labelInputId, placeIdHiddenId, latHiddenId, lngHiddenId, addressHiddenId, suggestionsId) {
+        var labelInput = document.getElementById(labelInputId);
+        var placeIdHidden = document.getElementById(placeIdHiddenId);
+        var latHidden = document.getElementById(latHiddenId);
+        var lngHidden = document.getElementById(lngHiddenId);
+        var addressHidden = document.getElementById(addressHiddenId);
+        var container = document.getElementById(suggestionsId);
+        if (!labelInput || !container) return;
+        var debounceTimer = null;
+        labelInput.addEventListener('input', function() {
+            if (placeIdHidden) placeIdHidden.value = '';
+            if (latHidden) latHidden.value = '';
+            if (lngHidden) lngHidden.value = '';
+            if (addressHidden) addressHidden.value = (labelInput.value || '').trim();
+            var q = (labelInput.value || '').trim();
+            clearTimeout(debounceTimer);
+            if (q.length < 2) {
+                container.classList.add('hidden');
+                container.innerHTML = '';
+                return;
+            }
+            debounceTimer = setTimeout(function() {
+                fetch('/live_trip/api/places_autocomplete.php?input=' + encodeURIComponent(q))
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        container.innerHTML = '';
+                        if (data.status !== 'ok' || !data.predictions || data.predictions.length === 0) {
+                            container.classList.add('hidden');
+                            return;
+                        }
+                        data.predictions.forEach(function(p) {
+                            var el = document.createElement('button');
+                            el.type = 'button';
+                            el.className = 'block w-full text-left px-3 py-2 text-sm hover:bg-slate-50 border-b border-slate-100 last:border-0';
+                            el.textContent = p.description;
+                            el.dataset.description = p.description;
+                            el.dataset.placeId = p.place_id || '';
+                            el.addEventListener('click', function() {
+                                var desc = this.dataset.description || '';
+                                labelInput.value = desc;
+                                if (placeIdHidden) placeIdHidden.value = this.dataset.placeId || '';
+                                if (addressHidden) addressHidden.value = desc;
+                                if (latHidden) latHidden.value = '';
+                                if (lngHidden) lngHidden.value = '';
+                                container.classList.add('hidden');
+                                container.innerHTML = '';
+                            });
+                            container.appendChild(el);
+                        });
+                        container.classList.remove('hidden');
+                    })
+                    .catch(function() { container.classList.add('hidden'); });
+            }, 300);
+        });
+        labelInput.addEventListener('blur', function() {
+            setTimeout(function() { container.classList.add('hidden'); }, 150);
+        });
+        labelInput.addEventListener('focus', function() {
+            if (container.children.length > 0) container.classList.remove('hidden');
+        });
+    }
     attachPlacesAutocomplete('transport-departure', 'transport-departure-suggestions');
     attachPlacesAutocomplete('transport-arrival', 'transport-arrival-suggestions');
     attachPlacesAutocompleteForDestination('destination-name', 'destination-address', 'destination-place-id', 'destination-name-suggestions');
+    attachPlacesAutocompleteForTimeline('timeline-location', 'timeline-place-id', 'timeline-lat', 'timeline-lng', 'timeline-location-address', 'timeline-location-suggestions');
+    attachPlacesAutocompleteForTimeline('lt-timeline-modal-location-label', 'lt-timeline-modal-place-id', 'lt-timeline-modal-lat', 'lt-timeline-modal-lng', 'lt-timeline-modal-location-address', 'lt-timeline-modal-location-suggestions');
 })();
 </script>
+<script src="/assets/js/live_trip_map.js" defer></script>
 <?php require_once __DIR__ . '/../../../components/flash_toast.php'; ?>
 <script>
 document.querySelectorAll('form[method="post"]:not(#checklist-add-form)').forEach(function(f) {

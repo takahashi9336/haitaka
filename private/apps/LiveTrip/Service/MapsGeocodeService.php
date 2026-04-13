@@ -84,4 +84,49 @@ class MapsGeocodeService {
             return null;
         }
     }
+
+    /**
+     * place_id から緯度経度・place_id を取得
+     * 制限超過時・API 未設定・エラー時は null を返す
+     * @return array{latitude: string, longitude: string, place_id: string|null, formatted_address: string|null}|null
+     */
+    public function geocodeByPlaceId(string $placeId): ?array {
+        $placeId = trim($placeId);
+        if ($placeId === '') return null;
+        if (!$this->isConfigured()) return null;
+
+        try {
+            $usageModel = new MapsApiUsageModel();
+            if (!$usageModel->incrementAndCheck('geocoding', 1)) {
+                return null;
+            }
+
+            $url = self::GEOCODE_URL . '?place_id=' . rawurlencode($placeId)
+                . '&key=' . rawurlencode($this->apiKey)
+                . '&language=ja';
+
+            $ctx = stream_context_create([
+                'http' => ['timeout' => 5],
+            ]);
+            $json = @file_get_contents($url, false, $ctx);
+            if ($json === false) return null;
+
+            $data = json_decode($json, true);
+            if (!isset($data['results'][0])) return null;
+
+            $r = $data['results'][0];
+            $loc = $r['geometry']['location'] ?? null;
+            if (!$loc || !isset($loc['lat'], $loc['lng'])) return null;
+
+            return [
+                'latitude' => (string) $loc['lat'],
+                'longitude' => (string) $loc['lng'],
+                'place_id' => $r['place_id'] ?? $placeId,
+                'formatted_address' => $r['formatted_address'] ?? null,
+            ];
+        } catch (\Throwable $e) {
+            \Core\Logger::errorWithContext('Geocoding by place_id failed', $e);
+            return null;
+        }
+    }
 }

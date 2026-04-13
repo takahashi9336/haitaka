@@ -78,6 +78,36 @@ class MapsDirectionsService {
     }
 
     /**
+     * 発・着・モードから overview_polyline を取得（地図描画用）
+     * @param string      $origin        出発地（文字列）
+     * @param string      $destination   目的地（文字列）
+     * @param string      $mode          driving|transit|walking|bicycling
+     * @param string|null $departureDate 出発日 Y-m-d。transit 用。null のとき now
+     * @return array{polyline: string, bounds: array{ne: array{lat: float, lng: float}, sw: array{lat: float, lng: float}}, duration_min: int, duration: string, distance: string}|null
+     */
+    public function getOverviewPolyline(string $origin, string $destination, string $mode = 'transit', ?string $departureDate = null): ?array {
+        $origin = trim($origin);
+        $destination = trim($destination);
+        if ($origin === '' || $destination === '') return null;
+        if (!$this->isConfigured()) return null;
+        if (!isset(self::MODES[$mode])) $mode = 'transit';
+
+        $departureTime = $this->resolveDepartureTime($departureDate);
+
+        try {
+            $usageModel = new MapsApiUsageModel();
+            if (!$usageModel->incrementAndCheck('directions', 1)) {
+                return null;
+            }
+            $route = $this->fetchRoute($origin, $destination, $mode, $departureTime);
+            return $route;
+        } catch (\Throwable $e) {
+            \Core\Logger::errorWithContext('Directions polyline failed', $e);
+            return null;
+        }
+    }
+
+    /**
      * 出発日から Directions API 用の departure_time を決定（transit 用）
      * @param string|null $departureDate Y-m-d または null
      * @return int|null Unix 秒。null のときは「now」として扱う
@@ -144,6 +174,67 @@ class MapsDirectionsService {
             'duration' => $duration,
             'distance' => $distance,
             'duration_min' => $durationMin,
+        ];
+    }
+
+    /**
+     * @param int|null $departureTime Unix 秒。transit のときのみ使用。null のときは now
+     * @return array{polyline: string, bounds: array{ne: array{lat: float, lng: float}, sw: array{lat: float, lng: float}}, duration_min: int, duration: string, distance: string}|null
+     */
+    private function fetchRoute(string $origin, string $destination, string $mode, ?int $departureTime = null): ?array {
+        $params = [
+            'origin' => $origin,
+            'destination' => $destination,
+            'mode' => $mode,
+            'language' => 'ja',
+            'region' => 'jp',
+            'key' => $this->apiKey,
+        ];
+        if ($mode === 'transit' && $departureTime !== null) {
+            $params['departure_time'] = (string) $departureTime;
+        } elseif ($mode === 'transit') {
+            $params['departure_time'] = 'now';
+        }
+        $url = self::DIRECTIONS_URL . '?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+
+        $ctx = stream_context_create([
+            'http' => ['timeout' => 10],
+        ]);
+        $json = @file_get_contents($url, false, $ctx);
+        if ($json === false) return null;
+
+        $data = json_decode($json, true);
+        $status = $data['status'] ?? '';
+        if ($status !== 'OK') return null;
+
+        $route = $data['routes'][0] ?? null;
+        if (!$route) return null;
+
+        $polyline = $route['overview_polyline']['points'] ?? '';
+        if ($polyline === '') return null;
+
+        $b = $route['bounds'] ?? null;
+        $ne = $b['northeast'] ?? null;
+        $sw = $b['southwest'] ?? null;
+        if (!$ne || !$sw) return null;
+
+        $leg = $route['legs'][0] ?? null;
+        if (!$leg) return null;
+
+        $duration = $leg['duration']['text'] ?? '';
+        $distance = $leg['distance']['text'] ?? '';
+        $durationValue = (int) ($leg['duration']['value'] ?? 0);
+        $durationMin = (int) round($durationValue / 60);
+
+        return [
+            'polyline' => (string) $polyline,
+            'bounds' => [
+                'ne' => ['lat' => (float)($ne['lat'] ?? 0), 'lng' => (float)($ne['lng'] ?? 0)],
+                'sw' => ['lat' => (float)($sw['lat'] ?? 0), 'lng' => (float)($sw['lng'] ?? 0)],
+            ],
+            'duration_min' => $durationMin,
+            'duration' => (string) $duration,
+            'distance' => (string) $distance,
         ];
     }
 }

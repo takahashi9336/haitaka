@@ -702,6 +702,23 @@ class LiveTripController {
         $schDate = trim($_POST['scheduled_date'] ?? '') ?: null;
         $scheduledTime = trim($_POST['scheduled_time'] ?? '');
         $durationMin = $this->calcDurationMinFromPost($scheduledTime, $_POST['end_time'] ?? null, $_POST['duration_min'] ?? null);
+
+        $placeId = trim($_POST['place_id'] ?? '') ?: null;
+        $lat = trim($_POST['latitude'] ?? '') ?: null;
+        $lng = trim($_POST['longitude'] ?? '') ?: null;
+        $locationLabel = trim($_POST['location_label'] ?? '') ?: null;
+        $locationAddress = trim($_POST['location_address'] ?? '') ?: null;
+
+        if ($placeId !== null && ($lat === null || $lng === null)) {
+            \Core\Database::connect();
+            $geo = (new MapsGeocodeService())->geocodeByPlaceId($placeId);
+            if ($geo) {
+                $lat = $geo['latitude'] ?? $lat;
+                $lng = $geo['longitude'] ?? $lng;
+                $locationAddress = $locationAddress ?? ($geo['formatted_address'] ?? null);
+            }
+        }
+
         $model->create([
             'trip_plan_id' => $tripPlanId,
             'scheduled_date' => $schDate,
@@ -709,6 +726,11 @@ class LiveTripController {
             'scheduled_time' => $scheduledTime,
             'duration_min' => $durationMin,
             'memo' => trim($_POST['memo'] ?? ''),
+            'place_id' => $placeId,
+            'latitude' => $lat,
+            'longitude' => $lng,
+            'location_label' => $locationLabel,
+            'location_address' => $locationAddress,
         ]);
         $this->redirectToShow($tripPlanId, 'timeline');
     }
@@ -726,12 +748,34 @@ class LiveTripController {
         $schDate = trim($_POST['scheduled_date'] ?? '') ?: null;
         $scheduledTime = trim($_POST['scheduled_time'] ?? '');
         $durationMin = $this->calcDurationMinFromPost($scheduledTime, $_POST['end_time'] ?? null, $_POST['duration_min'] ?? null);
+
+        $placeId = trim($_POST['place_id'] ?? '') ?: null;
+        $lat = trim($_POST['latitude'] ?? '') ?: null;
+        $lng = trim($_POST['longitude'] ?? '') ?: null;
+        $locationLabel = trim($_POST['location_label'] ?? '') ?: null;
+        $locationAddress = trim($_POST['location_address'] ?? '') ?: null;
+
+        if ($placeId !== null && ($lat === null || $lng === null)) {
+            \Core\Database::connect();
+            $geo = (new MapsGeocodeService())->geocodeByPlaceId($placeId);
+            if ($geo) {
+                $lat = $geo['latitude'] ?? $lat;
+                $lng = $geo['longitude'] ?? $lng;
+                $locationAddress = $locationAddress ?? ($geo['formatted_address'] ?? null);
+            }
+        }
+
         $model->update($id, [
             'scheduled_date' => $schDate,
             'label' => trim($_POST['label'] ?? ''),
             'scheduled_time' => $scheduledTime,
             'duration_min' => $durationMin,
             'memo' => trim($_POST['memo'] ?? ''),
+            'place_id' => $placeId,
+            'latitude' => $lat,
+            'longitude' => $lng,
+            'location_label' => $locationLabel,
+            'location_address' => $locationAddress,
         ]);
         $this->redirectToShow($tripPlanId, 'timeline');
     }
@@ -1190,6 +1234,38 @@ class LiveTripController {
 
         $predictions = (new MapsPlacesAutocompleteService())->getSuggestions($input);
         echo json_encode(['status' => 'ok', 'predictions' => $predictions]);
+        exit;
+    }
+
+    /**
+     * Directions overview_polyline API（地図描画用）
+     * GET origin= destination= mode= departure_date=（Y-m-d） を受け取って返す
+     */
+    public function directionsPolyline(): void {
+        $this->requireAccess();
+        header('Content-Type: application/json; charset=utf-8');
+
+        \Core\Database::connect();
+        $origin = trim($_GET['origin'] ?? '');
+        $destination = trim($_GET['destination'] ?? '');
+        $mode = trim($_GET['mode'] ?? 'transit');
+        $departureDate = trim($_GET['departure_date'] ?? '') ?: null;
+
+        if ($origin === '' || $destination === '') {
+            echo json_encode(['status' => 'error', 'message' => 'origin/destination を指定してください']);
+            exit;
+        }
+        if (!in_array($mode, ['driving', 'transit', 'walking', 'bicycling'], true)) {
+            $mode = 'transit';
+        }
+
+        $svc = new MapsDirectionsService();
+        $route = $svc->getOverviewPolyline($origin, $destination, $mode, $departureDate);
+        if ($route === null) {
+            echo json_encode(['status' => 'error', 'message' => '取得できませんでした']);
+            exit;
+        }
+        echo json_encode(['status' => 'ok', 'route' => $route]);
         exit;
     }
 }

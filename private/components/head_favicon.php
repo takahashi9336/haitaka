@@ -10,4 +10,5 @@ $faviconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path
 $faviconDataUri = 'data:image/svg+xml;base64,' . base64_encode($faviconSvg);
 ?>
 <link rel="icon" href="<?= $faviconDataUri ?>" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png" sizes="180x180">
 <link rel="stylesheet" href="/assets/css/common.css">

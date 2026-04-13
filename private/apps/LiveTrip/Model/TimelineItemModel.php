@@ -10,7 +10,9 @@ use Core\BaseModel;
 class TimelineItemModel extends BaseModel {
     protected string $table = 'lt_timeline_items';
     protected array $fields = [
-        'id', 'trip_plan_id', 'scheduled_date', 'label', 'scheduled_time', 'duration_min', 'memo', 'sort_order',
+        'id', 'trip_plan_id', 'scheduled_date', 'label', 'scheduled_time', 'duration_min', 'memo',
+        'place_id', 'latitude', 'longitude', 'location_label', 'location_address',
+        'sort_order',
         'created_at', 'updated_at'
     ];
     protected bool $isUserIsolated = false;
