@@ -3,6 +3,7 @@
 namespace App\LiveTrip\Model;
 
 use Core\BaseModel;
+use Core\Encryption;
 
 /**
  * ユーザー別の場所（自宅など）
@@ -14,6 +15,7 @@ class UserPlaceModel extends BaseModel {
         'label', 'address', 'place_id', 'latitude', 'longitude',
         'created_at', 'updated_at'
     ];
+    protected array $encryptedFields = ['address', 'place_id'];
     protected bool $isUserIsolated = false;
 
     public function getByUserAndKey(int $userId, string $placeKey): ?array {
@@ -21,7 +23,7 @@ class UserPlaceModel extends BaseModel {
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute(['uid' => $userId, 'k' => $placeKey]);
         $row = $stmt->fetch();
-        return $row ?: null;
+        return $row ? $this->decryptFields($row) : null;
     }
 
     public function upsertHome(int $userId, array $data): void {
@@ -35,6 +37,15 @@ class UserPlaceModel extends BaseModel {
             'longitude' => $data['longitude'] ?? null,
         ];
 
+        // NOTE: This method uses raw SQL (ON DUPLICATE KEY), so BaseModel's automatic encryption won't run.
+        // Encrypt here to avoid storing plaintext.
+        foreach ($this->encryptedFields as $field) {
+            if (array_key_exists($field, $payload) && $payload[$field] !== null && $payload[$field] !== '') {
+                $v = (string) $payload[$field];
+                $payload[$field] = Encryption::isEncrypted($v) ? $v : Encryption::encrypt($v);
+            }
+        }
+
         $sql = "INSERT INTO {$this->table} (user_id, place_key, label, address, place_id, latitude, longitude)
                 VALUES (:user_id, :place_key, :label, :address, :place_id, :latitude, :longitude)
                 ON DUPLICATE KEY UPDATE
@@ -46,6 +57,15 @@ class UserPlaceModel extends BaseModel {
                     updated_at = CURRENT_TIMESTAMP";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($payload);
+    }
+
+    private function decryptFields(array $row): array {
+        foreach ($this->encryptedFields as $field) {
+            if (array_key_exists($field, $row) && $row[$field] !== null && $row[$field] !== '') {
+                $row[$field] = Encryption::decrypt((string) $row[$field]);
+            }
+        }
+        return $row;
     }
 }
 
