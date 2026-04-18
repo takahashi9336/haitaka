@@ -15,6 +15,7 @@ class KitchenStockModel extends BaseModel {
         'id',
         'user_id',
         'name',
+        'item_group',
         'qty',
         'purchased_date',
         'is_frozen',
