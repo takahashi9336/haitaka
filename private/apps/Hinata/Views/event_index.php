@@ -193,7 +193,7 @@ $allCategories = [
                     </div>
                 </div>
                 <div class="flex-1 overflow-y-auto custom-scroll" id="mainScroll">
-                    <div id="eventListContainer" class="p-4 md:p-8 space-y-3 max-w-4xl mx-auto">
+                    <div id="eventListContainer" class="p-4 md:p-8 space-y-3 max-w-7xl mx-auto">
                     <?php if (empty($events)): ?>
                     <div class="text-center py-20 bg-white rounded-[2.5rem] border <?= $cardBorder ?> shadow-sm">
                         <i class="fa-solid fa-calendar-xmark text-4xl text-slate-200 mb-4"></i>
@@ -655,12 +655,16 @@ $allCategories = [
                     var html = '<div class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">';
                     html += '<div class="px-4 py-2 bg-indigo-50 flex items-center gap-2"><i class="fa-solid fa-list-ol text-indigo-500 text-xs"></i><span class="text-[10px] font-bold text-indigo-700 tracking-wider">セットリスト</span><span class="text-[10px] text-indigo-400 ml-auto">' + songCount + '曲</span></div>';
                     html += '<ol class="divide-y divide-slate-50">';
-                    var lastEncore = false;
+                    var lastPrinted = 0;
                     res.data.setlist.forEach(function(item, i) {
                         var t = item.entry_type || 'song';
                         var isSong = t === 'song';
-                        if (isSong && item.encore && !lastEncore) html += '<li class="px-4 py-1.5 bg-slate-50 text-center"><span class="text-[9px] font-black text-slate-400 tracking-wider">ENCORE</span></li>';
-                        if (isSong) lastEncore = !!item.encore;
+                        if (isSong) {
+                            var L = parseInt(item.encore, 10);
+                            if (L > 2) L = 2; else if (L < 0 || isNaN(L)) L = 0;
+                            if (L >= 1 && lastPrinted < 1) { html += '<li class="px-4 py-1.5 bg-slate-50 text-center"><span class="text-[9px] font-black text-slate-400 tracking-wider">ENCORE</span></li>'; lastPrinted = 1; }
+                            if (L >= 2 && lastPrinted < 2) { html += '<li class="px-4 py-1.5 bg-slate-50 text-center"><span class="text-[9px] font-black text-slate-400 tracking-wider">W ENCORE</span></li>'; lastPrinted = 2; }
+                        }
                         var leftNo = '<span class="text-slate-400 w-5 text-right font-mono">' + (i+1) + '</span>';
                         if (isSong) {
                             var centerBadge = item.center_member_name ? ('<span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full shrink-0">C:' + _esc(item.center_member_name) + '</span>') : '';
@@ -1211,12 +1215,16 @@ $allCategories = [
                 res.data.setlist.forEach(function(item) { var t = item.entry_type || 'song'; if (t === 'song') songCount++; });
                 var html = '<div class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">';
                 html += '<div class="px-4 py-2 bg-indigo-50 flex items-center gap-2"><i class="fa-solid fa-list-ol text-indigo-500 text-xs"></i><span class="text-[10px] font-bold text-indigo-700 tracking-wider">セットリスト</span><span class="text-[10px] text-indigo-400 ml-auto">' + songCount + '曲</span></div>';
-                html += '<ol class="divide-y divide-slate-50">'; var lastEncore = false;
+                html += '<ol class="divide-y divide-slate-50">'; var lastPrintedSl = 0;
                 res.data.setlist.forEach(function(item, i) {
                     var t = item.entry_type || 'song';
                     var isSong = t === 'song';
-                    if (isSong && item.encore && !lastEncore) html += '<li class="px-4 py-1.5 bg-slate-50 text-center"><span class="text-[9px] font-black text-slate-400 tracking-wider">ENCORE</span></li>';
-                    if (isSong) lastEncore = !!item.encore;
+                    if (isSong) {
+                        var L2 = parseInt(item.encore, 10);
+                        if (L2 > 2) L2 = 2; else if (L2 < 0 || isNaN(L2)) L2 = 0;
+                        if (L2 >= 1 && lastPrintedSl < 1) { html += '<li class="px-4 py-1.5 bg-slate-50 text-center"><span class="text-[9px] font-black text-slate-400 tracking-wider">ENCORE</span></li>'; lastPrintedSl = 1; }
+                        if (L2 >= 2 && lastPrintedSl < 2) { html += '<li class="px-4 py-1.5 bg-slate-50 text-center"><span class="text-[9px] font-black text-slate-400 tracking-wider">W ENCORE</span></li>'; lastPrintedSl = 2; }
+                    }
                     if (isSong) {
                         var centerBadge = item.center_member_name ? ('<span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full shrink-0">C:' + _esc(item.center_member_name) + '</span>') : '';
                         html += '<li class="px-4 py-2 flex items-center gap-3 text-xs"><span class="text-slate-400 w-5 text-right font-mono">' + (i+1) + '</span><a href="/hinata/song.php?id=' + item.song_id + '" class="flex-1 font-bold text-slate-800 hover:text-sky-600 transition truncate">' + _esc(item.song_title) + '</a>' + centerBadge + '<span class="text-[10px] text-slate-400 shrink-0">' + _esc(item.release_title) + '</span></li>';
@@ -1333,6 +1341,13 @@ $allCategories = [
             other: 'その他'
         };
 
+        function normalizeEncoreVal(v) {
+            var n = parseInt(v, 10);
+            if (n === 2) return 2;
+            if (n === 1) return 1;
+            return 0;
+        }
+
         function _memberOptions(selectedId) {
             var opts = '<option value="">-- 未設定 --</option>';
             allMembers.forEach(function(m) { opts += '<option value="' + m.id + '"' + (m.id == selectedId ? ' selected' : '') + '>' + _esc(m.name) + '</option>'; });
@@ -1351,7 +1366,7 @@ $allCategories = [
             var opts = '<option value="">-- 楽曲を選択 --</option>';
             var t = (item && item.entry_type) ? item.entry_type : 'song';
             var songId = item && item.song_id ? item.song_id : '';
-            var isEncore = item && item.encore ? 1 : 0;
+            var encoreVal = normalizeEncoreVal(item && item.encore);
             var label = item && item.label ? item.label : '';
             var blockKind = item && item.block_kind ? item.block_kind : 'session_other';
             var centerId = item && item.center_member_id ? item.center_member_id : '';
@@ -1370,10 +1385,14 @@ $allCategories = [
                         typeSel +
                         '<button onclick="this.closest(\\\".setlist-row\\\").remove()" class="ml-auto text-slate-300 hover:text-red-400 text-xs"><i class="fa-solid fa-xmark"></i></button>' +
                     '</div>' +
-                    '<div class="row-song flex items-center gap-2">' +
-                        '<select class="setlist-song-select flex-1 border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-sky-200 bg-white">' + opts + '</select>' +
-                        '<select class="setlist-center-select w-40 border border-slate-200 rounded-lg px-2 py-1.5 text-xs bg-white">' + _memberOptions(centerId) + '</select>' +
-                        '<label class="flex items-center gap-1 text-[10px] text-slate-500 shrink-0"><input type="checkbox" class="setlist-encore-check"' + (isEncore ? ' checked' : '') + '> EN</label>' +
+                    '<div class="row-song flex flex-nowrap items-center gap-2 min-w-0 overflow-x-auto pb-0.5">' +
+                        '<select class="setlist-song-select flex-1 min-w-[12rem] border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-sky-200 bg-white min-h-[2.25rem]">' + opts + '</select>' +
+                        '<select class="setlist-encore-select w-[8.5rem] shrink-0 border border-slate-200 rounded-lg px-2 py-1.5 text-[10px] bg-white min-h-[2.25rem]">' +
+                        '<option value="0"' + (encoreVal === 0 ? ' selected' : '') + '>本編</option>' +
+                        '<option value="1"' + (encoreVal === 1 ? ' selected' : '') + '>アンコール</option>' +
+                        '<option value="2"' + (encoreVal === 2 ? ' selected' : '') + '>Wアンコール</option>' +
+                        '</select>' +
+                        '<select class="setlist-center-select w-40 shrink-0 border border-slate-200 rounded-lg px-2 py-1.5 text-xs bg-white min-h-[2.25rem]">' + _memberOptions(centerId) + '</select>' +
                     '</div>' +
                     '<div class="row-mc hidden">' +
                         '<input type="text" class="setlist-label-input w-full border border-slate-200 rounded-lg px-2 py-2 text-xs bg-white" placeholder="MC（任意のラベル）" value="' + _esc(label) + '">' +
@@ -1431,9 +1450,9 @@ $allCategories = [
                 if (t === 'song') {
                     var select = row.querySelector('.setlist-song-select');
                     if (!select || !select.value) return;
-                    var encore = row.querySelector('.setlist-encore-check');
+                    var encoreSel = row.querySelector('.setlist-encore-select');
                     var centerSel = row.querySelector('.setlist-center-select');
-                    var it = { entry_type: 'song', song_id: parseInt(select.value), sort_order: i+1, encore: encore && encore.checked ? 1 : 0 };
+                    var it = { entry_type: 'song', song_id: parseInt(select.value), sort_order: i+1, encore: normalizeEncoreVal(encoreSel ? encoreSel.value : 0) };
                     if (centerSel && centerSel.value) it.center_member_id = parseInt(centerSel.value);
                     items.push(it);
                 } else if (t === 'mc') {

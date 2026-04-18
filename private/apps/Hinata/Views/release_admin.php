@@ -64,6 +64,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                             <thead>
                                 <tr class="bg-slate-50 border-b border-slate-200">
                                     <th class="text-left text-xs font-bold text-slate-600 p-3">種別</th>
+                                    <th class="text-left text-xs font-bold text-slate-600 p-3">グループ</th>
                                     <th class="text-left text-xs font-bold text-slate-600 p-3">番号</th>
                                     <th class="text-left text-xs font-bold text-slate-600 p-3">タイトル</th>
                                     <th class="text-left text-xs font-bold text-slate-600 p-3">版・ジャケット</th>
@@ -74,7 +75,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                             <tbody>
                                 <?php if (empty($releases)): ?>
                                 <tr>
-                                    <td colspan="6" class="text-center text-slate-400 py-8">リリース情報がありません</td>
+                                    <td colspan="7" class="text-center text-slate-400 py-8">リリース情報がありません</td>
                                 </tr>
                                 <?php else: ?>
                                     <?php
@@ -86,9 +87,12 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                                         'best' => 'bg-violet-100 text-violet-700',
                                     ];
                                     $editionShort = ['type_a' => 'A', 'type_b' => 'B', 'type_c' => 'C', 'type_d' => 'D', 'normal' => '通常'];
+                                    $groupNames = $groupNames ?? [];
                                     foreach ($releases as $rel):
                                         $typeKey = $rel['release_type'] ?? 'single';
                                         $badgeClass = $typeBadgeClasses[$typeKey] ?? 'bg-slate-100 text-slate-600';
+                                        $gKey = $rel['group_name'] ?? 'hinatazaka46';
+                                        $gLabel = $groupNames[$gKey] ?? $gKey;
                                         $editions = $editionsByRelease[$rel['id']] ?? [];
                                         $mainJacket = null;
                                         foreach ($editions as $ed) {
@@ -107,6 +111,9 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                                             <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold <?= $badgeClass ?>">
                                                 <?= htmlspecialchars($releaseTypes[$rel['release_type']] ?? $rel['release_type']) ?>
                                             </span>
+                                        </td>
+                                        <td class="p-3 text-sm text-slate-700">
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold bg-orange-50 text-orange-800"><?= htmlspecialchars($gLabel) ?></span>
                                         </td>
                                         <td class="p-3 text-sm font-bold text-slate-600">
                                             <?= htmlspecialchars($rel['release_number'] ?? '-') ?>
@@ -180,6 +187,15 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                         <label class="block text-xs font-bold text-slate-600 mb-2">番号</label>
                         <input type="text" name="release_number" id="f_release_number" placeholder="1st" class="w-full h-11 border <?= $cardBorder ?> rounded-xl px-4 text-sm outline-none bg-slate-50">
                     </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-2">グループ</label>
+                    <select name="group_name" id="f_group_name" class="w-full h-11 border <?= $cardBorder ?> rounded-xl px-4 text-sm outline-none bg-slate-50">
+                        <?php foreach (($groupNames ?? []) as $gk => $glabel): ?>
+                        <option value="<?= htmlspecialchars($gk) ?>"><?= htmlspecialchars($glabel) ?></option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
 
                 <div>
@@ -351,6 +367,8 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         btnNewRelease.addEventListener('click', () => {
             releaseForm.reset();
             document.getElementById('release_id').value = '';
+            const gEl = document.getElementById('f_group_name');
+            if (gEl) gEl.value = 'hinatazaka46';
             document.querySelectorAll('.edition-input').forEach((input) => updateEditionPreview(input.dataset.edition, ''));
             clearSongRows();
             addSongRow({});
@@ -473,6 +491,8 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                     const d = json.data;
                     document.getElementById('release_id').value = d.id || '';
                     document.getElementById('f_release_type').value = d.release_type || 'single';
+                    const gSel = document.getElementById('f_group_name');
+                    if (gSel) gSel.value = d.group_name || 'hinatazaka46';
                     document.getElementById('f_release_number').value = d.release_number || '';
                     document.getElementById('f_title').value = d.title || '';
                     document.getElementById('f_title_kana').value = d.title_kana || '';

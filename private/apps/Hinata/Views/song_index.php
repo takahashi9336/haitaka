@@ -6,6 +6,11 @@
 $appKey = 'hinata';
 require_once __DIR__ . '/../../../components/theme_from_session.php';
 $tab = isset($_GET['tab']) && $_GET['tab'] === 'songs' ? 'songs' : 'releases';
+$groupFilter = $groupFilter ?? '';
+$groupNames = $groupNames ?? [
+    'hinatazaka46' => '日向坂46',
+    'hiragana_keyaki' => 'けやき坂46',
+];
 
 // 推しメンバーの参加楽曲IDセットを構築（ハイライト用）
 $oshi = $_SESSION['oshi'] ?? [];
@@ -64,10 +69,22 @@ $editionShort = ['type_a' => 'TYPE-A', 'type_b' => 'TYPE-B', 'type_c' => 'TYPE-C
             <?php endif; ?>
         </header>
 
-        <div class="bg-white border-b <?= $cardBorder ?> px-4 py-2 flex items-center shrink-0">
-            <div class="flex p-1 bg-slate-100 rounded-xl">
-                <a href="/hinata/songs.php" id="tab-releases" class="tab-btn px-4 py-1.5 rounded-lg text-[10px] font-black tracking-wider transition-all <?= $tab === 'releases' ? 'active' : '' ?>">リリース</a>
-                <a href="/hinata/songs.php?tab=songs<?= isset($_GET['release_id']) ? '&release_id=' . (int)$_GET['release_id'] : '' ?>" id="tab-songs" class="tab-btn px-4 py-1.5 rounded-lg text-[10px] font-black tracking-wider transition-all <?= $tab === 'songs' ? 'active' : '' ?>">全曲</a>
+        <?php
+        $gQ = ($groupFilter === 'hinatazaka46' || $groupFilter === 'hiragana_keyaki') ? '&group=' . rawurlencode($groupFilter) : '';
+        $ridQ = isset($_GET['release_id']) ? '&release_id=' . (int)$_GET['release_id'] : '';
+        ?>
+        <div class="bg-white border-b <?= $cardBorder ?> px-4 py-2 flex flex-col gap-2 shrink-0">
+            <div class="flex flex-wrap items-center gap-2">
+                <div class="flex p-1 bg-slate-100 rounded-xl">
+                    <a href="/hinata/songs.php<?= $gQ !== '' ? '?' . ltrim($gQ, '&') : '' ?>" id="tab-releases" class="tab-btn px-4 py-1.5 rounded-lg text-[10px] font-black tracking-wider transition-all <?= $tab === 'releases' ? 'active' : '' ?>">リリース</a>
+                    <a href="/hinata/songs.php?tab=songs<?= $gQ . $ridQ ?>" id="tab-songs" class="tab-btn px-4 py-1.5 rounded-lg text-[10px] font-black tracking-wider transition-all <?= $tab === 'songs' ? 'active' : '' ?>">全曲</a>
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-1.5 items-center text-[10px]">
+                <span class="text-slate-400 font-bold mr-1">表示:</span>
+                <a href="/hinata/songs.php<?= $tab === 'songs' ? '?tab=songs' . $ridQ : '' ?>" class="px-2.5 py-1 rounded-full font-bold <?= $groupFilter === '' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' ?>">すべて</a>
+                <a href="/hinata/songs.php?group=hinatazaka46<?= $tab === 'songs' ? '&tab=songs' : '' ?><?= $ridQ ?>" class="px-2.5 py-1 rounded-full font-bold <?= $groupFilter === 'hinatazaka46' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' ?>"><?= htmlspecialchars($groupNames['hinatazaka46'] ?? '日向坂46') ?></a>
+                <a href="/hinata/songs.php?group=hiragana_keyaki<?= $tab === 'songs' ? '&tab=songs' : '' ?><?= $ridQ ?>" class="px-2.5 py-1 rounded-full font-bold <?= $groupFilter === 'hiragana_keyaki' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' ?>"><?= htmlspecialchars($groupNames['hiragana_keyaki'] ?? 'けやき坂46') ?></a>
             </div>
         </div>
 
@@ -96,6 +113,11 @@ $editionShort = ['type_a' => 'TYPE-A', 'type_b' => 'TYPE-B', 'type_c' => 'TYPE-C
                                 }
                                 ?>
                                 <span class="<?= $badgeClass ?>"<?= $badgeStyle ? ' style="' . $badgeStyle . '"' : '' ?>><?= htmlspecialchars($releaseTypes[$rel['release_type']] ?? $rel['release_type']) ?></span>
+                                <?php
+                                $relGroupKey = $rel['group_name'] ?? 'hinatazaka46';
+                                $relGroupLabel = ($groupNames[$relGroupKey] ?? $relGroupKey);
+                                ?>
+                                <span class="inline-block ml-1 px-2 py-0.5 rounded text-[10px] font-black bg-orange-50 text-orange-800"><?= htmlspecialchars($relGroupLabel) ?></span>
                                 <?php
                                 $relNum = $rel['release_number'] ?? '';
                                 $relTitle = $rel['title'] ?? '';
@@ -134,7 +156,7 @@ $editionShort = ['type_a' => 'TYPE-A', 'type_b' => 'TYPE-B', 'type_c' => 'TYPE-C
             <?php else: ?>
             <div class="p-4 md:p-8 max-w-5xl mx-auto space-y-6">
                 <?php if (!empty($releaseIdFilter)): ?>
-                <p class="text-xs text-slate-500 mb-3"><a href="/hinata/songs.php?tab=songs" class="underline">全曲表示に戻る</a></p>
+                <p class="text-xs text-slate-500 mb-3"><a href="/hinata/songs.php?tab=songs<?= $gQ ?>" class="underline">全曲表示に戻る</a></p>
                 <?php endif; ?>
                 <?php if (empty($songsByRelease)): ?>
                 <div class="text-center py-20 bg-white rounded-2xl border <?= $cardBorder ?> shadow-sm">

@@ -5,6 +5,10 @@
  */
 $appKey = 'hinata';
 require_once __DIR__ . '/../../../components/theme_from_session.php';
+$groupNames = $groupNames ?? [
+    'hinatazaka46' => '日向坂46',
+    'hiragana_keyaki' => 'けやき坂46',
+];
 $mainJacket = null;
 foreach ($release['editions'] ?? [] as $ed) {
     if (($ed['edition'] ?? '') === 'type_a' && !empty($ed['jacket_image_url'])) {
@@ -65,7 +69,14 @@ if (!$mainJacket && !empty($release['editions'])) {
                         <?php endif; ?>
                     </div>
                     <div class="min-w-0 flex-1">
-                        <p class="text-[10px] font-black text-slate-400 tracking-wider"><?= htmlspecialchars($releaseTypes[$release['release_type']] ?? $release['release_type']) ?></p>
+                        <p class="text-[10px] font-black text-slate-400 tracking-wider">
+                            <?= htmlspecialchars($releaseTypes[$release['release_type']] ?? $release['release_type']) ?>
+                            <?php
+                            $rg = $release['group_name'] ?? 'hinatazaka46';
+                            $rgL = $groupNames[$rg] ?? $rg;
+                            ?>
+                            <span class="inline-block ml-1 px-2 py-0.5 rounded-full text-[9px] bg-orange-50 text-orange-800"><?= htmlspecialchars($rgL) ?></span>
+                        </p>
                         <h2 class="text-xl font-black text-slate-800 mt-1"><?= htmlspecialchars($release['title']) ?></h2>
                         <p class="text-sm text-slate-500 mt-1"><?= htmlspecialchars($release['release_number'] ?? '') ?>　<?= !empty($release['release_date']) ? \Core\Utils\DateUtil::format($release['release_date'], 'Y年n月d日') : '' ?></p>
                         <?php if (!empty($release['description'])): ?>
@@ -81,7 +92,14 @@ if (!$mainJacket && !empty($release['editions'])) {
                             <?php if (in_array(($user['role'] ?? ''), ['admin', 'hinata_admin'], true)): ?>
                             <a href="/hinata/release_artist_photos.php?release_id=<?= (int)$release['id'] ?>" class="text-[10px] font-bold <?= $cardIconText ?> hover:opacity-80 transition">アーティスト写真</a>
                             <?php endif; ?>
-                            <a href="/hinata/songs.php?tab=songs&release_id=<?= (int)$release['id'] ?>" class="text-[10px] font-bold <?= $cardIconText ?>"<?= isset($cardIconStyle) && $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>>全曲一覧で見る</a>
+                            <?php
+                            $songsListQS = 'tab=songs&release_id=' . (int)$release['id'];
+                            $rg = $release['group_name'] ?? 'hinatazaka46';
+                            if ($rg === 'hiragana_keyaki') {
+                                $songsListQS .= '&group=hiragana_keyaki';
+                            }
+                            ?>
+                            <a href="/hinata/songs.php?<?= htmlspecialchars($songsListQS) ?>" class="text-[10px] font-bold <?= $cardIconText ?>"<?= isset($cardIconStyle) && $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>>全曲一覧で見る</a>
                         </div>
                     </div>
                     <?php if (empty($release['songs'])): ?>

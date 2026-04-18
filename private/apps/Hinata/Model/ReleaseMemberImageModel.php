@@ -47,6 +47,58 @@ class ReleaseMemberImageModel extends BaseModel {
     }
 
     /**
+     * 複数リリースIDのアー写をまとめて取得（閲覧一覧用）
+     * @return array [ release_id => [ member_id => image_url ] ]
+     */
+    public function getRowsByReleaseIds(array $releaseIds): array {
+        $releaseIds = array_values(array_filter(array_map('intval', $releaseIds), fn($v) => $v > 0));
+        if (empty($releaseIds)) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($releaseIds), '?'));
+        $sql = "SELECT release_id, member_id, image_url
+                FROM {$this->table}
+                WHERE release_id IN ($placeholders)
+                ORDER BY release_id ASC, sort_order ASC, member_id ASC";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($releaseIds);
+        $out = [];
+        foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $row) {
+            $rid = (int)$row['release_id'];
+            $mid = (int)$row['member_id'];
+            if (!isset($out[$rid])) $out[$rid] = [];
+            $out[$rid][$mid] = (string)($row['image_url'] ?? '');
+        }
+        return $out;
+    }
+
+    /**
+     * 複数メンバーIDのアー写をまとめて取得（閲覧一覧用）
+     * @return array [ member_id => [ release_id => image_url ] ]
+     */
+    public function getRowsByMemberIds(array $memberIds): array {
+        $memberIds = array_values(array_filter(array_map('intval', $memberIds), fn($v) => $v > 0));
+        if (empty($memberIds)) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($memberIds), '?'));
+        $sql = "SELECT member_id, release_id, image_url
+                FROM {$this->table}
+                WHERE member_id IN ($placeholders)
+                ORDER BY member_id ASC, sort_order ASC, release_id ASC";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($memberIds);
+        $out = [];
+        foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $row) {
+            $mid = (int)$row['member_id'];
+            $rid = (int)$row['release_id'];
+            if (!isset($out[$mid])) $out[$mid] = [];
+            $out[$mid][$rid] = (string)($row['image_url'] ?? '');
+        }
+        return $out;
+    }
+
+    /**
      * リリースのメンバー写真を一括保存（既存は削除してから挿入）
      * @param array $rows [['member_id' => int, 'image_url' => string], ...]
      */

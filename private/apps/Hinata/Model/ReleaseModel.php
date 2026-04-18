@@ -11,7 +11,7 @@ use Core\BaseModel;
 class ReleaseModel extends BaseModel {
     protected string $table = 'hn_releases';
     protected array $fields = [
-        'id', 'release_type', 'release_number', 'title', 'title_kana',
+        'id', 'release_type', 'group_name', 'release_number', 'title', 'title_kana',
         'release_date', 'description', 'created_at', 'updated_at', 'update_user'
     ];
 
@@ -98,5 +98,11 @@ class ReleaseModel extends BaseModel {
         'digital' => 'デジタルシングル',
         'ep' => 'EP',
         'best' => 'ベストアルバム',
+    ];
+
+    /** リリースのグループ（DB値 => 表示ラベル） */
+    public const GROUP_NAMES = [
+        'hinatazaka46' => '日向坂46',
+        'hiragana_keyaki' => 'けやき坂46',
     ];
 }

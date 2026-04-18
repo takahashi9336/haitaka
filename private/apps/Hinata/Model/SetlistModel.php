@@ -69,7 +69,8 @@ class SetlistModel extends BaseModel {
     /**
      * セットリストを一括保存（delete-insert）
      * @param array $items [
-     *   { entry_type: song|mc|block, sort_order, song_id?, encore?, label?, block_kind?, center_member_id?, memo? }
+     *   { entry_type: song|mc|block, sort_order, song_id?, encore?: 0|1|2, label?, block_kind?, center_member_id?, memo? }
+     *   （encore は曲行のみ。0=本編、1=アンコール、2=ダブルアンコール）
      * ]
      */
     public function saveForEvent(int $eventId, array $items): void {
@@ -110,7 +111,13 @@ class SetlistModel extends BaseModel {
                 $songId = null;
             }
 
-            $encore = ($entryType === 'song' && !empty($item['encore'])) ? 1 : 0;
+            $encore = 0;
+            if ($entryType === 'song') {
+                $ev = isset($item['encore']) ? (int)$item['encore'] : 0;
+                if ($ev === 1 || $ev === 2) {
+                    $encore = $ev;
+                }
+            }
             $label = isset($item['label']) && trim((string)$item['label']) !== '' ? trim((string)$item['label']) : null;
             $blockKind = isset($item['block_kind']) && trim((string)$item['block_kind']) !== '' ? trim((string)$item['block_kind']) : null;
 

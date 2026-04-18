@@ -34,6 +34,13 @@ class SongController {
         $songModel = new SongModel();
 
         $releases = $releaseModel->getAllReleasesWithSummary();
+        $groupFilter = isset($_GET['group']) ? (string)$_GET['group'] : '';
+        if ($groupFilter === 'hinatazaka46' || $groupFilter === 'hiragana_keyaki') {
+            $releases = array_values(array_filter($releases, static function (array $r) use ($groupFilter): bool {
+                $g = $r['group_name'] ?? 'hinatazaka46';
+                return $g === $groupFilter;
+            }));
+        }
         foreach ($releases as &$r) {
             $r['title_center'] = $songModel->getTitleTrackCenterNames((int)$r['id']);
         }
@@ -70,6 +77,7 @@ class SongController {
         }
 
         $releaseTypes = ReleaseModel::RELEASE_TYPES;
+        $groupNames = ReleaseModel::GROUP_NAMES;
         $editionLabels = ReleaseEditionModel::EDITIONS;
         $trackTypesDisplay = SongModel::TRACK_TYPES_DISPLAY;
         $user = $_SESSION['user'];

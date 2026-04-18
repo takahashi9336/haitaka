@@ -1,0 +1,17 @@
+---
+description: アー写を枠でトリミングするときは object-cover + object-top（上寄せ）
+globs: "**/Hinata/**/*.{php,js}"
+alwaysApply: false
+---
+
+# アー写（アーティスト写真）のトリミング
+
+日向坂ポータルで **アー写**（リリース単位のメンバーアーティスト写真、`hn_release_member_images` の画像など）をカード・正方形枠などで **`object-cover`** 表示するときは、頭が枠から切れないよう **`object-top`** を併用する。
+
+例:
+
+```html
+<img class="w-full h-full object-cover object-top" alt="">
+```
+
+メンバー帳のプロフィール画像や、意図的に別の基準線に合わせる画面はこの限りではない。

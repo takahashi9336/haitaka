@@ -41,6 +41,7 @@ class ReleaseController {
 
         $members = $memberModel->getAllWithColors();
         $releaseTypes = ReleaseModel::RELEASE_TYPES;
+        $groupNames = ReleaseModel::GROUP_NAMES;
         $trackTypesDisplay = SongModel::TRACK_TYPES_DISPLAY;
         $editionLabels = ReleaseEditionModel::EDITIONS;
 
@@ -68,6 +69,7 @@ class ReleaseController {
         }
 
         $releaseTypes = ReleaseModel::RELEASE_TYPES;
+        $groupNames = ReleaseModel::GROUP_NAMES;
         $trackTypesDisplay = SongModel::TRACK_TYPES_DISPLAY;
         $user = $_SESSION['user'];
         require_once __DIR__ . '/../Views/release_show.php';
@@ -161,9 +163,15 @@ class ReleaseController {
             $songModel = new SongModel();
             $songMemberModel = new SongMemberModel();
 
+            $groupName = $input['group_name'] ?? 'hinatazaka46';
+            if (!array_key_exists($groupName, ReleaseModel::GROUP_NAMES)) {
+                $groupName = 'hinatazaka46';
+            }
+
             // リリース情報の保存（ジャケットは hn_release_editions で管理）
             $releaseData = [
                 'release_type' => $input['release_type'] ?? 'single',
+                'group_name' => $groupName,
                 'release_number' => $input['release_number'] ?? null,
                 'title' => $input['title'],
                 'title_kana' => $input['title_kana'] ?? null,

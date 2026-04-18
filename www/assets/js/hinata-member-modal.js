@@ -308,7 +308,11 @@
         var modal = document.getElementById('memberModal');
         if (!modal) return;
         modal.addEventListener('click', function (e) {
-            if (e.target.id === 'memberModal') closeMemberModal();
+            var modalContent = modal.querySelector('.modal-content');
+            // 白枠（.modal-content）外のクリックで閉じる（closest だと親ラッパー上のクリックを拾えない）
+            if (!modalContent || !modalContent.contains(e.target)) {
+                closeMemberModal();
+            }
         });
         var closeBtn = document.getElementById('memberModalCloseBtn');
         if (closeBtn) closeBtn.addEventListener('click', closeMemberModal);

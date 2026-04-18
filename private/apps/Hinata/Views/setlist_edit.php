@@ -45,11 +45,11 @@ $eventId = (int)($event['id'] ?? 0);
     </header>
 
     <div class="flex-1 overflow-y-auto p-4 md:p-6">
-        <div class="max-w-3xl mx-auto space-y-4">
+        <div class="max-w-7xl mx-auto space-y-4">
             <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
                 <div id="rows" class="space-y-2"></div>
                 <p class="text-[10px] text-slate-400 mt-3">
-                    「曲」以外（MC/ブロック）は曲数に含めません。ENは「曲」行のみ有効です。
+                    「曲」以外（MC/ブロック）は曲数に含めません。本編/アンコール/Wは「曲」行のみ有効です。
                 </p>
             </div>
         </div>
@@ -161,11 +161,18 @@ $eventId = (int)($event['id'] ?? 0);
         return opts;
     }
 
+    function normalizeEncore(v) {
+        const n = parseInt(v, 10);
+        if (n === 2) return 2;
+        if (n === 1) return 1;
+        return 0;
+    }
+
     function rowHtml(index, item) {
         item = item || {};
         const t = item.entry_type || 'song';
         const songId = item.song_id || '';
-        const encore = item.encore ? 1 : 0;
+        const encore = normalizeEncore(item.encore);
         const label = item.label || '';
         const blockKind = item.block_kind || 'session_other';
         const centerIds = Array.isArray(item.center_member_ids) ? item.center_member_ids
@@ -177,17 +184,22 @@ $eventId = (int)($event['id'] ?? 0);
 
         return `
         <div class="setlist-row flex flex-col gap-2 p-2 bg-slate-50 rounded-lg" data-index="${index}">
-          <div class="flex flex-wrap items-center gap-2">
-            <span class="text-[10px] text-slate-400 w-5 text-right shrink-0">${index + 1}</span>
+          <div class="flex flex-wrap items-start gap-2">
+            <span class="text-[10px] text-slate-400 w-5 text-right shrink-0 pt-2">${index + 1}</span>
             <select class="setlist-type-select w-24 border border-slate-200 rounded-lg px-2 py-1.5 text-xs bg-white shrink-0">
               <option value="song"${t === 'song' ? ' selected' : ''}>曲</option>
               <option value="mc"${t === 'mc' ? ' selected' : ''}>MC</option>
               <option value="block"${t === 'block' ? ' selected' : ''}>ブロック</option>
             </select>
 
-            <div class="row-song flex flex-wrap items-center gap-2 flex-1 min-w-[16rem]">
-              <select class="setlist-song-select flex-1 min-w-[14rem] border border-slate-200 rounded-lg px-2 py-1.5 text-xs bg-white">${_songOptions(songId)}</select>
-              <div class="setlist-centers flex flex-col gap-1">
+            <div class="row-song flex flex-nowrap items-center gap-2 flex-1 min-w-0 overflow-x-auto pb-0.5">
+              <select class="setlist-song-select flex-1 min-w-[12rem] border border-slate-200 rounded-lg px-2 py-1.5 text-xs bg-white min-h-[2.25rem]">${_songOptions(songId)}</select>
+              <select class="setlist-encore-select w-[8.5rem] shrink-0 border border-slate-200 rounded-lg px-2 py-1.5 text-[10px] bg-white min-h-[2.25rem]">
+                <option value="0"${encore === 0 ? ' selected' : ''}>本編</option>
+                <option value="1"${encore === 1 ? ' selected' : ''}>アンコール</option>
+                <option value="2"${encore === 2 ? ' selected' : ''}>Wアンコール</option>
+              </select>
+              <div class="setlist-centers flex flex-col gap-1 shrink-0">
                 <div class="center-row flex items-center gap-1">
                   ${_centerSelectHtml(centerFirst)}
                   <button type="button" class="btnAddCenter text-[10px] font-bold text-sky-600 bg-sky-50 px-2 py-1 rounded-lg hover:bg-sky-100 transition">
@@ -203,7 +215,6 @@ $eventId = (int)($event['id'] ?? 0);
                   </div>
                 `).join('')}
               </div>
-              <label class="flex items-center gap-1 text-[10px] text-slate-500 shrink-0"><input type="checkbox" class="setlist-encore-check"${encore ? ' checked' : ''}> EN</label>
             </div>
 
             <div class="row-mc hidden flex-1 min-w-[16rem]">
@@ -280,8 +291,8 @@ $eventId = (int)($event['id'] ?? 0);
             if (t === 'song') {
                 const s = row.querySelector('.setlist-song-select');
                 if (!s.value) return;
-                const encore = row.querySelector('.setlist-encore-check');
-                const it = { entry_type: 'song', sort_order: i + 1, song_id: parseInt(s.value, 10), encore: encore && encore.checked ? 1 : 0 };
+                const encoreSel = row.querySelector('.setlist-encore-select');
+                const it = { entry_type: 'song', sort_order: i + 1, song_id: parseInt(s.value, 10), encore: normalizeEncore(encoreSel ? encoreSel.value : 0) };
                 const mids = Array.from(row.querySelectorAll('.center-select-item'))
                     .map(sel => parseInt(sel.value || '0', 10))
                     .filter(v => v > 0);
@@ -352,7 +363,7 @@ $eventId = (int)($event['id'] ?? 0);
             </div>
             <p class="text-[10px] text-slate-400 mt-2">影ナレはイベントに1回のみ紐づきます。</p>
         `;
-        const root = document.querySelector('.max-w-3xl');
+        const root = document.querySelector('.max-w-7xl');
         const card = root ? root.querySelector('.bg-white.rounded-2xl') : null;
         if (card && card.parentElement) card.parentElement.insertBefore(box, card);
 

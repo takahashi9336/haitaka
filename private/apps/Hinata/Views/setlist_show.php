@@ -68,15 +68,31 @@ foreach ($setlist as $it) {
             <div class="p-4 text-sm text-slate-500">未登録です。</div>
         <?php else: ?>
             <ol class="divide-y divide-slate-50">
-                <?php $lastEncore = false; $i = 0; ?>
+                <?php $lastPrinted = 0; $i = 0; ?>
                 <?php foreach ($setlist as $row): $i++; ?>
                     <?php $t = $row['entry_type'] ?? 'song'; $isSong = ($t === 'song'); ?>
-                    <?php if ($isSong && !empty($row['encore']) && !$lastEncore): ?>
+                    <?php if ($isSong): ?>
+                        <?php
+                        $L = (int)($row['encore'] ?? 0);
+                        if ($L < 0) {
+                            $L = 0;
+                        } elseif ($L > 2) {
+                            $L = 2;
+                        }
+                        ?>
+                        <?php if ($L >= 1 && $lastPrinted < 1): ?>
                         <li class="px-4 py-2 bg-slate-50 text-center">
                             <span class="text-[10px] font-black text-slate-400 tracking-wider">ENCORE</span>
                         </li>
+                        <?php $lastPrinted = 1; ?>
+                        <?php endif; ?>
+                        <?php if ($L >= 2 && $lastPrinted < 2): ?>
+                        <li class="px-4 py-2 bg-slate-50 text-center">
+                            <span class="text-[10px] font-black text-slate-400 tracking-wider">W ENCORE</span>
+                        </li>
+                        <?php $lastPrinted = 2; ?>
+                        <?php endif; ?>
                     <?php endif; ?>
-                    <?php if ($isSong) $lastEncore = !empty($row['encore']); ?>
 
                     <li class="px-4 py-3 flex items-center gap-3">
                         <span class="text-xs text-slate-400 w-6 text-right font-mono"><?= $i ?></span>

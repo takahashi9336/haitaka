@@ -345,7 +345,10 @@ if ($mainVideo !== null && !empty($mainVideo['media_key']) && ($mainVideo['platf
                         <a href="/hinata/events.php?event_id=<?= (int)$lp['id'] ?>" class="flex items-center gap-3 text-sm hover:bg-slate-50 rounded-lg px-2 py-1.5 -mx-2 transition">
                             <i class="fa-solid fa-music text-indigo-300 text-xs shrink-0"></i>
                             <span class="font-bold text-slate-700 truncate"><?= htmlspecialchars($lp['event_name']) ?></span>
-                            <?php if ($lp['encore']): ?>
+                            <?php $lpEnc = (int)($lp['encore'] ?? 0); ?>
+                            <?php if ($lpEnc === 2): ?>
+                            <span class="text-[9px] font-black text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded shrink-0">W</span>
+                            <?php elseif ($lpEnc === 1): ?>
                             <span class="text-[9px] font-black text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded shrink-0">EN</span>
                             <?php endif; ?>
                             <span class="text-[10px] text-slate-400 ml-auto shrink-0"><?= !empty($lp['event_date']) ? date('Y/m/d', strtotime($lp['event_date'])) : '' ?></span>
