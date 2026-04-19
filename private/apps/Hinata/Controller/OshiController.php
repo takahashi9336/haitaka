@@ -63,11 +63,12 @@ class OshiController {
     public function memberPage(): void {
         $this->auth->requireLogin();
 
-        $memberId = (int)($_GET['id'] ?? 0);
-        if (!$memberId) {
+        // id=0 は有効（長濱ねる等）。未指定のときだけリダイレクトする。
+        if (!array_key_exists('id', $_GET)) {
             header('Location: /hinata/');
             exit;
         }
+        $memberId = (int)$_GET['id'];
 
         $memberModel = new MemberModel();
         $member = $memberModel->getMemberDetail($memberId);

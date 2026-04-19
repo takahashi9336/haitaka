@@ -57,7 +57,8 @@
     }
 
     function setFavoriteLevel(level) {
-        if (!currentMemberId) return;
+        // id=0（長濱ねる等）は有効。!currentMemberId だと 0 を弾いてしまう。
+        if (currentMemberId === null || currentMemberId === undefined) return;
         var actualLevel = (currentFavoriteLevel === level) ? 0 : level;
 
         fetch('/hinata/api/toggle_favorite.php', {
@@ -217,7 +218,7 @@
 
         var adminBtn = document.getElementById('adminEditBtn');
         if (adminBtn) {
-            if (config.isAdmin && d.id) {
+            if (config.isAdmin && d.id !== undefined && d.id !== null) {
                 adminBtn.href = '/hinata/member_admin.php?member_id=' + encodeURIComponent(d.id);
                 adminBtn.classList.remove('hidden');
             } else {
@@ -230,7 +231,9 @@
 
         var detailPageBtn = document.getElementById('memberDetailPageBtn');
         if (detailPageBtn) {
-            var memberUrl = d.id ? '/hinata/member.php?id=' + encodeURIComponent(d.id) : '';
+            var memberUrl = (d.id !== undefined && d.id !== null)
+                ? '/hinata/member.php?id=' + encodeURIComponent(d.id)
+                : '';
             detailPageBtn.setAttribute('data-url', memberUrl);
             detailPageBtn.href = memberUrl || '#';
         }

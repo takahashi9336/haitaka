@@ -112,7 +112,10 @@ class TalkController {
         try {
             $input = json_decode(file_get_contents('php://input'), true);
             $memberId = $input['member_id'] ?? null;
-            if (!$memberId) throw new \Exception('メンバーIDが指定されていません');
+            // id=0 は有効。!$memberId は 0 を弾いてしまう。
+            if ($memberId === null || $memberId === '') {
+                throw new \Exception('メンバーIDが指定されていません');
+            }
             $level = isset($input['level']) ? (int)$input['level'] : null;
 
             $favModel = new FavoriteModel();

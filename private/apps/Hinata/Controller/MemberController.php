@@ -60,7 +60,10 @@ class MemberController {
             }
 
             $id = $_GET['id'] ?? null;
-            if (!$id) throw new \Exception('ID missing');
+            // id=0 は有効（例: 長濱ねる）。isset/empty 系で '0' を弾かないこと。
+            if ($id === null || $id === '') {
+                throw new \Exception('ID missing');
+            }
             $model = new MemberModel();
             $detail = $model->getMemberDetail((int)$id);
             echo json_encode(['status' => 'success', 'data' => $detail]);
@@ -76,7 +79,9 @@ class MemberController {
         header('Content-Type: application/json');
         try {
             $id = $_POST['id'] ?? null;
-            if (!$id) throw new \Exception('ID missing');
+            if ($id === null || $id === '') {
+                throw new \Exception('ID missing');
+            }
 
             $model = new MemberModel();
             $currentMember = $model->find($id);
