@@ -491,9 +491,18 @@ try {
                                        'value' => -1, 'empty_icon' => null, 'empty_text' => null];
                     }
                     if (($user['role'] ?? '') === 'admin') {
+                        $navCards[] = ['href' => '/dashboard/youtube_focus.php', 'icon' => 'fa-brands fa-youtube', 'label' => 'YouTube 集中', 'sub' => '指定チャンネルのみ', 'theme' => $adminTheme,
+                                       'value' => -1, 'empty_icon' => null, 'empty_text' => null];
                         $navCards[] = ['href' => '/admin/', 'icon' => 'fa-shield-halved', 'label' => '管理画面', 'sub' => '管理', 'theme' => $adminTheme,
                                        'value' => -1, 'empty_icon' => null, 'empty_text' => null];
                     }
+                    $navCardIconClass = static function (array $nc): string {
+                        $ic = $nc['icon'] ?? 'fa-link';
+                        if (str_starts_with($ic, 'fa-brands ')) {
+                            return $ic;
+                        }
+                        return 'fa-solid ' . $ic;
+                    };
                 ?>
 
                 <!-- モバイル: アイコンチックなグリッド -->
@@ -501,7 +510,7 @@ try {
                     <?php foreach ($navCards as $nc): ?>
                     <a href="<?= $nc['href'] ?>" class="bg-white rounded-xl border <?= $nc['theme']['cardBorder'] ?> shadow-sm p-3 flex flex-col items-center gap-1.5 active:scale-95 transition-all">
                         <div class="w-11 h-11 rounded-xl flex items-center justify-center <?= $nc['theme']['cardIconBg'] ?> <?= $nc['theme']['cardIconText'] ?>"<?= $nc['theme']['cardIconStyle'] ? ' style="' . htmlspecialchars($nc['theme']['cardIconStyle']) . '"' : '' ?>>
-                            <i class="fa-solid <?= $nc['icon'] ?> text-lg"></i>
+                            <i class="<?= htmlspecialchars($navCardIconClass($nc)) ?> text-lg"></i>
                         </div>
                         <span class="text-[10px] font-bold text-slate-600 text-center leading-tight"><?= $nc['label'] ?></span>
                         <?php if ($nc['value'] === 0 && $nc['empty_icon']): ?>
@@ -519,7 +528,7 @@ try {
                     <a href="<?= $nc['href'] ?>" class="bg-white p-5 rounded-xl border <?= $nc['theme']['cardBorder'] ?> shadow-sm flex flex-col justify-between h-44 hover:translate-y-[-2px] active:scale-[0.98] transition-all">
                         <div>
                             <div class="w-10 h-10 rounded-lg flex items-center justify-center mb-3 <?= $nc['theme']['cardIconBg'] ?> <?= $nc['theme']['cardIconText'] ?>"<?= $nc['theme']['cardIconStyle'] ? ' style="' . htmlspecialchars($nc['theme']['cardIconStyle']) . '"' : '' ?>>
-                                <i class="fa-solid <?= $nc['icon'] ?> text-lg"></i>
+                                <i class="<?= htmlspecialchars($navCardIconClass($nc)) ?> text-lg"></i>
                             </div>
                             <h3 class="font-bold text-slate-800 text-base"><?= $nc['label'] ?></h3>
                             <p class="text-slate-400 text-xs font-medium mt-1"><?= $nc['sub'] ?></p>
@@ -532,7 +541,13 @@ try {
                             <?php elseif ($nc['value'] > 0): ?>
                                 <span class="text-3xl font-black text-slate-800 count-up" data-target="<?= $nc['value'] ?>">0</span>
                             <?php elseif ($nc['value'] === -1): ?>
-                                <span class="text-3xl font-black text-slate-800"><i class="fa-solid fa-gear text-2xl text-slate-400"></i></span>
+                                <span class="text-3xl font-black text-slate-800">
+                                    <?php if (str_contains($nc['href'] ?? '', 'youtube_focus')): ?>
+                                        <i class="fa-brands fa-youtube text-2xl text-red-500"></i>
+                                    <?php else: ?>
+                                        <i class="fa-solid fa-gear text-2xl text-slate-400"></i>
+                                    <?php endif; ?>
+                                </span>
                             <?php endif; ?>
                             <span class="text-xs font-bold tracking-wider <?= $nc['theme']['cardIconText'] ?>"<?= $nc['theme']['cardDecoStyle'] ? ' style="' . htmlspecialchars($nc['theme']['cardDecoStyle']) . '"' : '' ?>>開く <i class="fa-solid fa-arrow-right ml-1"></i></span>
                         </div>

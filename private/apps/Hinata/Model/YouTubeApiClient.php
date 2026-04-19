@@ -72,18 +72,53 @@ class YouTubeApiClient {
         }
 
         // URL -> @handle
-        if (preg_match('#youtube\.com/@([A-Za-z0-9_.-]+)#i', $s, $m)) {
+        if (preg_match('#youtube\.com/@([^/?\s]+)#iu', $s, $m)) {
             $s = '@' . $m[1];
         }
 
         // @handle
-        if (preg_match('/^@([A-Za-z0-9_.-]+)$/', $s, $m)) {
+        // - YouTube の @handle は英数字が多いが、日本語などのケースも受け入れて試す
+        if (preg_match('/^@([^\/\s]+)$/u', $s, $m)) {
             $handle = $m[1];
+
+            // 1) forHandle で解決（最優先）
             $data = $this->apiRequest('/channels', [
                 'part' => 'id',
                 'forHandle' => $handle,
             ]);
-            return $data['items'][0]['id'] ?? null;
+            $id = $data['items'][0]['id'] ?? null;
+            if (is_string($id) && $id !== '') {
+                return $id;
+            }
+
+            // 2) フォールバック: YouTube ページ HTML から channelId を抽出（API クォータ不要）
+            // 日本語など forHandle が効かないケースを想定
+            $pageUrl = 'https://www.youtube.com/@' . rawurlencode($handle);
+            $ctx = stream_context_create([
+                'http' => [
+                    'method' => 'GET',
+                    'timeout' => 10,
+                    'header' => "User-Agent: Mozilla/5.0\r\nAccept-Language: ja,en;q=0.8\r\n",
+                ],
+            ]);
+            $html = @file_get_contents($pageUrl, false, $ctx);
+            if (is_string($html) && $html !== '') {
+                if (preg_match('/\"channelId\":\"(UC[A-Za-z0-9_-]{20,})\"/', $html, $hm)) {
+                    return $hm[1];
+                }
+            }
+
+            // 3) 最終フォールバック: 検索（quota cost が重いので最後の手段）
+            $sData = $this->apiRequest('/search', [
+                'part' => 'snippet',
+                'type' => 'channel',
+                'q' => $handle,
+                'maxResults' => 1,
+            ]);
+            $cid = $sData['items'][0]['id']['channelId'] ?? null;
+            if (is_string($cid) && $cid !== '') {
+                return $cid;
+            }
         }
 
         return null;
@@ -289,7 +324,7 @@ class YouTubeApiClient {
      * snippet + contentDetails + liveStreamingDetails から media_type を正確に判定
      *
      * - liveStreamingDetails が存在 → live（アーカイブ含む）
-     * - duration ≤ 60秒 → short
+     * - duration ≤ 180秒 → short（Shorts の上限が 3 分のケースに対応）
      * - それ以外 → video
      */
     private static function detectMediaTypeAdvanced(array $snippet, array $contentDetails, ?array $liveDetails): string {
@@ -303,7 +338,7 @@ class YouTubeApiClient {
         }
 
         $duration = $contentDetails['duration'] ?? '';
-        if ($duration !== '' && self::parseDurationSeconds($duration) <= 60) {
+        if ($duration !== '' && self::parseDurationSeconds($duration) <= 180) {
             return 'short';
         }
 
