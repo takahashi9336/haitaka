@@ -67,6 +67,7 @@ $hinataTheme = getThemeVarsForApp('hinata');     // 日向坂 次のイベント
 $taskTheme = getThemeVarsForApp('task_manager'); // 最優先タスク、タスク管理遷移ボックス
 $adminTheme = getThemeVarsForApp('admin');       // 管理画面への遷移ボックス（管理者のみ）
 $focusNoteTheme = getThemeVarsForApp('focus_note'); // Focus Note
+$dashboardNavTheme = getThemeVarsForApp('dashboard'); // 記事トレーニング履歴カード（ダッシュボードアプリのテーマ）
 $animeTheme = getThemeVarsForApp('anime');       // アニメ（未登録時は indigo フォールバック）
 // アニメリンク表示: .env の ANIME_BETA_ID_NAMES に id_name が含まれるユーザーのみ（カンマ区切り）
 $showAnimeLink = false;
@@ -87,6 +88,16 @@ try {
     }
 } catch (\Throwable $e) {
     \Core\Logger::errorWithContext('Focus Note action count error', $e);
+}
+
+$articleTrainingCount = 0;
+try {
+    $pdoCount = Database::connect();
+    $stmtAt = $pdoCount->prepare('SELECT COUNT(*) FROM dashboard_article_training WHERE user_id = ?');
+    $stmtAt->execute([(int) ($user['id'] ?? 0)]);
+    $articleTrainingCount = (int) $stmtAt->fetchColumn();
+} catch (\Throwable $e) {
+    \Core\Logger::errorWithContext('Article training count error', $e);
 }
 
 // 翌日のイベントにミーグリ予定がある場合、スロット情報を取得
@@ -472,6 +483,8 @@ try {
                          'value' => $netaCount, 'empty_icon' => null, 'empty_text' => 'ネタなし'],
                         ['href' => '/focus_note/', 'icon' => 'fa-bolt', 'label' => '集中ノート', 'sub' => '未完了アクション', 'theme' => $focusNoteTheme,
                          'value' => $focusNoteActionCount, 'empty_icon' => 'fa-circle-check', 'empty_text' => null],
+                        ['href' => '/dashboard/article_training_history.php', 'icon' => 'fa-clock-rotate-left', 'label' => '記事トレーニング履歴', 'sub' => '保存した記事', 'theme' => $dashboardNavTheme,
+                         'value' => $articleTrainingCount, 'empty_icon' => null, 'empty_text' => 'まだなし'],
                     ];
                     if ($showAnimeLink) {
                         $navCards[] = ['href' => '/anime/', 'icon' => 'fa-tv', 'label' => 'アニメ', 'sub' => 'Annict', 'theme' => $animeTheme,
