@@ -21,6 +21,7 @@ Database::connect();
 $feedService = new YouTubeFocusChannelService();
 $forceRefresh = (string)($_GET['refresh'] ?? '') === '1';
 $feed = $feedService->getFeed($forceRefresh);
+$view = (string)($_GET['view'] ?? 'all'); // all(default) | grouped
 
 $appKey = 'dashboard';
 require_once __DIR__ . '/../../private/components/theme_from_session.php';
@@ -93,7 +94,95 @@ require_once __DIR__ . '/../../private/components/theme_from_session.php';
                         <p class="text-[10px] text-slate-400"><i class="fa-solid fa-database mr-1"></i>直近の取得結果を表示しています（約30分キャッシュ）</p>
                     <?php endif; ?>
 
-                    <?php foreach ($feed['channels'] as $ch): ?>
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+                            <a href="/dashboard/youtube_focus.php?view=all<?= $forceRefresh ? '&refresh=1' : '' ?>"
+                               class="px-3 py-2 rounded-lg text-xs font-bold transition <?= $view !== 'grouped' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50' ?>">
+                                投稿日時順
+                            </a>
+                            <a href="/dashboard/youtube_focus.php?view=grouped<?= $forceRefresh ? '&refresh=1' : '' ?>"
+                               class="px-3 py-2 rounded-lg text-xs font-bold transition <?= $view === 'grouped' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50' ?>">
+                                チャンネル別
+                            </a>
+                        </div>
+                        <?php if ($forceRefresh): ?>
+                            <span class="text-[10px] text-slate-400">再取得しました</span>
+                        <?php endif; ?>
+                    </div>
+
+                    <?php
+                        $all = [];
+                        foreach ($feed['channels'] as $ch) {
+                            foreach (($ch['videos'] ?? []) as $v) {
+                                $all[] = [
+                                    'channel_title' => (string)($ch['channel_title'] ?: $ch['input_spec']),
+                                    'mode_label' => (string)($ch['mode_label'] ?? ''),
+                                    'video' => $v,
+                                ];
+                            }
+                        }
+                        usort($all, static function (array $a, array $b): int {
+                            $at = strtotime((string)($a['video']['published_at'] ?? '')) ?: 0;
+                            $bt = strtotime((string)($b['video']['published_at'] ?? '')) ?: 0;
+                            return $bt <=> $at;
+                        });
+                    ?>
+
+                    <?php if ($view !== 'grouped'): ?>
+                        <?php if (empty($all)): ?>
+                            <p class="text-sm text-slate-500">表示できる動画がありません。</p>
+                        <?php else: ?>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                                <?php foreach ($all as $row):
+                                    $v = $row['video'];
+                                    $videoForModal = [
+                                        'platform' => 'youtube',
+                                        'media_key' => $v['video_id'] ?? '',
+                                        'title' => $v['title'] ?? '',
+                                        'upload_date' => $v['published_at'] ?? '',
+                                        'category' => $row['channel_title'] . ($row['mode_label'] !== '' ? ' / ' . $row['mode_label'] : ''),
+                                        'description' => '',
+                                    ];
+                                    $dataVideo = htmlspecialchars(json_encode($videoForModal, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
+                                    $thumb = htmlspecialchars($v['thumbnail_url'] ?? '', ENT_QUOTES, 'UTF-8');
+                                ?>
+                                    <article
+                                        class="yt-focus-card group/card cursor-pointer rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
+                                        tabindex="0"
+                                        role="button"
+                                        data-video="<?= $dataVideo ?>"
+                                        onclick="youtubeFocusOpenModal(this, event)"
+                                        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();youtubeFocusOpenModal(this,event);}"
+                                        aria-label="再生"
+                                    >
+                                        <div class="relative aspect-video rounded-xl overflow-hidden bg-slate-200 shadow-sm ring-1 ring-slate-200/80">
+                                            <img src="<?= $thumb ?>" alt="" class="w-full h-full object-cover group-hover/card:scale-[1.02] transition-transform duration-200" loading="lazy" width="320" height="180">
+                                            <span class="absolute inset-0 flex items-center justify-center bg-black/25 opacity-0 group-hover/card:opacity-100 transition-opacity pointer-events-none">
+                                                <i class="fa-solid fa-circle-play text-white text-4xl drop-shadow-lg"></i>
+                                            </span>
+                                        </div>
+                                        <div class="mt-2.5">
+                                            <p class="text-[11px] text-slate-500 font-semibold truncate">
+                                                <?= htmlspecialchars($row['channel_title']) ?>
+                                                <?php if ($row['mode_label'] !== ''): ?>
+                                                    <span class="text-slate-400"> / <?= htmlspecialchars($row['mode_label']) ?></span>
+                                                <?php endif; ?>
+                                            </p>
+                                            <h3 class="text-sm font-semibold text-slate-900 yt-line-clamp-2 leading-snug mt-1 group-hover/card:text-red-600 transition-colors">
+                                                <?= htmlspecialchars($v['title'] ?? '') ?>
+                                            </h3>
+                                            <?php if (!empty($v['published_at'])): ?>
+                                                <p class="text-[11px] text-slate-400 mt-1">
+                                                    <?= htmlspecialchars(date('Y/m/d H:i', strtotime((string) $v['published_at']))) ?>
+                                                </p>
+                                            <?php endif; ?>
+                                        </div>
+                                    </article>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                    <?php else: ?>
+                        <?php foreach ($feed['channels'] as $ch): ?>
                         <section class="border-b border-slate-200/80 pb-10 last:border-0 last:pb-0">
                             <div class="flex flex-wrap items-baseline gap-2 gap-y-1 mb-4">
                                 <h2 class="text-lg font-bold text-slate-900 tracking-tight">
@@ -152,7 +241,8 @@ require_once __DIR__ . '/../../private/components/theme_from_session.php';
                                 </div>
                             <?php endif; ?>
                         </section>
-                    <?php endforeach; ?>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 <?php endif; ?>
 
             </div>
