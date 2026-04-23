@@ -86,7 +86,7 @@ $inactiveClass = "text-slate-500 hover:bg-slate-50 transition";
 ?>
 <aside id="sidebar" class="sidebar bg-white border-r border-slate-200 flex flex-col shrink-0 min-h-0 z-50 transition-all duration-300">
     <div class="h-16 flex items-center justify-between px-4 border-b border-slate-100 shrink-0">
-        <a href="<?= htmlspecialchars($user['default_route'] ?? '/index.php') ?>" class="flex items-center gap-2 overflow-hidden hover:opacity-80 transition cursor-pointer">
+        <a href="<?= htmlspecialchars($user['default_route'] ?? '/index.php') ?>" class="sidebar-brand flex items-center gap-2 overflow-hidden hover:opacity-80 transition cursor-pointer">
             <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white shrink-0 shadow-indigo-200 shadow-lg">
                 <i class="fa-solid fa-layer-group text-sm"></i>
             </div>
@@ -141,7 +141,7 @@ $inactiveClass = "text-slate-500 hover:bg-slate-50 transition";
         <?php endif; ?>
     </nav>
 
-    <div class="p-4 border-t border-slate-100 bg-slate-50/50 shrink-0">
+    <div class="sidebar-footer p-4 border-t border-slate-100 bg-slate-50/50 shrink-0">
         <div class="flex items-center gap-3 px-1 overflow-hidden">
             <div class="w-9 h-9 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-600 text-xs font-bold shrink-0 shadow-sm">
                 <?= htmlspecialchars($initial) ?>
@@ -175,6 +175,25 @@ $inactiveClass = "text-slate-500 hover:bg-slate-50 transition";
     style="background:rgba(0,0,0,0.25);"
 ></div>
 <style>
+#sidebar { width: 240px; }
+
+#sidebar.collapsed { width: 72px; }
+#sidebar.collapsed .logo-text,
+#sidebar.collapsed .nav-text,
+#sidebar.collapsed .user-info { display: none; }
+
+#sidebar.collapsed .sidebar-brand { justify-content: center; }
+#sidebar.collapsed nav { padding-left: 0.75rem; padding-right: 0.75rem; }
+#sidebar.collapsed .nav-item { justify-content: center; }
+#sidebar.collapsed .sidebar-footer { padding-left: 0.75rem; padding-right: 0.75rem; }
+#sidebar.collapsed .sidebar-footer > div { justify-content: center; }
+#sidebar.collapsed .sidebar-footer .ml-auto { margin-left: 0; }
+#sidebar.collapsed .sidebar-footer a { min-width: 44px; min-height: 44px; }
+
+@media (min-width: 769px) {
+    #sidebar.collapsed ~ #sidebarBackdrop { left: 72px !important; }
+}
+
 @media (max-width: 768px) {
     #sidebar.mobile-open ~ #sidebarBackdrop { opacity: 1; pointer-events: auto; }
     #sidebar { touch-action: manipulation; -webkit-tap-highlight-color: transparent; transform: translate3d(-100%, 0, 0); }
@@ -188,6 +207,35 @@ $inactiveClass = "text-slate-500 hover:bg-slate-50 transition";
 (function() {
     const sidebar = document.getElementById('sidebar');
     if (!sidebar) return;
+
+    const MOBILE_MAX = 768;
+    const AUTO_COLLAPSE_MAX = 1536;
+
+    function applySidebarModeByWidth() {
+        const w = window.innerWidth;
+        if (w <= MOBILE_MAX) {
+            sidebar.classList.remove('collapsed');
+            return;
+        }
+        if (w <= AUTO_COLLAPSE_MAX) {
+            sidebar.classList.add('collapsed');
+            return;
+        }
+        // > AUTO_COLLAPSE_MAX: ユーザーの手動状態に従う（core.js がないページでも反映）
+        try {
+            if (localStorage.getItem('sidebar-collapsed') === 'true') sidebar.classList.add('collapsed');
+            else sidebar.classList.remove('collapsed');
+        } catch (e) {
+            sidebar.classList.remove('collapsed');
+        }
+    }
+
+    applySidebarModeByWidth();
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+        if (resizeTimer) clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(applySidebarModeByWidth, 100);
+    });
     
     let startX = 0;
     let currentX = 0;

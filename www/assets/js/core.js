@@ -170,12 +170,33 @@
 
         if (!sidebar) return;
 
-        // PCでの最小化状態復元 (PC環境のみ適用)
-        if (window.innerWidth > 768) {
+        const MOBILE_MAX = 768;
+        const AUTO_COLLAPSE_MAX = 1536;
+
+        const applySidebarModeByWidth = () => {
+            const w = window.innerWidth;
+
+            if (w <= MOBILE_MAX) {
+                // モバイル: 開いたときに読めるよう collapsed は外す
+                sidebar.classList.remove('collapsed');
+                return;
+            }
+
+            if (w <= AUTO_COLLAPSE_MAX) {
+                // 狭いPC: 自動でアイコンのみ表示
+                sidebar.classList.add('collapsed');
+                return;
+            }
+
+            // 広いPC: ユーザーの手動状態に従う
             if (localStorage.getItem('sidebar-collapsed') === 'true') {
                 sidebar.classList.add('collapsed');
+            } else {
+                sidebar.classList.remove('collapsed');
             }
-        }
+        };
+
+        applySidebarModeByWidth();
 
         // 1. PC用：最小化トグル
         if (toggleBtn) {
@@ -183,6 +204,7 @@
                 e.stopPropagation();
                 sidebar.classList.toggle('collapsed');
                 localStorage.setItem('sidebar-collapsed', sidebar.classList.contains('collapsed'));
+                applySidebarModeByWidth();
             };
         }
 
@@ -200,10 +222,7 @@
         if (closeBtn) {
             closeBtn.onclick = () => {
                 sidebar.classList.remove('mobile-open');
-                // PC用の最小化状態に戻す
-                if (localStorage.getItem('sidebar-collapsed') === 'true') {
-                    sidebar.classList.add('collapsed');
-                }
+                applySidebarModeByWidth();
             };
         }
         
@@ -216,6 +235,14 @@
                 }
             });
         }
+
+        let resizeTimer = null;
+        window.addEventListener('resize', () => {
+            if (resizeTimer) clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                applySidebarModeByWidth();
+            }, 100);
+        });
     }
     };
 
