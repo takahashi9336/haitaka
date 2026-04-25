@@ -138,7 +138,7 @@ class FavoriteModel extends BaseModel {
     }
 
     private function getNextEventsByMembers(array $memberIds, string $placeholders): array {
-        $sql = "SELECT em.member_id, e.event_name, e.event_date, e.category,
+        $sql = "SELECT em.member_id, e.id as event_id, e.event_name, e.event_date, e.category,
                        DATEDIFF(e.event_date, CURDATE()) as days_left
                 FROM hn_event_members em
                 JOIN hn_events e ON e.id = em.event_id

@@ -110,6 +110,11 @@ function getThemeVarsForApp(string $appKey): array {
         $tabActiveStyle = '';
     }
 
+    if ($themeLight && preg_match('/^#[0-9A-Fa-f]{6}$/i', $themeLight)) {
+        $bodyBgClass = '';
+        $bodyStyle = 'background-color: ' . $themeLight . ';';
+    }
+
     return compact(
         'themePrimary', 'themeLight', 'isThemeHex', 'themeTailwind', 'themePrimaryHex',
         'bodyBgClass', 'bodyStyle',
