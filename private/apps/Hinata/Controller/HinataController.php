@@ -13,6 +13,8 @@ use App\Hinata\Model\MemberModel;
 use App\Hinata\Model\TopicModel;
 use App\Hinata\Model\AnnouncementModel;
 use App\Hinata\Model\EventApplicationModel;
+use App\Hinata\Model\NewsModel;
+use App\Hinata\Model\MediaAssetModel;
 use Core\Auth;
 use Core\Database;
 
@@ -47,15 +49,47 @@ class HinataController {
         // 推しサマリ（3名分、動画・イベント・楽曲数付き）
         $oshiSummary = $favModel->getOshiPortalSummary();
 
-        // 推しの新着情報（メンバーごとに最新1件）
-        $oshiLatestItemByMember = [];
+        // 推しの最新ブログ（混合新着ではなくブログ専用、メンバーごとに最新1件）
+        $oshiLatestBlogByMember = [];
+        $oshiMemberIds = [];
         try {
             $oshiMemberIds = array_column($oshiSummary, 'member_id');
             if (!empty($oshiMemberIds)) {
-                $oshiLatestItemByMember = $favModel->getOshiLatestItemPerMember($oshiMemberIds, 3);
+                $blogModel = new BlogModel();
+                $oshiLatestBlogByMember = $blogModel->getLatestOnePerMember($oshiMemberIds);
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             // テーブル未作成時は空配列のまま
+        }
+
+        // 推しの最新ニュース（カテゴリ=メディア、メンバーごと最新1件）
+        $oshiLatestNewsByMember = [];
+        try {
+            if (!empty($oshiMemberIds)) {
+                $newsModel = new NewsModel();
+                foreach ($oshiMemberIds as $mid) {
+                    $rows = $newsModel->getLatestByMemberAndCategory((int)$mid, 'メディア', 1);
+                    if (!empty($rows)) {
+                        $oshiLatestNewsByMember[(int)$mid] = $rows[0];
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+        }
+
+        // 推しの新着動画（メンバーごと最新1件、プラットフォーム不問）
+        $oshiLatestVideoByMember = [];
+        try {
+            if (!empty($oshiMemberIds)) {
+                $mediaAssetModel = new MediaAssetModel();
+                foreach ($oshiMemberIds as $mid) {
+                    $row = $mediaAssetModel->getLatestOneByMember((int)$mid);
+                    if (!empty($row)) {
+                        $oshiLatestVideoByMember[(int)$mid] = $row;
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
         }
 
         // 最新リリース情報

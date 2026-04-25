@@ -136,6 +136,42 @@ class BlogModel extends BaseModel
     }
 
     /**
+     * 複数メンバーの「最新ブログ1件」を member_id=>row の形で返す
+     */
+    public function getLatestOnePerMember(array $memberIds): array
+    {
+        if (empty($memberIds)) return [];
+
+        $placeholders = implode(',', array_fill(0, count($memberIds), '?'));
+        $sql = "
+            SELECT bp.*, m.name AS member_name
+            FROM {$this->table} bp
+            JOIN (
+                SELECT member_id, MAX(published_at) AS max_published_at
+                FROM {$this->table}
+                WHERE member_id IN ({$placeholders})
+                GROUP BY member_id
+            ) t ON t.member_id = bp.member_id AND t.max_published_at = bp.published_at
+            LEFT JOIN hn_members m ON m.id = bp.member_id
+            WHERE bp.member_id IN ({$placeholders})
+            ORDER BY bp.member_id ASC, bp.id DESC
+        ";
+        $params = array_merge(array_values($memberIds), array_values($memberIds));
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll();
+
+        $result = [];
+        foreach ($rows as $row) {
+            $mid = (int)$row['member_id'];
+            if (!isset($result[$mid])) {
+                $result[$mid] = $row;
+            }
+        }
+        return $result;
+    }
+
+    /**
      * メンバー名 → member_id のマッピングを取得
      * official_blog_ct カラム経由で逆引きもサポート
      */

@@ -100,6 +100,45 @@ class NewsModel extends BaseModel
     }
 
     /**
+     * カテゴリ指定で最新ニュースを取得
+     */
+    public function getLatestByCategory(string $category, int $limit = 1): array
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT n.*
+             FROM {$this->table} n
+             WHERE n.category = :cat
+             ORDER BY n.published_date DESC, n.id DESC
+             LIMIT :lim"
+        );
+        $stmt->bindValue('cat', $category, \PDO::PARAM_STR);
+        $stmt->bindValue('lim', $limit, \PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * 特定メンバー×カテゴリ指定で最新ニュース取得
+     */
+    public function getLatestByMemberAndCategory(int $memberId, string $category, int $limit = 1): array
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT n.*
+             FROM {$this->table} n
+             JOIN hn_news_members nm ON nm.news_id = n.id
+             WHERE nm.member_id = :mid
+               AND n.category = :cat
+             ORDER BY n.published_date DESC, n.id DESC
+             LIMIT :lim"
+        );
+        $stmt->bindValue('mid', $memberId, \PDO::PARAM_INT);
+        $stmt->bindValue('cat', $category, \PDO::PARAM_STR);
+        $stmt->bindValue('lim', $limit, \PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
+    /**
      * メンバー名マップ取得 (スペース除去済み名前 → member_id)
      */
     public function getMemberNameMap(): array

@@ -162,106 +162,125 @@ function portalTopicBadge(array $t): array {
         .release-chevron { transition: transform 0.3s ease; }
         .release-accordion.expanded .release-chevron { transform: rotate(180deg); }
 
-        /* admin限定プレビューモード用（ここから段階的に .ui-mock 配下へ追加していく） */
-        .ui-mock { --mock-accent: <?= htmlspecialchars($themePrimaryHex) ?>; }
-        .ui-mock .mock-mesh {
+        /* ポータルUI（本番スコープ：hinata-portal） */
+        .hinata-portal { --mock-accent: <?= htmlspecialchars($themePrimaryHex) ?>; }
+        .hinata-portal .mock-mesh {
             background-image:
                 radial-gradient(at 20% 10%, rgba(255, 225, 199, 0.95) 0px, transparent 45%),
                 radial-gradient(at 80% 0%, rgba(205, 230, 255, 0.95) 0px, transparent 40%),
                 radial-gradient(at 50% 40%, rgba(255, 243, 220, 0.95) 0px, transparent 50%);
         }
-        .ui-mock .mock-glass {
+        .hinata-portal .mock-glass {
             background: rgba(255, 255, 255, 0.65);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
         }
-        .ui-mock .mock-card {
+        .hinata-portal .mock-card {
             border-radius: 24px;
             border-color: rgba(255,255,255,0.65) !important;
             box-shadow: 0 10px 30px -12px rgba(0,0,0,0.18);
             transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
         }
-        .ui-mock .mock-card:hover {
+        .hinata-portal .mock-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 18px 45px -18px rgba(0,0,0,0.22);
         }
-        .ui-mock .mock-card-static {
+        .hinata-portal .mock-card-static {
             border-radius: 24px;
             border-color: rgba(255,255,255,0.65) !important;
             box-shadow: 0 10px 30px -12px rgba(0,0,0,0.18);
             transition: box-shadow .2s ease, border-color .2s ease;
         }
-        .ui-mock .mock-card-static:hover {
+        .hinata-portal .mock-card-static:hover {
             box-shadow: 0 10px 30px -12px rgba(0,0,0,0.18);
         }
-        .ui-mock .mock-pop-item {
+        .hinata-portal .mock-pop-item {
             position: relative;
             will-change: transform;
             transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
         }
-        .ui-mock .mock-pop-item:hover,
-        .ui-mock .mock-pop-item:focus,
-        .ui-mock .mock-pop-item:focus-visible {
+        .hinata-portal .mock-pop-item:hover,
+        .hinata-portal .mock-pop-item:focus,
+        .hinata-portal .mock-pop-item:focus-visible {
             transform: translateY(-4px);
             box-shadow: 0 18px 45px -18px rgba(0,0,0,0.22);
             z-index: 2;
         }
-        .ui-mock .mock-scroll-row {
+        .hinata-portal .mock-scroll-row {
             scrollbar-width: none;
         }
-        .ui-mock .mock-scroll-row::-webkit-scrollbar {
+        .hinata-portal .mock-scroll-row::-webkit-scrollbar {
             display: none;
         }
-        .ui-mock .mock-media-card {
+        .hinata-portal .mock-media-card {
             border-radius: 18px;
             overflow: hidden;
             border: 1px solid rgba(255,255,255,0.65);
             box-shadow: 0 10px 26px -14px rgba(0,0,0,0.25);
             transition: transform .2s ease, box-shadow .2s ease;
         }
-        .ui-mock .mock-media-card:hover {
+        .hinata-portal .mock-media-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 16px 38px -18px rgba(0,0,0,0.28);
         }
-        .ui-mock .mock-header-search {
+        .hinata-portal .mock-header-search {
             background: rgba(241, 245, 249, 0.65);
             border: 1px solid rgba(226, 232, 240, 0.85);
         }
-        .ui-mock .hinata-portal-card {
+        .hinata-portal .hinata-portal-card {
             border-radius: 24px;
             border-color: rgba(255,255,255,0.65) !important;
             box-shadow: 0 12px 32px -18px rgba(0,0,0,0.22);
             transition: transform .2s ease, box-shadow .2s ease;
         }
-        .ui-mock .hinata-portal-card:hover {
+        .hinata-portal .hinata-portal-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 20px 48px -22px rgba(0,0,0,0.26);
         }
-        .ui-mock .hinata-portal-card .card-icon {
+        .hinata-portal .hinata-portal-card .card-icon {
             border-radius: 18px;
             background: rgba(255,255,255,0.72) !important;
             box-shadow: inset 0 0 0 1px rgba(255,255,255,0.85), 0 10px 24px -18px rgba(0,0,0,0.35);
             color: var(--mock-accent) !important;
         }
-        .ui-mock .hinata-portal-card:hover .card-icon {
+        .hinata-portal .hinata-portal-card:hover .card-icon {
             background: rgba(255,255,255,0.80) !important;
             color: var(--mock-accent) !important;
         }
-        .ui-mock .hinata-portal-card .card-deco {
+        .hinata-portal .hinata-portal-card .card-deco {
             opacity: 0.08;
         }
+        /* アプリカードは「影なし＋少し浮く」を維持 */
+        .hinata-portal .app-card.hinata-portal-card { box-shadow: none; }
+        .hinata-portal .app-card.hinata-portal-card:hover { box-shadow: none; }
 
         /* 次のイベント（モック寄せ） */
         .next-event-box {
             background: linear-gradient(135deg, rgba(255, 245, 246, 0.95), rgba(255, 239, 227, 0.92));
             border: 1px solid rgba(255, 255, 255, 0.72);
-            box-shadow: 0 16px 40px -22px rgba(0,0,0,0.22);
+            box-shadow: none;
         }
         .v2-nextEvent { align-self: stretch; }
         .v2-nextEvent .next-event-box {
             height: 100%;
             display: flex;
             flex-direction: column;
+        }
+        /* TOPICS: 次のイベントと高さを揃える（同一行でストレッチ） */
+        .v2-topics { align-self: stretch; }
+        .v2-topics > div {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        /* 狭幅でもTOPICS外枠が小さく見えないよう最低高さを確保 */
+        .v2-topics > div { min-height: 280px; }
+        @media (min-width: 768px) {
+            /* TOPICS/次のイベントは最低高さも揃える */
+            .v2-topics > div,
+            .v2-nextEvent .next-event-box {
+                min-height: 300px;
+            }
         }
         .next-event-bar {
             height: 8px;
@@ -284,6 +303,8 @@ function portalTopicBadge(array $t): array {
             gap: 12px;
             min-width: 0;
         }
+        /* 外枠カード間の余白は v2-grid の gap に統一（mb-* の混在を無効化） */
+        .v2-grid > * { margin: 0 !important; }
         /* SPは推し→TOPICS→次のイベントの順に固定（DOM順の影響を排除） */
         .v2-oshi { grid-column: 1 / -1; grid-row: 1; }
         .v2-topics { grid-column: 1 / -1; grid-row: 2; }
@@ -351,9 +372,24 @@ function portalTopicBadge(array $t): array {
         .oshi-kpi { flex: 0 1 220px; min-width: 180px; max-width: 100%; }
         .oshi-kpi-song { flex: 0 0 90px; min-width: 90px; }
         @media (max-width: 420px) { .oshi-kpi:not(.oshi-kpi-song) { flex-basis: 100%; min-width: 0; } }
+
+        /* 最新ブログの下に「最新ニュース」「新着動画」を配置（常時） */
+        .oshi-kpi-wrap #oshiLatestBlogLink { flex: 0 1 360px; min-width: 200px; max-width: 100%; }
+        .oshi-kpi-wrap #oshiLatestNewsLink { flex: 1 1 100%; flex-basis: 100%; min-width: 0; max-width: 100%; }
+        .oshi-kpi-wrap #oshiLatestVideoLink { flex: 1 1 100%; flex-basis: 100%; min-width: 0; max-width: 100%; }
+
+        /* SP相当：参加楽曲を「次の出演」の右へ、最新ブログは次段へ */
+        @media (max-width: 640px) {
+            .oshi-kpi-wrap { align-items: stretch; }
+            .oshi-kpi-wrap #oshiNextAppearanceCard { order: 1; flex: 1 1 auto; min-width: 0; }
+            .oshi-kpi-wrap .oshi-kpi-song { order: 2; flex: 0 0 90px; min-width: 90px; }
+            .oshi-kpi-wrap #oshiLatestBlogLink { order: 3; flex-basis: 100%; min-width: 0; }
+            .oshi-kpi-wrap #oshiLatestNewsLink { order: 4; flex-basis: 100%; min-width: 0; }
+            .oshi-kpi-wrap #oshiLatestVideoLink { order: 5; flex-basis: 100%; min-width: 0; }
+        }
     </style>
 </head>
-<body class="flex h-screen overflow-hidden text-slate-800 <?= $bodyBgClass ?> ui-mock"<?= $bodyStyle ? ' style="' . htmlspecialchars($bodyStyle) . '"' : '' ?>>
+<body class="flex h-screen overflow-hidden text-slate-800 <?= $bodyBgClass ?> hinata-portal"<?= $bodyStyle ? ' style="' . htmlspecialchars($bodyStyle) . '"' : '' ?>>
 
     <?php require_once __DIR__ . '/../../../components/sidebar.php'; ?>
 
@@ -384,7 +420,7 @@ function portalTopicBadge(array $t): array {
             <div class="max-w-5xl mx-auto v2-grid">
                 <?php if (!empty($topics) || !empty($announcements) || !empty($upcomingDeadlines)): ?>
                 <section class="mb-3 v2-topics">
-                    <div class="bg-white rounded-xl border <?= $cardBorder ?> p-5<?= $isMockUi ? ' mock-card-static' : '' ?>">
+                    <div class="bg-white rounded-xl border <?= $cardBorder ?> p-5">
                         <div class="flex items-center justify-between mb-3">
                             <div class="flex items-center gap-2 font-semibold text-slate-700">
                                 <i class="fa-solid fa-bullhorn w-4 h-4 text-orange-500"></i>
@@ -397,11 +433,11 @@ function portalTopicBadge(array $t): array {
                         </div>
 
                         <?php if (!empty($topics)): ?>
-                        <div class="mb-5">
+                        <div class="flex-1 min-h-0">
                             <div class="sr-only">TOPICS</div>
-                            <div class="yt-scroll-wrap">
+                            <div class="yt-scroll-wrap h-full">
                                 <button type="button" class="yt-arrow left hidden" onclick="TopicCarousel.scroll('topicCards', -1, event)" onmousedown="event.preventDefault();event.stopPropagation();"><i class="fa-solid fa-chevron-left text-sm"></i></button>
-                                <div id="topicCards" class="topic-scroll flex gap-3 overflow-x-auto pb-1 mock-scroll-row" style="scrollbar-width: none; -webkit-overflow-scrolling: touch;">
+                                <div id="topicCards" class="topic-scroll flex gap-3 overflow-x-auto items-stretch h-full pb-1 mock-scroll-row" style="scrollbar-width: none; -webkit-overflow-scrolling: touch;">
                                     <?php foreach ($topics as $t): $tb = portalTopicBadge($t); ?>
                                     <?php
                                     $topBg = 'bg-gradient-to-br from-orange-200 to-rose-200';
@@ -411,20 +447,17 @@ function portalTopicBadge(array $t): array {
                                     $imgSrc = $img ? (str_starts_with($img, '/') || str_starts_with($img, 'http') ? htmlspecialchars($img) : '/assets/' . htmlspecialchars($img)) : '';
                                     ?>
                                     <a href="<?= !empty($t['url']) ? htmlspecialchars($t['url']) : '#' ?>"
-                                       class="topic-card-v2 shrink-0 w-72 md:w-[360px] rounded-2xl border <?= $cardBorder ?> overflow-hidden bg-white shadow-sm hover:shadow-md transition-all"
+                                       class="topic-card-v2 shrink-0 h-full aspect-[256/145] relative overflow-hidden rounded-xl border <?= $cardBorder ?> bg-slate-100 shadow-sm hover:shadow-md transition-all"
                                        <?= !empty($t['url']) ? ' target="_blank" rel="noopener"' : '' ?>>
-                                        <div class="h-24 <?= $topBg ?> relative overflow-hidden">
-                                            <?php if ($imgSrc): ?>
+                                        <?php if ($imgSrc): ?>
                                             <img src="<?= $imgSrc ?>" class="absolute inset-0 w-full h-full object-cover" loading="lazy" alt="">
-                                            <div class="absolute inset-0 bg-gradient-to-t from-black/10 via-black/0 to-black/0"></div>
-                                            <?php endif; ?>
-                                        </div>
-                                        <div class="p-3 -mt-5 relative z-10">
-                                            <span class="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-semibold <?= $tb['bg'] ?> <?= $tb['text'] ?> relative z-20 mb-1"><?= htmlspecialchars($tb['label']) ?></span>
-                                            <p class="text-sm font-semibold text-slate-800 line-clamp-2"><?= htmlspecialchars($t['title'] ?? '') ?></p>
-                                            <?php if (!empty($t['summary'])): ?>
-                                            <p class="mt-1 text-xs text-slate-500 line-clamp-2"><?= htmlspecialchars($t['summary']) ?></p>
-                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            <div class="absolute inset-0 <?= $topBg ?>"></div>
+                                        <?php endif; ?>
+                                        <div class="absolute inset-0 bg-gradient-to-t from-black/55 via-black/15 to-black/0"></div>
+                                        <span class="absolute top-2 left-2 z-10 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black <?= $tb['bg'] ?> <?= $tb['text'] ?> border border-white/60"><?= htmlspecialchars($tb['label']) ?></span>
+                                        <div class="absolute inset-x-0 bottom-0 p-2 z-10">
+                                            <p class="text-[14px] md:text-sm font-black text-white line-clamp-1 drop-shadow"><?= htmlspecialchars($t['title'] ?? '') ?></p>
                                         </div>
                                     </a>
                                     <?php endforeach; ?>
@@ -435,7 +468,7 @@ function portalTopicBadge(array $t): array {
                         <?php endif; ?>
 
                         <?php if (!empty($announcements)): ?>
-                        <div class="mb-5">
+                        <div>
                             <div class="flex items-center gap-2 mb-2">
                                 <i class="fa-solid fa-bell <?= $cardIconText ?>"<?= $isThemeHex ? ' style="color:' . htmlspecialchars($themePrimary) . '"' : '' ?>></i>
                                 <h3 class="text-[11px] font-black text-slate-600">お知らせ</h3>
@@ -443,20 +476,28 @@ function portalTopicBadge(array $t): array {
                             <div class="flex gap-3 overflow-x-auto overflow-y-visible pt-1 pb-2 mock-scroll-row" style="scrollbar-width: none; -webkit-overflow-scrolling: touch;">
                                 <?php foreach ($announcements as $a): ?>
                                 <a href="<?= !empty($a['url']) ? htmlspecialchars($a['url']) : '#' ?>"
-                                   class="shrink-0 w-[clamp(240px,32vw,288px)] flex items-center gap-4 bg-white rounded-xl border <?= $cardBorder ?> shadow-sm px-4 py-3 hover:shadow-md transition focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300/70<?= $isMockUi ? ' mock-card mock-pop-item' : '' ?>"
+                                   class="shrink-0 h-24 md:h-28 aspect-[256/145] relative overflow-hidden rounded-xl border <?= $cardBorder ?> bg-slate-100 shadow-sm hover:shadow-md transition focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300/70"
                                    <?= !empty($a['url']) ? ' target="_blank" rel="noopener"' : '' ?>>
-                                    <?php if (!empty($a['image_url'])): ?>
-                                    <div class="w-14 h-14 shrink-0 rounded-lg overflow-hidden bg-slate-100">
-                                        <img src="<?= str_starts_with($a['image_url'], '/') || str_starts_with($a['image_url'], 'http') ? htmlspecialchars($a['image_url']) : '/assets/' . htmlspecialchars($a['image_url']) ?>" class="w-full h-full object-cover" alt="">
-                                    </div>
+                                    <?php
+                                    $aImg = !empty($a['image_url'])
+                                        ? (str_starts_with($a['image_url'], '/') || str_starts_with($a['image_url'], 'http')
+                                            ? htmlspecialchars($a['image_url'])
+                                            : '/assets/' . htmlspecialchars($a['image_url']))
+                                        : '';
+                                    ?>
+                                    <?php if ($aImg): ?>
+                                        <img src="<?= $aImg ?>" class="absolute inset-0 w-full h-full object-cover" loading="lazy" alt="">
                                     <?php else: ?>
-                                    <div class="w-10 h-10 rounded-lg <?= $headerIconBg ?> text-white flex items-center justify-center shrink-0"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?>><i class="fa-solid fa-newspaper text-sm"></i></div>
+                                        <div class="absolute inset-0 bg-gradient-to-br from-slate-200 to-slate-100"></div>
+                                        <div class="absolute inset-0 flex items-center justify-center text-slate-300">
+                                            <i class="fa-solid fa-newspaper text-3xl"></i>
+                                        </div>
                                     <?php endif; ?>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-sm font-bold text-slate-800 line-clamp-1"><?= htmlspecialchars($a['title']) ?></p>
-                                        <?php if (!empty($a['body'])): ?><p class="text-[10px] text-slate-500 mt-0.5 line-clamp-2"><?= htmlspecialchars($a['body']) ?></p><?php endif; ?>
+                                    <div class="absolute inset-0 bg-gradient-to-t from-black/55 via-black/15 to-black/0"></div>
+                                    <span class="absolute top-2 left-2 z-10 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-white/85 text-slate-700 border border-white/60">INFO</span>
+                                    <div class="absolute inset-x-0 bottom-0 p-2 z-10">
+                                        <p class="text-[14px] md:text-sm font-black text-white line-clamp-1 drop-shadow"><?= htmlspecialchars($a['title']) ?></p>
                                     </div>
-                                    <?php if (!empty($a['url'])): ?><i class="fa-solid fa-chevron-right text-slate-300 text-xs shrink-0"></i><?php endif; ?>
                                 </a>
                                 <?php endforeach; ?>
                             </div>
@@ -473,13 +514,17 @@ function portalTopicBadge(array $t): array {
                             </div>
                             <div class="space-y-2">
                                 <?php foreach ($upcomingDeadlines as $dl): ?>
-                                <a href="<?= !empty($dl['application_url']) ? htmlspecialchars($dl['application_url']) : '/hinata/events.php' ?>" class="flex items-center gap-4 bg-white rounded-xl border <?= $cardBorder ?> shadow-sm px-4 py-3 hover:shadow-md transition<?= $isMockUi ? ' mock-card' : '' ?>"<?= !empty($dl['application_url']) ? ' target="_blank" rel="noopener"' : '' ?>>
-                                    <div class="w-10 h-10 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center shrink-0"><i class="fa-solid fa-calendar-xmark text-sm"></i></div>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-sm font-bold text-slate-800"><?= htmlspecialchars($dl['event_name']) ?><?= !empty($dl['round_name']) ? ' ' . htmlspecialchars($dl['round_name']) : '' ?></p>
-                                        <p class="text-[10px] text-rose-600 font-bold">締切: <?= date('n/j H:i', strtotime($dl['application_deadline'])) ?></p>
+                                <a href="<?= !empty($dl['application_url']) ? htmlspecialchars($dl['application_url']) : '/hinata/events.php' ?>"
+                                   class="h-24 md:h-28 aspect-[256/145] rounded-xl border <?= $cardBorder ?> bg-slate-100 shadow-sm hover:shadow-md transition relative overflow-hidden flex items-stretch"
+                                   <?= !empty($dl['application_url']) ? ' target="_blank" rel="noopener"' : '' ?>>
+                                    <div class="absolute inset-0 bg-gradient-to-br from-rose-200/80 to-amber-200/70"></div>
+                                    <div class="absolute inset-0 bg-gradient-to-t from-black/55 via-black/15 to-black/0"></div>
+                                    <span class="absolute top-2 left-2 z-10 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500/90 text-white border border-white/60">締切</span>
+                                    <div class="relative z-10 flex-1 p-2.5 flex flex-col justify-end min-w-0">
+                                        <p class="text-[14px] md:text-sm font-black text-white line-clamp-1 drop-shadow">
+                                            <?= htmlspecialchars($dl['event_name']) ?><?= !empty($dl['round_name']) ? ' ' . htmlspecialchars($dl['round_name']) : '' ?>
+                                        </p>
                                     </div>
-                                    <?php if (!empty($dl['application_url'])): ?><i class="fa-solid fa-external-link text-slate-300 text-xs shrink-0"></i><?php endif; ?>
                                 </a>
                                 <?php endforeach; ?>
                             </div>
@@ -521,7 +566,7 @@ function portalTopicBadge(array $t): array {
                         $gcalUrl = '';
                     }
                     ?>
-                    <div class="rounded-3xl p-5 next-event-box cursor-pointer<?= $isMockUi ? ' mock-card' : '' ?>"
+                    <div class="rounded-3xl p-5 next-event-box cursor-pointer"
                          role="button"
                          tabindex="0"
                          onclick="location.href='/hinata/events.php?event_id=<?= (int)$nextEvent['id'] ?>'"
@@ -530,10 +575,24 @@ function portalTopicBadge(array $t): array {
                             <i class="fa-solid fa-calendar-days w-4 h-4 text-pink-500"></i>
                             <span>次のイベント</span>
                         </div>
-                        <div class="text-xs text-slate-500"><?= $dateText ? htmlspecialchars($dateText) : '　' ?></div>
-                        <div class="text-lg font-bold mt-1 text-slate-800 truncate"><?= htmlspecialchars($nextEvent['event_name'] ?? '次のイベント') ?></div>
+                        <div class="flex items-start gap-2">
+                            <div class="flex-1 min-w-0">
+                                <div class="text-xs text-slate-500"><?= $dateText ? htmlspecialchars($dateText) : '　' ?></div>
+                                <div class="text-lg font-bold mt-1 text-slate-800 truncate"><?= htmlspecialchars($nextEvent['event_name'] ?? '次のイベント') ?></div>
+                            </div>
+                            <!-- サイドバー非表示（md未満）のタイミングで、バーを日付/イベント名の右側へ -->
+                            <div class="w-[clamp(96px,18vw,140px)] md:hidden pt-0.5 shrink-0">
+                                <div class="next-event-bar h-[6px]">
+                                    <span style="width: <?= $progress ?>%"></span>
+                                </div>
+                                <div class="flex justify-between mt-1 text-[10px]">
+                                    <span class="text-slate-500">今日</span>
+                                    <span class="font-bold text-orange-600"><?= htmlspecialchars($daysText) ?></span>
+                                </div>
+                            </div>
+                        </div>
 
-                        <div class="relative mt-4 flex-1">
+                        <div class="relative mt-4 flex-1 hidden md:block">
                             <div class="next-event-bar">
                                 <span style="width: <?= $progress ?>%"></span>
                             </div>
@@ -613,7 +672,11 @@ function portalTopicBadge(array $t): array {
                 <!-- 推し情報エリア -->
                 <section class="mb-4 v2-oshi">
                     <?php if ($hasOshi): ?>
-                    <div class="bg-white rounded-xl border <?= $cardBorder ?> shadow-sm overflow-hidden<?= $isMockUi ? ' mock-mesh rounded-[28px] border-white/70 relative' : '' ?>">
+                    <div class="bg-white rounded-xl border <?= $cardBorder ?> shadow-sm overflow-hidden<?= $isMockUi ? ' mock-mesh rounded-[28px] border-white/70 relative' : '' ?> relative">
+                        <a href="/hinata/oshi_settings.php"
+                           class="absolute right-4 bottom-4 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition z-10">
+                            推し設定 →
+                        </a>
                         <div class="flex flex-col md:flex-row md:items-stretch">
                             <!-- メインエリア（選択中の推し） -->
                             <div id="oshiMainArea" class="oshi-main-area flex-1 p-5">
@@ -626,9 +689,57 @@ function portalTopicBadge(array $t): array {
                                 <div class="flex flex-col md:flex-row gap-4 md:gap-5 h-full" data-current-level="<?= (int)$mainLevel ?>">
                                     <div class="flex-1 min-w-0 flex flex-col">
                                         <div class="flex-1">
-                                            <span id="oshiMainLabel" class="inline-block text-[10px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full mb-1"><?= $mainLabel ?></span>
-                                            <h3 id="oshiMainName" class="text-xl md:text-2xl font-black text-slate-800 mb-0.5"><?= htmlspecialchars($mainOshi['name']) ?></h3>
-                                            <p id="oshiMainGen" class="text-[11px] text-slate-400 mb-2"><?= htmlspecialchars($mainOshi['generation']) ?>期生</p>
+                                            <!-- 狭幅：画像を名前の横へ -->
+                                            <div class="flex items-start gap-3 mb-2">
+                                                <div class="flex-1 min-w-0">
+                                                    <div class="flex items-center gap-1.5 md:gap-2 mb-1 flex-nowrap">
+                                                        <span class="inline-flex items-center gap-1.5 text-[9px] md:text-[10px] font-black text-amber-700 bg-white/80 border border-white/70 px-1.5 md:px-2 py-0.5 rounded-full whitespace-nowrap">
+                                                            <i id="oshiMainCrown" class="fa-solid fa-crown text-[10px]<?= ($mainLabel === '最推し') ? '' : ' hidden' ?>"></i>
+                                                            <span id="oshiMainLabel"><?= $mainLabel ?></span>
+                                                        </span>
+                                                        <span id="oshiMainGen" class="inline-flex items-center text-[9px] md:text-[10px] font-black text-slate-600 bg-white/70 border border-white/60 px-1.5 md:px-2 py-0.5 rounded-full whitespace-nowrap">
+                                                            <?= htmlspecialchars($mainOshi['generation']) ?>期生
+                                                        </span>
+                                                    </div>
+                                                    <h3 id="oshiMainName" class="text-xl md:text-3xl font-black text-slate-800 mb-0.5 truncate"><?= htmlspecialchars($mainOshi['name']) ?></h3>
+                                                </div>
+                                                <div class="md:hidden flex items-start gap-2 shrink-0">
+                                                    <div class="w-28 aspect-square rounded-2xl overflow-hidden bg-slate-100 shadow-md">
+                                                        <?php if ($mainOshi['image_url']): ?>
+                                                        <img id="oshiMainImgMobile" src="<?= oshiImgSrc($mainOshi['image_url']) ?>" class="w-full h-full object-cover" alt="">
+                                                        <?php else: ?>
+                                                        <div id="oshiMainImgMobile" class="w-full h-full flex items-center justify-center text-slate-300"><i class="fa-solid fa-user text-3xl"></i></div>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                    <div class="flex flex-col gap-2 pt-1">
+                                                        <?php
+                                                        $subSlotsV2m = [
+                                                            ['level' => 9, 'label' => '最推し'],
+                                                            ['level' => 8, 'label' => '2推し'],
+                                                            ['level' => 7, 'label' => '3推し'],
+                                                        ];
+                                                        foreach ($subSlotsV2m as $ssm):
+                                                            $som = $oshiByLevel[$ssm['level']] ?? null;
+                                                            if (!$som) continue;
+                                                            $badgeBg = [9 => 'bg-amber-500', 8 => 'bg-pink-500', 7 => 'bg-sky-500'][(int)$ssm['level']] ?? 'bg-slate-600';
+                                                        ?>
+                                                        <div class="oshi-sub-card cursor-pointer mock-glass w-[56px] h-[56px] rounded-2xl border border-white/60 shadow-lg p-1"
+                                                             data-level="<?= (int)$ssm['level'] ?>" onclick="OshiPortal.switchMain(<?= (int)$ssm['level'] ?>)">
+                                                            <div class="relative w-full h-full overflow-visible">
+                                                                <span class="absolute -top-2 -left-2 z-10 px-2 py-0.5 rounded-full text-[10px] font-black text-white shadow-lg <?= $badgeBg ?>"><?= htmlspecialchars($ssm['label']) ?></span>
+                                                                <div class="w-full h-full rounded-xl overflow-hidden bg-slate-100">
+                                                                    <?php if (!empty($som['image_url'])): ?>
+                                                                        <img src="<?= oshiImgSrc($som['image_url']) ?>" class="w-full h-full object-cover" alt="">
+                                                                    <?php else: ?>
+                                                                        <div class="w-full h-full flex items-center justify-center text-slate-300"><i class="fa-solid fa-user text-lg"></i></div>
+                                                                    <?php endif; ?>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <?php endforeach; ?>
+                                                    </div>
+                                                </div>
+                                            </div>
                                             <?php if (!$isLayoutV2): ?>
                                             <div id="oshiMainDetails" class="space-y-1.5 text-xs">
                                                 <a id="oshiMainBlog" href="<?= !empty($mainOshi['blog_url']) ? htmlspecialchars($mainOshi['blog_url']) : '#' ?>" target="_blank" class="flex items-center gap-2 text-sky-600 hover:text-sky-700<?= empty($mainOshi['blog_url']) ? ' hidden' : '' ?>"><i class="fa-solid fa-blog w-4"></i>公式ブログ</a>
@@ -639,8 +750,7 @@ function portalTopicBadge(array $t): array {
                                             <?php endif; ?>
                                         </div>
                                         <?php
-                                        $mainNewItems = $oshiLatestItemByMember[$mainOshi['member_id']] ?? [];
-                                        $hasAnyNewItems = !empty($oshiLatestItemByMember);
+                                        $mainLatestBlog = $oshiLatestBlogByMember[$mainOshi['member_id']] ?? null;
                                         ?>
                                         <?php if ($isMockUi): ?>
                                         <?php
@@ -650,17 +760,57 @@ function portalTopicBadge(array $t): array {
                                             $mockLatestBlogTitle = null;
                                             $mockLatestBlogUrl = null;
                                             $mockLatestBlogDateText = null;
-                                            if (is_array($mainNewItems)) {
-                                                foreach ($mainNewItems as $it) {
-                                                    if (($it['type'] ?? '') === 'blog' && !empty($it['title'])) {
-                                                        $mockLatestBlogTitle = (string)$it['title'];
-                                                        $mockLatestBlogUrl = !empty($it['url']) ? (string)$it['url'] : null;
-                                                        $tsBlog = !empty($it['event_date']) ? strtotime((string)$it['event_date']) : false;
-                                                        if ($tsBlog !== false) {
-                                                            $mockLatestBlogDateText = date('n/j H:i', $tsBlog);
-                                                        }
-                                                        break;
+                                            if (is_array($mainLatestBlog)) {
+                                                if (!empty($mainLatestBlog['title'])) {
+                                                    $mockLatestBlogTitle = (string)$mainLatestBlog['title'];
+                                                }
+                                                if (!empty($mainLatestBlog['detail_url'])) {
+                                                    $mockLatestBlogUrl = (string)$mainLatestBlog['detail_url'];
+                                                }
+                                                $tsBlog = !empty($mainLatestBlog['published_at']) ? strtotime((string)$mainLatestBlog['published_at']) : false;
+                                                if ($tsBlog !== false) {
+                                                    $mockLatestBlogDateText = date('n/j H:i', $tsBlog);
+                                                }
+                                            }
+
+                                            // 最新ニュース（カテゴリ=media、推し固有）
+                                            $mockLatestNewsTitle = null;
+                                            $mockLatestNewsUrl = null;
+                                            $mockLatestNewsDateText = null;
+                                            $mainLatestNews = $oshiLatestNewsByMember[$mainOshi['member_id']] ?? null;
+                                            if (!empty($mainLatestNews) && is_array($mainLatestNews)) {
+                                                $mockLatestNewsTitle = !empty($mainLatestNews['title']) ? (string)$mainLatestNews['title'] : null;
+                                                $mockLatestNewsUrl = !empty($mainLatestNews['detail_url']) ? (string)$mainLatestNews['detail_url'] : null;
+                                                $tsNews = !empty($mainLatestNews['published_date']) ? strtotime((string)$mainLatestNews['published_date']) : false;
+                                                if ($tsNews !== false) {
+                                                    $mockLatestNewsDateText = date('n/j', $tsNews);
+                                                }
+                                            }
+
+                                            // 新着動画（プラットフォーム問わず最新1件、推し固有）
+                                            $mockLatestVideoTitle = null;
+                                            $mockLatestVideoUrl = null;
+                                            $mockLatestVideoThumb = null;
+                                            $mockLatestVideoPlatform = null;
+                                            $mainLatestVideo = $oshiLatestVideoByMember[$mainOshi['member_id']] ?? null;
+                                            if (!empty($mainLatestVideo) && is_array($mainLatestVideo)) {
+                                                $mockLatestVideoTitle = !empty($mainLatestVideo['title']) ? (string)$mainLatestVideo['title'] : null;
+                                                $mockLatestVideoThumb = !empty($mainLatestVideo['thumbnail_url']) ? (string)$mainLatestVideo['thumbnail_url'] : null;
+                                                $mockLatestVideoPlatform = !empty($mainLatestVideo['platform']) ? strtolower((string)$mainLatestVideo['platform']) : null;
+                                                $mk = !empty($mainLatestVideo['media_key']) ? (string)$mainLatestVideo['media_key'] : null;
+                                                $sk = !empty($mainLatestVideo['sub_key']) ? (string)$mainLatestVideo['sub_key'] : null;
+                                                if ($mockLatestVideoPlatform === 'youtube' && $mk) {
+                                                    $mockLatestVideoUrl = 'https://www.youtube.com/watch?v=' . rawurlencode($mk);
+                                                } elseif ($mockLatestVideoPlatform === 'tiktok' && $mk) {
+                                                    if (is_string($sk) && str_starts_with($sk, '@') && ctype_digit($mk)) {
+                                                        $mockLatestVideoUrl = 'https://www.tiktok.com/' . rawurlencode($sk) . '/video/' . rawurlencode($mk);
+                                                    } elseif (ctype_digit($mk)) {
+                                                        $mockLatestVideoUrl = 'https://www.tiktok.com/@tiktok/video/' . rawurlencode($mk);
+                                                    } else {
+                                                        $mockLatestVideoUrl = 'https://vm.tiktok.com/' . rawurlencode($mk) . '/';
                                                     }
+                                                } elseif ($mockLatestVideoPlatform === 'instagram' && $mk) {
+                                                    $mockLatestVideoUrl = 'https://www.instagram.com/reel/' . rawurlencode($mk) . '/';
                                                 }
                                             }
                                             $mockNextEventDaysLeft = null;
@@ -674,24 +824,25 @@ function portalTopicBadge(array $t): array {
                                                 }
                                             }
                                         ?>
-                                        <div class="mt-3 flex flex-wrap gap-2.5">
+                                        <div class="mt-3 flex flex-wrap gap-2.5 oshi-kpi-wrap">
                                             <div id="oshiNextAppearanceCard"
                                                  class="oshi-kpi mock-glass rounded-2xl border border-white/60 px-4 py-3<?= !empty($mainOshi['next_event']['event_id']) ? ' cursor-pointer hover:bg-white/70 hover:shadow-md hover:-translate-y-0.5 transition' : '' ?>"
                                                  <?= !empty($mainOshi['next_event']['event_id']) ? ' role="button" tabindex="0" onclick="location.href=\'/hinata/events.php?event_id=' . (int)$mainOshi['next_event']['event_id'] . '\'" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();location.href=\'/hinata/events.php?event_id=' . (int)$mainOshi['next_event']['event_id'] . '\'}"' : '' ?>>
-                                                <div class="text-[10px] font-bold text-slate-500">次の出演</div>
-                                                <div id="oshiNextAppearanceName" class="text-sm font-black text-slate-800 line-clamp-1"><?= htmlspecialchars($mockNextEventName ?: '未登録') ?></div>
-                                                <div id="oshiNextAppearanceMeta" class="text-[11px] text-slate-500 mt-0.5">
-                                                    <?php if ($mockNextEventDaysLeft !== null && $mockNextEventDaysLeft >= 0): ?>
-                                                        <span class="font-black text-orange-600">あと <?= (int)$mockNextEventDaysLeft ?> 日</span>
-                                                    <?php else: ?>
-                                                        <?= htmlspecialchars($mockNextEventDate ?: '—') ?>
-                                                    <?php endif; ?>
+                                                <div class="flex items-center justify-between gap-2">
+                                                    <div class="text-[10px] font-bold text-slate-500">次の出演</div>
+                                                    <div id="oshiNextAppearanceMeta" class="text-[11px] text-slate-500">
+                                                        <?php if ($mockNextEventDaysLeft !== null && $mockNextEventDaysLeft >= 0): ?>
+                                                            <span class="font-black text-orange-600">あと <?= (int)$mockNextEventDaysLeft ?> 日</span>
+                                                        <?php else: ?>
+                                                            <?= htmlspecialchars($mockNextEventDate ?: '—') ?>
+                                                        <?php endif; ?>
+                                                    </div>
                                                 </div>
+                                                <div id="oshiNextAppearanceName" class="text-sm font-black text-slate-800 line-clamp-1 mt-1"><?= htmlspecialchars($mockNextEventName ?: '未登録') ?></div>
                                             </div>
                                             <div class="oshi-kpi oshi-kpi-song mock-glass rounded-2xl border border-white/60 px-4 py-3">
                                                 <div class="text-[10px] font-bold text-slate-500">参加楽曲</div>
-                                                <div id="oshiSongCount" class="text-sm font-black text-slate-800"><?= $mockSongCount > 0 ? htmlspecialchars((string)$mockSongCount) . ' 曲' : '—' ?></div>
-                                                <div class="text-[11px] text-slate-500 mt-0.5">&nbsp;</div>
+                                                <div id="oshiSongCount" class="text-sm font-black text-slate-800 line-clamp-1 mt-1"><?= $mockSongCount > 0 ? htmlspecialchars((string)$mockSongCount) . ' 曲' : '—' ?></div>
                                             </div>
                                             <?php if ($mockLatestBlogUrl): ?>
                                             <a id="oshiLatestBlogLink"
@@ -702,38 +853,59 @@ function portalTopicBadge(array $t): array {
                                             <?php else: ?>
                                             <div id="oshiLatestBlogLink" class="oshi-kpi mock-glass rounded-2xl border border-white/60 px-4 py-3">
                                             <?php endif; ?>
-                                                <div class="text-[10px] font-bold text-slate-500">最新ブログ</div>
-                                                <div id="oshiLatestBlogTitle" class="text-sm font-black text-slate-800 line-clamp-1"><?= htmlspecialchars($mockLatestBlogTitle ?: '—') ?></div>
-                                                <div id="oshiLatestBlogDate" class="text-[11px] text-slate-500 mt-0.5"><?= htmlspecialchars($mockLatestBlogDateText ?: '　') ?></div>
+                                                <div class="flex items-center justify-between gap-2">
+                                                    <div class="text-[10px] font-bold text-slate-500">最新ブログ</div>
+                                                    <div id="oshiLatestBlogDate" class="text-[11px] text-slate-500 whitespace-nowrap"><?= htmlspecialchars($mockLatestBlogDateText ?: '　') ?></div>
+                                                </div>
+                                                <div id="oshiLatestBlogTitle" class="text-sm font-black text-slate-800 line-clamp-1 mt-1"><?= htmlspecialchars($mockLatestBlogTitle ?: '—') ?></div>
                                             <?php if ($mockLatestBlogUrl): ?>
                                             </a>
                                             <?php else: ?>
                                             </div>
                                             <?php endif; ?>
-                                        </div>
-                                        <?php endif; ?>
-                                        <?php if ($hasAnyNewItems): ?>
-                                        <div id="oshiMainNewItemWrap" class="pt-2<?= empty($mainNewItems) ? ' hidden' : '' ?>">
-                                                    <p class="text-sm font-black text-slate-600 mb-1.5"><i class="fa-solid fa-bell text-amber-500 mr-1"></i>推しの新着</p>
-                                                    <div id="oshiMainNewItemContent" class="space-y-1.5">
-                                                        <?php foreach ($mainNewItems as $ni):
-                                                            $niType = $ni['type'] ?? '';
-                                                            if ($isLayoutV2 && $niType === 'blog') continue;
-                                                            $niIcon = ['blog' => 'fa-blog text-sky-500', 'news' => 'fa-newspaper text-rose-500', 'schedule' => 'fa-calendar text-violet-500', 'event' => 'fa-calendar text-violet-500', 'video' => 'fa-play text-red-500'][$niType] ?? 'fa-circle-info text-slate-400';
-                                                            $niDate = !empty($ni['event_date']) ? date('n/j', strtotime($ni['event_date'])) : '';
-                                                            $niUrl = !empty($ni['url']) ? $ni['url'] : null;
-                                                        ?>
-                                                        <div class="flex items-start gap-2 text-sm min-w-0 rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 hover:border-amber-300 hover:bg-amber-50/50 transition">
-                                                            <span class="text-xs text-slate-400 shrink-0"><?= $niDate ?></span>
-                                                            <i class="fa-solid <?= $niIcon ?> w-4 shrink-0 mt-0.5"></i>
-                                                            <?php if ($niUrl): ?>
-                                                            <a href="<?= htmlspecialchars($niUrl) ?>" target="_blank" rel="noopener" class="flex-1 min-w-0 text-slate-700 hover:text-amber-600 line-clamp-2 break-words" title="<?= htmlspecialchars($ni['title'] ?? '') ?>"><?= htmlspecialchars($ni['title'] ?? '') ?></a>
-                                                            <?php else: ?>
-                                                            <span class="flex-1 min-w-0 text-slate-700 line-clamp-2 break-words" title="<?= htmlspecialchars($ni['title'] ?? '') ?>"><?= htmlspecialchars($ni['title'] ?? '') ?></span>
-                                                            <?php endif; ?>
-                                                        </div>
-                                                        <?php endforeach; ?>
+
+                                            <a id="oshiLatestNewsLink"
+                                               href="<?= !empty($mockLatestNewsUrl) ? htmlspecialchars($mockLatestNewsUrl) : '#' ?>"
+                                               target="_blank"
+                                               rel="noopener"
+                                               class="oshi-kpi mock-glass rounded-2xl border border-white/60 px-4 py-3 block cursor-pointer hover:bg-white/70 hover:shadow-md hover:-translate-y-0.5 transition w-full min-w-0 overflow-hidden<?= (!empty($mockLatestNewsTitle) && !empty($mockLatestNewsUrl)) ? '' : ' hidden' ?>">
+                                                <div class="flex items-center justify-between gap-2">
+                                                    <div class="text-[10px] font-bold text-slate-500">最新ニュース</div>
+                                                    <div id="oshiLatestNewsDate" class="text-[11px] text-slate-500 whitespace-nowrap"><?= htmlspecialchars($mockLatestNewsDateText ?: '　') ?></div>
+                                                </div>
+                                                <div id="oshiLatestNewsTitle" class="text-sm font-black text-slate-800 line-clamp-2 mt-1 leading-snug min-w-0"><?= htmlspecialchars($mockLatestNewsTitle ?: '—') ?></div>
+                                            </a>
+
+                                            <a id="oshiLatestVideoLink"
+                                               href="<?= !empty($mockLatestVideoUrl) ? htmlspecialchars($mockLatestVideoUrl) : '#' ?>"
+                                               target="_blank"
+                                               rel="noopener"
+                                               class="oshi-kpi mock-glass rounded-2xl border border-white/60 px-4 py-3 block cursor-pointer hover:bg-white/70 hover:shadow-md hover:-translate-y-0.5 transition w-full min-w-0 overflow-hidden<?= (!empty($mockLatestVideoTitle) && !empty($mockLatestVideoUrl)) ? '' : ' hidden' ?>">
+                                                <div class="flex items-center justify-between gap-2">
+                                                    <div class="text-[10px] font-bold text-slate-500">新着動画</div>
+                                                    <div id="oshiLatestVideoPlatform" class="text-[11px] text-slate-500 whitespace-nowrap">
+                                                        <?php if ($mockLatestVideoPlatform === 'youtube'): ?>
+                                                            <i class="fa-brands fa-youtube text-red-500"></i>
+                                                        <?php elseif ($mockLatestVideoPlatform === 'tiktok'): ?>
+                                                            <i class="fa-brands fa-tiktok text-slate-700"></i>
+                                                        <?php elseif ($mockLatestVideoPlatform === 'instagram'): ?>
+                                                            <i class="fa-brands fa-instagram text-pink-600"></i>
+                                                        <?php else: ?>
+                                                            <i class="fa-solid fa-play text-slate-500"></i>
+                                                        <?php endif; ?>
                                                     </div>
+                                                </div>
+                                                <div class="flex items-center gap-2 mt-1 min-w-0 overflow-hidden">
+                                                    <div class="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden shrink-0">
+                                                        <?php if (!empty($mockLatestVideoThumb)): ?>
+                                                            <img id="oshiLatestVideoThumb" src="<?= htmlspecialchars($mockLatestVideoThumb) ?>" alt="" class="w-full h-full object-cover" loading="lazy" />
+                                                        <?php else: ?>
+                                                            <img id="oshiLatestVideoThumb" src="" alt="" class="w-full h-full object-cover hidden" loading="lazy" />
+                                                        <?php endif; ?>
+                                                    </div>
+                                                <div id="oshiLatestVideoTitle" class="text-sm font-black text-slate-800 line-clamp-2 leading-snug min-w-0 flex-1"><?= htmlspecialchars($mockLatestVideoTitle ?: '—') ?></div>
+                                                </div>
+                                            </a>
                                         </div>
                                         <?php endif; ?>
                                         <?php if ($isLayoutV2): ?>
@@ -768,7 +940,7 @@ function portalTopicBadge(array $t): array {
                                             <p id="oshiMainGenSp" class="text-[11px] text-slate-400"><?= htmlspecialchars($mainOshi['generation']) ?>期生</p>
                                         </div>
                                     </div>
-                                    <div class="flex flex-col gap-3 md:gap-4 shrink-0<?= $isLayoutV2 ? ' order-last' : '' ?>">
+                                    <div class="hidden md:flex flex-col gap-3 md:gap-4 shrink-0<?= $isLayoutV2 ? ' order-last' : '' ?>">
                                         <div class="<?= $isLayoutV2 ? 'w-44 aspect-square' : 'w-24 h-24 md:w-44 md:h-auto md:self-stretch' ?> rounded-2xl overflow-hidden bg-slate-100 shadow-md">
                                             <?php if ($mainOshi['image_url']): ?>
                                             <img id="oshiMainImg" src="<?= oshiImgSrc($mainOshi['image_url']) ?>" class="w-full h-full object-cover" alt="">
@@ -873,7 +1045,7 @@ function portalTopicBadge(array $t): array {
                 </section>
 
                 <?php if ($hasBdBanner): $bdToday = array_filter($upcomingBirthdays, fn($b) => (int)$b['days_until'] === 0); $bdUpcoming = array_filter($upcomingBirthdays, fn($b) => (int)$b['days_until'] > 0); ?>
-                <section class="mb-3 v2-birthday">
+                <section class="v2-birthday">
                     <?php
                     $bdList = array_values(array_merge($bdToday, $bdUpcoming));
                     $bdMain = $bdList[0] ?? null;
@@ -882,7 +1054,7 @@ function portalTopicBadge(array $t): array {
                     $bdMainIsToday = $bdMain ? ((int)$bdMain['days_until'] === 0) : false;
                     $bdMainText = $bdMain ? ($bdMainIsToday ? '本日！' : ($bdMainDate . ' ・ あと ' . (int)$bdMain['days_until'] . ' 日')) : '';
                     ?>
-                    <div class="bg-white rounded-xl border <?= $cardBorder ?> p-5 h-full flex flex-col<?= $isMockUi ? ' mock-card' : '' ?>">
+                    <div class="bg-white rounded-xl border <?= $cardBorder ?> p-5 h-full flex flex-col">
                         <div class="flex items-center justify-between mb-3">
                             <div class="flex items-center gap-2 font-semibold text-slate-700">
                                 <i class="fa-solid fa-birthday-cake w-4 h-4 text-pink-500"></i>
@@ -949,8 +1121,8 @@ function portalTopicBadge(array $t): array {
                 <!-- 最新リリース情報 -->
                 <?php ob_start(); ?>
                 <?php if ($latestRelease): ?>
-                <section class="mb-4 v2-release" id="releaseSection">
-                    <div id="releaseAccordion" class="release-accordion bg-white rounded-xl border <?= $cardBorder ?> overflow-hidden h-full<?= $isMockUi ? ' mock-card' : '' ?>" data-release-id="<?= (int)$latestRelease['id'] ?>">
+                <section class="v2-release" id="releaseSection">
+                    <div id="releaseAccordion" class="release-accordion bg-white rounded-xl border <?= $cardBorder ?> overflow-hidden h-full" data-release-id="<?= (int)$latestRelease['id'] ?>">
                         <?php
                         $jackets = [];
                         if (!empty($latestRelease['editions'])) {
@@ -986,8 +1158,8 @@ function portalTopicBadge(array $t): array {
                                 <a href="/hinata/release.php?id=<?= (int)$latestRelease['id'] ?>" class="text-xs text-slate-500 hover:text-violet-500 transition">詳細 →</a>
                             </div>
 
-                            <div class="flex flex-col md:flex-row gap-4 md:gap-5">
-                                <div class="shrink-0 w-28 md:w-32">
+                            <div class="flex flex-col sm:flex-row gap-4 sm:gap-5">
+                                <div class="shrink-0 w-28 sm:w-32">
                                     <div class="aspect-square rounded-2xl overflow-hidden shadow-md bg-slate-100">
                                         <?php if ($mainJacket): ?>
                                         <img id="releaseMainJacket" src="<?= htmlspecialchars($mainJacket) ?>" class="w-full h-full object-cover" loading="lazy" alt="">
@@ -1122,7 +1294,7 @@ function portalTopicBadge(array $t): array {
                 <!-- 最新ブログ（全メンバー対象） -->
                 <?php if (!empty($latestBlogPosts)): ?>
                 <section class="mb-4 v2-blog">
-                    <div class="bg-white rounded-xl border <?= $cardBorder ?> p-5<?= $isMockUi ? ' mock-card-static' : '' ?>">
+                    <div class="bg-white rounded-xl border <?= $cardBorder ?> p-5">
                         <div class="flex items-center justify-between mb-3">
                             <div class="flex items-center gap-2 font-semibold text-slate-700">
                                 <i class="fa-solid fa-pen-fancy w-4 h-4 text-pink-500"></i>
@@ -1164,7 +1336,7 @@ function portalTopicBadge(array $t): array {
 
                 <!-- YouTube (タブ切替) -->
                 <section class="mb-4 v2-youtube">
-                    <div class="bg-white rounded-xl border <?= $cardBorder ?> p-5 h-full flex flex-col<?= $isMockUi ? ' mock-card-static' : '' ?>">
+                    <div class="bg-white rounded-xl border <?= $cardBorder ?> p-5 h-full flex flex-col">
                         <div class="flex items-center justify-between mb-3">
                             <div class="flex items-center gap-2 font-semibold text-slate-700">
                                 <i class="fa-brands fa-youtube w-4 h-4 text-red-500"></i>
@@ -1205,7 +1377,7 @@ function portalTopicBadge(array $t): array {
 
                 <!-- TikTok -->
                 <section class="mb-4 v2-tiktok">
-                    <div class="bg-white rounded-xl border <?= $cardBorder ?> p-5 h-full flex flex-col<?= $isMockUi ? ' mock-card-static' : '' ?>">
+                    <div class="bg-white rounded-xl border <?= $cardBorder ?> p-5 h-full flex flex-col">
                         <div class="flex items-center justify-between mb-3">
                             <div class="flex items-center gap-2 font-semibold text-slate-700">
                                 <i class="fa-brands fa-tiktok w-4 h-4 text-slate-800"></i>
@@ -1236,7 +1408,7 @@ function portalTopicBadge(array $t): array {
                         <i class="fa-solid fa-share-nodes text-slate-500"></i>
                         <h2 class="text-sm font-bold text-slate-700">公式リンク</h2>
                     </div>
-                    <div class="bg-white rounded-xl border <?= $cardBorder ?> p-5<?= $isMockUi ? ' mock-card' : '' ?>">
+                    <div class="bg-white rounded-xl border <?= $cardBorder ?> p-5">
                         <div class="flex flex-wrap items-stretch gap-3">
                             <a href="https://www.hinatazaka46.com/s/official/" target="_blank" rel="noopener" class="sns-link-card flex flex-col items-center justify-center gap-1.5 w-20 h-20 rounded-xl border <?= $cardBorder ?> bg-slate-50 hover:bg-slate-100 transition-all shrink-0 overflow-hidden" title="日向坂公式サイト">
                                 <div class="w-10 h-10 flex items-center justify-center shrink-0"><img src="/assets/img/hinata/hinata-logo.svg" alt="" class="max-w-full max-h-full object-contain" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><span class="w-10 h-10 items-center justify-center text-slate-600 hidden"><i class="fa-solid fa-globe text-xl"></i></span></div>
@@ -1462,7 +1634,9 @@ function portalTopicBadge(array $t): array {
     // 推しエリア切り替え
     var OshiPortal = {
         data: <?= json_encode($oshiByLevel, JSON_UNESCAPED_UNICODE) ?>,
-        newItemsByMember: <?= json_encode($oshiLatestItemByMember ?? [], JSON_UNESCAPED_UNICODE) ?>,
+        latestBlogByMember: <?= json_encode($oshiLatestBlogByMember ?? [], JSON_UNESCAPED_UNICODE) ?>,
+        latestNewsByMember: <?= json_encode($oshiLatestNewsByMember ?? [], JSON_UNESCAPED_UNICODE) ?>,
+        latestVideoByMember: <?= json_encode($oshiLatestVideoByMember ?? [], JSON_UNESCAPED_UNICODE) ?>,
         imgSrc: function(url) {
             if (!url) return '';
             return url.charAt(0) === '/' ? url : '/assets/img/members/' + url;
@@ -1472,6 +1646,23 @@ function portalTopicBadge(array $t): array {
             if (!d) return;
             var label = {9:'最推し',8:'2推し',7:'3推し'}[level] || '';
             var el = function(id) { return document.getElementById(id); };
+            var setImg = function(id) {
+                var node = el(id);
+                if (!node) return;
+                var url = d.image_url ? OshiPortal.imgSrc(d.image_url) : '';
+                if (node.tagName === 'IMG') {
+                    if (url) node.src = url;
+                    return;
+                }
+                if (url) {
+                    var img = document.createElement('img');
+                    img.id = id;
+                    img.src = url;
+                    img.className = 'w-full h-full object-cover';
+                    img.alt = '';
+                    node.replaceWith(img);
+                }
+            };
             var mainImg = el('oshiMainImg');
             if (mainImg && mainImg.tagName === 'IMG' && d.image_url) {
                 mainImg.src = this.imgSrc(d.image_url);
@@ -1480,9 +1671,12 @@ function portalTopicBadge(array $t): array {
             if (mainImgSp && mainImgSp.tagName === 'IMG' && d.image_url) {
                 mainImgSp.src = this.imgSrc(d.image_url);
             }
+            setImg('oshiMainImgMobile');
             if (el('oshiMainLabel')) el('oshiMainLabel').textContent = label;
             if (el('oshiMainName')) el('oshiMainName').textContent = d.name || '';
             if (el('oshiMainGen')) el('oshiMainGen').textContent = (d.generation || '') + '期生';
+            var crown = el('oshiMainCrown');
+            if (crown) crown.classList.toggle('hidden', label !== '最推し');
             if (el('oshiMainLink')) el('oshiMainLink').href = '/hinata/member.php?id=' + d.member_id;
             if (el('oshiMainMemberBtn')) el('oshiMainMemberBtn').href = '/hinata/member.php?id=' + d.member_id;
             var labelSp = el('oshiMainLabelSp'), nameSp = el('oshiMainNameSp'), genSp = el('oshiMainGenSp'), blogSp = el('oshiMainBlogSp'), songsSp = el('oshiMainSongsSp');
@@ -1518,23 +1712,112 @@ function portalTopicBadge(array $t): array {
             var latestBlogLinkEl = el('oshiLatestBlogLink');
             var latestBlogDateEl = el('oshiLatestBlogDate');
             if (latestBlogEl) {
-                var itemsForBlog = this.newItemsByMember[d.member_id] || this.newItemsByMember[String(d.member_id)];
-                if (!Array.isArray(itemsForBlog)) itemsForBlog = itemsForBlog ? [itemsForBlog] : [];
-                var blogItem = itemsForBlog.find(function(it){ return it && it.type === 'blog' && it.title; });
+                var blogItem = this.latestBlogByMember[d.member_id] || this.latestBlogByMember[String(d.member_id)];
                 latestBlogEl.textContent = blogItem && blogItem.title ? blogItem.title : '—';
                 if (latestBlogDateEl) {
-                    var dt = blogItem && blogItem.event_date ? String(blogItem.event_date) : '';
+                    var dt = blogItem && blogItem.published_at ? String(blogItem.published_at) : '';
                     var m = dt.match(/(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2}):(\d{2})/);
                     latestBlogDateEl.textContent = m ? (parseInt(m[2],10) + '/' + parseInt(m[3],10) + ' ' + m[4] + ':' + m[5]) : '　';
                 }
                 if (latestBlogLinkEl) {
-                    var url = blogItem && blogItem.url ? blogItem.url : '';
+                    var url = blogItem && blogItem.detail_url ? blogItem.detail_url : '';
                     if (latestBlogLinkEl.tagName === 'A') {
                         if (url) { latestBlogLinkEl.href = url; latestBlogLinkEl.classList.remove('pointer-events-none', 'opacity-60'); }
                         else { latestBlogLinkEl.href = '#'; latestBlogLinkEl.classList.add('pointer-events-none', 'opacity-60'); }
                     } else {
                         // 旧DOM（div）の場合は何もしない
                     }
+                }
+            }
+
+            // 推し固有: 最新ニュース（カテゴリ=media）
+            var latestNewsLinkEl = el('oshiLatestNewsLink');
+            var latestNewsTitleEl = el('oshiLatestNewsTitle');
+            var latestNewsDateEl = el('oshiLatestNewsDate');
+            if (latestNewsLinkEl && latestNewsTitleEl) {
+                var newsItem = this.latestNewsByMember[d.member_id] || this.latestNewsByMember[String(d.member_id)];
+                var newsTitle = newsItem && newsItem.title ? String(newsItem.title) : '';
+                var newsUrl = newsItem && newsItem.detail_url ? String(newsItem.detail_url) : '';
+                latestNewsTitleEl.textContent = newsTitle || '—';
+                if (latestNewsDateEl) {
+                    var ndt = newsItem && newsItem.published_date ? String(newsItem.published_date) : '';
+                    var nm = ndt.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+                    latestNewsDateEl.textContent = nm ? (parseInt(nm[2],10) + '/' + parseInt(nm[3],10)) : '　';
+                }
+                if (newsUrl) {
+                    latestNewsLinkEl.href = newsUrl;
+                    latestNewsLinkEl.classList.remove('hidden', 'pointer-events-none', 'opacity-60');
+                } else {
+                    latestNewsLinkEl.href = '#';
+                    latestNewsLinkEl.classList.add('pointer-events-none', 'opacity-60');
+                    // 要件: 無い場合は欄ごと非表示
+                    latestNewsLinkEl.classList.add('hidden');
+                }
+            }
+
+            // 推し固有: 新着動画（最新1件）
+            var latestVideoLinkEl = el('oshiLatestVideoLink');
+            var latestVideoTitleEl = el('oshiLatestVideoTitle');
+            var latestVideoThumbEl = el('oshiLatestVideoThumb');
+            var latestVideoPlatformEl = el('oshiLatestVideoPlatform');
+            if (latestVideoLinkEl && latestVideoTitleEl) {
+                var v = this.latestVideoByMember[d.member_id] || this.latestVideoByMember[String(d.member_id)];
+                var platform = v && v.platform ? String(v.platform).toLowerCase() : '';
+                var mk = v && v.media_key ? String(v.media_key) : '';
+                var sk = v && v.sub_key ? String(v.sub_key) : '';
+                var vtitle = v && v.title ? String(v.title) : '';
+                var thumb = v && v.thumbnail_url ? String(v.thumbnail_url) : '';
+
+                var url = '';
+                if (platform === 'youtube' && mk) {
+                    url = 'https://www.youtube.com/watch?v=' + encodeURIComponent(mk);
+                } else if (platform === 'tiktok' && mk) {
+                    if (sk && sk.charAt(0) === '@' && /^\d+$/.test(mk)) {
+                        url = 'https://www.tiktok.com/' + encodeURIComponent(sk) + '/video/' + encodeURIComponent(mk);
+                    } else if (/^\d+$/.test(mk)) {
+                        url = 'https://www.tiktok.com/@tiktok/video/' + encodeURIComponent(mk);
+                    } else {
+                        url = 'https://vm.tiktok.com/' + encodeURIComponent(mk) + '/';
+                    }
+                } else if (platform === 'instagram' && mk) {
+                    url = 'https://www.instagram.com/reel/' + encodeURIComponent(mk) + '/';
+                }
+
+                latestVideoTitleEl.textContent = vtitle || '—';
+                if (latestVideoThumbEl && thumb) {
+                    latestVideoThumbEl.src = thumb;
+                    latestVideoThumbEl.classList.remove('hidden');
+                } else if (latestVideoThumbEl) {
+                    latestVideoThumbEl.classList.add('hidden');
+                }
+                if (latestVideoPlatformEl) {
+                    var ic = '<i class="fa-solid fa-play text-slate-500"></i>';
+                    if (platform === 'youtube') ic = '<i class="fa-brands fa-youtube text-red-500"></i>';
+                    if (platform === 'tiktok') ic = '<i class="fa-brands fa-tiktok text-slate-700"></i>';
+                    if (platform === 'instagram') ic = '<i class="fa-brands fa-instagram text-pink-600"></i>';
+                    latestVideoPlatformEl.innerHTML = ic;
+                }
+
+                if (url) {
+                    latestVideoLinkEl.href = url;
+                    latestVideoLinkEl.classList.remove('hidden', 'pointer-events-none', 'opacity-60');
+                    latestVideoLinkEl.onclick = function(ev) {
+                        ev.preventDefault();
+                        openVideoModalWithData({
+                            media_key: mk,
+                            platform: platform,
+                            title: vtitle || '',
+                            category: v && v.category ? String(v.category) : '',
+                            upload_date: v && v.upload_date ? String(v.upload_date) : '',
+                            thumbnail_url: thumb || '',
+                            description: v && v.description ? String(v.description) : '',
+                            sub_key: sk || ''
+                        }, ev);
+                    };
+                } else {
+                    latestVideoLinkEl.href = '#';
+                    latestVideoLinkEl.classList.add('hidden');
+                    latestVideoLinkEl.onclick = null;
                 }
             }
 
@@ -1591,7 +1874,7 @@ function portalTopicBadge(array $t): array {
                 }
             }
 
-            var isMockUi = document.body && document.body.classList.contains('ui-mock');
+            var isMockUi = document.body && document.body.classList.contains('hinata-portal');
             document.querySelectorAll('.oshi-sub-card').forEach(function(card) {
                 var cardLevel = parseInt(card.dataset.level);
                 // 選択中の推しはミニタイルに出さない
@@ -1614,31 +1897,7 @@ function portalTopicBadge(array $t): array {
                 }
             });
 
-            var wrap = el('oshiMainNewItemWrap');
-            var content = el('oshiMainNewItemContent');
-            if (wrap && content) {
-                var items = this.newItemsByMember[d.member_id] || this.newItemsByMember[String(d.member_id)];
-                if (!Array.isArray(items)) items = items ? [items] : [];
-                var icons = {blog:'fa-blog text-sky-500',news:'fa-newspaper text-rose-500',schedule:'fa-calendar text-violet-500',event:'fa-calendar text-violet-500',video:'fa-play text-red-500'};
-                var esc = function(s){ var d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; };
-                if (items.length > 0) {
-                    // レイアウトv2は常時ON: ブログは「最新ブログブロック」に移設するため除外
-                    items = items.filter(function(ni){ return (ni && ni.type) !== 'blog'; });
-                    wrap.classList.remove('hidden');
-                    var html = '';
-                    items.forEach(function(ni) {
-                        var ic = icons[ni.type] || 'fa-circle-info text-slate-400';
-                        var title = ni.title || '';
-                        var link = ni.url ? '<a href="'+esc(ni.url)+'" target="_blank" rel="noopener" class="flex-1 min-w-0 text-slate-700 hover:text-amber-600 line-clamp-2 break-words" title="'+esc(title)+'">'+esc(title)+'</a>' : '<span class="flex-1 min-w-0 text-slate-700 line-clamp-2 break-words" title="'+esc(title)+'">'+esc(title)+'</span>';
-                        var m = (ni.event_date || '').match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
-                        var date = m ? parseInt(m[2],10) + '/' + parseInt(m[3],10) : '';
-                        html += '<div class="flex items-start gap-2 text-sm min-w-0 rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 hover:border-amber-300 hover:bg-amber-50/50 transition"><span class="text-xs text-slate-400 shrink-0">'+esc(date)+'</span><i class="fa-solid '+ic+' w-4 shrink-0 mt-0.5"></i>'+link+'</div>';
-                    });
-                    content.innerHTML = html;
-                } else {
-                    wrap.classList.add('hidden');
-                }
-            }
+            // 推しの新着エリアは廃止
         }
     };
 
@@ -1676,7 +1935,7 @@ function portalTopicBadge(array $t): array {
                 media_key: v.video_id, platform: 'youtube', title: v.title || '',
                 category: '', upload_date: v.published_at || '', thumbnail_url: thumb, description: '', sub_key: ''
             });
-            var extraCls = (document.body && document.body.classList.contains('ui-mock')) ? ' mock-media-card' : '';
+            var extraCls = (document.body && document.body.classList.contains('hinata-portal')) ? ' mock-media-card' : '';
             return '<div class="yt-card' + extraCls + ' rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm" onclick="openPortalVideo(' + idx + ', event)">' +
                 '<div class="aspect-video overflow-hidden bg-slate-200 shadow-sm relative group">' +
                 '<img src="' + thumb + '" class="w-full h-full object-cover" loading="lazy" alt="">' +
@@ -1785,7 +2044,7 @@ function portalTopicBadge(array $t): array {
             var thumbHtml = thumb
                 ? '<img src="' + thumb + '" class="w-full h-full object-cover" loading="lazy" alt="">'
                 : '<div class="w-full h-full flex items-center justify-center"><i class="fa-brands fa-tiktok text-3xl text-slate-300"></i></div>';
-            var extraCls = (document.body && document.body.classList.contains('ui-mock')) ? ' mock-media-card' : '';
+            var extraCls = (document.body && document.body.classList.contains('hinata-portal')) ? ' mock-media-card' : '';
             return '<div class="tk-card' + extraCls + ' rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm" onclick="openPortalVideo(' + idx + ', event)">' +
                 '<div class="aspect-[3/4] overflow-hidden bg-slate-200 shadow-sm relative group">' +
                 thumbHtml +
@@ -1964,7 +2223,7 @@ function portalTopicBadge(array $t): array {
 
         // UI Mock: 簡易検索（カード類を絞り込み）
         try {
-            if (!(document.body && document.body.classList.contains('ui-mock'))) return;
+            if (!(document.body && document.body.classList.contains('hinata-portal'))) return;
             var input = document.getElementById('portalSearchInput');
             if (!input) return;
 
@@ -1976,8 +2235,6 @@ function portalTopicBadge(array $t): array {
                 '.tk-card',
                 '.sns-link-card',
                 '.app-card.hinata-portal-card',
-                '#oshiMainNewItemContent a',
-                '#oshiMainNewItemContent span',
             ];
 
             var norm = function(s) {

@@ -208,5 +208,42 @@ class MediaAssetModel extends BaseModel {
         $stmt = $this->pdo->prepare("UPDATE com_media_assets SET {$field} = :val WHERE id = :id");
         return $stmt->execute(['id' => $assetId, 'val' => $value]);
     }
+
+    /**
+     * プラットフォーム問わず最新の1件を取得
+     */
+    public function getLatestOne(): ?array
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT *
+             FROM {$this->table}
+             ORDER BY COALESCE(upload_date, created_at) DESC, id DESC
+             LIMIT 1"
+        );
+        $stmt->execute();
+        $row = $stmt->fetch();
+        return $row ?: null;
+    }
+
+    /**
+     * 特定メンバーの最新動画1件を取得（プラットフォーム不問）
+     * - hn_media_metadata / hn_media_members 経由で member_id を解決
+     */
+    public function getLatestOneByMember(int $memberId): ?array
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT ma.*
+             FROM com_media_assets ma
+             JOIN hn_media_metadata hmeta ON hmeta.asset_id = ma.id
+             JOIN hn_media_members hmm ON hmm.media_meta_id = hmeta.id
+             WHERE hmm.member_id = :mid
+             ORDER BY COALESCE(ma.upload_date, ma.created_at) DESC, ma.id DESC
+             LIMIT 1"
+        );
+        $stmt->bindValue('mid', $memberId, \PDO::PARAM_INT);
+        $stmt->execute();
+        $row = $stmt->fetch();
+        return $row ?: null;
+    }
 }
 
