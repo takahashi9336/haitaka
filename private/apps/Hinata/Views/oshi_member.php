@@ -186,7 +186,7 @@ if (!empty($member['birth_date'])) {
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="w-4 h-4 text-orange-400">
                                     <path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"></path>
                                 </svg>
-                                <h3 class="text-sm font-semibold text-slate-700">タイムライン</h3>
+                                <h3 class="text-base font-semibold text-slate-700">タイムライン</h3>
                             </div>
                             <div class="px-2 py-2">
                                 <div id="timelineContainer" class="space-y-0">
@@ -206,7 +206,7 @@ if (!empty($member['birth_date'])) {
                             <div class="flex items-center justify-between mb-3">
                                 <div class="flex items-center gap-2 font-semibold text-slate-700">
                                     <i class="fa-solid fa-briefcase w-4 h-4 text-indigo-500"></i>
-                                    <h3 class="text-sm font-semibold text-slate-700">個人活動</h3>
+                                    <h3 class="text-base font-semibold text-slate-700">個人活動</h3>
                                 </div>
                                 <span class="text-[10px] text-slate-400"><?= count($memberActivities) ?> 件</span>
                             </div>
@@ -256,7 +256,7 @@ if (!empty($member['birth_date'])) {
                             <div class="flex items-center justify-between mb-3">
                                 <div class="flex items-center gap-2 font-semibold text-slate-700">
                                     <i class="fa-solid fa-pen-fancy w-4 h-4 text-pink-500"></i>
-                                    <h3 class="text-sm">最新ブログ</h3>
+                                    <h3 class="text-base">最新ブログ</h3>
                                 </div>
                                 <?php if (!empty($member['blog_url'])): ?>
                                 <a href="<?= htmlspecialchars($member['blog_url']) ?>" target="_blank" rel="noopener" class="text-xs text-slate-500 hover:text-pink-500 transition">もっと見る →</a>
@@ -305,7 +305,7 @@ if (!empty($member['birth_date'])) {
                             <div class="bg-white rounded-xl border <?= $cardBorder ?> p-2">
                                 <div class="flex items-center gap-2 font-semibold text-slate-700 mb-3 px-2 pt-1">
                                     <i class="fa-solid fa-newspaper w-4 h-4 text-blue-500"></i>
-                                    <h3 class="text-sm">ニュース</h3>
+                                    <h3 class="text-base">ニュース</h3>
                                 </div>
                                 <div class="bg-white rounded-xl overflow-hidden">
                                     <div class="divide-y divide-slate-100">
@@ -333,7 +333,7 @@ if (!empty($member['birth_date'])) {
                             <div class="bg-white rounded-xl border <?= $cardBorder ?> p-2">
                                 <div class="flex items-center gap-2 font-semibold text-slate-700 mb-3 px-2 pt-1">
                                     <i class="fa-solid fa-calendar-day w-4 h-4 text-emerald-500"></i>
-                                    <h3 class="text-sm">スケジュール</h3>
+                                    <h3 class="text-base">スケジュール</h3>
                                 </div>
                                 <div class="bg-white rounded-xl overflow-hidden">
                                     <div class="divide-y divide-slate-100">
@@ -376,7 +376,7 @@ if (!empty($member['birth_date'])) {
                             <div class="flex items-center justify-between mb-3">
                                 <div class="flex items-center gap-2 font-semibold text-slate-700">
                                     <i class="fa-solid fa-play-circle w-4 h-4 text-orange-500"></i>
-                                    <h3 class="text-sm">動画</h3>
+                                    <h3 class="text-base">動画</h3>
                                 </div>
                                 <div class="flex gap-1 items-center">
                                     <?php foreach ($videoTabs as $ti => $vt): ?>
@@ -432,7 +432,7 @@ if (!empty($member['birth_date'])) {
                         <div class="bg-white rounded-xl border <?= $cardBorder ?> shadow-sm p-5">
                             <div class="flex items-center gap-2 font-semibold text-slate-700 mb-3">
                                 <i class="fa-solid fa-music w-4 h-4 text-violet-500"></i>
-                                <h3 class="text-sm">参加楽曲 (<?= count($memberSongs) ?>曲)</h3>
+                                <h3 class="text-base">参加楽曲 (<?= count($memberSongs) ?>曲)</h3>
                             </div>
                             <div class="bg-white rounded-xl overflow-hidden">
                                 <div id="songMiniPlayer" class="hidden border-b border-slate-200 bg-slate-50/80">
@@ -493,7 +493,7 @@ if (!empty($member['birth_date'])) {
                         <div class="bg-white rounded-xl border <?= $cardBorder ?> shadow-sm p-5">
                             <div class="flex items-center gap-2 font-semibold text-slate-700 mb-3">
                                 <i class="fa-solid fa-calendar w-4 h-4 text-sky-500"></i>
-                                <h3 class="text-sm">イベント</h3>
+                                <h3 class="text-base">イベント</h3>
                             </div>
                             <?php if (!empty($upcomingEvents)): ?>
                             <div class="mb-4">
@@ -542,7 +542,7 @@ if (!empty($member['birth_date'])) {
                         <div class="bg-white rounded-xl border <?= $cardBorder ?> shadow-sm p-5">
                             <div class="flex items-center gap-2 font-semibold text-slate-700 mb-3">
                                 <i class="fa-solid fa-camera w-4 h-4 text-emerald-500"></i>
-                                <h3 class="text-sm">マイフォト</h3>
+                                <h3 class="text-base">マイフォト</h3>
                             </div>
                             <?php if (!empty($oshiImages)): ?>
                             <div class="photo-grid grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
