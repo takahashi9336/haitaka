@@ -32,7 +32,7 @@ class TalkController {
         $members = $memberModel->getActiveMembersWithColors();
         $groupedNeta = $netaModel->getGroupedNeta();
         
-        require_once __DIR__ . '/../Views/index.php';
+        require_once __DIR__ . '/../Views/talk.php';
     }
 
     /**

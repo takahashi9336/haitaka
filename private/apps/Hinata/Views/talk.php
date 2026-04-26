@@ -1,7 +1,7 @@
 <?php
 /**
- * 日向坂ネタ帳詳細 View (完全版)
- * 物理パス: haitaka/private/apps/Hinata/Views/index.php
+ * ミーグリ（推し活）ネタ帳 View
+ * 物理パス: haitaka/private/apps/Hinata/Views/talk.php
  */
 $appKey = 'hinata';
 require_once __DIR__ . '/../../../components/theme_from_session.php';
