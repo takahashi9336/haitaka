@@ -238,7 +238,8 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         
         function createMemberCard(m) {
             const card = document.createElement('div');
-            card.className = 'member-card bg-white rounded-xl p-4 shadow-sm border border-sky-50/50 cursor-pointer flex flex-col items-center text-center relative overflow-hidden';
+            // 画像をカード全面に表示するため、padding前提のレイアウトから「全面背景 + オーバーレイ」に変更
+            card.className = 'member-card relative overflow-hidden rounded-2xl shadow-sm border border-sky-50/50 cursor-pointer bg-slate-100 aspect-[3/4]';
             card.dataset.gen = m.generation;
             card.dataset.active = m.is_active ? '1' : '0';
             card.onclick = (e) => HinataMemberModal.open(m.id, e);
@@ -247,46 +248,96 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             colorStrip.className = 'absolute top-0 left-0 w-full h-1.5';
             colorStrip.style.background = `linear-gradient(to right, ${m.color1 || '#ccc'}, ${m.color2 || '#ddd'})`;
             card.appendChild(colorStrip);
-            
-            const imageContainer = document.createElement('div');
-            imageContainer.className = 'w-full aspect-square rounded-xl bg-sky-50 mb-4 shadow-inner overflow-hidden flex items-center justify-center';
+
+            // 背景画像（カード全面）
             if (m.image_url) {
                 const img = document.createElement('img');
                 img.src = `/assets/img/members/${m.image_url}${IMG_CACHE_BUST}`;
-                img.className = 'portrait-img';
-                imageContainer.appendChild(img);
+                img.className = 'absolute inset-0 w-full h-full object-cover';
+                img.alt = m.name || '';
+                img.loading = 'lazy';
+                card.appendChild(img);
             } else {
+                // 画像がない場合のプレースホルダー（全面）
+                const ph = document.createElement('div');
+                ph.className = 'absolute inset-0 flex items-center justify-center bg-gradient-to-br from-sky-50 to-slate-50';
                 const initial = document.createElement('span');
-                initial.className = 'text-4xl font-black text-sky-200';
-                initial.textContent = m.name.substring(0, 1);
-                imageContainer.appendChild(initial);
+                initial.className = 'text-6xl font-black text-sky-200';
+                initial.textContent = (m.name || '').substring(0, 1);
+                ph.appendChild(initial);
+                card.appendChild(ph);
             }
-            card.appendChild(imageContainer);
+
+            // 読みやすさ確保のための下地（上から薄いグラデ）
+            const overlayShade = document.createElement('div');
+            overlayShade.className = 'absolute inset-0 bg-gradient-to-b from-black/35 via-black/10 to-black/60';
+            card.appendChild(overlayShade);
             
             const favLevel = parseInt(m.favorite_level) || 0;
             if (favLevel > 0) {
                 const badge = document.createElement('div');
-                badge.className = 'absolute top-3 right-2 z-10';
+                // 右上：丸型で目立つお気に入りバッジ
+                badge.className = 'absolute top-3 right-3 z-20';
                 const badgeMap = {
-                    9: { icon: 'fa-solid fa-crown', cls: 'bg-amber-400 text-white', label: '最推し' },
-                    8: { icon: 'fa-solid fa-heart', cls: 'bg-pink-400 text-white', label: '2推し' },
-                    7: { icon: 'fa-regular fa-heart', cls: 'bg-rose-300 text-white', label: '3推し' },
-                    1: { icon: 'fa-regular fa-star', cls: 'bg-amber-200 text-amber-700', label: '気になる' }
+                    9: { icon: 'fa-solid fa-crown', cls: 'bg-gradient-to-br from-amber-400 to-amber-600 text-white', label: '最推し' },
+                    8: { icon: 'fa-solid fa-heart', cls: 'bg-gradient-to-br from-pink-400 to-pink-600 text-white', label: '2推し' },
+                    7: { icon: 'fa-solid fa-heart', cls: 'bg-gradient-to-br from-rose-300 to-rose-500 text-white', label: '3推し' },
+                    1: { icon: 'fa-solid fa-star', cls: 'bg-gradient-to-br from-amber-200 to-amber-300 text-amber-900', label: '気になる' }
                 };
                 const bm = badgeMap[favLevel];
                 if (bm) {
-                    badge.innerHTML = '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-black shadow-sm ' + bm.cls + '"><i class="' + bm.icon + '"></i></span>';
+                    badge.innerHTML =
+                        '<span class="w-8 h-8 md:w-9 md:h-9 rounded-full inline-flex items-center justify-center shadow-xl ring-2 ring-white/70 ' + bm.cls + '" title="' + bm.label + '">' +
+                        '<i class="' + bm.icon + ' text-[13px] md:text-sm drop-shadow"></i>' +
+                        '</span>';
                     card.appendChild(badge);
                 }
             }
 
+            // 卒業バッジは左上へ（下部帯で名前が詰まるのを防ぐ）
+            if (!m.is_active) {
+                const grad = document.createElement('div');
+                grad.className = 'absolute top-3 left-3 z-20';
+                grad.innerHTML = '<span class="inline-flex items-center px-2.5 py-1 rounded-full bg-black/45 backdrop-blur text-[10px] font-black text-white shadow-sm border border-white/25">卒業</span>';
+                card.appendChild(grad);
+            }
+
             const info = document.createElement('div');
-            info.className = 'space-y-1';
             const genLabel = HinataMemberGroups.getGenLabel(m.id === POKA_MEMBER_ID ? 'poka' : m.generation);
+            // 改善案イメージ：下部にサイリウムカラー帯（color1→color2）を敷き、その上に「期バッジ＋名前」を載せる
+            const c1 = (m.color1 || '').trim();
+            const c2 = (m.color2 || '').trim();
+            const barC1 = c1 || '#94a3b8'; // slate-400 fallback
+            const barC2 = c2 || c1 || '#cbd5e1'; // slate-300 fallback
+
+            const genKey = (m.id === POKA_MEMBER_ID) ? 'poka' : String(m.generation || '');
+            const genBadgeClassMap = {
+                // 期生ごとの固定カラー（修正前の配色に戻す）
+                '1': 'bg-sky-500/90 text-white border-white/30',
+                '2': 'bg-emerald-500/90 text-white border-white/30',
+                '3': 'bg-amber-500/90 text-white border-white/30',
+                '4': 'bg-violet-500/90 text-white border-white/30',
+                '5': 'bg-pink-500/90 text-white border-white/30',
+                'poka': 'bg-slate-900/85 text-white border-white/20',
+                '0': 'bg-slate-700/75 text-white border-white/20',
+                '': 'bg-slate-700/75 text-white border-white/20'
+            };
+            const genBadgeCls = genBadgeClassMap[genKey] || 'bg-slate-700/75 text-white border-white/20';
+
+            info.className = 'absolute bottom-0 left-0 right-0 z-20';
             info.innerHTML = `
-                <span class="text-[9px] font-black text-sky-400 tracking-wider">${genLabel}</span>
-                <h3 class="font-black text-slate-800 text-base">${m.name}</h3>
-                ${!m.is_active ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-[10px] font-bold text-slate-500">卒業</span>' : ''}
+                <div class="absolute inset-x-0 bottom-0 h-12 md:h-14" style="background: linear-gradient(90deg, ${barC1}, ${barC2}); opacity: 0.92;"></div>
+                <div class="absolute inset-x-0 bottom-0 h-12 md:h-14 bg-gradient-to-t from-black/35 via-black/10 to-transparent"></div>
+                <div class="relative h-12 md:h-14 px-3 flex items-center gap-2">
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black shadow-sm border ${genBadgeCls}">
+                        ${(genLabel || '').replace('期生','期')}
+                    </span>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <h3 class="font-black text-white text-lg sm:text-xl md:text-2xl leading-tight drop-shadow truncate">${m.name}</h3>
+                        </div>
+                    </div>
+                </div>
             `;
             card.appendChild(info);
             
