@@ -39,7 +39,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             padding-bottom: 56.25%; /* 16:9（標準） */
             background: #f1f5f9;
             overflow: hidden;
-            border-radius: 2px;
+            border-radius: 0; /* 角丸はカード外枠で統一（portal 寄せ） */
         }
         /* 小さめカード用：16:9を維持（上下が切れないように） */
         .video-thumbnail-sm {
@@ -114,17 +114,19 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             display: flex;
         }
 
-        .media-type-tab {
-            background: #f1f5f9;
-            color: #64748b;
+        .media-type-tab,
+        .platform-tab {
+            color: #475569; /* slate-600 */
         }
-        .media-type-tab:hover {
-            background: #e2e8f0;
+        .media-type-tab:hover,
+        .platform-tab:hover {
+            background: rgba(255, 255, 255, 0.65);
         }
-        .media-type-tab.active-tab {
-            background: var(--hinata-theme, #0ea5e9);
-            color: white;
-            box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
+        .media-type-tab.active-tab,
+        .platform-tab.active-tab {
+            background: #ffffff;
+            color: #0f172a; /* slate-900 */
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
         }
 
         .video-thumbnail-portrait {
@@ -132,7 +134,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             padding-bottom: 177.78%; /* 9:16 */
             background: #f1f5f9;
             overflow: hidden;
-            border-radius: 2px;
+            border-radius: 0; /* 角丸はカード外枠で統一（portal 寄せ） */
         }
         .video-thumbnail-portrait img {
             position: absolute;
@@ -167,49 +169,54 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                     <i class="fa-solid fa-circle-plus mr-1"></i>メディア登録
                 </a>
                 <?php endif; ?>
-                <a href="/hinata/index.php" class="text-xs font-bold <?= $cardIconText ?> <?= $cardIconBg ?> px-4 py-2 rounded-full hover:opacity-90 transition"<?= $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>>
-                    ポータルへ戻る
-                </a>
             </div>
         </header>
 
         <div class="flex-1 flex flex-col min-h-0">
             <!-- 固定エリア：公式チャンネル + フィルター・ソート -->
-            <div class="shrink-0 px-4 pt-3 md:p-10 pb-0 md:pb-4">
-                <div class="max-w-5xl mx-auto">
-                    <!-- 公式チャンネルリンク -->
-                    <section class="hidden md:block mb-6">
-                        <div class="flex flex-wrap items-center gap-3">
-                            <a href="https://www.youtube.com/@46officialyoutubechannel99" target="_blank" rel="noopener noreferrer" class="btn-official-channel shrink-0">
-                                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                                </svg>
-                                <span>youtube 公式チャンネル</span>
-                                <i class="fa-solid fa-chevron-right text-[10px] opacity-90"></i>
-                            </a>
-                            <a href="https://www.youtube.com/@hinatazakachannel" target="_blank" rel="noopener noreferrer" class="btn-official-channel shrink-0">
-                                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                                </svg>
-                                <span>日向坂ちゃんねる</span>
-                                <i class="fa-solid fa-chevron-right text-[10px] opacity-90"></i>
-                            </a>
-                        </div>
-                    </section>
+            <div class="shrink-0 px-4 pt-3 md:p-6 pb-0 md:pb-4">
+                <div class="max-w-[76.8rem] mx-auto">
+                    <!-- メディア種別タブ + プラットフォーム（トグル） -->
+                    <div class="flex flex-wrap items-center gap-3 mb-3">
+                        <nav id="mediaTypeTabs">
+                            <div class="inline-flex items-center gap-1 p-1 rounded-full bg-slate-100 border border-slate-200 shadow-sm">
+                                <button class="media-type-tab active-tab h-10 px-5 rounded-full text-[11px] sm:text-xs font-bold transition flex items-center gap-2" data-type="">
+                                    すべて
+                                </button>
+                                <button class="media-type-tab h-10 px-5 rounded-full text-[11px] sm:text-xs font-bold transition flex items-center gap-2" data-type="video">
+                                    <i class="fa-solid fa-play hidden sm:inline"></i>
+                                    動画
+                                </button>
+                                <button class="media-type-tab h-10 px-5 rounded-full text-[11px] sm:text-xs font-bold transition flex items-center gap-2" data-type="short">
+                                    <i class="fa-solid fa-tablet-screen-button hidden sm:inline"></i>
+                                    ショート
+                                </button>
+                                <button class="media-type-tab h-10 px-5 rounded-full text-[11px] sm:text-xs font-bold transition flex items-center gap-2" data-type="live">
+                                    <i class="fa-solid fa-circle hidden sm:inline"></i>
+                                    ライブ
+                                </button>
+                            </div>
+                        </nav>
 
-                    <!-- メディア種別タブ -->
-                    <nav id="mediaTypeTabs" class="flex gap-1 mb-3">
-                        <button class="media-type-tab active-tab h-9 px-5 rounded-full text-xs font-bold transition" data-type="">すべて</button>
-                        <button class="media-type-tab h-9 px-5 rounded-full text-xs font-bold transition" data-type="video">
-                            <i class="fa-solid fa-film mr-1"></i>動画
-                        </button>
-                        <button class="media-type-tab h-9 px-5 rounded-full text-xs font-bold transition" data-type="short">
-                            <i class="fa-solid fa-mobile-screen mr-1"></i>ショート
-                        </button>
-                        <button class="media-type-tab h-9 px-5 rounded-full text-xs font-bold transition" data-type="live">
-                            <i class="fa-solid fa-tower-broadcast mr-1"></i>ライブ
-                        </button>
-                    </nav>
+                        <div id="platformTabs" class="inline-flex items-center gap-1 p-1 rounded-full bg-slate-100 border border-slate-200 shadow-sm">
+                            <input type="hidden" id="filterPlatform" value="">
+                            <button type="button" class="platform-tab active-tab h-10 px-5 rounded-full text-[11px] sm:text-xs font-bold transition flex items-center gap-2" data-platform="">
+                                すべて
+                            </button>
+                            <button type="button" class="platform-tab h-10 px-3 sm:px-5 rounded-full text-[11px] sm:text-xs font-bold transition flex items-center gap-1 sm:gap-2" data-platform="youtube" aria-label="YouTube" title="YouTube">
+                                <i class="fa-brands fa-youtube text-red-500"></i>
+                                <span class="hidden sm:inline">YouTube</span>
+                            </button>
+                            <button type="button" class="platform-tab h-10 px-3 sm:px-5 rounded-full text-[11px] sm:text-xs font-bold transition flex items-center gap-1 sm:gap-2" data-platform="tiktok" aria-label="TikTok" title="TikTok">
+                                <i class="fa-brands fa-tiktok text-slate-900"></i>
+                                <span class="hidden sm:inline">TikTok</span>
+                            </button>
+                            <button type="button" class="platform-tab h-10 px-3 sm:px-5 rounded-full text-[11px] sm:text-xs font-bold transition flex items-center gap-1 sm:gap-2" data-platform="instagram" aria-label="Instagram" title="Instagram">
+                                <i class="fa-brands fa-instagram text-pink-500"></i>
+                                <span class="hidden sm:inline">Instagram</span>
+                            </button>
+                        </div>
+                    </div>
 
                     <!-- フィルター・表示切替 -->
                     <section class="bg-white rounded-2xl border border-sky-100 shadow-sm">
@@ -223,7 +230,6 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                             if (!empty($oshi)):
                             ?>
                             <div class="flex items-center gap-2 mb-3 pb-3 border-b border-slate-100">
-                                <span class="text-[10px] font-black text-slate-400"><i class="fa-solid fa-heart mr-1"></i>推し:</span>
                                 <?php if (!empty($oshi[9])): ?>
                                 <button type="button" class="oshi-quick-filter h-7 px-3 rounded-full text-[10px] font-bold bg-amber-50 text-amber-600 border border-amber-200 hover:bg-amber-100 transition" data-member-id="<?= $oshi[9]['id'] ?>"><i class="fa-solid fa-crown mr-1"></i><?= htmlspecialchars($oshi[9]['name']) ?></button>
                                 <?php endif; ?>
@@ -233,85 +239,106 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                                 <?php if (!empty($oshi[7])): ?>
                                 <button type="button" class="oshi-quick-filter h-7 px-3 rounded-full text-[10px] font-bold bg-rose-50 text-rose-500 border border-rose-200 hover:bg-rose-100 transition" data-member-id="<?= $oshi[7]['id'] ?>"><i class="fa-regular fa-heart mr-1"></i><?= htmlspecialchars($oshi[7]['name']) ?></button>
                                 <?php endif; ?>
+                                <button type="button" id="oshiQuickClearBtn" class="hidden h-7 w-7 rounded-full bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 transition flex items-center justify-center" title="推しフィルタ解除" aria-label="推しフィルタ解除">
+                                    <i class="fa-solid fa-xmark text-[11px]"></i>
+                                </button>
                             </div>
                             <?php endif; ?>
                             <div class="flex flex-wrap items-center gap-4">
-                                <!-- プラットフォームフィルター -->
-                                <div class="flex items-center gap-2">
-                                    <label class="text-xs font-bold text-slate-600">プラットフォーム:</label>
-                                    <select id="filterPlatform" class="h-9 border border-sky-100 rounded-lg px-3 text-xs outline-none bg-slate-50">
-                                        <option value="">すべて</option>
-                                        <option value="youtube">YouTube</option>
-                                        <option value="instagram">Instagram</option>
-                                        <option value="tiktok">TikTok</option>
-                                    </select>
-                                </div>
-
                                 <!-- カテゴリフィルター -->
-                                <div class="flex items-center gap-2">
-                                    <label class="text-xs font-bold text-slate-600">カテゴリ:</label>
-                                    <select id="filterCategory" class="h-9 border border-sky-100 rounded-lg px-3 text-xs outline-none bg-slate-50">
-                                        <option value="">すべて</option>
+                                <div class="relative" data-dropdown>
+                                    <input type="hidden" id="filterCategory" value="">
+                                    <button type="button" class="h-9 border border-sky-100 rounded-lg bg-slate-50 flex items-center gap-2 px-3 pr-2 text-left hover:bg-slate-100/70 transition" data-dropdown-button aria-haspopup="listbox" aria-expanded="false">
+                                        <span class="text-[11px] font-bold text-slate-600 whitespace-nowrap">カテゴリ</span>
+                                        <span class="text-xs text-slate-700 truncate max-w-[10rem]" data-dropdown-value>すべて</span>
+                                        <i class="fa-solid fa-chevron-down ml-auto text-[10px] text-slate-400"></i>
+                                    </button>
+                                    <div class="hidden absolute z-20 mt-1 w-[14rem] rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden max-h-72 overflow-y-auto" data-dropdown-menu role="listbox">
+                                        <button type="button" class="w-full px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 text-left" data-value="">すべて</button>
                                         <?php foreach ($categories as $key => $label): ?>
-                                            <option value="<?= htmlspecialchars($key) ?>"><?= htmlspecialchars($label) ?></option>
+                                            <button type="button" class="w-full px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 text-left" data-value="<?= htmlspecialchars($key) ?>"><?= htmlspecialchars($label) ?></button>
                                         <?php endforeach; ?>
-                                    </select>
+                                    </div>
                                 </div>
 
                                 <!-- メンバー -->
-                                <div class="flex items-center gap-2">
-                                    <label class="text-xs font-bold text-slate-600">メンバー:</label>
-                                    <select id="filterMember" class="h-9 border border-sky-100 rounded-lg px-3 text-xs outline-none bg-slate-50 min-w-[140px]">
+                                <div class="relative" data-dropdown>
+                                    <input type="hidden" id="filterMember" value="">
+                                    <button type="button" class="h-9 border border-sky-100 rounded-lg bg-slate-50 flex items-center gap-2 px-3 pr-2 text-left hover:bg-slate-100/70 transition min-w-[220px]" data-dropdown-button aria-haspopup="listbox" aria-expanded="false">
+                                        <span class="text-[11px] font-bold text-slate-600 whitespace-nowrap">メンバー</span>
+                                        <span class="text-xs text-slate-700 truncate max-w-[12rem]" data-dropdown-value>すべて</span>
+                                        <i class="fa-solid fa-chevron-down ml-auto text-[10px] text-slate-400"></i>
+                                    </button>
+                                    <div class="hidden absolute z-20 mt-1 w-[22rem] max-w-[90vw] rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden max-h-96 overflow-y-auto" data-dropdown-menu role="listbox">
+                                        <button type="button" class="w-full px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 text-left" data-value="">すべて</button>
                                         <?php
                                         $memberSelectBlankLabel = 'すべて';
                                         $memberSelectShowGraduate = true;
-                                        require __DIR__ . '/partials/member_select_options.php';
+                                        foreach ($members as $m):
+                                            $mid = (string)($m['id'] ?? '');
+                                            $mname = (string)($m['name'] ?? '');
+                                            if ($mid === '' || $mname === '') continue;
                                         ?>
-                                    </select>
+                                            <button type="button" class="w-full px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 text-left" data-value="<?= htmlspecialchars($mid) ?>"><?= htmlspecialchars($mname) ?></button>
+                                        <?php endforeach; ?>
+                                    </div>
                                 </div>
 
                                 <!-- 期別 -->
-                                <div class="flex items-center gap-2">
-                                    <label class="text-xs font-bold text-slate-600">期別:</label>
-                                    <select id="filterGeneration" class="h-9 border border-sky-100 rounded-lg px-3 text-xs outline-none bg-slate-50">
-                                        <option value="">すべて</option>
+                                <div class="relative" data-dropdown>
+                                    <input type="hidden" id="filterGeneration" value="">
+                                    <button type="button" class="h-9 border border-sky-100 rounded-lg bg-slate-50 flex items-center gap-2 px-3 pr-2 text-left hover:bg-slate-100/70 transition" data-dropdown-button aria-haspopup="listbox" aria-expanded="false">
+                                        <span class="text-[11px] font-bold text-slate-600 whitespace-nowrap">期別</span>
+                                        <span class="text-xs text-slate-700 truncate max-w-[7rem]" data-dropdown-value>すべて</span>
+                                        <i class="fa-solid fa-chevron-down ml-auto text-[10px] text-slate-400"></i>
+                                    </button>
+                                    <div class="hidden absolute z-20 mt-1 w-[10rem] rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden max-h-72 overflow-y-auto" data-dropdown-menu role="listbox">
+                                        <button type="button" class="w-full px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 text-left" data-value="">すべて</button>
                                         <?php
                                         $gens = array_unique(array_map(fn($m) => (int)($m['generation'] ?? 0), $members));
                                         sort($gens);
                                         foreach ($gens as $g):
                                             if ($g <= 0) continue;
                                         ?>
-                                            <option value="<?= $g ?>"><?= $g ?>期生</option>
+                                            <button type="button" class="w-full px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 text-left" data-value="<?= $g ?>"><?= $g ?>期生</button>
                                         <?php endforeach; ?>
-                                    </select>
-                                </div>
-
-                                <!-- 並び順 -->
-                                <div class="flex items-center gap-2">
-                                    <label class="text-xs font-bold text-slate-600">並び順:</label>
-                                    <select id="filterSort" class="h-9 border border-sky-100 rounded-lg px-3 text-xs outline-none bg-slate-50">
-                                        <option value="newest" selected>アップロード日が新しい順</option>
-                                        <option value="oldest">アップロード日が古い順</option>
-                                        <option value="title">タイトル順</option>
-                                    </select>
+                                    </div>
                                 </div>
 
                                 <!-- 表示形式・サイズ切替 -->
                                 <div class="flex items-center gap-2 ml-auto">
                                     <div class="flex items-center gap-1 mr-2">
-                                        <button id="btnViewGrid" class="h-9 px-3 bg-sky-500 text-white rounded-lg text-xs font-bold transition">
-                                            <i class="fa-solid fa-th"></i> ブロック
-                                        </button>
-                                        <button id="btnViewList" class="h-9 px-3 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold transition">
-                                            <i class="fa-solid fa-list"></i> 一覧
-                                        </button>
+                                        <!-- 並び順（表示切替エリアへ移動） -->
+                                        <div class="relative mr-2" data-dropdown data-sort-dropdown>
+                                            <input type="hidden" id="filterSort" value="newest">
+                                            <button type="button" class="h-9 rounded-full border border-slate-200 bg-white px-3 pr-2 flex items-center gap-2 text-left hover:bg-slate-50 transition shadow-sm" data-dropdown-button aria-haspopup="listbox" aria-expanded="false">
+                                                <span class="text-xs font-bold text-slate-700" data-dropdown-value>新しい順</span>
+                                                <i class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
+                                            </button>
+                                            <div class="hidden absolute z-20 mt-1 w-[10rem] rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden" data-dropdown-menu role="listbox">
+                                                <button type="button" class="w-full px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 text-left" data-value="newest">新しい順</button>
+                                                <button type="button" class="w-full px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 text-left" data-value="oldest">古い順</button>
+                                                <button type="button" class="w-full px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 text-left" data-value="title">タイトル順</button>
+                                            </div>
+                                        </div>
+
+                                        <!-- 表示形式トグル（アイコンのみ） -->
+                                        <div class="h-9 p-0.5 rounded-full bg-slate-100 border border-slate-200 flex items-center shadow-sm">
+                                            <button id="btnViewGrid" type="button" class="h-8 w-9 rounded-full bg-sky-500 text-white flex items-center justify-center transition" aria-label="ブロック表示" title="ブロック表示">
+                                                <i class="fa-solid fa-table-cells text-[12px]"></i>
+                                            </button>
+                                            <button id="btnViewList" type="button" class="h-8 w-9 rounded-full text-slate-500 flex items-center justify-center transition hover:bg-white/80" aria-label="一覧表示" title="一覧表示">
+                                                <i class="fa-solid fa-bars text-[12px]"></i>
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div class="flex items-center gap-1">
-                                        <button id="btnCardSizeNormal" class="h-9 px-2 bg-slate-100 text-slate-600 rounded-lg text-[11px] font-bold transition min-w-[52px]">
-                                            大きめ
+                                    <!-- サイズトグル（アイコンのみ） -->
+                                    <div class="h-9 p-0.5 rounded-full bg-slate-100 border border-slate-200 flex items-center shadow-sm">
+                                        <button id="btnCardSizeSmall" type="button" class="h-8 w-9 rounded-full bg-sky-500 text-white flex items-center justify-center transition" aria-label="カード小さめ" title="カード小さめ">
+                                            <i class="fa-regular fa-square text-[10px]"></i>
                                         </button>
-                                        <button id="btnCardSizeSmall" class="h-9 px-2 bg-sky-500 text-white rounded-lg text-[11px] font-bold transition min-w-[52px]">
-                                            小さめ
+                                        <button id="btnCardSizeNormal" type="button" class="h-8 w-9 rounded-full text-slate-500 flex items-center justify-center transition hover:bg-white/80" aria-label="カード大きめ" title="カード大きめ">
+                                            <i class="fa-solid fa-square text-[14px]"></i>
                                         </button>
                                     </div>
                                 </div>
@@ -322,8 +349,8 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             </div>
 
             <!-- スクロールエリア：動画のみ -->
-            <div class="flex-1 min-h-0 overflow-y-auto p-6 md:p-10 pt-4 md:pt-6" id="mainScrollArea">
-                <div class="max-w-5xl mx-auto">
+            <div class="flex-1 min-h-0 overflow-y-auto p-6 md:p-6 pt-4 md:pt-6" id="mainScrollArea">
+                <div class="max-w-[76.8rem] mx-auto">
                     <!-- 動画コンテナ（公式VIDEO風：2列・余白多め） -->
                     <div id="videoContainer" class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                         <!-- JavaScript で動的生成 -->
@@ -358,6 +385,107 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         const btnCardSizeNormal = document.getElementById('btnCardSizeNormal');
         const btnCardSizeSmall = document.getElementById('btnCardSizeSmall');
 
+        // カスタムドロップダウン（UIは1要素、値はhidden inputで保持）
+        function initFilterDropdowns() {
+            const dropdowns = document.querySelectorAll('[data-dropdown]');
+
+            function closeAll(exceptEl = null) {
+                dropdowns.forEach(dd => {
+                    if (exceptEl && dd === exceptEl) return;
+                    const btn = dd.querySelector('[data-dropdown-button]');
+                    const menu = dd.querySelector('[data-dropdown-menu]');
+                    if (!btn || !menu) return;
+                    menu.classList.add('hidden');
+                    btn.setAttribute('aria-expanded', 'false');
+                });
+            }
+
+            dropdowns.forEach(dd => {
+                const input = dd.querySelector('input[type="hidden"]');
+                const btn = dd.querySelector('[data-dropdown-button]');
+                const menu = dd.querySelector('[data-dropdown-menu]');
+                const valueEl = dd.querySelector('[data-dropdown-value]');
+                if (!input || !btn || !menu || !valueEl) return;
+
+                const items = Array.from(menu.querySelectorAll('button[data-value]'));
+
+                function syncLabelFromValue() {
+                    const v = input.value;
+                    const match = items.find(b => b.dataset.value === v);
+                    valueEl.textContent = match ? (match.textContent || '').trim() : (items[0]?.textContent || 'すべて').trim();
+                }
+
+                btn.addEventListener('click', () => {
+                    const isOpen = !menu.classList.contains('hidden');
+                    if (isOpen) {
+                        closeAll();
+                        return;
+                    }
+                    closeAll(dd);
+                    menu.classList.remove('hidden');
+                    btn.setAttribute('aria-expanded', 'true');
+                });
+
+                items.forEach(item => {
+                    item.addEventListener('click', () => {
+                        const nextVal = item.dataset.value ?? '';
+                        if (input.value !== nextVal) {
+                            input.value = nextVal;
+                            syncLabelFromValue();
+                            input.dispatchEvent(new Event('change', { bubbles: true }));
+                        } else {
+                            syncLabelFromValue();
+                        }
+                        closeAll();
+                    });
+                });
+
+                syncLabelFromValue();
+                input.addEventListener('change', syncLabelFromValue);
+            });
+
+            document.addEventListener('click', (e) => {
+                const target = e.target;
+                if (!(target instanceof Element)) return;
+                const inside = target.closest('[data-dropdown]');
+                if (!inside) closeAll();
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeAll();
+            });
+        }
+
+        // プラットフォーム（トグル）
+        function initPlatformTabs() {
+            const input = document.getElementById('filterPlatform');
+            const tabs = document.querySelectorAll('.platform-tab');
+            if (!input || tabs.length === 0) return;
+
+            function setActive(nextVal) {
+                tabs.forEach(t => {
+                    const isActive = (t.dataset.platform ?? '') === nextVal;
+                    t.classList.toggle('active-tab', isActive);
+                });
+            }
+
+            setActive(input.value || '');
+
+            tabs.forEach(t => {
+                t.addEventListener('click', () => {
+                    const nextVal = t.dataset.platform ?? '';
+                    if (input.value !== nextVal) {
+                        input.value = nextVal;
+                        setActive(nextVal);
+                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                    } else {
+                        setActive(nextVal);
+                    }
+                });
+            });
+
+            input.addEventListener('change', () => setActive(input.value || ''));
+        }
+
         let offset = 0;
         let isLoading = false;
         let currentRotation = 0;
@@ -365,9 +493,6 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         let currentView = 'grid'; // 'grid' or 'list'
         let currentCardSize = 'small'; // 'normal'(大きめ) or 'small'(小さめ) デフォルトは小さめ
         let currentMediaType = ''; // '' | 'video' | 'short' | 'live'
-        let renderedCategoryHeaders = new Set(); // メンバー/期別絞り込み時のカテゴリ帯用
-        // カテゴリ表示順（その他は常に最後）
-        const CATEGORY_ORDER = ['CM', 'Hinareha', 'Live', 'MV', 'SelfIntro', 'SoloPV', 'Special', 'Teaser', 'Trailer', 'Variety', 'その他'];
 
         // URLパラメータの member_id / platform で初期フィルタ
         const urlParams = new URLSearchParams(window.location.search);
@@ -380,6 +505,9 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 filterPlatform.value = platform;
             }
         }
+
+        initFilterDropdowns();
+        initPlatformTabs();
 
         // 初回ロード（デフォルト小さめのレイアウトを適用）
         updateVideoContainerLayout();
@@ -400,7 +528,6 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         function onFilterChange() {
             offset = 0;
             hasMore = true;
-            renderedCategoryHeaders.clear();
             videoContainer.innerHTML = '';
             scrollTrigger.innerHTML = '<div class="h-20"></div>';
             loadVideos();
@@ -412,6 +539,17 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         filterSort.addEventListener('change', onFilterChange);
 
         // 推しクイックフィルタボタン
+        const oshiQuickClearBtn = document.getElementById('oshiQuickClearBtn');
+
+        function syncOshiQuickClear() {
+            const mid = (filterMember && typeof filterMember.value === 'string') ? filterMember.value : '';
+            const hasSelectedOshi = Array.from(document.querySelectorAll('.oshi-quick-filter'))
+                .some(b => (b.dataset.memberId ?? '') === mid && mid !== '');
+            if (oshiQuickClearBtn) {
+                oshiQuickClearBtn.classList.toggle('hidden', !hasSelectedOshi);
+            }
+        }
+
         document.querySelectorAll('.oshi-quick-filter').forEach(btn => {
             btn.addEventListener('click', () => {
                 const mid = btn.dataset.memberId;
@@ -419,7 +557,25 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 onFilterChange();
                 document.querySelectorAll('.oshi-quick-filter').forEach(b => b.classList.remove('ring-2'));
                 btn.classList.add('ring-2');
+                syncOshiQuickClear();
             });
+        });
+        if (oshiQuickClearBtn) {
+            oshiQuickClearBtn.addEventListener('click', () => {
+                filterMember.value = '';
+                document.querySelectorAll('.oshi-quick-filter').forEach(b => b.classList.remove('ring-2'));
+                syncOshiQuickClear();
+                onFilterChange();
+            });
+        }
+
+        // メンバーフィルタが外部要因で変わった場合も追従
+        filterMember.addEventListener('change', () => {
+            const mid = filterMember.value || '';
+            document.querySelectorAll('.oshi-quick-filter').forEach(b => {
+                b.classList.toggle('ring-2', (b.dataset.memberId ?? '') === mid && mid !== '');
+            });
+            syncOshiQuickClear();
         });
 
         document.querySelectorAll('.media-type-tab').forEach(tab => {
@@ -455,19 +611,18 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             currentView = view;
             offset = 0;
             hasMore = true;
-            renderedCategoryHeaders.clear();
             videoContainer.innerHTML = '';
             scrollTrigger.innerHTML = '<div class="h-20"></div>';
             if (view === 'grid') {
-                btnViewGrid.classList.remove('bg-slate-100', 'text-slate-600');
                 btnViewGrid.classList.add('bg-sky-500', 'text-white');
+                btnViewGrid.classList.remove('text-slate-500');
                 btnViewList.classList.remove('bg-sky-500', 'text-white');
-                btnViewList.classList.add('bg-slate-100', 'text-slate-600');
+                btnViewList.classList.add('text-slate-500');
             } else {
-                btnViewList.classList.remove('bg-slate-100', 'text-slate-600');
                 btnViewList.classList.add('bg-sky-500', 'text-white');
+                btnViewList.classList.remove('text-slate-500');
                 btnViewGrid.classList.remove('bg-sky-500', 'text-white');
-                btnViewGrid.classList.add('bg-slate-100', 'text-slate-600');
+                btnViewGrid.classList.add('text-slate-500');
             }
             updateVideoContainerLayout();
             loadVideos();
@@ -479,19 +634,18 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             currentCardSize = size;
             offset = 0;
             hasMore = true;
-            renderedCategoryHeaders.clear();
             videoContainer.innerHTML = '';
             scrollTrigger.innerHTML = '<div class="h-20"></div>';
             if (size === 'normal') {
-                btnCardSizeNormal.classList.remove('bg-slate-100', 'text-slate-600');
                 btnCardSizeNormal.classList.add('bg-sky-500', 'text-white');
+                btnCardSizeNormal.classList.remove('text-slate-500');
                 btnCardSizeSmall.classList.remove('bg-sky-500', 'text-white');
-                btnCardSizeSmall.classList.add('bg-slate-100', 'text-slate-600');
+                btnCardSizeSmall.classList.add('text-slate-500');
             } else {
-                btnCardSizeSmall.classList.remove('bg-slate-100', 'text-slate-600');
                 btnCardSizeSmall.classList.add('bg-sky-500', 'text-white');
+                btnCardSizeSmall.classList.remove('text-slate-500');
                 btnCardSizeNormal.classList.remove('bg-sky-500', 'text-white');
-                btnCardSizeNormal.classList.add('bg-slate-100', 'text-slate-600');
+                btnCardSizeNormal.classList.add('text-slate-500');
             }
             updateVideoContainerLayout();
             loadVideos();
@@ -522,87 +676,14 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 const result = await response.json();
 
                 if (result.status === 'success') {
-                    const useCategoryBands = (filterMember.value !== '' || filterGeneration.value !== '');
-                    if (useCategoryBands) {
-                        // カテゴリごとにグルーピング（表示順でソート）
-                        const groups = {};
-                        result.data.forEach(video => {
-                            const key = video.category || 'その他';
-                            if (!groups[key]) groups[key] = [];
-                            groups[key].push(video);
-                        });
-                        const sortedCategories = Object.keys(groups).sort((a, b) => {
-                            const ia = CATEGORY_ORDER.indexOf(a);
-                            const ib = CATEGORY_ORDER.indexOf(b);
-                            const ai = ia >= 0 ? ia : CATEGORY_ORDER.length;
-                            const bi = ib >= 0 ? ib : CATEGORY_ORDER.length;
-                            return ai - bi;
-                        });
-                        sortedCategories.forEach(category => {
-                            const videos = groups[category];
-                            const catId = 'cat-' + category.replace(/\s/g, '_');
-                            let headerEl = videoContainer.querySelector('#' + catId);
-                            // 新規セクション：ヘッダーを先に追加
-                            if (!renderedCategoryHeaders.has(category)) {
-                                renderedCategoryHeaders.add(category);
-                                const headerHtml = `
-                                    <div id="${catId}" class="col-span-full mt-6 mb-3 pb-2 border-b-2 border-sky-200 category-section-header">
-                                        <h2 class="text-lg font-black text-sky-600">${escapeHtml(category)}</h2>
-                                    </div>
-                                `;
-                                // 挿入位置：次に来るべきカテゴリのヘッダーより前、無ければ末尾
-                                const nextCatIdx = CATEGORY_ORDER.indexOf(category) + 1;
-                                let insertBeforeEl = null;
-                                for (let i = nextCatIdx; i < CATEGORY_ORDER.length; i++) {
-                                    const nid = 'cat-' + CATEGORY_ORDER[i].replace(/\s/g, '_');
-                                    const nextH = videoContainer.querySelector('#' + nid);
-                                    if (nextH) { insertBeforeEl = nextH; break; }
-                                }
-                                if (!insertBeforeEl) insertBeforeEl = null; // 末尾に追加
-                                const wrap = document.createElement('div');
-                                wrap.innerHTML = headerHtml;
-                                if (insertBeforeEl && insertBeforeEl.parentNode === videoContainer) {
-                                    videoContainer.insertBefore(wrap.firstElementChild, insertBeforeEl);
-                                } else {
-                                    videoContainer.appendChild(wrap.firstElementChild);
-                                }
-                                headerEl = videoContainer.querySelector('#' + catId);
-                            }
-                            // 動画をこのセクション内の末尾（次のセクションヘッダー直前）に挿入
-                            let insertAnchor = null; // null = 末尾に追加
-                            if (headerEl) {
-                                let n = headerEl.nextElementSibling;
-                                while (n) {
-                                    if (n.classList && n.classList.contains('category-section-header')) {
-                                        insertAnchor = n; // 次のセクションヘッダー直前に挿入
-                                        break;
-                                    }
-                                    n = n.nextElementSibling;
-                                }
-                            }
-                            const frag = document.createDocumentFragment();
-                            videos.forEach(video => {
-                                const div = document.createElement('div');
-                                div.innerHTML = currentView === 'grid' ? renderVideoCard(video) : renderVideoRow(video);
-                                const el = div.firstElementChild || div.firstChild;
-                                if (el) frag.appendChild(el);
-                            });
-                            if (insertAnchor && insertAnchor.parentNode === videoContainer) {
-                                videoContainer.insertBefore(frag, insertAnchor);
-                            } else {
-                                videoContainer.appendChild(frag);
-                            }
-                        });
-                    } else {
-                        // 通常はフラットに追加
-                        result.data.forEach(video => {
-                            if (currentView === 'grid') {
-                                videoContainer.innerHTML += renderVideoCard(video);
-                            } else {
-                                videoContainer.innerHTML += renderVideoRow(video);
-                            }
-                        });
-                    }
+                    // 常にフラットに追加（カテゴリ別の帯表示は行わない）
+                    result.data.forEach(video => {
+                        if (currentView === 'grid') {
+                            videoContainer.innerHTML += renderVideoCard(video);
+                        } else {
+                            videoContainer.innerHTML += renderVideoRow(video);
+                        }
+                    });
 
                     offset += result.data.length;
                     hasMore = result.has_more;
@@ -633,18 +714,18 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         // ブロック形式のカード生成（サイズは currentCardSize で切替）
         function renderVideoCard(video) {
             const categoryColors = {
-                'CM': 'bg-slate-100 text-slate-700',
-                'Hinareha': 'bg-amber-100 text-amber-700',
-                'Live': 'bg-purple-100 text-purple-700',
-                'MV': 'bg-pink-100 text-pink-700',
-                'SelfIntro': 'bg-cyan-100 text-cyan-700',
-                'SoloPV': 'bg-blue-100 text-blue-700',
-                'Special': 'bg-orange-100 text-orange-700',
-                'Teaser': 'bg-emerald-100 text-emerald-700',
-                'Trailer': 'bg-rose-100 text-rose-700',
-                'Variety': 'bg-yellow-100 text-yellow-700',
+                'CM': 'bg-slate-50 text-slate-600 border border-slate-200',
+                'Hinareha': 'bg-amber-50 text-amber-700 border border-amber-200',
+                'Live': 'bg-purple-50 text-purple-700 border border-purple-200',
+                'MV': 'bg-pink-50 text-pink-700 border border-pink-200',
+                'SelfIntro': 'bg-cyan-50 text-cyan-700 border border-cyan-200',
+                'SoloPV': 'bg-sky-50 text-sky-700 border border-sky-200',
+                'Special': 'bg-orange-50 text-orange-700 border border-orange-200',
+                'Teaser': 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+                'Trailer': 'bg-rose-50 text-rose-700 border border-rose-200',
+                'Variety': 'bg-yellow-50 text-yellow-700 border border-yellow-200',
             };
-            const categoryColor = categoryColors[video.category] || 'bg-slate-100 text-slate-600';
+            const categoryColor = categoryColors[video.category] || 'bg-sky-50 text-sky-700 border border-sky-200';
             const primaryDate = video.upload_date || video.release_date || '';
             const videoIsShort = video.media_type === 'short' || (isShortLayout());
             const dataVideo = JSON.stringify({
@@ -663,11 +744,15 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             const dateStr = primaryDate ? new Date(primaryDate).toLocaleDateString('ja-JP') : '';
             const thumbUrl = getThumbnailUrl(video);
             const isSmall = currentCardSize === 'small';
+            const cat = (video.category || '').trim();
+            const catHtml = cat
+                ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${categoryColor}">#${escapeHtml(cat)}</span>`
+                : '';
 
             if (videoIsShort && isShortLayout()) {
                 return `
-                    <div class="video-card bg-white rounded-lg border border-slate-100 overflow-hidden" data-video="${dataVideo}" onclick="openVideoModal(this, event)">
-                        <div class="video-thumbnail-portrait rounded-t-lg">
+                    <div class="video-card bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm" data-video="${dataVideo}" onclick="openVideoModal(this, event)">
+                        <div class="video-thumbnail-portrait">
                             <img src="${thumbUrl}" alt="${escapeHtml(video.title)}" onerror="this.onerror=null;this.src='/assets/images/no-image.svg'">
                             <div class="play-icon">
                                 <i class="fa-solid fa-play text-white text-xl ml-0.5"></i>
@@ -675,26 +760,27 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                             ${platformBadgeHtml(video.platform)}
                         </div>
                         <div class="p-2">
-                            <h3 class="text-[11px] text-slate-700 leading-snug line-clamp-2">${escapeHtml(video.title)}</h3>
-                            ${dateStr ? `<p class="text-[10px] text-slate-400 mt-0.5">${dateStr}</p>` : ''}
+                            <h3 class="text-sm font-semibold text-slate-800 line-clamp-2 leading-snug">${escapeHtml(video.title)}</h3>
+                            <div class="mt-1 flex items-center gap-2">
+                                ${catHtml}
+                                ${dateStr ? `<span class="ml-auto text-[10px] text-slate-400">${dateStr}</span>` : ''}
+                            </div>
                         </div>
                     </div>
                 `;
             }
 
             const outerClass = isSmall
-                ? 'video-card bg-white rounded border border-slate-100 overflow-hidden text-[11px]'
-                : 'video-card bg-white rounded-sm border border-slate-100 overflow-hidden';
+                ? 'video-card bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm text-[11px]'
+                : 'video-card bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm';
             const bodyClass = isSmall ? 'pt-2 pb-1 px-2' : 'pt-3 pb-1';
-            const titleClass = isSmall
-                ? 'text-[11px] text-slate-700 leading-snug line-clamp-2'
-                : 'text-sm text-slate-700 leading-snug line-clamp-2';
+            const titleClass = 'text-sm font-semibold text-slate-800 line-clamp-2 leading-snug';
             const dateClass = isSmall
-                ? 'text-[10px] text-slate-400 mt-0.5'
-                : 'text-xs text-slate-400 mt-1';
+                ? 'text-[10px] text-slate-400 mt-0.5 text-right'
+                : 'text-xs text-slate-400 mt-1 text-right';
             return `
                 <div class="${outerClass}" data-video="${dataVideo}" onclick="openVideoModal(this, event)">
-                    <div class="video-thumbnail ${isSmall ? 'video-thumbnail-sm' : 'rounded-t-sm'}">
+                    <div class="video-thumbnail ${isSmall ? 'video-thumbnail-sm' : ''}">
                         <img src="${thumbUrl}" alt="${escapeHtml(video.title)}" onerror="this.onerror=null;this.src='/assets/images/no-image.svg'">
                         <div class="play-icon">
                             <i class="fa-solid fa-play text-white text-2xl ml-1"></i>
@@ -703,7 +789,10 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                     </div>
                     <div class="${bodyClass}">
                         <h3 class="${titleClass}">${escapeHtml(video.title)}</h3>
-                        ${dateStr ? `<p class="${dateClass}">${dateStr}</p>` : ''}
+                        <div class="mt-1 flex items-center gap-2">
+                            ${catHtml}
+                            ${dateStr ? `<span class="ml-auto ${dateClass.replace('text-right', '')}">${dateStr}</span>` : ''}
+                        </div>
                     </div>
                 </div>
             `;
@@ -744,8 +833,8 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             const thumbUrl = getThumbnailUrl(video);
             const isVideoShort = video.media_type === 'short';
             return `
-                <div class="video-card bg-white rounded-lg border border-sky-100 shadow-sm px-3 py-2 flex items-center gap-3 hover:bg-sky-50/50 transition cursor-pointer" data-video="${dataVideo}" onclick="openVideoModal(this, event)">
-                    <div class="w-16 shrink-0 ${isVideoShort ? 'aspect-[9/16]' : 'aspect-video'} rounded overflow-hidden bg-slate-100 flex-shrink-0 relative">
+                <div class="video-card bg-white rounded-2xl border border-slate-200 shadow-sm px-3 py-2 flex items-center gap-3 hover:bg-slate-50/70 transition cursor-pointer" data-video="${dataVideo}" onclick="openVideoModal(this, event)">
+                    <div class="w-16 shrink-0 ${isVideoShort ? 'aspect-[9/16]' : 'aspect-video'} rounded-xl overflow-hidden bg-slate-100 flex-shrink-0 relative">
                         <img src="${thumbUrl}" alt="" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='/assets/images/no-image.svg'">
                     </div>
                     <div class="flex-1 min-w-0 flex items-center gap-4">
@@ -779,13 +868,18 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         function platformBadgeHtml(platform) {
             if (!platform) return '';
             const cfg = {
-                youtube:   { bg: 'bg-red-600', icon: 'fa-brands fa-youtube' },
-                instagram: { bg: 'bg-gradient-to-r from-purple-500 to-pink-500', icon: 'fa-brands fa-instagram' },
-                tiktok:    { bg: 'bg-slate-800', icon: 'fa-brands fa-tiktok' },
+                youtube:   { icon: 'fa-brands fa-youtube', text: 'YouTube', iconCls: 'text-red-500' },
+                instagram: { icon: 'fa-brands fa-instagram', text: 'Instagram', iconCls: 'text-pink-500' },
+                tiktok:    { icon: 'fa-brands fa-tiktok', text: 'TikTok', iconCls: 'text-slate-900' },
             };
             const c = cfg[platform];
             if (!c) return '';
-            return `<span class="absolute top-1.5 left-1.5 w-5 h-5 ${c.bg} rounded-full flex items-center justify-center shadow"><i class="${c.icon} text-[10px] text-white"></i></span>`;
+            return `
+                <span class="absolute top-2 left-2 inline-flex items-center gap-1.5 px-2 py-1 sm:px-2 sm:py-1 rounded-full bg-white/90 backdrop-blur border border-white/60 shadow-sm">
+                    <i class="${c.icon} ${c.iconCls} text-[11px]"></i>
+                    <span class="hidden sm:inline text-[10px] font-black leading-none ${c.iconCls}">${c.text}</span>
+                </span>
+            `.trim();
         }
 
         function platformBadgeInline(platform) {
