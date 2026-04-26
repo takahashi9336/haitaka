@@ -334,7 +334,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                     </span>
                     <div class="min-w-0 flex-1">
                         <div class="flex items-center gap-2 min-w-0">
-                            <h3 class="font-black text-white text-lg sm:text-xl md:text-2xl leading-tight drop-shadow truncate">${m.name}</h3>
+                            <h3 class="font-black text-white text-base sm:text-lg md:text-xl leading-tight drop-shadow truncate">${m.name}</h3>
                         </div>
                     </div>
                 </div>
