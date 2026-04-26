@@ -1158,23 +1158,22 @@ function portalTopicBadge(array $t): array {
                                 <a href="/hinata/release.php?id=<?= (int)$latestRelease['id'] ?>" class="text-xs text-slate-500 hover:text-violet-500 transition">詳細 →</a>
                             </div>
 
-                            <div class="flex flex-col sm:flex-row gap-4 sm:gap-5">
+                            <div class="flex flex-row gap-4 sm:gap-5 items-start">
                                 <div class="shrink-0 w-28 sm:w-32">
-                                    <div class="aspect-square rounded-2xl overflow-hidden shadow-md bg-slate-100">
+                                    <button type="button"
+                                            class="aspect-square w-full rounded-2xl overflow-hidden shadow-md bg-slate-100 block cursor-zoom-in"
+                                            onclick="if(window.BlogImageZoom){ var img=document.getElementById('releaseMainJacket'); if(img && img.src){ BlogImageZoom.open(img.src); } }">
                                         <?php if ($mainJacket): ?>
                                         <img id="releaseMainJacket" src="<?= htmlspecialchars($mainJacket) ?>" class="w-full h-full object-cover" loading="lazy" alt="">
                                         <?php else: ?>
                                         <div class="w-full h-full flex items-center justify-center text-slate-300"><i class="fa-solid fa-compact-disc text-3xl"></i></div>
                                         <?php endif; ?>
-                                    </div>
-                                    <?php if ($releaseNoText): ?>
-                                    <div class="mt-2 text-[10px] font-black text-slate-600 bg-slate-100 px-2 py-1 rounded-full text-center"><?= htmlspecialchars($releaseNoText) ?></div>
-                                    <?php endif; ?>
+                                    </button>
                                 </div>
 
                                 <div class="flex-1 min-w-0">
                                     <div class="flex flex-wrap items-center gap-2 mb-2">
-                                        <span class="text-[10px] font-bold text-violet-500 bg-violet-50 px-2 py-0.5 rounded-full"><?= htmlspecialchars($latestRelease['release_type_label']) ?></span>
+                                        <span class="text-[10px] font-bold text-violet-500 bg-violet-50 px-2 py-0.5 rounded-full"><?= htmlspecialchars($releaseNoText ?: ($latestRelease['release_type_label'] ?? '')) ?></span>
                                     </div>
 
                                     <h3 class="text-2xl font-black text-slate-800 leading-tight truncate"><?= htmlspecialchars($latestRelease['title']) ?></h3>
