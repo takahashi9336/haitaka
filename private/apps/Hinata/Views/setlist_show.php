@@ -32,7 +32,7 @@ foreach ($setlist as $it) {
 <?php require_once __DIR__ . '/../../../components/sidebar.php'; ?>
 
 <main class="flex-1 flex flex-col min-w-0">
-    <header class="h-14 bg-white border-b border-slate-100 flex items-center justify-between px-4 shrink-0 sticky top-0 z-10 shadow-sm">
+    <header class="h-14 bg-white border-b border-slate-100 flex items-center justify-between px-4 shrink-0 sticky top-0 z-20 shadow-sm">
         <div class="flex items-center gap-2 min-w-0">
             <a href="/hinata/events.php" class="text-slate-400 hover:text-slate-600 p-2"><i class="fa-solid fa-chevron-left"></i></a>
             <div class="min-w-0">

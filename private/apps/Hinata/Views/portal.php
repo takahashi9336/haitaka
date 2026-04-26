@@ -394,13 +394,13 @@ function portalTopicBadge(array $t): array {
     <?php require_once __DIR__ . '/../../../components/sidebar.php'; ?>
 
     <main class="flex-1 flex flex-col min-w-0">
-        <header class="h-16 bg-white/80 backdrop-blur-md border-b <?= $headerBorder ?> flex items-center justify-between px-6 shrink-0 sticky top-0 z-10">
+        <header class="h-14 bg-white border-b <?= $headerBorder ?> flex items-center justify-between px-4 shrink-0 sticky top-0 z-20 shadow-sm">
             <div class="flex items-center gap-3">
                 <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
-                <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-lg <?= $headerIconBg ?>"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?>>
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md <?= $headerIconBg ?> <?= $headerShadow ?>"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?>>
                     <i class="fa-solid fa-sun text-sm"></i>
                 </div>
-                <h1 class="font-black text-slate-700 text-xl tracking-tighter">日向坂ポータル</h1>
+                <h1 class="font-black text-slate-700 text-lg tracking-tight">日向坂ポータル</h1>
             </div>
             <div class="hidden md:flex items-center gap-2 px-3 py-2 rounded-full w-96 mock-header-search">
                 <i class="fa-solid fa-magnifying-glass text-slate-400 text-sm"></i>

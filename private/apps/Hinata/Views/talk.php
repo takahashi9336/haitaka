@@ -63,7 +63,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2 shrink-0"><i class="fa-solid fa-bars text-xl"></i></button>
                 <a href="/hinata/" class="text-slate-400 p-2 shrink-0 transition <?= $isThemeHex ? 'hover:opacity-80' : 'hover:text-' . $themeTailwind . '-500' ?>"><i class="fa-solid fa-chevron-left"></i></a>
                 <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md shrink-0 <?= $headerIconBg ?> <?= $headerShadow ?>"<?= $headerIconStyle ? ' style="' . htmlspecialchars($headerIconStyle) . '"' : '' ?>><i class="fa-solid fa-lightbulb text-sm"></i></div>
-                <h1 class="font-bold text-slate-700 text-sm truncate">推し活ネタ帳</h1>
+                <h1 class="font-black text-slate-700 text-base md:text-lg tracking-tight truncate">推し活ネタ帳</h1>
             </div>
             <div class="flex items-center gap-2 shrink-0">
                 <button id="toggleFormBtn" class="text-xs font-bold px-3 py-1.5 rounded-full <?= $cardIconText ?> <?= $cardIconBg ?> hover:opacity-90"<?= $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>>+ 追加</button>

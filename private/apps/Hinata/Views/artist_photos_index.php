@@ -96,7 +96,7 @@ function artistPhotoSortedReleaseIdsForMember(int $mid, array $rowsByMember, arr
 <?php require_once __DIR__ . '/../../../components/sidebar.php'; ?>
 
 <main class="flex-1 flex flex-col min-w-0">
-    <header class="h-14 bg-white border-b <?= $headerBorder ?> flex items-center justify-between px-4 shrink-0 sticky top-0 z-10 shadow-sm">
+    <header class="h-14 bg-white border-b <?= $headerBorder ?> flex items-center justify-between px-4 shrink-0 sticky top-0 z-20 shadow-sm">
         <div class="flex items-center gap-2">
             <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
             <a href="/hinata/index.php" class="text-slate-400 p-2"><i class="fa-solid fa-chevron-left text-lg"></i></a>

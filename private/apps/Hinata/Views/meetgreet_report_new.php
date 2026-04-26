@@ -40,7 +40,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-md shrink-0" style="background: var(--mg-theme);">
                     <i class="fa-solid fa-pen-to-square text-sm"></i>
                 </div>
-                <h1 class="font-bold text-slate-700 text-sm">レポ新規作成</h1>
+                <h1 class="font-black text-slate-700 text-base md:text-lg tracking-tight">レポ新規作成</h1>
             </div>
         </header>
 

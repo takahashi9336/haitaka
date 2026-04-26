@@ -80,11 +80,11 @@ if (!empty($member['birth_date'])) {
     <?php require_once __DIR__ . '/../../../components/sidebar.php'; ?>
 
     <main class="flex-1 flex flex-col min-w-0">
-        <header class="h-16 bg-white/80 backdrop-blur-md border-b <?= $headerBorder ?> flex items-center px-6 shrink-0 sticky top-0 z-10">
+        <header class="h-14 bg-white border-b <?= $headerBorder ?> flex items-center px-4 shrink-0 sticky top-0 z-20 shadow-sm">
             <div class="flex items-center gap-3">
                 <button id="mobileMenuBtn" class="md:hidden text-slate-400 p-2"><i class="fa-solid fa-bars text-lg"></i></button>
-                <a href="<?= $oshiLevel > 0 ? '/hinata/' : '/hinata/members.php' ?>" class="text-slate-400 hover:text-slate-600 transition"><i class="fa-solid fa-arrow-left"></i></a>
-                <h1 class="font-black text-slate-700 text-lg tracking-tighter"><?= htmlspecialchars($member['name']) ?></h1>
+                <a href="<?= $oshiLevel > 0 ? '/hinata/' : '/hinata/members.php' ?>" class="text-slate-400 p-2 hover:text-slate-600 transition"><i class="fa-solid fa-chevron-left text-lg"></i></a>
+                <h1 class="font-black text-slate-700 text-lg tracking-tight"><?= htmlspecialchars($member['name']) ?></h1>
                 <?php if ($levelLabel): ?>
                 <span class="text-[10px] font-black px-2 py-0.5 rounded-full
                     <?php if ($oshiLevel === 9): ?>bg-amber-100 text-amber-600

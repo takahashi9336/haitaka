@@ -122,7 +122,7 @@ $memberImage = $memberImage ?? $member['image_url'] ?? null;
                 </div>
                 <input type="file" id="avatarFileInput" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="MGR.uploadAvatar(this)">
                 <div class="min-w-0">
-                    <h1 class="font-bold text-slate-700 text-sm truncate"><?= htmlspecialchars($memberName) ?></h1>
+                    <h1 class="font-black text-slate-700 text-base md:text-lg tracking-tight truncate"><?= htmlspecialchars($memberName) ?></h1>
                     <p class="text-[10px] text-slate-400"><?= $dateLabel ?> <?= htmlspecialchars($slot['slot_name']) ?></p>
                 </div>
             </div>
