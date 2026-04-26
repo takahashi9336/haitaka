@@ -22,6 +22,9 @@ $levelLabel = FavoriteModel::LEVEL_LABELS[$oshiLevel] ?? '';
 $trackTypeLabels = SongModel::TRACK_TYPES_DISPLAY;
 
 $upcomingEvents = array_filter($memberEvents, fn($e) => (int)($e['days_left'] ?? -1) >= 0);
+usort($upcomingEvents, function($a, $b) {
+    return strcmp((string)($a['event_date'] ?? ''), (string)($b['event_date'] ?? ''));
+});
 $pastEvents = array_filter($memberEvents, fn($e) => (int)($e['days_left'] ?? -1) < 0);
 
 $displayImage = $userProfileImage
@@ -98,22 +101,19 @@ if (!empty($member['birth_date'])) {
             <!-- ヒーロー画像エリア (プロフィール + リンク統合) -->
             <div class="relative h-56 md:h-72 bg-gradient-to-br from-slate-700 to-slate-900 overflow-hidden">
                 <?php if ($displayImage): ?>
-                <img src="<?= $displayImage ?>" class="absolute inset-0 w-full h-full object-cover opacity-50" alt="">
+                <img src="<?= $displayImage ?>" class="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-70" alt="">
                 <?php endif; ?>
                 <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
                 <?php
                 $hasLinks = !empty($member['insta_url']) || !empty($member['twitter_url']);
                 if ($hasLinks): ?>
                 <div class="absolute top-4 right-4 md:top-6 md:right-6 flex gap-2">
-                    <?php if (!empty($member['insta_url'])): ?>
-                    <a href="<?= htmlspecialchars($member['insta_url']) ?>" target="_blank" class="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white hover:opacity-80 transition shadow" title="Instagram"><i class="fa-brands fa-instagram text-sm"></i></a>
-                    <?php endif; ?>
                     <?php if (!empty($member['twitter_url'])): ?>
                     <a href="<?= htmlspecialchars($member['twitter_url']) ?>" target="_blank" class="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-white hover:opacity-80 transition shadow" title="X"><i class="fa-brands fa-x-twitter text-sm"></i></a>
                     <?php endif; ?>
                 </div>
                 <?php endif; ?>
-                <div class="absolute bottom-0 left-0 right-0 p-6 md:p-10">
+                <div class="absolute bottom-0 left-0 right-0 p-6">
                     <div class="max-w-5xl mx-auto flex items-end gap-5">
                         <div class="relative group w-24 h-24 md:w-32 md:h-32 shrink-0">
                             <div class="w-full h-full rounded-xl overflow-hidden bg-white/20 shadow-2xl ring-4 ring-white/30">
@@ -123,6 +123,11 @@ if (!empty($member['birth_date'])) {
                                 <div id="memberProfileImg" class="w-full h-full flex items-center justify-center text-white/50"><i class="fa-solid fa-user text-4xl"></i></div>
                                 <?php endif; ?>
                             </div>
+                            <?php if ($oshiLevel === 9): ?>
+                            <div class="absolute -top-2 -right-2 w-8 h-8 md:w-9 md:h-9 rounded-full bg-amber-400 text-white shadow-lg flex items-center justify-center ring-4 ring-white/30" title="最推し">
+                                <i class="fa-solid fa-crown text-sm md:text-base"></i>
+                            </div>
+                            <?php endif; ?>
                             <label class="absolute inset-0 rounded-xl flex items-center justify-center bg-black/0 group-hover:bg-black/40 cursor-pointer transition">
                                 <span class="opacity-0 group-hover:opacity-100 transition text-white text-sm flex flex-col items-center gap-1">
                                     <i class="fa-solid fa-camera"></i>
@@ -143,9 +148,6 @@ if (!empty($member['birth_date'])) {
                             </div>
                             <div class="flex items-center gap-2">
                                 <h2 class="text-2xl md:text-4xl font-black leading-tight"><?= htmlspecialchars($member['name']) ?></h2>
-                                <?php if (!empty($member['insta_url'])): ?>
-                                <a href="<?= htmlspecialchars($member['insta_url']) ?>" target="_blank" class="w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white hover:opacity-80 transition shadow shrink-0" title="Instagram"><i class="fa-brands fa-instagram text-[10px]"></i></a>
-                                <?php endif; ?>
                             </div>
                             <p class="text-[10px] md:text-xs text-white/60 mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
                                 <?php if ($member['birth_date']): ?><span><?= date('Y/m/d', strtotime($member['birth_date'])) ?><?php if ($memberAge !== null): ?> (<?= $memberAge ?>歳)<?php endif; ?></span><?php endif; ?>
@@ -153,70 +155,96 @@ if (!empty($member['birth_date'])) {
                                 <?php if ($member['height']): ?><span><?= htmlspecialchars($member['height']) ?>cm</span><?php endif; ?>
                                 <?php if (!empty($member['birth_place'])): ?><span><?= htmlspecialchars($member['birth_place']) ?></span><?php endif; ?>
                             </p>
+                            <div class="mt-3 flex flex-wrap gap-2">
+                                <?php if (!empty($member['blog_url'])): ?>
+                                <a href="<?= htmlspecialchars($member['blog_url']) ?>" target="_blank" rel="noopener"
+                                   class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-white text-[11px] font-bold transition shadow-sm">
+                                    <i class="fa-solid fa-blog text-[11px]"></i>
+                                    <span>公式ブログ</span>
+                                </a>
+                                <?php endif; ?>
+                                <?php if (!empty($member['insta_url'])): ?>
+                                <a href="<?= htmlspecialchars($member['insta_url']) ?>" target="_blank" rel="noopener"
+                                   class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-white text-[11px] font-bold transition shadow-sm">
+                                    <i class="fa-brands fa-instagram text-[11px]"></i>
+                                    <span>Instagram</span>
+                                </a>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="p-6 md:p-10">
+            <div class="p-6">
                 <div class="max-w-5xl mx-auto space-y-8">
 
                     <!-- 推し活タイムライン -->
                     <section>
-                        <div class="flex items-center gap-2 mb-3">
-                            <i class="fa-solid fa-stream text-indigo-500"></i>
-                            <h3 class="text-xs font-black text-slate-500 tracking-wider">タイムライン</h3>
-                        </div>
-                        <div id="timelineContainer" class="space-y-0">
-                            <div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin text-slate-300"></i></div>
-                        </div>
-                        <div id="timelineExpand" class="hidden mt-2 text-center">
-                            <button onclick="OshiTimeline.expand()" class="text-[10px] font-bold text-indigo-500 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-full transition inline-flex items-center gap-1"><i class="fa-solid fa-chevron-down text-[8px]"></i><span>もっと見る</span></button>
+                        <div class="bg-white rounded-2xl border <?= $cardBorder ?> shadow-sm overflow-hidden">
+                            <div class="px-4 py-3 flex items-center gap-2 border-b <?= $cardBorder ?>">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="w-4 h-4 text-orange-400">
+                                    <path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"></path>
+                                </svg>
+                                <h3 class="text-sm font-semibold text-slate-700">タイムライン</h3>
+                            </div>
+                            <div class="px-2 py-2">
+                                <div id="timelineContainer" class="space-y-0">
+                                    <div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin text-slate-300"></i></div>
+                                </div>
+                                <div id="timelineExpand" class="hidden mt-2 text-center">
+                                    <button onclick="OshiTimeline.expand()" class="text-[10px] font-bold text-indigo-500 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-full transition inline-flex items-center gap-1"><i class="fa-solid fa-chevron-down text-[8px]"></i><span>もっと見る</span></button>
+                                </div>
+                            </div>
                         </div>
                     </section>
 
                     <!-- 個人活動 -->
                     <?php if (!empty($memberActivities)): ?>
                     <section>
-                        <div class="flex items-center gap-2 mb-3">
-                            <i class="fa-solid fa-briefcase text-indigo-500"></i>
-                            <h3 class="text-xs font-black text-slate-500 tracking-wider">個人活動</h3>
-                            <span class="text-[10px] text-slate-400 ml-auto"><?= count($memberActivities) ?> 件</span>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <?php foreach ($memberActivities as $act):
-                                $catInfo = $activityCategories[$act['category']] ?? $activityCategories['other'];
-                            ?>
-                            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition group flex">
-                                <?php if (!empty($act['image_url'])): ?>
-                                <div class="w-24 md:w-28 shrink-0 bg-slate-100">
-                                    <img src="/assets/img/activities/<?= htmlspecialchars($act['image_url']) ?>" class="w-full h-full object-cover" loading="lazy" alt="">
+                        <div class="bg-white rounded-xl border <?= $cardBorder ?> shadow-sm p-5">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center gap-2 font-semibold text-slate-700">
+                                    <i class="fa-solid fa-briefcase w-4 h-4 text-indigo-500"></i>
+                                    <h3 class="text-sm font-semibold text-slate-700">個人活動</h3>
                                 </div>
-                                <?php endif; ?>
-                                <div class="flex-1 min-w-0 p-4">
-                                    <div class="flex items-center gap-1.5 mb-1.5">
-                                        <span class="inline-flex items-center gap-1 text-[8px] font-bold px-1.5 py-0.5 rounded <?= $catInfo['pill'] ?>">
-                                            <i class="<?= $catInfo['icon'] ?> text-[7px]"></i><?= htmlspecialchars($catInfo['label']) ?>
-                                        </span>
-                                        <?php if (!empty($act['start_date'])): ?>
-                                        <span class="text-[9px] text-slate-400"><?= date('Y/m', strtotime($act['start_date'])) ?>〜<?= !empty($act['end_date']) ? date('Y/m', strtotime($act['end_date'])) : '' ?></span>
+                                <span class="text-[10px] text-slate-400"><?= count($memberActivities) ?> 件</span>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <?php foreach ($memberActivities as $act):
+                                    $catInfo = $activityCategories[$act['category']] ?? $activityCategories['other'];
+                                ?>
+                                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition group flex">
+                                    <?php if (!empty($act['image_url'])): ?>
+                                    <div class="w-24 md:w-28 shrink-0 bg-slate-100">
+                                        <img src="/assets/img/activities/<?= htmlspecialchars($act['image_url']) ?>" class="w-full h-full object-cover" loading="lazy" alt="">
+                                    </div>
+                                    <?php endif; ?>
+                                    <div class="flex-1 min-w-0 p-4">
+                                        <div class="flex items-center gap-1.5 mb-1.5">
+                                            <span class="inline-flex items-center gap-1 text-[8px] font-bold px-1.5 py-0.5 rounded <?= $catInfo['pill'] ?>">
+                                                <i class="<?= $catInfo['icon'] ?> text-[7px]"></i><?= htmlspecialchars($catInfo['label']) ?>
+                                            </span>
+                                            <?php if (!empty($act['start_date'])): ?>
+                                            <span class="text-[9px] text-slate-400"><?= date('Y/m', strtotime($act['start_date'])) ?>〜<?= !empty($act['end_date']) ? date('Y/m', strtotime($act['end_date'])) : '' ?></span>
+                                            <?php endif; ?>
+                                        </div>
+                                        <h4 class="text-sm font-bold text-slate-700 leading-snug mb-1"><?= htmlspecialchars($act['title']) ?></h4>
+                                        <?php if (!empty($act['description'])): ?>
+                                        <p class="text-[11px] text-slate-500 line-clamp-2 leading-relaxed mb-2"><?= htmlspecialchars($act['description']) ?></p>
+                                        <?php endif; ?>
+                                        <?php if (!empty($act['url'])): ?>
+                                        <a href="<?= htmlspecialchars($act['url']) ?>" target="_blank" rel="noopener"
+                                           class="inline-flex items-center gap-1.5 text-[10px] font-bold text-white px-3 py-1.5 rounded-full bg-indigo-500 hover:bg-indigo-600 transition shadow-sm">
+                                            <i class="<?= $catInfo['icon'] ?> text-[9px]"></i>
+                                            <?= htmlspecialchars($act['url_label'] ?: '詳しく見る') ?>
+                                            <i class="fa-solid fa-arrow-right text-[8px]"></i>
+                                        </a>
                                         <?php endif; ?>
                                     </div>
-                                    <h4 class="text-sm font-bold text-slate-700 leading-snug mb-1"><?= htmlspecialchars($act['title']) ?></h4>
-                                    <?php if (!empty($act['description'])): ?>
-                                    <p class="text-[11px] text-slate-500 line-clamp-2 leading-relaxed mb-2"><?= htmlspecialchars($act['description']) ?></p>
-                                    <?php endif; ?>
-                                    <?php if (!empty($act['url'])): ?>
-                                    <a href="<?= htmlspecialchars($act['url']) ?>" target="_blank" rel="noopener"
-                                       class="inline-flex items-center gap-1.5 text-[10px] font-bold text-white px-3 py-1.5 rounded-full bg-indigo-500 hover:bg-indigo-600 transition shadow-sm">
-                                        <i class="<?= $catInfo['icon'] ?> text-[9px]"></i>
-                                        <?= htmlspecialchars($act['url_label'] ?: '詳しく見る') ?>
-                                        <i class="fa-solid fa-arrow-right text-[8px]"></i>
-                                    </a>
-                                    <?php endif; ?>
                                 </div>
+                                <?php endforeach; ?>
                             </div>
-                            <?php endforeach; ?>
                         </div>
                     </section>
                     <?php endif; ?>
@@ -224,41 +252,47 @@ if (!empty($member['birth_date'])) {
                     <!-- 最新ブログ (画像カルーセル) -->
                     <?php if (!empty($memberBlogPosts)): ?>
                     <section class="rec-section">
-                        <div class="flex items-center gap-2 mb-3">
-                            <i class="fa-solid fa-pen-fancy text-pink-500"></i>
-                            <h3 class="text-xs font-black text-slate-500 tracking-wider">最新ブログ</h3>
-                            <?php if (!empty($member['blog_url'])): ?>
-                            <a href="<?= htmlspecialchars($member['blog_url']) ?>" target="_blank" class="text-[10px] font-bold text-pink-400 hover:text-pink-600 ml-auto">もっと見る <i class="fa-solid fa-arrow-right"></i></a>
-                            <?php else: ?>
-                            <span class="text-[10px] text-slate-400 ml-auto"><?= count($memberBlogPosts) ?> 件</span>
-                            <?php endif; ?>
-                        </div>
-                        <div class="rec-scroll-wrap">
-                            <button class="rec-arrow left hidden" onclick="OshiRec.scroll('blogCards', -1)"><i class="fa-solid fa-chevron-left text-sm"></i></button>
-                            <div id="blogCards" class="rec-scroll">
-                                <?php foreach ($memberBlogPosts as $bp): ?>
-                                <div class="rec-card-portrait block relative group">
-                                    <a href="<?= htmlspecialchars($bp['detail_url']) ?>" target="_blank" class="block">
-                                        <div class="aspect-[3/4] rounded-xl overflow-hidden bg-slate-100 mb-2 shadow-sm relative">
-                                            <?php if ($bp['thumbnail_url']): ?>
-                                            <img src="<?= htmlspecialchars($bp['thumbnail_url']) ?>" class="w-full h-full object-cover" loading="lazy" alt="">
-                                            <?php else: ?>
-                                            <div class="w-full h-full flex items-center justify-center text-slate-300"><i class="fa-solid fa-pen-fancy text-3xl"></i></div>
-                                            <?php endif; ?>
-                                            <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition"></div>
-                                        </div>
-                                        <h4 class="text-[11px] font-bold text-slate-700 line-clamp-2 leading-snug mb-0.5"><?= htmlspecialchars($bp['title'] ?: '(無題)') ?></h4>
-                                        <p class="text-[10px] text-slate-400"><?= $bp['published_at'] ? date('m/d H:i', strtotime($bp['published_at'])) : '' ?></p>
-                                    </a>
-                                    <?php if ($bp['thumbnail_url']): ?>
-                                    <button type="button" class="blog-download-btn absolute bottom-10 right-2 z-10 w-8 h-8 rounded-full bg-black/50 flex items-center justify-center text-white hover:bg-black/70 border-0 cursor-pointer" data-article-id="<?= (int)($bp['article_id'] ?? 0) ?>" data-post-id="<?= (int)($bp['id'] ?? 0) ?>" data-title="<?= htmlspecialchars($bp['title'] ?? '(無題)', ENT_QUOTES, 'UTF-8') ?>" title="画像を保存">
-                                        <svg class="w-4 h-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5zM2.5 2a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5zm6.5.5A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5zM1 10.5A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5zm6.5.5A1.5 1.5 0 0 1 10.5 9h3a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5h-3A1.5 1.5 0 0 1 9 13.5zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5z"/></svg>
-                                    </button>
-                                    <?php endif; ?>
+                        <div class="bg-white rounded-xl border <?= $cardBorder ?> p-5">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center gap-2 font-semibold text-slate-700">
+                                    <i class="fa-solid fa-pen-fancy w-4 h-4 text-pink-500"></i>
+                                    <h3 class="text-sm">最新ブログ</h3>
                                 </div>
-                                <?php endforeach; ?>
+                                <?php if (!empty($member['blog_url'])): ?>
+                                <a href="<?= htmlspecialchars($member['blog_url']) ?>" target="_blank" rel="noopener" class="text-xs text-slate-500 hover:text-pink-500 transition">もっと見る →</a>
+                                <?php else: ?>
+                                <span class="text-xs text-slate-500"><?= count($memberBlogPosts) ?> 件</span>
+                                <?php endif; ?>
                             </div>
-                            <button class="rec-arrow right" onclick="OshiRec.scroll('blogCards', 1)"><i class="fa-solid fa-chevron-right text-sm"></i></button>
+                            <div class="rec-scroll-wrap">
+                                <button class="rec-arrow left hidden" onclick="OshiRec.scroll('blogCards', -1)"><i class="fa-solid fa-chevron-left text-sm"></i></button>
+                                <div id="blogCards" class="rec-scroll">
+                                    <?php foreach ($memberBlogPosts as $bp): ?>
+                                    <div class="rec-card-portrait block relative group rounded-2xl overflow-hidden border <?= $cardBorder ?> bg-white shadow-sm">
+                                        <a href="<?= htmlspecialchars($bp['detail_url']) ?>" target="_blank" rel="noopener" class="block">
+                                            <div class="aspect-[3/4] overflow-hidden bg-slate-100 shadow-sm relative">
+                                                <?php if ($bp['thumbnail_url']): ?>
+                                                <img src="<?= htmlspecialchars($bp['thumbnail_url']) ?>" class="w-full h-full object-cover" loading="lazy" alt="">
+                                                <?php else: ?>
+                                                <div class="w-full h-full flex items-center justify-center text-slate-300"><i class="fa-solid fa-pen-fancy text-2xl"></i></div>
+                                                <?php endif; ?>
+                                                <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition"></div>
+                                            </div>
+                                            <div class="bg-white px-3 py-2">
+                                                <h4 class="text-sm font-semibold text-slate-800 line-clamp-1 leading-snug"><?= htmlspecialchars($bp['title'] ?: '(無題)') ?></h4>
+                                                <p class="text-xs text-slate-500 truncate mt-0.5"><?= $bp['published_at'] ? date('m/d H:i', strtotime($bp['published_at'])) : '' ?></p>
+                                            </div>
+                                        </a>
+                                        <?php if ($bp['thumbnail_url']): ?>
+                                        <button type="button" class="blog-download-btn absolute bottom-14 right-2 w-7 h-7 rounded-full bg-black/50 flex items-center justify-center text-white hover:bg-black/70 border-0 cursor-pointer z-10" data-article-id="<?= (int)($bp['article_id'] ?? 0) ?>" data-post-id="<?= (int)($bp['id'] ?? 0) ?>" data-title="<?= htmlspecialchars($bp['title'] ?? '(無題)', ENT_QUOTES, 'UTF-8') ?>" title="画像を保存">
+                                            <svg class="w-4 h-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5zM2.5 2a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5zm6.5.5A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5zM1 10.5A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5zm6.5.5A1.5 1.5 0 0 1 10.5 9h3a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5h-3A1.5 1.5 0 0 1 9 13.5zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5z"/></svg>
+                                        </button>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
+                                <button class="rec-arrow right" onclick="OshiRec.scroll('blogCards', 1)"><i class="fa-solid fa-chevron-right text-sm"></i></button>
+                            </div>
                         </div>
                     </section>
                     <?php endif; ?>
@@ -268,49 +302,59 @@ if (!empty($member['birth_date'])) {
                     <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <?php if (!empty($memberNews)): ?>
                         <div>
-                            <h3 class="text-xs font-black text-slate-500 tracking-wider mb-3"><i class="fa-solid fa-newspaper text-blue-500 mr-2"></i>ニュース</h3>
-                            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                                <div class="divide-y divide-slate-100">
-                                    <?php foreach ($memberNews as $news): ?>
-                                    <a href="<?= htmlspecialchars($news['detail_url']) ?>" target="_blank" class="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition group">
-                                        <div class="shrink-0 mt-0.5">
-                                            <span class="text-[9px] font-bold text-slate-400"><?= date('m/d', strtotime($news['published_date'])) ?></span>
-                                        </div>
-                                        <div class="flex-1 min-w-0">
-                                            <?php if ($news['category']): ?>
-                                            <span class="text-[8px] font-bold text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded"><?= htmlspecialchars($news['category']) ?></span>
-                                            <?php endif; ?>
-                                            <p class="text-xs text-slate-700 line-clamp-2 leading-snug mt-0.5 group-hover:text-blue-600 transition"><?= htmlspecialchars($news['title']) ?></p>
-                                        </div>
-                                        <i class="fa-solid fa-chevron-right text-[8px] text-slate-300 group-hover:text-slate-500 transition mt-1.5 shrink-0"></i>
-                                    </a>
-                                    <?php endforeach; ?>
+                            <div class="bg-white rounded-xl border <?= $cardBorder ?> p-2">
+                                <div class="flex items-center gap-2 font-semibold text-slate-700 mb-3 px-2 pt-1">
+                                    <i class="fa-solid fa-newspaper w-4 h-4 text-blue-500"></i>
+                                    <h3 class="text-sm">ニュース</h3>
+                                </div>
+                                <div class="bg-white rounded-xl overflow-hidden">
+                                    <div class="divide-y divide-slate-100">
+                                        <?php foreach ($memberNews as $news): ?>
+                                        <a href="<?= htmlspecialchars($news['detail_url']) ?>" target="_blank" class="flex items-start gap-3 px-2 py-3 hover:bg-slate-50 transition group">
+                                            <div class="shrink-0 text-center w-10 mt-0.5">
+                                                <p class="text-xs font-black text-blue-500"><?= date('m/d', strtotime($news['published_date'])) ?></p>
+                                                <?php if ($news['category']): ?>
+                                                <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[7px] font-bold text-blue-500 bg-blue-50 mt-1 whitespace-nowrap"><?= htmlspecialchars($news['category']) ?></span>
+                                                <?php endif; ?>
+                                            </div>
+                                            <div class="flex-1 min-w-0">
+                                                <p class="text-xs text-slate-700 line-clamp-2 leading-snug mt-0.5 group-hover:text-blue-600 transition"><?= htmlspecialchars($news['title']) ?></p>
+                                            </div>
+                                            <i class="fa-solid fa-chevron-right text-[8px] text-slate-300 group-hover:text-slate-500 transition mt-1.5 shrink-0"></i>
+                                        </a>
+                                        <?php endforeach; ?>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                         <?php endif; ?>
                         <?php if (!empty($memberSchedule)): ?>
                         <div>
-                            <h3 class="text-xs font-black text-slate-500 tracking-wider mb-3"><i class="fa-solid fa-calendar-day text-emerald-500 mr-2"></i>スケジュール</h3>
-                            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                                <div class="divide-y divide-slate-100">
-                                    <?php foreach ($memberSchedule as $sch): ?>
-                                    <a href="<?= htmlspecialchars($sch['detail_url']) ?>" target="_blank" class="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition group">
-                                        <div class="shrink-0 text-center w-10 mt-0.5">
-                                            <p class="text-xs font-black text-emerald-600"><?= date('m/d', strtotime($sch['schedule_date'])) ?></p>
-                                            <?php if ($sch['time_text']): ?>
-                                            <p class="text-[8px] text-slate-400"><?= htmlspecialchars($sch['time_text']) ?></p>
-                                            <?php endif; ?>
-                                        </div>
-                                        <div class="flex-1 min-w-0">
-                                            <?php if ($sch['category']): ?>
-                                            <span class="text-[8px] font-bold text-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded"><?= htmlspecialchars($sch['category']) ?></span>
-                                            <?php endif; ?>
-                                            <p class="text-xs text-slate-700 line-clamp-2 leading-snug mt-0.5 group-hover:text-emerald-600 transition"><?= htmlspecialchars($sch['title']) ?></p>
-                                        </div>
-                                        <i class="fa-solid fa-chevron-right text-[8px] text-slate-300 group-hover:text-slate-500 transition mt-1.5 shrink-0"></i>
-                                    </a>
-                                    <?php endforeach; ?>
+                            <div class="bg-white rounded-xl border <?= $cardBorder ?> p-2">
+                                <div class="flex items-center gap-2 font-semibold text-slate-700 mb-3 px-2 pt-1">
+                                    <i class="fa-solid fa-calendar-day w-4 h-4 text-emerald-500"></i>
+                                    <h3 class="text-sm">スケジュール</h3>
+                                </div>
+                                <div class="bg-white rounded-xl overflow-hidden">
+                                    <div class="divide-y divide-slate-100">
+                                        <?php foreach ($memberSchedule as $sch): ?>
+                                        <a href="<?= htmlspecialchars($sch['detail_url']) ?>" target="_blank" class="flex items-start gap-3 px-2 py-3 hover:bg-slate-50 transition group">
+                                            <div class="shrink-0 text-center w-10 mt-0.5">
+                                                <p class="text-xs font-black text-emerald-600"><?= date('m/d', strtotime($sch['schedule_date'])) ?></p>
+                                                <?php if ($sch['time_text']): ?>
+                                                <p class="text-[8px] text-slate-400"><?= htmlspecialchars($sch['time_text']) ?></p>
+                                                <?php endif; ?>
+                                                <?php if ($sch['category']): ?>
+                                                <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[7px] font-bold text-emerald-500 bg-emerald-50 mt-1 whitespace-nowrap"><?= htmlspecialchars($sch['category']) ?></span>
+                                                <?php endif; ?>
+                                            </div>
+                                            <div class="flex-1 min-w-0">
+                                                <p class="text-xs text-slate-700 line-clamp-2 leading-snug mt-0.5 group-hover:text-emerald-600 transition"><?= htmlspecialchars($sch['title']) ?></p>
+                                            </div>
+                                            <i class="fa-solid fa-chevron-right text-[8px] text-slate-300 group-hover:text-slate-500 transition mt-1.5 shrink-0"></i>
+                                        </a>
+                                        <?php endforeach; ?>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -328,52 +372,56 @@ if (!empty($member['birth_date'])) {
                     ?>
                     <?php if (!empty($videoTabs)): ?>
                     <section class="rec-section">
-                        <div class="flex items-center gap-2 mb-3">
-                            <i class="fa-solid fa-play-circle text-slate-500"></i>
-                            <h3 class="text-xs font-black text-slate-500 tracking-wider">動画</h3>
-                        </div>
-                        <div class="flex gap-1 mb-3">
-                            <?php foreach ($videoTabs as $ti => $vt): ?>
-                            <button class="vid-tab text-[10px] font-bold px-3 py-1 rounded-full transition <?= $ti === 0 ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200' ?>"
-                                    data-idx="<?= $ti ?>" onclick="switchVideoTab(<?= $ti ?>)">
-                                <?= $vt['label'] ?> <span class="opacity-60"><?= $vt['count'] ?></span>
-                            </button>
-                            <?php endforeach; ?>
-                        </div>
-                        <?php foreach ($videoTabs as $ti => $vt): ?>
-                        <div class="vid-tab-panel" data-panel="<?= $ti ?>"<?= $ti > 0 ? ' style="display:none"' : '' ?>>
-                            <div class="rec-scroll-wrap">
-                                <button class="rec-arrow left hidden" onclick="OshiRec.scroll('vidCards<?= $ti ?>', -1)"><i class="fa-solid fa-chevron-left text-sm"></i></button>
-                                <div id="vidCards<?= $ti ?>" class="rec-scroll">
-                                    <?php foreach ($vt['videos'] as $v):
-                                        $videoData = htmlspecialchars(json_encode([
-                                            'media_key' => $v['media_key'], 'platform' => $v['platform'],
-                                            'title' => $v['title'], 'category' => $v['category'],
-                                            'upload_date' => $v['upload_date'], 'thumbnail_url' => $v['thumbnail_url'],
-                                            'description' => $v['description'] ?? '', 'sub_key' => $v['sub_key'] ?? '',
-                                        ], JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
-                                        $thumb = $v['thumbnail_url'] ?: ($v['platform'] === 'youtube' ? "https://img.youtube.com/vi/{$v['media_key']}/mqdefault.jpg" : '');
-                                        $pIcon = match($v['platform']) { 'instagram' => 'fa-brands fa-instagram', 'tiktok' => 'fa-brands fa-tiktok', default => 'fa-brands fa-youtube' };
-                                        $pColor = match($v['platform']) { 'instagram' => 'bg-gradient-to-br from-purple-500 to-pink-500', 'tiktok' => 'bg-slate-800', default => 'bg-red-600' };
-                                    ?>
-                                    <div class="rec-card" data-video="<?= $videoData ?>" onclick="openOshiVideo(this, event)">
-                                        <div class="aspect-square relative overflow-hidden rounded-xl bg-black shadow-sm mb-2 group">
-                                            <?php if ($thumb): ?><img src="<?= htmlspecialchars($thumb) ?>" class="w-full h-full object-contain" loading="lazy" alt=""><?php else: ?><div class="w-full h-full flex items-center justify-center"><i class="<?= $pIcon ?> text-3xl text-slate-500"></i></div><?php endif; ?>
-                                            <div class="absolute inset-0 bg-black/0 group-hover:bg-white/10 transition flex items-center justify-center"><i class="fa-solid fa-play text-white text-xl opacity-0 group-hover:opacity-100 transition drop-shadow-lg"></i></div>
-                                            <span class="absolute top-1.5 left-1.5 w-5 h-5 <?= $pColor ?> rounded-full flex items-center justify-center shadow"><i class="<?= $pIcon ?> text-[10px] text-white"></i></span>
-                                            <?php if (!empty($v['category'])): ?><span class="absolute top-1.5 right-1.5 text-[8px] font-bold bg-black/60 text-white px-1.5 py-0.5 rounded"><?= htmlspecialchars($v['category']) ?></span><?php endif; ?>
-                                        </div>
-                                        <h4 class="text-[11px] font-bold text-slate-700 line-clamp-2 leading-snug mb-0.5"><?= htmlspecialchars($v['title'] ?: $vt['label']) ?></h4>
-                                        <p class="text-[10px] text-slate-400"><?= $v['upload_date'] ? date('Y/m/d', strtotime($v['upload_date'])) : '' ?></p>
-                                    </div>
+                        <div class="bg-white rounded-xl border <?= $cardBorder ?> shadow-sm p-5">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center gap-2 font-semibold text-slate-700">
+                                    <i class="fa-solid fa-play-circle w-4 h-4 text-orange-500"></i>
+                                    <h3 class="text-sm">動画</h3>
+                                </div>
+                                <div class="flex gap-1 items-center">
+                                    <?php foreach ($videoTabs as $ti => $vt): ?>
+                                    <button class="vid-tab text-[10px] font-bold px-3 py-1 rounded-full transition <?= $ti === 0 ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200' ?>"
+                                            data-idx="<?= $ti ?>" onclick="switchVideoTab(<?= $ti ?>)">
+                                        <?= $vt['label'] ?> <span class="opacity-60"><?= $vt['count'] ?></span>
+                                    </button>
                                     <?php endforeach; ?>
                                 </div>
-                                <button class="rec-arrow right" onclick="OshiRec.scroll('vidCards<?= $ti ?>', 1)"><i class="fa-solid fa-chevron-right text-sm"></i></button>
                             </div>
-                        </div>
-                        <?php endforeach; ?>
-                        <div class="mt-3 text-right">
-                            <a href="/hinata/media_list.php?member_id=<?= $member['id'] ?>" class="text-[10px] font-bold text-slate-400 hover:text-slate-600 inline-flex items-center gap-1">すべて見る <i class="fa-solid fa-arrow-right"></i></a>
+                            <?php foreach ($videoTabs as $ti => $vt): ?>
+                            <div class="vid-tab-panel" data-panel="<?= $ti ?>"<?= $ti > 0 ? ' style="display:none"' : '' ?>>
+                                <div class="rec-scroll-wrap">
+                                    <button class="rec-arrow left hidden" onclick="OshiRec.scroll('vidCards<?= $ti ?>', -1)"><i class="fa-solid fa-chevron-left text-sm"></i></button>
+                                    <div id="vidCards<?= $ti ?>" class="rec-scroll">
+                                        <?php foreach ($vt['videos'] as $v):
+                                            $videoData = htmlspecialchars(json_encode([
+                                                'media_key' => $v['media_key'], 'platform' => $v['platform'],
+                                                'title' => $v['title'], 'category' => $v['category'],
+                                                'upload_date' => $v['upload_date'], 'thumbnail_url' => $v['thumbnail_url'],
+                                                'description' => $v['description'] ?? '', 'sub_key' => $v['sub_key'] ?? '',
+                                            ], JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
+                                            $thumb = $v['thumbnail_url'] ?: ($v['platform'] === 'youtube' ? "https://img.youtube.com/vi/{$v['media_key']}/mqdefault.jpg" : '');
+                                            $pIcon = match($v['platform']) { 'instagram' => 'fa-brands fa-instagram', 'tiktok' => 'fa-brands fa-tiktok', default => 'fa-brands fa-youtube' };
+                                            $pColor = match($v['platform']) { 'instagram' => 'bg-gradient-to-br from-purple-500 to-pink-500', 'tiktok' => 'bg-slate-800', default => 'bg-red-600' };
+                                        ?>
+                                        <div class="rec-card" data-video="<?= $videoData ?>" onclick="openOshiVideo(this, event)">
+                                            <div class="aspect-square relative overflow-hidden rounded-xl bg-black shadow-sm mb-2 group">
+                                                <?php if ($thumb): ?><img src="<?= htmlspecialchars($thumb) ?>" class="w-full h-full object-contain" loading="lazy" alt=""><?php else: ?><div class="w-full h-full flex items-center justify-center"><i class="<?= $pIcon ?> text-3xl text-slate-500"></i></div><?php endif; ?>
+                                                <div class="absolute inset-0 bg-black/0 group-hover:bg-white/10 transition flex items-center justify-center"><i class="fa-solid fa-play text-white text-xl opacity-0 group-hover:opacity-100 transition drop-shadow-lg"></i></div>
+                                                <span class="absolute top-1.5 left-1.5 w-5 h-5 <?= $pColor ?> rounded-full flex items-center justify-center shadow"><i class="<?= $pIcon ?> text-[10px] text-white"></i></span>
+                                                <?php if (!empty($v['category'])): ?><span class="absolute top-1.5 right-1.5 text-[8px] font-bold bg-black/60 text-white px-1.5 py-0.5 rounded"><?= htmlspecialchars($v['category']) ?></span><?php endif; ?>
+                                            </div>
+                                            <h4 class="text-[11px] font-bold text-slate-700 line-clamp-2 leading-snug mb-0.5"><?= htmlspecialchars($v['title'] ?: $vt['label']) ?></h4>
+                                            <p class="text-[10px] text-slate-400"><?= $v['upload_date'] ? date('Y/m/d', strtotime($v['upload_date'])) : '' ?></p>
+                                        </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                    <button class="rec-arrow right" onclick="OshiRec.scroll('vidCards<?= $ti ?>', 1)"><i class="fa-solid fa-chevron-right text-sm"></i></button>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                            <div class="mt-3 text-right">
+                                <a href="/hinata/media_list.php?member_id=<?= $member['id'] ?>" class="text-xs text-slate-500 hover:text-slate-700 transition">すべて見る →</a>
+                            </div>
                         </div>
                     </section>
                     <?php endif; ?>
@@ -381,54 +429,59 @@ if (!empty($member['birth_date'])) {
                     <!-- 参加楽曲 -->
                     <?php if (!empty($memberSongs)): ?>
                     <section>
-                        <h3 class="text-xs font-black text-slate-500 tracking-wider mb-3"><i class="fa-solid fa-music text-violet-500 mr-2"></i>参加楽曲 (<?= count($memberSongs) ?>曲)</h3>
-                        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                            <div id="songMiniPlayer" class="hidden border-b border-slate-200 bg-slate-50/80">
-                                <div class="flex items-center gap-2 px-4 py-2">
-                                    <p id="songMiniTitle" class="text-[11px] font-bold text-slate-700 flex-1 truncate"></p>
-                                    <button onclick="SongPlayer.close()" class="w-6 h-6 rounded-full bg-slate-200 text-slate-500 hover:bg-slate-300 flex items-center justify-center transition text-[10px]"><i class="fa-solid fa-xmark"></i></button>
-                                </div>
-                                <div id="songMiniEmbed" class="px-4 pb-3"></div>
+                        <div class="bg-white rounded-xl border <?= $cardBorder ?> shadow-sm p-5">
+                            <div class="flex items-center gap-2 font-semibold text-slate-700 mb-3">
+                                <i class="fa-solid fa-music w-4 h-4 text-violet-500"></i>
+                                <h3 class="text-sm">参加楽曲 (<?= count($memberSongs) ?>曲)</h3>
                             </div>
-                            <div class="divide-y divide-slate-100 max-h-96 overflow-y-auto">
-                                <?php foreach ($memberSongs as $s):
-                                    $hasApple = !empty($s['apple_music_url']);
-                                    $hasSpotify = !empty($s['spotify_url']);
-                                    $hasStream = $hasApple || $hasSpotify;
-                                ?>
-                                <div class="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition group">
-                                    <a href="/hinata/song.php?id=<?= $s['id'] ?>" class="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
+                            <div class="bg-white rounded-xl overflow-hidden">
+                                <div id="songMiniPlayer" class="hidden border-b border-slate-200 bg-slate-50/80">
+                                    <div class="flex items-center gap-2 px-4 py-2">
+                                        <p id="songMiniTitle" class="text-[11px] font-bold text-slate-700 flex-1 truncate"></p>
+                                        <button onclick="SongPlayer.close()" class="w-6 h-6 rounded-full bg-slate-200 text-slate-500 hover:bg-slate-300 flex items-center justify-center transition text-[10px]"><i class="fa-solid fa-xmark"></i></button>
+                                    </div>
+                                    <div id="songMiniEmbed" class="px-4 pb-3"></div>
+                                </div>
+                                <div class="divide-y divide-slate-100 max-h-96 overflow-y-auto">
+                                    <?php foreach ($memberSongs as $s):
+                                        $hasApple = !empty($s['apple_music_url']);
+                                        $hasSpotify = !empty($s['spotify_url']);
+                                        $hasStream = $hasApple || $hasSpotify;
+                                    ?>
+                                    <div class="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition group">
+                                        <a href="/hinata/song.php?id=<?= $s['id'] ?>" class="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
+                                            <?php if ($s['is_center']): ?>
+                                            <i class="fa-solid fa-crown text-amber-500 text-xs"></i>
+                                            <?php else: ?>
+                                            <i class="fa-solid fa-music text-violet-400 text-xs"></i>
+                                            <?php endif; ?>
+                                        </a>
+                                        <a href="/hinata/song.php?id=<?= $s['id'] ?>" class="flex-1 min-w-0">
+                                            <p class="text-sm font-bold text-slate-700 truncate"><?= htmlspecialchars($s['title']) ?></p>
+                                            <p class="text-[10px] text-slate-400"><?= htmlspecialchars($s['release_title']) ?> &middot; <?= $trackTypeLabels[$s['track_type']] ?? $s['track_type'] ?></p>
+                                        </a>
                                         <?php if ($s['is_center']): ?>
-                                        <i class="fa-solid fa-crown text-amber-500 text-xs"></i>
-                                        <?php else: ?>
-                                        <i class="fa-solid fa-music text-violet-400 text-xs"></i>
+                                        <span class="text-[8px] font-black bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded-full shrink-0">CENTER</span>
                                         <?php endif; ?>
-                                    </a>
-                                    <a href="/hinata/song.php?id=<?= $s['id'] ?>" class="flex-1 min-w-0">
-                                        <p class="text-sm font-bold text-slate-700 truncate"><?= htmlspecialchars($s['title']) ?></p>
-                                        <p class="text-[10px] text-slate-400"><?= htmlspecialchars($s['release_title']) ?> &middot; <?= $trackTypeLabels[$s['track_type']] ?? $s['track_type'] ?></p>
-                                    </a>
-                                    <?php if ($s['is_center']): ?>
-                                    <span class="text-[8px] font-black bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded-full shrink-0">CENTER</span>
-                                    <?php endif; ?>
-                                    <?php if ($hasStream): ?>
-                                    <div class="flex gap-1 shrink-0">
-                                        <?php if ($hasApple): ?>
-                                        <button onclick="SongPlayer.play('apple', '<?= htmlspecialchars(addslashes($s['apple_music_url'])) ?>', '<?= htmlspecialchars(addslashes($s['title'])) ?>')"
-                                                class="w-7 h-7 rounded-full bg-slate-100 hover:bg-pink-50 flex items-center justify-center transition text-slate-400 hover:text-pink-500" title="Apple Musicで再生">
-                                            <i class="fa-brands fa-apple text-xs"></i>
-                                        </button>
-                                        <?php endif; ?>
-                                        <?php if ($hasSpotify): ?>
-                                        <button onclick="SongPlayer.play('spotify', '<?= htmlspecialchars(addslashes($s['spotify_url'])) ?>', '<?= htmlspecialchars(addslashes($s['title'])) ?>')"
-                                                class="w-7 h-7 rounded-full bg-slate-100 hover:bg-emerald-50 flex items-center justify-center transition text-slate-400 hover:text-emerald-500" title="Spotifyで再生">
-                                            <i class="fa-brands fa-spotify text-xs"></i>
-                                        </button>
+                                        <?php if ($hasStream): ?>
+                                        <div class="flex gap-1 shrink-0">
+                                            <?php if ($hasApple): ?>
+                                            <button onclick="SongPlayer.play('apple', '<?= htmlspecialchars(addslashes($s['apple_music_url'])) ?>', '<?= htmlspecialchars(addslashes($s['title'])) ?>')"
+                                                    class="w-7 h-7 rounded-full bg-slate-100 hover:bg-pink-50 flex items-center justify-center transition text-slate-400 hover:text-pink-500" title="Apple Musicで再生">
+                                                <i class="fa-brands fa-apple text-xs"></i>
+                                            </button>
+                                            <?php endif; ?>
+                                            <?php if ($hasSpotify): ?>
+                                            <button onclick="SongPlayer.play('spotify', '<?= htmlspecialchars(addslashes($s['spotify_url'])) ?>', '<?= htmlspecialchars(addslashes($s['title'])) ?>')"
+                                                    class="w-7 h-7 rounded-full bg-slate-100 hover:bg-emerald-50 flex items-center justify-center transition text-slate-400 hover:text-emerald-500" title="Spotifyで再生">
+                                                <i class="fa-brands fa-spotify text-xs"></i>
+                                            </button>
+                                            <?php endif; ?>
+                                        </div>
                                         <?php endif; ?>
                                     </div>
-                                    <?php endif; ?>
+                                    <?php endforeach; ?>
                                 </div>
-                                <?php endforeach; ?>
                             </div>
                         </div>
                     </section>
@@ -437,74 +490,83 @@ if (!empty($member['birth_date'])) {
                     <!-- イベント -->
                     <?php if (!empty($memberEvents)): ?>
                     <section>
-                        <h3 class="text-xs font-black text-slate-500 tracking-wider mb-3"><i class="fa-solid fa-calendar text-sky-500 mr-2"></i>イベント</h3>
-                        <?php if (!empty($upcomingEvents)): ?>
-                        <div class="mb-4">
-                            <p class="text-[10px] font-bold text-sky-500 mb-2">今後の予定</p>
-                            <div class="space-y-2">
-                                <?php foreach ($upcomingEvents as $e): ?>
-                                <div class="flex items-center gap-3 bg-sky-50 rounded-lg px-4 py-3 border border-sky-100">
-                                    <div class="w-10 text-center shrink-0">
-                                        <p class="text-lg font-black text-sky-600"><?= date('d', strtotime($e['event_date'])) ?></p>
-                                        <p class="text-[8px] font-bold text-sky-400"><?= date('M', strtotime($e['event_date'])) ?></p>
-                                    </div>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-sm font-bold text-slate-700 truncate"><?= htmlspecialchars($e['event_name']) ?></p>
-                                        <?php if ($e['event_place']): ?><p class="text-[10px] text-slate-400"><?= htmlspecialchars($e['event_place']) ?></p><?php endif; ?>
-                                    </div>
-                                    <span class="text-[10px] font-bold text-sky-600">あと<?= $e['days_left'] ?>日</span>
-                                </div>
-                                <?php endforeach; ?>
+                        <div class="bg-white rounded-xl border <?= $cardBorder ?> shadow-sm p-5">
+                            <div class="flex items-center gap-2 font-semibold text-slate-700 mb-3">
+                                <i class="fa-solid fa-calendar w-4 h-4 text-sky-500"></i>
+                                <h3 class="text-sm">イベント</h3>
                             </div>
-                        </div>
-                        <?php endif; ?>
-                        <?php if (!empty($pastEvents)): ?>
-                        <details class="mt-3">
-                            <summary class="text-[10px] font-bold text-slate-400 cursor-pointer hover:text-slate-600 transition flex items-center gap-1">
-                                <i class="fa-solid fa-chevron-right text-[8px] transition-transform"></i>過去のイベント (<?= count($pastEvents) ?>)
-                            </summary>
-                            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mt-2">
-                                <div class="divide-y divide-slate-100 max-h-48 overflow-y-auto">
-                                    <?php foreach (array_slice($pastEvents, 0, 10) as $e): ?>
-                                    <div class="flex items-center gap-3 px-4 py-2.5">
-                                        <span class="text-[10px] font-bold text-slate-400 w-16 shrink-0"><?= date('Y/m/d', strtotime($e['event_date'])) ?></span>
-                                        <span class="text-xs text-slate-600 truncate"><?= htmlspecialchars($e['event_name']) ?></span>
-                                    </div>
+                            <?php if (!empty($upcomingEvents)): ?>
+                            <div class="mb-4">
+                                <p class="text-[10px] font-bold text-sky-500 mb-2">今後の予定</p>
+                                <div class="space-y-2">
+                                    <?php foreach ($upcomingEvents as $e): ?>
+                                    <a href="/hinata/events.php?event_id=<?= (int)$e['id'] ?>" class="flex items-center gap-3 bg-white rounded-lg px-4 py-3 border border-slate-100 hover:bg-slate-50 transition group">
+                                        <div class="w-10 text-center shrink-0">
+                                            <p class="text-sm font-black text-sky-600"><?= date('m/d', strtotime($e['event_date'])) ?></p>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-bold text-slate-700 truncate"><?= htmlspecialchars($e['event_name']) ?></p>
+                                            <?php if ($e['event_place']): ?><p class="text-[10px] text-slate-400"><?= htmlspecialchars($e['event_place']) ?></p><?php endif; ?>
+                                        </div>
+                                        <span class="text-xs font-black text-sky-600">あと<?= $e['days_left'] ?>日</span>
+                                        <i class="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-slate-500 transition shrink-0"></i>
+                                    </a>
                                     <?php endforeach; ?>
                                 </div>
                             </div>
-                        </details>
-                        <?php endif; ?>
+                            <?php endif; ?>
+                            <?php if (!empty($pastEvents)): ?>
+                            <details class="mt-3">
+                                <summary class="text-[10px] font-bold text-slate-400 cursor-pointer hover:text-slate-600 transition flex items-center gap-1">
+                                    <i class="fa-solid fa-chevron-right text-[8px] transition-transform"></i>過去のイベント (<?= count($pastEvents) ?>)
+                                </summary>
+                                <div class="bg-white rounded-xl overflow-hidden mt-2">
+                                    <div class="divide-y divide-slate-100 max-h-48 overflow-y-auto">
+                                        <?php foreach (array_slice($pastEvents, 0, 10) as $e): ?>
+                                        <div class="flex items-center gap-3 px-4 py-2.5">
+                                            <span class="text-[10px] font-bold text-slate-400 w-16 shrink-0"><?= date('Y/m/d', strtotime($e['event_date'])) ?></span>
+                                            <span class="text-xs text-slate-600 truncate"><?= htmlspecialchars($e['event_name']) ?></span>
+                                        </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            </details>
+                            <?php endif; ?>
+                        </div>
                     </section>
                     <?php endif; ?>
 
                     <!-- マイフォト（推し設定時のみ表示） -->
                     <?php if ($oshiLevel > 0): ?>
                     <section>
-                        <div class="flex items-center justify-between mb-3">
-                            <h3 class="text-xs font-black text-slate-500 tracking-wider"><i class="fa-solid fa-camera text-emerald-500 mr-2"></i>マイフォト</h3>
-                        </div>
-                        <?php if (!empty($oshiImages)): ?>
-                        <div class="photo-grid grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                            <?php foreach ($oshiImages as $img): ?>
-                            <div class="relative aspect-square rounded-xl overflow-hidden bg-slate-100 shadow-sm group">
-                                <img src="/<?= htmlspecialchars($img['image_path']) ?>" class="w-full h-full object-cover" alt="" loading="lazy">
-                                <?php if ($img['caption']): ?>
-                                <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2 opacity-0 group-hover:opacity-100 transition">
-                                    <p class="text-[10px] text-white"><?= htmlspecialchars($img['caption']) ?></p>
-                                </div>
-                                <?php endif; ?>
-                                <button onclick="OshiPhoto.deleteImage(<?= $img['id'] ?>)" class="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500/80 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition hover:bg-red-600"><i class="fa-solid fa-xmark"></i></button>
+                        <div class="bg-white rounded-xl border <?= $cardBorder ?> shadow-sm p-5">
+                            <div class="flex items-center gap-2 font-semibold text-slate-700 mb-3">
+                                <i class="fa-solid fa-camera w-4 h-4 text-emerald-500"></i>
+                                <h3 class="text-sm">マイフォト</h3>
                             </div>
-                            <?php endforeach; ?>
-                        </div>
-                        <?php endif; ?>
-                        <div class="mt-4">
-                            <label class="flex items-center justify-center gap-2 px-4 py-6 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/50 transition">
-                                <i class="fa-solid fa-cloud-arrow-up text-slate-400 text-lg"></i>
-                                <span class="text-xs font-bold text-slate-500">画像をアップロード</span>
-                                <input type="file" id="photoUploadInput" accept="image/jpeg,image/png,image/webp" multiple class="hidden" onchange="OshiPhoto.upload(this.files)">
-                            </label>
+                            <?php if (!empty($oshiImages)): ?>
+                            <div class="photo-grid grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                                <?php foreach ($oshiImages as $img): ?>
+                                <div class="relative aspect-square rounded-xl overflow-hidden bg-slate-100 shadow-sm group">
+                                    <img src="/<?= htmlspecialchars($img['image_path']) ?>" class="w-full h-full object-cover cursor-zoom-in" alt="" loading="lazy"
+                                         onclick="if(window.BlogImageZoom){ BlogImageZoom.open(this.src); }">
+                                    <?php if ($img['caption']): ?>
+                                    <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2 opacity-0 group-hover:opacity-100 transition">
+                                        <p class="text-[10px] text-white"><?= htmlspecialchars($img['caption']) ?></p>
+                                    </div>
+                                    <?php endif; ?>
+                                    <button onclick="OshiPhoto.deleteImage(<?= $img['id'] ?>)" class="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500/80 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition hover:bg-red-600"><i class="fa-solid fa-xmark"></i></button>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <?php endif; ?>
+                            <div class="mt-4">
+                                <label class="flex items-center justify-center gap-2 px-4 py-6 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/50 transition">
+                                    <i class="fa-solid fa-cloud-arrow-up text-slate-400 text-lg"></i>
+                                    <span class="text-xs font-bold text-slate-500">画像をアップロード</span>
+                                    <input type="file" id="photoUploadInput" accept="image/jpeg,image/png,image/webp" multiple class="hidden" onchange="OshiPhoto.upload(this.files)">
+                                </label>
+                            </div>
                         </div>
                     </section>
                     <?php endif; ?>
@@ -830,29 +892,38 @@ if (!empty($member['birth_date'])) {
                 clickAttr = ' href="' + this.esc(item.url) + '" target="_blank" ';
             }
 
-            var html = '<' + wrapTag + clickAttr + 'class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition ' + (isClickable ? 'hover:bg-slate-50 cursor-pointer' : '') + '">';
+            var isLast = (index === this.allItems.length - 1);
 
-            // 左: 日付
-            html += '<div class="w-10 text-center shrink-0">';
-            html += '<p class="text-xs font-black text-slate-600 leading-tight">' + this.formatDate(item.event_date) + '</p>';
+            var html = '<' + wrapTag + clickAttr + 'class="block rounded-xl pl-2 pr-3 py-2 transition ' + (isClickable ? 'hover:bg-slate-50 cursor-pointer' : '') + '">';
+            html += '<div class="flex gap-4">';
+
+            // 左: 丸 + 縦線
+            html += '<div class="relative w-5 shrink-0 flex justify-center">';
+            html += '<span class="mt-1.5 w-2.5 h-2.5 rounded-full ' + cfg.bg + '"></span>';
+            if (!isLast) {
+                // ○と接続しない（上下どちらの○にも届かせない）
+                html += '<span class="absolute top-6 -bottom-2 w-px bg-slate-200/80"></span>';
+            }
             html += '</div>';
 
-            // 種別ピル
-            html += '<span class="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black ' + cfg.pill + '">';
+            // 右: 日付 + バッジ / 内容
+            html += '<div class="flex-1 min-w-0">';
+            html += '<div class="flex items-center gap-2">';
+            html += '<span class="text-[11px] font-bold text-slate-500 leading-tight">' + this.formatDate(item.event_date) + '</span>';
+            html += '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ' + cfg.pill + '">';
             html += '<i class="' + cfg.icon + ' text-[8px]"></i>' + cfg.label;
             html += '</span>';
+            html += '</div>';
 
-            // 中央: タイトル
+            html += '<div class="mt-0.5 flex items-start gap-3">';
             html += '<div class="flex-1 min-w-0">';
-            html += '<p class="text-xs font-bold text-slate-700 truncate">' + this.esc(item.title || '(無題)') + '</p>';
+            html += '<p class="text-sm font-bold text-slate-800 leading-snug">' + this.esc(item.title || '(無題)') + '</p>';
             // サブ情報
             if (item.type === 'video' && videoData) {
                 var pIcon = videoData.platform === 'youtube' ? 'fa-brands fa-youtube text-red-400' : videoData.platform === 'tiktok' ? 'fa-brands fa-tiktok text-slate-400' : 'fa-brands fa-instagram text-pink-400';
                 if (videoData.category) {
                     html += '<p class="text-[10px] text-slate-400 mt-0.5"><i class="' + pIcon + ' mr-1"></i>' + this.esc(videoData.category) + '</p>';
                 }
-            } else if (item.extra && item.type !== 'video') {
-                html += '<p class="text-[10px] text-slate-400 mt-0.5">' + this.esc(item.extra) + '</p>';
             }
             html += '</div>';
 
@@ -862,12 +933,15 @@ if (!empty($member['birth_date'])) {
                 thumb = 'https://img.youtube.com/vi/' + videoData.media_key + '/default.jpg';
             }
             if (thumb) {
-                html += '<div class="w-10 h-10 rounded-lg overflow-hidden bg-slate-100 shrink-0 relative">';
+                html += '<div class="w-12 h-12 rounded-xl overflow-hidden bg-slate-100 shrink-0 relative">';
                 html += '<img src="' + this.esc(thumb) + '" class="w-full h-full object-cover" loading="lazy">';
-                if (item.type === 'video') html += '<div class="absolute inset-0 flex items-center justify-center"><i class="fa-solid fa-play text-white text-[8px] drop-shadow"></i></div>';
+                if (item.type === 'video') html += '<div class="absolute inset-0 flex items-center justify-center"><i class="fa-solid fa-play text-white text-[9px] drop-shadow"></i></div>';
                 html += '</div>';
             }
 
+            html += '</div>'; // mt-1 flex
+            html += '</div>'; // right content
+            html += '</div>'; // flex
             html += '</' + wrapTag + '>';
             return html;
         },
@@ -898,7 +972,7 @@ if (!empty($member['birth_date'])) {
                 return;
             }
             var count = this.expanded ? this.allItems.length : Math.min(this.visibleCount, this.allItems.length);
-            var html = '<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden divide-y divide-slate-100">';
+            var html = '<div class="space-y-0">';
             for (var i = 0; i < count; i++) {
                 html += this.renderItem(this.allItems[i], i);
             }

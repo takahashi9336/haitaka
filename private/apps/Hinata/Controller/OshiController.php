@@ -105,7 +105,7 @@ class OshiController {
         $memberBlogPosts = [];
         try {
             $blogModel = new BlogModel();
-            $memberBlogPosts = $blogModel->getLatestByMember($memberId, 5);
+            $memberBlogPosts = $blogModel->getLatestByMember($memberId, 10);
         } catch (\Exception $e) {}
 
         // ニュース・スケジュール
