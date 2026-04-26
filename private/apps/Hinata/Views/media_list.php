@@ -172,9 +172,10 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             </div>
         </header>
 
-        <div class="flex-1 flex flex-col min-h-0">
-            <!-- 固定エリア：公式チャンネル + フィルター・ソート -->
-            <div class="shrink-0 px-4 pt-3 md:p-6 pb-0 md:pb-4">
+        <!-- スクロール領域（フィルタ + 動画） -->
+        <div class="flex-1 min-h-0 overflow-y-auto" id="mainScrollArea">
+            <!-- フィルター・タブ -->
+            <div class="px-4 pt-3 md:p-6 pb-0 md:pb-4">
                 <div class="max-w-[76.8rem] mx-auto">
                     <!-- メディア種別タブ + プラットフォーム（トグル） -->
                     <div class="flex flex-wrap items-center gap-3 mb-3">
@@ -348,8 +349,8 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 </div>
             </div>
 
-            <!-- スクロールエリア：動画のみ -->
-            <div class="flex-1 min-h-0 overflow-y-auto p-6 md:p-6 pt-4 md:pt-6" id="mainScrollArea">
+            <!-- 動画一覧 -->
+            <div class="p-6 md:p-6 pt-4 md:pt-6">
                 <div class="max-w-[76.8rem] mx-auto">
                     <!-- 動画コンテナ（公式VIDEO風：2列・余白多め） -->
                     <div id="videoContainer" class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
@@ -363,6 +364,15 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
 
                     <!-- 最下部マーカー -->
                     <div id="scrollTrigger" class="h-20"></div>
+                </div>
+
+                <!-- 最上部へ戻る（スクロールエリア内 左下） -->
+                <div class="sticky left-0 bottom-5 z-[90] pointer-events-none">
+                    <div class="pointer-events-auto">
+                        <button id="backToTopBtn" type="button" class="hidden ml-5 w-12 h-12 rounded-full bg-slate-900/80 text-white shadow-lg hover:bg-slate-900 transition flex items-center justify-center backdrop-blur" aria-label="最上部へ戻る" title="最上部へ戻る">
+                            <i class="fa-solid fa-arrow-up text-sm"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -384,6 +394,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         const btnViewList = document.getElementById('btnViewList');
         const btnCardSizeNormal = document.getElementById('btnCardSizeNormal');
         const btnCardSizeSmall = document.getElementById('btnCardSizeSmall');
+        const backToTopBtn = document.getElementById('backToTopBtn');
 
         // カスタムドロップダウン（UIは1要素、値はhidden inputで保持）
         function initFilterDropdowns() {
@@ -509,6 +520,18 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         initFilterDropdowns();
         initPlatformTabs();
 
+        // 最上部へ戻るボタン
+        if (backToTopBtn) {
+            backToTopBtn.addEventListener('click', () => {
+                mainScrollArea.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+            const updateBackToTop = () => {
+                backToTopBtn.classList.toggle('hidden', mainScrollArea.scrollTop < 400);
+            };
+            mainScrollArea.addEventListener('scroll', updateBackToTop, { passive: true });
+            updateBackToTop();
+        }
+
         // 初回ロード（デフォルト小さめのレイアウトを適用）
         updateVideoContainerLayout();
         loadVideos();
@@ -526,6 +549,8 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
 
         // フィルター変更時
         function onFilterChange() {
+            // platform / media_type の変更でも列数を更新する
+            updateVideoContainerLayout();
             offset = 0;
             hasMore = true;
             videoContainer.innerHTML = '';
@@ -589,13 +614,20 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         });
 
         function isShortLayout() {
-            return currentMediaType === 'short';
+            const p = (filterPlatform && typeof filterPlatform.value === 'string') ? filterPlatform.value : '';
+            return currentMediaType === 'short' || p === 'tiktok' || p === 'instagram';
         }
 
         function updateVideoContainerLayout() {
             if (currentView === 'grid') {
                 if (isShortLayout()) {
-                    videoContainer.className = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4';
+                    if (currentCardSize === 'small') {
+                        // 縦長: 小さめ（PCは6列、スマホは現状維持）
+                        videoContainer.className = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 md:gap-4';
+                    } else {
+                        // 縦長: 大きめ（PCは4列、スマホは現状維持）
+                        videoContainer.className = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 md:gap-4';
+                    }
                 } else if (currentCardSize === 'small') {
                     videoContainer.className = 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4';
                 } else {
@@ -663,7 +695,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             try {
                 const params = new URLSearchParams({
                     offset: offset,
-                    limit: 25,
+                    limit: 50,
                     platform: filterPlatform.value || '',
                     category: filterCategory.value,
                     sort: filterSort.value,
@@ -727,7 +759,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             };
             const categoryColor = categoryColors[video.category] || 'bg-sky-50 text-sky-700 border border-sky-200';
             const primaryDate = video.upload_date || video.release_date || '';
-            const videoIsShort = video.media_type === 'short' || (isShortLayout());
+            const videoIsShort = video.media_type === 'short' || isShortLayout();
             const dataVideo = JSON.stringify({
                 platform: video.platform,
                 media_key: video.media_key,
@@ -749,7 +781,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${categoryColor}">#${escapeHtml(cat)}</span>`
                 : '';
 
-            if (videoIsShort && isShortLayout()) {
+            if (isShortLayout()) {
                 return `
                     <div class="video-card bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm" data-video="${dataVideo}" onclick="openVideoModal(this, event)">
                         <div class="video-thumbnail-portrait">
@@ -831,7 +863,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 ? new Date(primaryDate).toLocaleDateString('ja-JP')
                 : (video.created_at ? '登録日: ' + new Date(video.created_at).toLocaleDateString('ja-JP') : '');
             const thumbUrl = getThumbnailUrl(video);
-            const isVideoShort = video.media_type === 'short';
+            const isVideoShort = video.media_type === 'short' || isShortLayout();
             return `
                 <div class="video-card bg-white rounded-2xl border border-slate-200 shadow-sm px-3 py-2 flex items-center gap-3 hover:bg-slate-50/70 transition cursor-pointer" data-video="${dataVideo}" onclick="openVideoModal(this, event)">
                     <div class="w-16 shrink-0 ${isVideoShort ? 'aspect-[9/16]' : 'aspect-video'} rounded-xl overflow-hidden bg-slate-100 flex-shrink-0 relative">
