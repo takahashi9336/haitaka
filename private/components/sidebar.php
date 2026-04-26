@@ -171,35 +171,37 @@ $inactiveClass = "text-slate-500 hover:bg-slate-50 transition";
         </div>
     </div>
 </aside>
-<div id="sidebarBackdrop" class="fixed top-0 right-0 bottom-0 left-[240px] z-[99] opacity-0 pointer-events-none transition-opacity duration-200 md:!hidden" aria-hidden="true" role="presentation"
+<div id="sidebarBackdrop" class="fixed inset-0 z-[99] opacity-0 pointer-events-none transition-opacity duration-200" aria-hidden="true" role="presentation"
     style="background:rgba(0,0,0,0.25);"
 ></div>
 <style>
 #sidebar { width: 240px; }
 
-#sidebar.collapsed { width: 72px; }
-#sidebar.collapsed .logo-text,
-#sidebar.collapsed .nav-text,
-#sidebar.collapsed .user-info { display: none; }
+/* 狭幅: オーバーレイ表示（デフォルトは隠す） */
+@media (max-width: 1100px) {
+    #sidebarBackdrop.is-open { opacity: 1; pointer-events: auto; }
 
-#sidebar.collapsed .sidebar-brand { justify-content: center; }
-#sidebar.collapsed nav { padding-left: 0.75rem; padding-right: 0.75rem; }
-#sidebar.collapsed .nav-item { justify-content: center; }
-#sidebar.collapsed .sidebar-footer { padding-left: 0.75rem; padding-right: 0.75rem; }
-#sidebar.collapsed .sidebar-footer > div { justify-content: center; }
-#sidebar.collapsed .sidebar-footer .ml-auto { margin-left: 0; }
-#sidebar.collapsed .sidebar-footer a { min-width: 44px; min-height: 44px; }
+    /* ヘッダの三本線（多くの画面に既存）を狭幅では表示する */
+    #mobileMenuBtn { display: inline-flex !important; }
 
-@media (min-width: 769px) {
-    #sidebar.collapsed ~ #sidebarBackdrop { left: 72px !important; }
-}
-
-@media (max-width: 768px) {
-    #sidebar.mobile-open ~ #sidebarBackdrop { opacity: 1; pointer-events: auto; }
-    #sidebar { touch-action: manipulation; -webkit-tap-highlight-color: transparent; transform: translate3d(-100%, 0, 0); }
+    #sidebar {
+        position: fixed;
+        transform: translate3d(-100%, 0, 0);
+        z-index: 100;
+        height: 100%;
+        width: 240px !important;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+    }
     #sidebar.mobile-open { transform: translate3d(0, 0, 0); }
     #sidebar .nav-item { min-height: 44px; }
     #sidebar nav a { min-height: 36px; display: flex; align-items: center; }
+}
+
+/* 広幅: 常時表示 */
+@media (min-width: 1101px) {
+    #sidebarBackdrop { display: none; }
+    #sidebar { position: static; transform: none; height: auto; }
 }
 </style>
 <div id="app-toast" aria-live="polite" style="position:fixed;top:1.5rem;left:50%;transform:translateX(-50%);z-index:99999;padding:0.75rem 1.25rem;border-radius:0.75rem;background:#fff;color:#334155;font-size:0.875rem;font-weight:500;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);border:1px solid #f1f5f9;pointer-events:none;transition:opacity 0.3s;opacity:0;"></div>
@@ -207,35 +209,14 @@ $inactiveClass = "text-slate-500 hover:bg-slate-50 transition";
 (function() {
     const sidebar = document.getElementById('sidebar');
     if (!sidebar) return;
+    const backdrop = document.getElementById('sidebarBackdrop');
+    const headerMenuBtns = document.querySelectorAll('#mobileMenuBtn, .mobile-menu-trigger');
 
-    const MOBILE_MAX = 768;
-    const AUTO_COLLAPSE_MAX = 1536;
+    const OVERLAY_MAX = 1100;
 
-    function applySidebarModeByWidth() {
-        const w = window.innerWidth;
-        if (w <= MOBILE_MAX) {
-            sidebar.classList.remove('collapsed');
-            return;
-        }
-        if (w <= AUTO_COLLAPSE_MAX) {
-            sidebar.classList.add('collapsed');
-            return;
-        }
-        // > AUTO_COLLAPSE_MAX: ユーザーの手動状態に従う（core.js がないページでも反映）
-        try {
-            if (localStorage.getItem('sidebar-collapsed') === 'true') sidebar.classList.add('collapsed');
-            else sidebar.classList.remove('collapsed');
-        } catch (e) {
-            sidebar.classList.remove('collapsed');
-        }
+    function isOverlayMode() {
+        return window.innerWidth <= OVERLAY_MAX;
     }
-
-    applySidebarModeByWidth();
-    let resizeTimer = null;
-    window.addEventListener('resize', () => {
-        if (resizeTimer) clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(applySidebarModeByWidth, 100);
-    });
     
     let startX = 0;
     let currentX = 0;
@@ -248,11 +229,39 @@ $inactiveClass = "text-slate-500 hover:bg-slate-50 transition";
     
     function openSidebar() {
         sidebar.classList.add('mobile-open');
+        if (backdrop) backdrop.classList.add('is-open');
     }
     
     function closeSidebar() {
         sidebar.classList.remove('mobile-open');
+        if (backdrop) backdrop.classList.remove('is-open');
     }
+
+    function syncOverlayUI() {
+        if (isOverlayMode()) {
+            // overlay mode: 初期状態は閉じる
+            closeSidebar();
+        } else {
+            closeSidebar();
+        }
+    }
+
+    syncOverlayUI();
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+        if (resizeTimer) clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(syncOverlayUI, 100);
+    });
+
+    if (backdrop) backdrop.onclick = closeSidebar;
+
+    headerMenuBtns.forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            if (!isOverlayMode()) return;
+            openSidebar();
+        };
+    });
     
     document.addEventListener('touchstart', (e) => {
         startX = e.touches[0].clientX;
@@ -294,9 +303,10 @@ $inactiveClass = "text-slate-500 hover:bg-slate-50 transition";
     if (closeBtn) closeBtn.onclick = closeSidebar;
     
     document.addEventListener('click', (e) => {
-        if (sidebar.classList.contains('mobile-open') && !sidebar.contains(e.target) && !e.target.closest('#mobileMenuBtn')) {
-            closeSidebar();
-        }
+        if (!sidebar.classList.contains('mobile-open')) return;
+        if (sidebar.contains(e.target)) return;
+        if (e.target.closest('#mobileMenuBtn')) return;
+        closeSidebar();
     });
 })();
 </script>

@@ -161,88 +161,9 @@
     },
 
     initSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        const toggleBtn = document.getElementById('sidebarToggle'); // PC用最小化ボタン
-        const closeBtn = document.getElementById('sidebarClose');   // モバイル用閉じるボタン
-        
-        // 全画面共通：三本線ボタン（IDが異なる場合に対応）
-        const mobileMenuBtns = document.querySelectorAll('#mobileMenuBtn, .mobile-menu-trigger');
-
-        if (!sidebar) return;
-
-        const MOBILE_MAX = 768;
-        const AUTO_COLLAPSE_MAX = 1536;
-
-        const applySidebarModeByWidth = () => {
-            const w = window.innerWidth;
-
-            if (w <= MOBILE_MAX) {
-                // モバイル: 開いたときに読めるよう collapsed は外す
-                sidebar.classList.remove('collapsed');
-                return;
-            }
-
-            if (w <= AUTO_COLLAPSE_MAX) {
-                // 狭いPC: 自動でアイコンのみ表示
-                sidebar.classList.add('collapsed');
-                return;
-            }
-
-            // 広いPC: ユーザーの手動状態に従う
-            if (localStorage.getItem('sidebar-collapsed') === 'true') {
-                sidebar.classList.add('collapsed');
-            } else {
-                sidebar.classList.remove('collapsed');
-            }
-        };
-
-        applySidebarModeByWidth();
-
-        // 1. PC用：最小化トグル
-        if (toggleBtn) {
-            toggleBtn.onclick = (e) => {
-                e.stopPropagation();
-                sidebar.classList.toggle('collapsed');
-                localStorage.setItem('sidebar-collapsed', sidebar.classList.contains('collapsed'));
-                applySidebarModeByWidth();
-            };
-        }
-
-        // 2. ①タスク管理画面等、全画面でのモバイル展開対応
-        mobileMenuBtns.forEach(btn => {
-            btn.onclick = (e) => {
-                e.stopPropagation();
-                sidebar.classList.add('mobile-open');
-                // モバイル時は最小化状態を解除して文字が見えるようにする
-                sidebar.classList.remove('collapsed');
-            };
-        });
-
-        // 3. モバイル用：閉じるボタン
-        if (closeBtn) {
-            closeBtn.onclick = () => {
-                sidebar.classList.remove('mobile-open');
-                applySidebarModeByWidth();
-            };
-        }
-        
-        // 4. 背景(main)をクリックした時に閉じる
-        const main = document.querySelector('main');
-        if (main) {
-            main.addEventListener('click', (e) => {
-                if (window.innerWidth <= 768 && sidebar.classList.contains('mobile-open')) {
-                    sidebar.classList.remove('mobile-open');
-                }
-            });
-        }
-
-        let resizeTimer = null;
-        window.addEventListener('resize', () => {
-            if (resizeTimer) clearTimeout(resizeTimer);
-            resizeTimer = setTimeout(() => {
-                applySidebarModeByWidth();
-            }, 100);
-        });
+        // サイドバーの開閉/ブレークポイント制御は `private/components/sidebar.php` に集約。
+        // ここでイベントを重ねると二重バインドになるため、core.js 側では何もしない。
+        return;
     }
     };
 
