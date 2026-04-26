@@ -408,12 +408,7 @@ function portalTopicBadge(array $t): array {
                        placeholder="メンバー・楽曲・ブログを検索…" autocomplete="off">
                 <span class="text-[10px] font-bold text-slate-400 bg-white/70 border border-white/60 rounded-full px-2 py-0.5">⌘K</span>
             </div>
-            <div class="flex items-center gap-4">
-                <div class="hidden md:flex flex-col items-end">
-                    <span class="text-[10px] font-bold text-slate-400 tracking-wider">ログインユーザー</span>
-                    <span class="text-xs font-black hinata-user-name <?= !$isThemeHex ? "text-{$themeTailwind}-500" : '' ?>"><?= htmlspecialchars($user['id_name'] ?? 'ゲスト') ?></span>
-                </div>
-            </div>
+            <div class="flex items-center gap-4"></div>
         </header>
 
         <div class="flex-1 overflow-y-auto p-6 md:p-6 custom-scroll">
