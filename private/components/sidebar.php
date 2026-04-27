@@ -210,7 +210,6 @@ $inactiveClass = "text-slate-500 hover:bg-slate-50 transition";
     const sidebar = document.getElementById('sidebar');
     if (!sidebar) return;
     const backdrop = document.getElementById('sidebarBackdrop');
-    const headerMenuBtns = document.querySelectorAll('#mobileMenuBtn, .mobile-menu-trigger');
 
     const OVERLAY_MAX = 1100;
 
@@ -254,14 +253,6 @@ $inactiveClass = "text-slate-500 hover:bg-slate-50 transition";
     });
 
     if (backdrop) backdrop.onclick = closeSidebar;
-
-    headerMenuBtns.forEach(btn => {
-        btn.onclick = (e) => {
-            e.stopPropagation();
-            if (!isOverlayMode()) return;
-            openSidebar();
-        };
-    });
     
     document.addEventListener('touchstart', (e) => {
         startX = e.touches[0].clientX;
@@ -303,6 +294,15 @@ $inactiveClass = "text-slate-500 hover:bg-slate-50 transition";
     if (closeBtn) closeBtn.onclick = closeSidebar;
     
     document.addEventListener('click', (e) => {
+        const menuBtn = e.target.closest('#mobileMenuBtn, .mobile-menu-trigger');
+        if (menuBtn) {
+            if (isOverlayMode()) {
+                e.preventDefault();
+                e.stopPropagation();
+                openSidebar();
+            }
+            return;
+        }
         if (!sidebar.classList.contains('mobile-open')) return;
         if (sidebar.contains(e.target)) return;
         if (e.target.closest('#mobileMenuBtn')) return;
