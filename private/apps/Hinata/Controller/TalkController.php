@@ -98,16 +98,28 @@ class TalkController {
 
         $registeredMembers = [];
         $totalNetaCount = 0;
+        $totalUsedCount = 0;
         foreach ($groupedNeta as $mid => $group) {
             $count = count($group['items'] ?? []);
             $totalNetaCount += $count;
+            $usedCount = 0;
+            foreach (($group['items'] ?? []) as $it) {
+                if (($it['status'] ?? '') === 'done') $usedCount++;
+            }
+            $totalUsedCount += $usedCount;
             $mm = $memberMap[(int)$mid] ?? null;
+            $favLevel = (int)($mm['favorite_level'] ?? ($group['favorite_level'] ?? 0));
+            $favType = $favLevel >= 2 ? 'oshi' : ($favLevel === 1 ? 'kininaru' : 'other');
             $registeredMembers[] = [
                 'member_id' => (int)$mid,
                 'name' => (string)($group['member_name'] ?? ($mm['name'] ?? '')),
-                'favorite_level' => (int)($mm['favorite_level'] ?? ($group['favorite_level'] ?? 0)),
+                'favorite_level' => $favLevel,
+                'fav_type' => $favType,
+                'generation' => (int)($mm['generation'] ?? 0),
                 'image_url' => $mm['image_url'] ?? null,
+                'color1' => $group['color1'] ?? null,
                 'count' => $count,
+                'used_count' => $usedCount,
             ];
         }
 
