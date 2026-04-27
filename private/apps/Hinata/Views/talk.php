@@ -5,6 +5,25 @@
  */
 $appKey = 'hinata';
 require_once __DIR__ . '/../../../components/theme_from_session.php';
+
+function _talkMemberImgSrc(?string $imageUrl): string {
+    if (!$imageUrl) return '';
+    return str_starts_with($imageUrl, '/') ? htmlspecialchars($imageUrl) : '/assets/img/members/' . htmlspecialchars($imageUrl);
+}
+
+$defaultMemberId = null;
+if (!empty($members)) {
+    $best = null;
+    foreach ($members as $m) {
+        $mid = (int)($m['id'] ?? 0);
+        if (!$mid) continue;
+        $fav = (int)($m['favorite_level'] ?? 0);
+        if ($best === null || $fav > $best['fav']) {
+            $best = ['id' => $mid, 'fav' => $fav];
+        }
+    }
+    $defaultMemberId = $best['id'] ?? (int)($members[0]['id'] ?? 0);
+}
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -20,9 +39,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         body { font-family: 'Inter', 'Noto Sans JP', sans-serif; }
         
         .color-strip { width: 8px; flex-shrink: 0; }
-        .neta-item.done { opacity: 0.5; }
-        .neta-item.done .neta-content { text-decoration: line-through; }
-        .show-done-false .neta-item.done { display: none !important; }
+        .neta-item.done { opacity: 0.45; }
         
         .neta-card { 
             transition: box-shadow 0.2s, transform 0.2s; 
@@ -31,13 +48,11 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         .neta-card:hover, .neta-card:focus-within { 
             box-shadow: 0 8px 24px -6px rgba(0,0,0,0.18), 0 12px 28px -8px rgba(0,0,0,0.12); 
         }
-        .neta-card .card-status { opacity: 0; transition: opacity 0.2s; }
-        .neta-card:hover .card-status, .neta-card:focus-within .card-status { opacity: 1; }
+        .neta-card .card-actions { opacity: 0; transition: opacity 0.2s; }
+        .neta-card:hover .card-actions, .neta-card:focus-within .card-actions { opacity: 1; }
         .fav-badge { font-size: 10px; font-weight: 700; }
-        .neta-cards-columns { column-count: 1; column-gap: 0.75rem; }
-        @media (min-width: 640px) { .neta-cards-columns { column-count: 2; } }
-        @media (min-width: 1024px) { .neta-cards-columns { column-count: 3; } }
-        .neta-cards-columns .neta-card { break-inside: avoid; margin-bottom: 0.75rem; }
+        .neta-cards-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+        @media (max-width: 640px) { .neta-cards-columns { grid-template-columns: 1fr; } }
         
         /* サイドバー共通スタイル */
         .sidebar { transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s ease; width: 240px; }
@@ -52,7 +67,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
     </style>
     <style>:root { --hinata-theme: <?= htmlspecialchars($themePrimaryHex) ?>; }</style>
 </head>
-<body class="flex h-screen overflow-hidden text-slate-800 show-done-false <?= $bodyBgClass ?>"<?= $bodyStyle ? ' style="' . htmlspecialchars($bodyStyle) . '"' : '' ?>>
+<body class="flex h-screen overflow-hidden text-slate-800 <?= $bodyBgClass ?>"<?= $bodyStyle ? ' style="' . htmlspecialchars($bodyStyle) . '"' : '' ?>>
 
     <!-- 共通サイドバー -->
     <?php require_once __DIR__ . '/../../../components/sidebar.php'; ?>
@@ -66,138 +81,281 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 <h1 class="font-black text-slate-700 text-base md:text-lg tracking-tight truncate">推し活ネタ帳</h1>
             </div>
             <div class="flex items-center gap-2 shrink-0">
-                <button id="toggleFormBtn" class="text-xs font-bold px-3 py-1.5 rounded-full <?= $cardIconText ?> <?= $cardIconBg ?> hover:opacity-90"<?= $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>>+ 追加</button>
+                <button id="toggleFormBtn" class="md:hidden text-xs font-bold px-3 py-1.5 rounded-full <?= $cardIconText ?> <?= $cardIconBg ?> hover:opacity-90"<?= $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>>+ 追加</button>
             </div>
         </header>
 
         <div id="scrollContainer" class="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
-            <div class="max-w-4xl mx-auto w-full space-y-4">
-                <!-- 表示形式・完了表示（ヘッダーから移動） -->
-                <div class="flex flex-wrap items-center justify-between gap-3 py-2">
-                    <div class="flex bg-slate-100 rounded-full p-1 text-[10px] font-bold">
-                        <button id="btnViewCard" class="px-3 py-1 rounded-full bg-white shadow text-slate-700" title="カード表示">カード</button>
-                        <button id="btnViewList" class="px-3 py-1 rounded-full text-slate-500" title="一覧表示">一覧</button>
+            <div class="max-w-6xl mx-auto w-full space-y-4">
+                <!-- メンバー一覧（横スクロール） + 右上フィルタボタン -->
+                <section class="bg-white border <?= $cardBorder ?> rounded-xl shadow-sm overflow-hidden">
+                    <div class="flex items-center justify-between gap-3 px-4 py-3 border-b <?= $cardBorder ?>">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <span class="text-[10px] font-black text-slate-400 tracking-wider">メンバー</span>
+                        </div>
+                        <div id="memberFilterBar" class="flex items-center gap-1.5 shrink-0">
+                            <button type="button" class="member-filter-btn px-3 py-1.5 rounded-full text-[10px] font-bold bg-sky-500 text-white hover:bg-sky-600 transition" data-filter="all">すべて</button>
+                            <button type="button" class="member-filter-btn px-3 py-1.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition" data-filter="oshi"><i class="fa-solid fa-crown text-[9px] mr-1 text-amber-500"></i>推し</button>
+                            <button type="button" class="member-filter-btn px-3 py-1.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition" data-filter="fav"><i class="fa-solid fa-star text-[9px] mr-1 text-yellow-500"></i>気になる</button>
+                            <button type="button" class="member-filter-btn px-3 py-1.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition" data-filter="has"><i class="fa-solid fa-lightbulb text-[9px] mr-1 text-sky-500"></i>ネタあり</button>
+                        </div>
                     </div>
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        <span class="text-[10px] font-bold text-slate-400">完了表示</span>
-                        <input type="checkbox" id="doneToggle" class="w-4 h-4 rounded border-slate-300 <?= $cardIconText ?>"<?= $isThemeHex ? ' style="accent-color: var(--hinata-theme)"' : '' ?>>
-                    </label>
-                </div>
+                    <div class="px-3 py-3">
+                        <div id="memberStrip" class="flex items-start gap-3 overflow-x-auto p-1 pb-6 scroll-smooth" style="scrollbar-width: thin;">
+                            <?php foreach (($members ?? []) as $m):
+                                $mid = (int)($m['id'] ?? 0);
+                                $name = (string)($m['name'] ?? '');
+                                $imgSrc = _talkMemberImgSrc($m['image_url'] ?? null);
+                                $hasNeta = !empty($groupedNeta) && array_key_exists($mid, $groupedNeta);
+                            ?>
+                                <button type="button"
+                                    class="member-chip shrink-0 w-[136px] group outline-none focus:ring-2 focus:ring-sky-200 rounded-xl p-1.5 hover:bg-slate-50 transition"
+                                    data-member-id="<?= $mid ?>"
+                                    data-favorite-level="<?= (int)($m['favorite_level'] ?? 0) ?>"
+                                    data-has-neta="<?= $hasNeta ? '1' : '0' ?>"
+                                    title="<?= htmlspecialchars($name) ?>">
+                                    <div class="w-28 h-28 mx-auto rounded-full overflow-hidden bg-slate-100 ring-2 ring-white shadow-sm flex items-center justify-center">
+                                        <?php if ($imgSrc): ?>
+                                            <img src="<?= $imgSrc ?>" alt="<?= htmlspecialchars($name) ?>" class="w-full h-full object-cover">
+                                        <?php else: ?>
+                                            <i class="fa-solid fa-user text-slate-300 text-xl"></i>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="mt-1.5 text-center">
+                                        <div class="text-sm font-bold text-slate-700 truncate"><?= htmlspecialchars($name) ?></div>
+                                        <?php
+                                            $favLevel = (int)($m['favorite_level'] ?? 0);
+                                            $badge = $favLevel >= 2 ? '推し' : ($favLevel === 1 ? '気になる' : '');
+                                        ?>
+                                        <?php if ($badge): ?>
+                                            <div class="text-[9px] font-bold text-slate-400"><?= $badge ?></div>
+                                        <?php else: ?>
+                                            <div class="text-[9px] font-bold text-transparent">.</div>
+                                        <?php endif; ?>
+                                    </div>
+                                </button>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </section>
 
                 <!-- 登録・編集フォーム -->
-                <section id="netaFormContainer" class="bg-white border <?= $cardBorder ?> rounded-xl p-5 shadow-sm form-hidden md:block">
-                    <form id="netaForm" class="space-y-4">
+                <section id="netaFormContainer" class="bg-white border <?= $cardBorder ?> rounded-xl p-4 shadow-sm form-hidden md:block -mt-2">
+                    <form id="netaForm" class="space-y-3">
                         <input type="hidden" name="id" id="neta_id">
-                        <div class="flex justify-between items-center">
-                            <label class="text-[10px] font-black text-slate-400 tracking-wider">ネタを投稿・編集</label>
+                        <div id="cancelEditRow" class="hidden flex justify-end items-center">
                             <button type="button" id="cancelEdit" class="hidden text-[10px] text-red-400 font-bold bg-red-50 px-2 py-0.5 rounded">キャンセル</button>
                         </div>
-                        <select name="member_id" id="form_member_id" required class="w-full h-11 border border-slate-100 rounded-lg px-4 text-sm bg-slate-50 outline-none focus:ring-2 <?= $isThemeHex ? 'focus:ring-[var(--hinata-theme)]' : 'focus:ring-' . $themeTailwind . '-100' ?> transition-all">
-                            <?php
-                            $memberSelectBlankLabel = 'メンバーを選択';
-                            $memberSelectFormatOption = function($m) {
-                                $favLevel = (int)($m['favorite_level'] ?? 0);
-                                $prefix = $favLevel >= 2 ? '❤️ ' : ($favLevel === 1 ? '⭐ ' : '');
-                                return $prefix . htmlspecialchars($m['name'] ?? '');
-                            };
-                            if (!empty($members)) require __DIR__ . '/partials/member_select_options.php';
-                            else echo '<option value="">メンバーを選択</option>';
-                            ?>
-                        </select>
-                        <textarea name="content" id="form_content" required placeholder="何を話す？" class="w-full border border-slate-100 rounded-lg p-4 text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-sky-100 min-h-[80px] transition-all"></textarea>
-                        <button type="submit" id="submitBtn" class="w-full bg-sky-500 text-white h-12 rounded-lg font-bold shadow-lg shadow-sky-200 active:scale-95 transition-transform">
-                            ネタを追加
-                        </button>
+                        <!-- member_idは上部メンバー欄で選択 -->
+                        <input type="hidden" name="member_id" id="form_member_id">
+                        <input type="hidden" name="neta_type" id="form_neta_type" value="">
+                        <input type="hidden" name="tags" id="form_tags" value="[]">
+                        <div class="flex gap-5 items-stretch">
+                            <div class="shrink-0 w-24 flex flex-col h-full">
+                                <div class="flex-1 min-h-0 flex flex-col items-center justify-center">
+                                    <div class="w-24 h-24 rounded-full overflow-hidden bg-slate-100 ring-2 ring-white shadow-sm flex items-center justify-center">
+                                        <img id="formMemberImg" src="" alt="" class="w-full h-full object-cover hidden">
+                                        <i id="formMemberFallbackIcon" class="fa-solid fa-user text-slate-300 text-xl"></i>
+                                    </div>
+                                    <div id="formMemberName" class="mt-3 text-sm font-bold text-slate-700 text-center truncate w-24">メンバー未選択</div>
+                                </div>
+                            </div>
+                            <div class="flex-1 min-w-0 flex flex-col">
+                                <textarea name="content" id="form_content" required placeholder="何を話す？" class="w-full flex-1 border border-slate-100 rounded-lg p-4 text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-sky-100 min-h-[120px] transition-all resize-y"></textarea>
+                                <div class="mt-2 flex flex-wrap items-center justify-between gap-3">
+                                    <!-- 種類トグル -->
+                                    <div id="typeToggle" class="flex bg-slate-100 rounded-full p-1 text-[10px] font-bold">
+                                        <button type="button" class="type-btn px-3 py-1 rounded-full bg-sky-500 text-white shadow hover:bg-sky-600 transition" data-type="none">未登録</button>
+                                        <button type="button" class="type-btn px-3 py-1 rounded-full text-slate-600 hover:bg-slate-200 transition" data-type="question">質問</button>
+                                        <button type="button" class="type-btn px-3 py-1 rounded-full text-slate-600 hover:bg-slate-200 transition" data-type="impression">感想</button>
+                                        <button type="button" class="type-btn px-3 py-1 rounded-full text-slate-600 hover:bg-slate-200 transition" data-type="joke">ネタ</button>
+                                    </div>
+
+                                    <!-- タグ入力 -->
+                                    <div class="relative flex-1 min-w-[220px]">
+                                        <div id="tagBadges" class="flex flex-wrap gap-1.5 mb-2"></div>
+                                        <input id="tagInput" type="text" placeholder="#タグ（Enterで追加）" list="tagSuggestions"
+                                               class="w-full h-10 border border-slate-100 rounded-lg px-3 text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-sky-100">
+                                        <datalist id="tagSuggestions">
+                                            <?php foreach (($tagSuggestions ?? []) as $t): ?>
+                                                <option value="#<?= htmlspecialchars($t) ?>"></option>
+                                            <?php endforeach; ?>
+                                        </datalist>
+                                    </div>
+
+                                    <!-- 追加ボタン（タグ入力と同じ行の右側） -->
+                                    <button type="submit" id="submitBtn" class="shrink-0 bg-sky-500 hover:bg-sky-600 text-white h-10 px-4 rounded-lg font-bold shadow-sm active:scale-95 transition">
+                                        +追加
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </form>
                 </section>
 
                 <!-- カード表示エリア（デフォルト） -->
-                <div id="cardView" class="space-y-8">
-                    <?php if(!empty($groupedNeta)): foreach ($groupedNeta as $mid => $group): 
-                        $favLevel = (int)($group['favorite_level'] ?? 0);
-                        $favLabel = $favLevel >= 2 ? '推し' : ($favLevel === 1 ? '気になる' : '');
-                        $color1 = htmlspecialchars($group['color1'] ?? '#7cc7e8');
-                        $color2 = htmlspecialchars($group['color2'] ?? $color1);
-                    ?>
-                        <div>
-                            <!-- メンバー帯（名前の下にバー、その下にカード） -->
-                            <div class="mb-3">
-                                <div class="flex items-center gap-2 mb-2">
-                                    <h2 class="text-base font-black text-slate-700"><?= htmlspecialchars($group['member_name']) ?></h2>
-                                    <?php if ($favLabel): ?>
-                                        <span class="fav-badge px-2 py-0.5 rounded-full bg-sky-100 text-sky-600 text-[10px]"><?= $favLabel ?></span>
-                                    <?php endif; ?>
-                                    <span class="text-[10px] font-bold text-slate-400"><?= count($group['items']) ?> 件</span>
-                                </div>
-                                <div class="h-1.5 rounded-full w-full" style="background: linear-gradient(to right, <?= $color1 ?>, <?= $color2 ?>);"></div>
-                            </div>
-                            <!-- カード群（カラムレイアウトで詰めて表示） -->
-                            <div class="neta-cards-columns">
-                                <?php foreach ($group['items'] as $item): ?>
-                                    <div class="neta-card neta-item relative bg-white border-l-4 rounded-xl p-4 cursor-pointer outline-none focus:outline-none focus:ring-2 focus:ring-sky-200 w-full <?= $item['status'] === 'done' ? 'done' : '' ?>" style="border-left-color: <?= $color1 ?>;" tabindex="0" onclick="editNeta(<?= htmlspecialchars(json_encode($item), ENT_QUOTES, 'UTF-8') ?>)">
-                                        <div class="card-status absolute top-2 right-2 flex flex-col items-center gap-0.5" onclick="event.stopPropagation()">
-                                            <label class="cursor-pointer">
-                                                <input type="checkbox" <?= $item['status'] === 'done' ? 'checked' : '' ?> 
-                                                       onchange="toggleStatus(<?= $item['id'] ?>, this.checked)"
-                                                       class="w-4 h-4 rounded border-slate-300 text-sky-500">
-                                            </label>
-                                            <button onclick="event.stopPropagation(); deleteNeta(<?= $item['id'] ?>)" class="text-slate-300 hover:text-red-400 p-1" title="削除">
-                                                <i class="fa-solid fa-trash-can text-xs"></i>
-                                            </button>
-                                        </div>
-                                        <div class="text-sm text-slate-700 leading-relaxed neta-content pr-6">
-                                            <?= nl2br(htmlspecialchars($item['content'])) ?>
-                                        </div>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
+                <div class="flex flex-col lg:flex-row gap-4">
+                    <!-- 左：ネタエリア（約70%） -->
+                    <div class="lg:basis-[70%] lg:min-w-0">
+                        <!-- メモエリア フィルタ（提案順） -->
+                        <div id="memoQuickFilterBar" class="flex flex-wrap items-center gap-2 mb-3">
+                            <button type="button" class="memo-quick-btn px-3 py-1.5 rounded-full text-[10px] font-bold bg-sky-500 text-white hover:bg-sky-600 shadow-sm shadow-sky-200/60 ring-1 ring-black/5 active:scale-[0.98] transition" data-mode="unused">未使用</button>
+                            <button type="button" class="memo-quick-btn px-3 py-1.5 rounded-full text-[10px] font-bold bg-white text-slate-600 hover:bg-slate-50 shadow-sm ring-1 ring-black/5 active:scale-[0.98] transition" data-mode="question"><i class="fa-solid fa-circle-question text-[9px] mr-1 text-blue-500"></i>質問</button>
+                            <button type="button" class="memo-quick-btn px-3 py-1.5 rounded-full text-[10px] font-bold bg-white text-slate-600 hover:bg-slate-50 shadow-sm ring-1 ring-black/5 active:scale-[0.98] transition" data-mode="impression"><i class="fa-solid fa-comment-dots text-[9px] mr-1 text-emerald-500"></i>感想</button>
+                            <button type="button" class="memo-quick-btn px-3 py-1.5 rounded-full text-[10px] font-bold bg-white text-slate-600 hover:bg-slate-50 shadow-sm ring-1 ring-black/5 active:scale-[0.98] transition" data-mode="joke"><i class="fa-solid fa-face-laugh-squint text-[9px] mr-1 text-amber-500"></i>ネタ</button>
+                            <button type="button" class="memo-quick-btn px-3 py-1.5 rounded-full text-[10px] font-bold bg-white text-slate-600 hover:bg-slate-50 shadow-sm ring-1 ring-black/5 active:scale-[0.98] transition" data-mode="favorite"><i class="fa-solid fa-star text-[9px] mr-1 text-amber-500"></i>お気に入り</button>
+                            <button type="button" class="memo-quick-btn px-3 py-1.5 rounded-full text-[10px] font-bold bg-white text-slate-600 hover:bg-slate-50 shadow-sm ring-1 ring-black/5 active:scale-[0.98] transition" data-mode="all">すべて</button>
                         </div>
-                    <?php endforeach; else: ?>
-                        <p class="text-center text-slate-400 text-xs py-10 tracking-wider">データがありません</p>
-                    <?php endif; ?>
-                </div>
+                        <div id="cardView" class="space-y-8">
+                            <div id="selectedMemberEmpty" class="hidden bg-white border border-slate-200 rounded-2xl p-8 text-center text-slate-400 text-sm">
+                                選択中メンバーのネタがありません
+                            </div>
+                            <?php if(!empty($groupedNeta)): foreach ($groupedNeta as $mid => $group): 
+                                $favLevel = (int)($group['favorite_level'] ?? 0);
+                                $favLabel = $favLevel >= 2 ? '推し' : ($favLevel === 1 ? '気になる' : '');
+                                $color1 = htmlspecialchars($group['color1'] ?? '#7cc7e8');
+                                $color2 = htmlspecialchars($group['color2'] ?? $color1);
+                            ?>
+                                <div id="neta-member-<?= (int)$mid ?>" data-member-id="<?= (int)$mid ?>">
+                                    <!-- カード群（カラムレイアウトで詰めて表示） -->
+                                    <div class="neta-cards-columns">
+                                        <?php foreach ($group['items'] as $item): ?>
+                                                <?php
+                                                $type = $item['neta_type'] ?? null;
+                                                $typeLabel = $type === 'question' ? '質問' : ($type === 'impression' ? '感想' : ($type === 'joke' ? 'ネタ' : null));
+                                                $typeClass = $type === 'question' ? 'bg-blue-100 text-blue-700' : ($type === 'impression' ? 'bg-emerald-100 text-emerald-700' : ($type === 'joke' ? 'bg-amber-100 text-amber-700' : ''));
+                                                $isFav = !empty($item['is_favorite']);
+                                            ?>
+                                            <div class="neta-card neta-item relative bg-white border-l-4 rounded-xl p-4 outline-none focus:outline-none focus:ring-2 focus:ring-sky-200 w-full <?= $item['status'] === 'done' ? 'done' : '' ?>"
+                                                 style="border-left-color: <?= $color1 ?>;"
+                                                 data-neta-type="<?= htmlspecialchars($type ?? '') ?>"
+                                                 tabindex="0">
+                                                <?php if ($typeLabel): ?>
+                                                    <span class="absolute top-2 left-2 text-[9px] font-black px-2 py-0.5 rounded-full <?= $typeClass ?>"><?= $typeLabel ?></span>
+                                                <?php endif; ?>
+                                                <span class="used-badge absolute top-2 <?= $typeLabel ? 'left-[64px]' : 'left-2' ?> text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 <?= $item['status'] === 'done' ? '' : 'hidden' ?>">使用済</span>
+                                                <div class="card-actions absolute right-2 bottom-2 flex items-center gap-2" onclick="event.stopPropagation()">
+                                                    <button type="button"
+                                                            class="w-10 h-10 rounded-xl border border-slate-200 bg-white/90 text-slate-500 hover:text-amber-600 hover:bg-amber-50 transition shadow-sm"
+                                                            title="お気に入り"
+                                                            onclick="toggleNetaFavorite(this, <?= (int)$item['id'] ?>, <?= $isFav ? 'true' : 'false' ?>)">
+                                                        <i class="fa-solid fa-star<?= $isFav ? ' text-amber-500' : '' ?>" data-role="fav-icon"></i>
+                                                    </button>
+                                                    <button type="button"
+                                                            class="w-10 h-10 rounded-xl border border-slate-200 bg-white/90 text-slate-500 hover:text-sky-600 hover:bg-sky-50 transition shadow-sm"
+                                                            title="編集"
+                                                            onclick="editNeta(<?= htmlspecialchars(json_encode($item), ENT_QUOTES, 'UTF-8') ?>)">
+                                                        <i class="fa-solid fa-pen"></i>
+                                                    </button>
+                                                    <button type="button"
+                                                            class="w-10 h-10 rounded-xl border border-slate-200 bg-white/90 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 transition shadow-sm"
+                                                            title="使用済みにする"
+                                                            onclick="toggleStatus(this, <?= (int)$item['id'] ?>, <?= $item['status'] === 'done' ? 'false' : 'true' ?>)">
+                                                        <i class="fa-solid fa-check"></i>
+                                                    </button>
+                                                </div>
+                                                <div class="text-sm text-slate-700 leading-relaxed neta-content pr-10 pt-4">
+                                                    <?= nl2br(htmlspecialchars($item['content'])) ?>
+                                                </div>
+                                                <?php if (!empty($item['tags']) && is_array($item['tags'])): ?>
+                                                    <div class="mt-3 flex flex-wrap gap-1.5">
+                                                        <?php foreach ($item['tags'] as $tg): ?>
+                                                            <?php if ($tg !== ''): ?>
+                                                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">#<?= htmlspecialchars($tg) ?></span>
+                                                            <?php endif; ?>
+                                                        <?php endforeach; ?>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            <?php endforeach; else: ?>
+                                <p class="text-center text-slate-400 text-xs py-10 tracking-wider">データがありません</p>
+                            <?php endif; ?>
+                        </div>
+                    </div>
 
-                <!-- 一覧表示エリア（非表示がデフォルト） -->
-                <div id="listView" class="space-y-3 hidden">
-                    <?php if(!empty($groupedNeta)): foreach ($groupedNeta as $mid => $group): 
-                        $favLevel = (int)($group['favorite_level'] ?? 0);
-                        $favLabel = $favLevel >= 2 ? '推し' : ($favLevel === 1 ? '気になる' : '');
-                    ?>
-                        <div class="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm flex">
-                            <div class="color-strip" style="background: linear-gradient(to bottom, <?= $group['color1'] ?>, <?= $group['color2'] ?>);"></div>
-                            <div class="flex-1">
-                                <div class="flex items-center justify-between px-4 py-4 cursor-pointer hover:bg-slate-50 transition" onclick="toggleAccordion(<?= $mid ?>)">
-                                    <div class="flex items-center gap-3">
-                                        <span class="font-bold text-slate-700"><?= htmlspecialchars($group['member_name']) ?></span>
-                                        <?php if ($favLabel): ?><span class="fav-badge text-sky-600"><?= $favLabel ?></span><?php endif; ?>
-                                        <span class="text-[10px] text-slate-400 font-bold px-2 py-0.5 bg-slate-100 rounded-full"><?= count($group['items']) ?> 件</span>
+                    <!-- 右：サイド（次のミーグリ + 登録済みメンバー） -->
+                    <aside class="lg:basis-[30%] lg:min-w-0 space-y-4">
+                        <?php
+                            $next = $nextMgEvent ?? null;
+                            $daysLeft = $next ? (int)($next['days_left'] ?? 0) : null;
+                            $nextDate = $next['event_date'] ?? null;
+                            $nextName = $next['event_name'] ?? null;
+                            $nextCat = $next ? (int)($next['category'] ?? 0) : 0;
+                            $nextTypeLabel = $nextCat === 3 ? 'リアルミーグリ' : ($nextCat === 2 ? 'ミーグリ' : 'イベント');
+                            $nextMd = $nextDate ? date('n/j', strtotime($nextDate)) : null;
+                        ?>
+                        <section class="relative overflow-hidden rounded-2xl p-5 shadow-sm border border-white/25 text-white">
+                            <!-- glass background -->
+                            <div class="absolute inset-0 bg-gradient-to-br from-sky-500 via-sky-500 to-indigo-500"></div>
+                            <div class="absolute -top-10 -right-10 w-40 h-40 bg-white/20 rounded-full blur-2xl"></div>
+                            <div class="absolute -bottom-12 -left-12 w-48 h-48 bg-white/10 rounded-full blur-2xl"></div>
+                            <div class="absolute inset-0 backdrop-blur-[2px]"></div>
+
+                            <div class="relative">
+                                <!-- 1) icon + "次のイベント・あと◯日" -->
+                                <div class="flex items-center justify-between gap-3">
+                                    <div class="flex items-center gap-2 min-w-0">
+                                        <i class="fa-solid fa-calendar-days text-white/90"></i>
+                                        <span class="text-[11px] font-black tracking-tight truncate">次のイベント ・ あと<?= $daysLeft !== null ? max(0, $daysLeft) : '—' ?>日</span>
                                     </div>
-                                    <i id="icon-<?= $mid ?>" class="fa-solid fa-chevron-down text-slate-300 text-xs transition-transform duration-300"></i>
                                 </div>
-                                <div id="list-<?= $mid ?>" class="divide-y divide-slate-50 border-t border-slate-50 hidden accordion-content">
-                                    <?php foreach ($group['items'] as $item): ?>
-                                        <div class="neta-item p-4 flex items-start gap-3 group <?= $item['status'] === 'done' ? 'done' : '' ?>" onclick="editNeta(<?= htmlspecialchars(json_encode($item), ENT_QUOTES, 'UTF-8') ?>)">
-                                            <div onclick="event.stopPropagation()">
-                                                <input type="checkbox" <?= $item['status'] === 'done' ? 'checked' : '' ?> 
-                                                       onchange="toggleStatus(<?= $item['id'] ?>, this.checked)"
-                                                       class="w-5 h-5 rounded border-slate-300 text-sky-500 mt-0.5">
-                                            </div>
-                                            <div class="flex-1 text-sm text-slate-600 leading-relaxed neta-content cursor-pointer">
-                                                <?= nl2br(htmlspecialchars($item['content'])) ?>
-                                            </div>
-                                            <div class="opacity-0 group-hover:opacity-100 transition-opacity" onclick="event.stopPropagation()">
-                                                <button onclick="deleteNeta(<?= $item['id'] ?>)" class="text-slate-200 hover:text-red-400 p-1">
-                                                    <i class="fa-solid fa-trash-can text-xs"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    <?php endforeach; ?>
+
+                                <!-- 2) (日付) (イベント種類) -->
+                                <div class="mt-3 flex items-end gap-2">
+                                    <div class="text-2xl font-black leading-none"><?= htmlspecialchars($nextMd ?: '—') ?></div>
+                                    <div class="text-xl font-black leading-none"><?= htmlspecialchars($nextTypeLabel) ?></div>
+                                </div>
+
+                                <!-- 3) (名前) ○部(複数は/) -->
+                                <?php if (!empty($nextMgParticipantsText)): ?>
+                                    <div class="mt-2 text-xs font-bold text-white/90 leading-relaxed">
+                                        <?= htmlspecialchars($nextMgParticipantsText) ?>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="mt-2 text-xs font-bold text-white/70">参加予定が未登録です</div>
+                                <?php endif; ?>
+                            </div>
+                        </section>
+
+                        <section class="bg-white border <?= $cardBorder ?> rounded-2xl p-5 shadow-sm">
+                            <div class="flex items-end justify-between gap-3">
+                                <div>
+                                    <div class="text-[10px] font-black text-slate-400 tracking-wider">登録済みメンバー</div>
+                                    <div class="mt-1 text-sm font-black text-slate-800"><?= count($registeredMembers ?? []) ?>名</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-[10px] font-bold text-slate-400">ネタ</div>
+                                    <div class="text-sm font-black text-slate-700"><?= (int)($totalNetaCount ?? 0) ?></div>
                                 </div>
                             </div>
-                        </div>
-                    <?php endforeach; else: ?>
-                        <p class="text-center text-slate-400 text-xs py-10 tracking-wider">データがありません</p>
-                    <?php endif; ?>
+
+                            <div class="mt-4 space-y-2 max-h-[520px] overflow-y-auto pr-1">
+                                <?php if (!empty($registeredMembers)): foreach ($registeredMembers as $rm):
+                                    $rmImg = _talkMemberImgSrc($rm['image_url'] ?? null);
+                                ?>
+                                    <button type="button" class="registered-member-item w-full text-left flex items-center gap-3 bg-white rounded-xl border border-slate-100 px-3 py-2 hover:bg-slate-50 transition" data-member-id="<?= (int)($rm['member_id'] ?? 0) ?>">
+                                        <div class="w-10 h-10 rounded-full overflow-hidden bg-slate-100 shrink-0 flex items-center justify-center">
+                                            <?php if ($rmImg): ?>
+                                                <img src="<?= $rmImg ?>" alt="<?= htmlspecialchars($rm['name'] ?? '') ?>" class="w-full h-full object-cover">
+                                            <?php else: ?>
+                                                <i class="fa-solid fa-user text-slate-300"></i>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <div class="text-sm font-bold text-slate-700 truncate"><?= htmlspecialchars($rm['name'] ?? '') ?></div>
+                                            <div class="text-[10px] text-slate-400">ネタ <?= (int)($rm['count'] ?? 0) ?></div>
+                                        </div>
+                                        <div class="text-sm font-black text-slate-700"><?= (int)($rm['count'] ?? 0) ?></div>
+                                    </button>
+                                <?php endforeach; else: ?>
+                                    <div class="text-xs text-slate-400 text-center py-8">登録済みメンバーがいません</div>
+                                <?php endif; ?>
+                            </div>
+                        </section>
+                    </aside>
                 </div>
             </div>
         </div>
@@ -205,88 +363,290 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
 
     <script src="/assets/js/core.js?v=2"></script>
     <script>
-        const STORAGE_KEY = 'hinata_opened_accordions';
-
         window.onload = () => {
-            restoreAccordions(); // アコーディオンの状態復元
             restoreScroll();     // スクロール位置の復元
         };
 
-        // 表示形式切替（デフォルト: カード）
-        const cardView = document.getElementById('cardView');
-        const listView = document.getElementById('listView');
-        const btnViewCard = document.getElementById('btnViewCard');
-        const btnViewList = document.getElementById('btnViewList');
-        let viewMode = localStorage.getItem('hinata_neta_view') || 'card';
-        
-        function setViewMode(mode) {
-            viewMode = mode;
-            localStorage.setItem('hinata_neta_view', mode);
-            if (mode === 'card') {
-                cardView.classList.remove('hidden');
-                listView.classList.add('hidden');
-                btnViewCard.classList.add('bg-white', 'shadow', 'text-slate-700');
-                btnViewCard.classList.remove('text-slate-500');
-                btnViewList.classList.remove('bg-white', 'shadow', 'text-slate-700');
-                btnViewList.classList.add('text-slate-500');
-            } else {
-                cardView.classList.add('hidden');
-                listView.classList.remove('hidden');
-                btnViewList.classList.add('bg-white', 'shadow', 'text-slate-700');
-                btnViewList.classList.remove('text-slate-500');
-                btnViewCard.classList.remove('bg-white', 'shadow', 'text-slate-700');
-                btnViewCard.classList.add('text-slate-500');
+        const DEFAULT_MEMBER_ID = <?= (int)($defaultMemberId ?? 0) ?>;
+        const MEMBER_META = <?= json_encode(array_reduce(($members ?? []), function($acc, $m) {
+            $mid = (int)($m['id'] ?? 0);
+            if (!$mid) return $acc;
+            $acc[$mid] = [
+                'name' => (string)($m['name'] ?? ''),
+                'img'  => _talkMemberImgSrc($m['image_url'] ?? null),
+            ];
+            return $acc;
+        }, []), JSON_UNESCAPED_UNICODE) ?>;
+
+        // メンバー横スクロール選択（フォームのメンバー選択に反映）
+        const memberStrip = document.getElementById('memberStrip');
+        const formMemberSelect = document.getElementById('form_member_id');
+        const formMemberImg = document.getElementById('formMemberImg');
+        const formMemberFallbackIcon = document.getElementById('formMemberFallbackIcon');
+        const formMemberName = document.getElementById('formMemberName');
+
+        const selectedMemberEmpty = document.getElementById('selectedMemberEmpty');
+
+        function filterNetaBySelectedMember(memberId) {
+            const cardView = document.getElementById('cardView');
+            if (!cardView) return;
+            const blocks = cardView.querySelectorAll('[data-member-id]');
+            let visible = 0;
+            blocks.forEach(b => {
+                const ok = String(b.dataset.memberId) === String(memberId);
+                b.classList.toggle('hidden', !ok);
+                if (ok) visible++;
+            });
+            if (selectedMemberEmpty) {
+                selectedMemberEmpty.classList.toggle('hidden', visible > 0);
             }
         }
-        setViewMode(viewMode);
-        btnViewCard.onclick = () => setViewMode('card');
-        btnViewList.onclick = () => setViewMode('list');
 
-        // 完了表示トグル
-        document.getElementById('doneToggle').onchange = function() {
-            document.body.classList.toggle('show-done-false', !this.checked);
-        };
+        let memoQuickMode = 'unused'; // unused/question/impression/joke/favorite/all
 
-        // スマホ用フォームトグル
-        document.getElementById('toggleFormBtn').onclick = function() {
-            document.getElementById('netaFormContainer').classList.toggle('form-hidden');
-        };
+        function applyMemoFilters() {
+            const cardView = document.getElementById('cardView');
+            if (!cardView) return;
+            cardView.querySelectorAll('.neta-item').forEach(item => {
+                const isDone = item.classList.contains('done');
+                const t = (item.dataset.netaType || '').trim();
+                const isFav = (item.dataset.isFavorite || '0') === '1';
 
-        /**
-         * アコーディオンの開閉と状態保存
-         */
-        function toggleAccordion(id) {
-            const list = document.getElementById('list-' + id);
-            const icon = document.getElementById('icon-' + id);
-            if (!list) return;
+                let show = true;
+                if (memoQuickMode === 'all') {
+                    show = true; // 未使用/使用済み両方、種類不問
+                } else if (memoQuickMode === 'unused') {
+                    show = !isDone; // 未使用、かつ全種類
+                } else if (memoQuickMode === 'favorite') {
+                    show = !isDone && isFav; // お気に入り、かつ未使用（種類不問）
+                } else if (memoQuickMode === 'question' || memoQuickMode === 'impression' || memoQuickMode === 'joke') {
+                    show = !isDone && (t === memoQuickMode); // 未使用、かつ種類一致
+                }
 
-            const isOpening = list.classList.contains('hidden');
-            list.classList.toggle('hidden');
-            if (icon) icon.style.transform = isOpening ? 'rotate(180deg)' : 'rotate(0deg)';
-
-            // localStorageに開いているIDを保存
-            let opened = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-            if (isOpening) {
-                if (!opened.includes(id)) opened.push(id);
-            } else {
-                opened = opened.filter(openedId => openedId !== id);
-            }
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(opened));
+                item.classList.toggle('hidden', !show);
+            });
         }
 
-        /**
-         * 状態の復元
-         */
-        function restoreAccordions() {
-            const opened = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-            opened.forEach(id => {
-                const list = document.getElementById('list-' + id);
-                const icon = document.getElementById('icon-' + id);
-                if (list) {
-                    list.classList.remove('hidden');
-                    if (icon) icon.style.transform = 'rotate(180deg)';
+        function updateFormMemberDisplay(memberId) {
+            const meta = memberId ? MEMBER_META[String(memberId)] || MEMBER_META[Number(memberId)] : null;
+            if (!formMemberName) return;
+            if (!meta) {
+                formMemberName.textContent = 'メンバー未選択';
+                if (formMemberImg) {
+                    formMemberImg.classList.add('hidden');
+                    formMemberImg.src = '';
+                    formMemberImg.alt = '';
+                }
+                if (formMemberFallbackIcon) formMemberFallbackIcon.classList.remove('hidden');
+                return;
+            }
+            formMemberName.textContent = meta.name || '';
+            if (meta.img) {
+                if (formMemberImg) {
+                    formMemberImg.src = meta.img;
+                    formMemberImg.alt = meta.name || '';
+                    formMemberImg.classList.remove('hidden');
+                }
+                if (formMemberFallbackIcon) formMemberFallbackIcon.classList.add('hidden');
+            } else {
+                if (formMemberImg) {
+                    formMemberImg.classList.add('hidden');
+                    formMemberImg.src = '';
+                    formMemberImg.alt = '';
+                }
+                if (formMemberFallbackIcon) formMemberFallbackIcon.classList.remove('hidden');
+            }
+        }
+
+        // 登録フォーム：種類トグル
+        const formNetaType = document.getElementById('form_neta_type');
+        const typeToggle = document.getElementById('typeToggle');
+        function setFormNetaType(type) {
+            const t = (type === null || type === undefined || type === '' || type === 'none') ? '' : String(type);
+            if (formNetaType) formNetaType.value = t;
+            if (!typeToggle) return;
+            typeToggle.querySelectorAll('.type-btn').forEach(btn => {
+                const active = (btn.dataset.type || 'none') === (t || 'none');
+                btn.classList.toggle('bg-sky-500', active);
+                btn.classList.toggle('text-white', active);
+                btn.classList.toggle('shadow', active);
+                btn.classList.toggle('hover:bg-sky-600', active);
+                btn.classList.toggle('text-slate-600', !active);
+                btn.classList.toggle('hover:bg-slate-200', !active);
+            });
+        }
+        if (typeToggle) {
+            typeToggle.addEventListener('click', (e) => {
+                const btn = e.target.closest('.type-btn');
+                if (!btn) return;
+                setFormNetaType(btn.dataset.type || 'none');
+            });
+        }
+
+        // 登録フォーム：タグ（簡易SNS風）
+        const formTags = document.getElementById('form_tags');
+        const tagInput = document.getElementById('tagInput');
+        const tagBadges = document.getElementById('tagBadges');
+        let currentTags = [];
+
+        function normalizeTag(raw) {
+            let t = String(raw || '').trim();
+            if (t.startsWith('#')) t = t.slice(1);
+            t = t.trim();
+            // 空白や#を除去（最低限）
+            t = t.replace(/[#\s]+/g, '');
+            return t;
+        }
+        function renderTags() {
+            if (formTags) formTags.value = JSON.stringify(currentTags);
+            if (!tagBadges) return;
+            tagBadges.innerHTML = '';
+            currentTags.forEach((t, idx) => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold hover:bg-slate-200 transition';
+                b.textContent = '#' + t + ' ×';
+                b.onclick = () => {
+                    currentTags.splice(idx, 1);
+                    renderTags();
+                };
+                tagBadges.appendChild(b);
+            });
+        }
+        function addTag(raw) {
+            const t = normalizeTag(raw);
+            if (!t) return;
+            if (!currentTags.includes(t)) currentTags.push(t);
+            renderTags();
+        }
+        if (tagInput) {
+            tagInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ',' || e.key === ' ') {
+                    e.preventDefault();
+                    addTag(tagInput.value);
+                    tagInput.value = '';
+                } else if (e.key === 'Backspace' && tagInput.value === '' && currentTags.length) {
+                    currentTags.pop();
+                    renderTags();
                 }
             });
+            tagInput.addEventListener('blur', () => {
+                if (tagInput.value.trim()) {
+                    addTag(tagInput.value);
+                    tagInput.value = '';
+                }
+            });
+        }
+
+        function syncSelectedMember(memberId) {
+            if (!memberId) return;
+            setSelectedMemberChip(memberId);
+            if (formMemberSelect) formMemberSelect.value = String(memberId);
+            updateFormMemberDisplay(memberId);
+            filterNetaBySelectedMember(memberId);
+            applyMemoFilters();
+        }
+
+        function setSelectedMemberChip(memberId) {
+            if (!memberStrip) return;
+            memberStrip.querySelectorAll('.member-chip').forEach(btn => {
+                const active = String(btn.dataset.memberId) === String(memberId);
+                btn.classList.toggle('bg-sky-50', active);
+                btn.classList.toggle('ring-2', active);
+                btn.classList.toggle('ring-sky-200', active);
+            });
+        }
+        if (memberStrip) {
+            memberStrip.addEventListener('click', (e) => {
+                const btn = e.target.closest('.member-chip');
+                if (!btn) return;
+                const memberId = btn.dataset.memberId;
+                syncSelectedMember(memberId);
+            });
+        }
+
+        // 右上フィルタ（メンバー一覧のみ）
+        const memberFilterBar = document.getElementById('memberFilterBar');
+        function applyMemberFilter(mode) {
+            if (!memberStrip) return;
+            const chips = memberStrip.querySelectorAll('.member-chip');
+            chips.forEach(chip => {
+                const fav = parseInt(chip.dataset.favoriteLevel || '0', 10);
+                const has = chip.dataset.hasNeta === '1';
+                let ok = true;
+                if (mode === 'oshi') ok = fav >= 2;
+                else if (mode === 'fav') ok = fav === 1;
+                else if (mode === 'has') ok = has;
+                chip.classList.toggle('hidden', !ok);
+            });
+        }
+        function setActiveFilterBtn(activeBtn) {
+            if (!memberFilterBar) return;
+            memberFilterBar.querySelectorAll('.member-filter-btn').forEach(btn => {
+                const isActive = btn === activeBtn;
+                btn.classList.toggle('bg-sky-500', isActive);
+                btn.classList.toggle('text-white', isActive);
+                btn.classList.toggle('hover:bg-sky-600', isActive);
+                btn.classList.toggle('bg-slate-100', !isActive);
+                btn.classList.toggle('text-slate-600', !isActive);
+                btn.classList.toggle('hover:bg-slate-200', !isActive);
+            });
+        }
+        if (memberFilterBar) {
+            memberFilterBar.addEventListener('click', (e) => {
+                const btn = e.target.closest('.member-filter-btn');
+                if (!btn) return;
+                const mode = btn.dataset.filter || 'all';
+                setActiveFilterBtn(btn);
+                applyMemberFilter(mode);
+            });
+        }
+
+        // メモエリア クイックフィルタ（提案順）
+        const memoQuickFilterBar = document.getElementById('memoQuickFilterBar');
+        function setActiveMemoQuickBtn(activeBtn) {
+            if (!memoQuickFilterBar) return;
+            memoQuickFilterBar.querySelectorAll('.memo-quick-btn').forEach(btn => {
+                const isActive = btn === activeBtn;
+                btn.classList.toggle('bg-sky-500', isActive);
+                btn.classList.toggle('text-white', isActive);
+                btn.classList.toggle('hover:bg-sky-600', isActive);
+                btn.classList.toggle('bg-white', !isActive);
+                btn.classList.toggle('text-slate-600', !isActive);
+                btn.classList.toggle('hover:bg-slate-50', !isActive);
+            });
+        }
+        if (memoQuickFilterBar) {
+            memoQuickFilterBar.addEventListener('click', (e) => {
+                const btn = e.target.closest('.memo-quick-btn');
+                if (!btn) return;
+                memoQuickMode = btn.dataset.mode || 'unused';
+                setActiveMemoQuickBtn(btn);
+                applyMemoFilters();
+            });
+        }
+
+        // 右サイド：登録済みメンバークリックで上部選択と連動
+        document.querySelectorAll('.registered-member-item').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const mid = btn.dataset.memberId;
+                if (mid) syncSelectedMember(mid);
+            });
+        });
+
+        // スマホ用フォームトグル（表示時は「-追加」）
+        const toggleFormBtn = document.getElementById('toggleFormBtn');
+        function updateToggleFormBtnLabel() {
+            if (!toggleFormBtn) return;
+            const isHidden = document.getElementById('netaFormContainer')?.classList.contains('form-hidden');
+            toggleFormBtn.textContent = (isHidden ? '+ 追加' : '- 追加');
+        }
+        if (toggleFormBtn) {
+            toggleFormBtn.onclick = function() {
+                document.getElementById('netaFormContainer').classList.toggle('form-hidden');
+                updateToggleFormBtnLabel();
+            };
+            updateToggleFormBtnLabel();
         }
 
         /**
@@ -318,8 +678,13 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             document.getElementById('neta_id').value = item.id;
             document.getElementById('form_member_id').value = item.member_id;
             document.getElementById('form_content').value = item.content;
+            setFormNetaType(item.neta_type || 'none');
+            currentTags = Array.isArray(item.tags) ? item.tags.map(normalizeTag).filter(Boolean) : [];
+            renderTags();
             document.getElementById('submitBtn').innerText = '変更を保存';
+            document.getElementById('cancelEditRow')?.classList.remove('hidden');
             document.getElementById('cancelEdit').classList.remove('hidden');
+            syncSelectedMember(item.member_id);
             
             // フォームへスクロール
             const container = document.getElementById('scrollContainer');
@@ -332,15 +697,37 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         document.getElementById('cancelEdit').onclick = function() {
             document.getElementById('netaForm').reset();
             document.getElementById('neta_id').value = '';
-            document.getElementById('submitBtn').innerText = 'ネタを追加';
+            document.getElementById('submitBtn').innerText = '+追加';
             this.classList.add('hidden');
+            document.getElementById('cancelEditRow')?.classList.add('hidden');
+            setFormNetaType('none');
+            currentTags = [];
+            renderTags();
+            applyMemoFilters();
         };
+
+        // 初期表示：最推し（favorite_level最大）を選択状態にする
+        document.addEventListener('DOMContentLoaded', () => {
+            if (DEFAULT_MEMBER_ID) {
+                syncSelectedMember(DEFAULT_MEMBER_ID);
+            }
+            setFormNetaType('none');
+            renderTags();
+            // default: 未使用（全種類）
+            memoQuickMode = 'unused';
+            applyMemoFilters();
+        });
 
         /**
          * 保存処理
          */
         document.getElementById('netaForm').onsubmit = async (e) => {
             e.preventDefault();
+            const memberId = (formMemberSelect?.value || '').trim();
+            if (!memberId) {
+                alert('上のメンバー欄からメンバーを選択してください');
+                return;
+            }
             saveScroll(); 
             const res = await App.post('api/save_neta.php', Object.fromEntries(new FormData(e.target)));
             if (res.status === 'success') {
@@ -353,14 +740,46 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         /**
          * 完了ステータスのトグル
          */
-        async function toggleStatus(id, checked) {
+        function updateCardUiAfterStatus(cardEl, isDone) {
+            cardEl.classList.toggle('done', isDone);
+            const badge = cardEl.querySelector('.used-badge');
+            if (badge) badge.classList.toggle('hidden', !isDone);
+            // フィルタ条件に合わせて表示更新
+            applyMemoFilters();
+        }
+
+        function updateCardUiAfterFavorite(cardEl, isFav) {
+            cardEl.dataset.isFavorite = isFav ? '1' : '0';
+            const icon = cardEl.querySelector('[data-role="fav-icon"]');
+            if (icon) icon.classList.toggle('text-amber-500', !!isFav);
+        }
+
+        async function toggleStatus(btnEl, id, checked) {
             saveScroll();
+            const card = btnEl?.closest?.('.neta-item');
             const res = await App.post('api/update_neta_status.php', {
                 id: id,
                 status: checked ? 'done' : 'stock'
             });
             if (res.status === 'success') {
-                location.reload();
+                if (card) updateCardUiAfterStatus(card, !!checked);
+            } else {
+                alert('更新に失敗しました');
+            }
+        }
+
+        async function toggleNetaFavorite(btnEl, id, current) {
+            saveScroll();
+            const card = btnEl?.closest?.('.neta-item');
+            const next = !current;
+            const res = await App.post('api/update_neta_favorite.php', {
+                id: id,
+                is_favorite: next ? 1 : 0
+            });
+            if (res.status === 'success') {
+                if (card) updateCardUiAfterFavorite(card, next);
+                // 次回クリック用に current を更新
+                if (btnEl) btnEl.setAttribute('onclick', `toggleNetaFavorite(this, ${id}, ${next ? 'true' : 'false'})`);
             } else {
                 alert('更新に失敗しました');
             }

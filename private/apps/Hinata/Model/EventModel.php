@@ -43,6 +43,18 @@ class EventModel extends BaseModel {
                 ORDER BY event_date ASC LIMIT 1";
         return $this->pdo->query($sql)->fetch() ?: null;
     }
+
+    /**
+     * 次のミーグリ/リアミ（カテゴリ 2 or 3）
+     */
+    public function getNextMgEvent(): ?array {
+        $sql = "SELECT *, DATEDIFF(event_date, NOW()) as days_left
+                FROM {$this->table}
+                WHERE event_date >= CURDATE()
+                  AND category IN (2, 3)
+                ORDER BY event_date ASC LIMIT 1";
+        return $this->pdo->query($sql)->fetch() ?: null;
+    }
     
     /**
      * 指定日付のMG/RMGイベントを検索（カテゴリ 2 or 3）
