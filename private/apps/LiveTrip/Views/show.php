@@ -333,8 +333,8 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
         /* ピル（薄塗り） */
         .lt-pill-primary { background: var(--brand-primary-soft); color: var(--brand-primary-text); }
         /* 下線型タブ（モック寄せ） */
-        .lt-tab { padding: 12px 16px; font-weight: 600; font-size: 0.875rem; color: var(--gray-500); border-bottom: 0; background: transparent; transition: color 0.15s; white-space: nowrap; }
-        .lt-tab-inner { position: relative; display: inline-flex; align-items: center; gap: 6px; padding: 0 0 12px; }
+        .lt-tab { padding: 10px 14px; font-weight: 600; font-size: 0.875rem; color: var(--gray-500); border-bottom: 0; background: transparent; transition: color 0.15s; white-space: nowrap; }
+        .lt-tab-inner { position: relative; display: inline-flex; align-items: center; gap: 6px; padding: 0 0 10px; }
         .lt-tab:hover { color: var(--gray-900); }
         .lt-tab.active { color: var(--gray-900); font-weight: 700; }
         .lt-tab.active .lt-tab-inner::after {
@@ -453,7 +453,7 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
     </div>
 
     <div class="trip-detail-container">
-        <div class="lt-tab-bar flex items-center gap-2 border-b border-slate-200 px-0 overflow-x-auto shrink-0">
+        <div class="lt-tab-bar flex items-center gap-1.5 border-b border-slate-200 px-0 overflow-x-auto shrink-0">
             <button type="button" class="lt-tab shrink-0" data-tab="summary"><span class="lt-tab-inner"><span aria-hidden="true">📋</span><span>サマリ</span></span></button>
             <button type="button" class="lt-tab shrink-0" data-tab="info"><span class="lt-tab-inner"><span aria-hidden="true">👥</span><span>参加情報</span></span></button>
             <button type="button" class="lt-tab shrink-0" data-tab="expense"><span class="lt-tab-inner"><span aria-hidden="true">💴</span><span>費用</span></span></button>
@@ -641,7 +641,7 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
     </div>
     <?php endif; ?>
 
-    <div class="trip-detail-container py-4 sm:py-6 lt-tab-panels min-w-0">
+    <div class="trip-detail-container py-3 sm:py-4 lt-tab-panels min-w-0">
         <div class="lt-tab-panel w-full" data-panel="summary" id="panel-summary">
         <?php
         $summaryTotalExpense = 0;
@@ -1934,7 +1934,7 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
             $destinationTypeIconMap = [
                 'main' => '🎯',
                 'collab' => '🛍️',
-                'sightseeing' => '🗼',
+                'sightseeing' => '☀️',
                 'other' => '📌',
             ];
             $hasVenueDestination = (!empty($eventPlaceForArea) && is_string($eventPlaceForArea) && trim($eventPlaceForArea) !== '');
@@ -2036,140 +2036,374 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
                 </div>
             </section>
 
-            <div id="<?= htmlspecialchars($destinationFormAnchorId) ?>"></div>
-            <form method="post" action="/live_trip/destination_store.php" class="space-y-3 p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
-                <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
-                <input type="hidden" name="tab" value="destination">
-                <input type="hidden" name="latitude" id="destination-latitude" value="">
-                <input type="hidden" name="longitude" id="destination-longitude" value="">
-                <input type="hidden" name="place_id" id="destination-place-id" value="">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div class="relative">
-                        <label class="block text-xs font-bold text-slate-500 mb-1">名前 *</label>
-                        <input type="text" id="destination-name" name="name" required class="w-full border border-slate-200 rounded px-3 py-2 text-sm" placeholder="店名・施設名など（日本語入力で候補を選択すると住所に反映）" autocomplete="off">
-                        <div id="destination-name-suggestions" class="hidden absolute left-0 right-0 top-full mt-0.5 z-20 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"></div>
+            <section class="grid grid-cols-1 lg:grid-cols-10 gap-4 items-start">
+                <!-- 左：目的地（サマリ） -->
+                <div class="lg:col-span-6 bg-white border border-slate-200 rounded-xl shadow-sm p-5 sm:p-6">
+                    <div class="flex items-center justify-between gap-3">
+                        <p class="expense-hero__eyebrow">目的地</p>
+                        <span class="text-sm text-slate-500 font-bold"><?= (int)$destinationTotal ?>件</span>
                     </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">種別</label>
-                        <select name="destination_type" class="w-full border border-slate-200 rounded px-3 py-2 text-sm">
-                            <?php foreach (\App\LiveTrip\Model\DestinationModel::$types as $k => $label): ?>
-                            <option value="<?= htmlspecialchars($k) ?>"><?= htmlspecialchars($label) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">住所</label>
-                    <input type="text" id="destination-address" name="address" class="w-full border border-slate-200 rounded px-3 py-2 text-sm" placeholder="Google Maps用（名前で候補選択時に自動反映）">
-                </div>
-                <div class="grid grid-cols-2 md:grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">訪問予定日</label>
-                        <input type="date" name="visit_date" class="w-full border border-slate-200 rounded px-2 py-1 text-sm">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">目安時刻</label>
-                        <input type="text" name="visit_time" class="w-full border border-slate-200 rounded px-2 py-1 text-sm" placeholder="例 10:00">
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">メモ</label>
-                    <input type="text" name="memo" class="w-full border border-slate-200 rounded px-3 py-2 text-sm" placeholder="営業時間・注意など">
-                </div>
-                <button type="submit" class="lt-theme-btn text-white px-4 py-2 rounded text-sm">目的地を追加</button>
-            </form>
-            <div class="space-y-4">
-                <?php if (!empty($eventPlace) && is_string($eventPlace)): ?>
-                <?php
-                    $venueLabel = trim($eventPlace);
-                    $venueAddress = $eventPlaceAddress !== '' ? $eventPlaceAddress : '';
-                    $venueMapsUrl = $eventPlaceForMaps !== '#' ? $eventPlaceForMaps : '#';
-                    $venueDirTarget = $venueAddress !== '' ? $venueAddress : $venueLabel;
-                    $venueDirUrl = $venueDirTarget !== '' ? ('https://www.google.com/maps/dir/?api=1&destination=' . rawurlencode($venueDirTarget) . '&travelmode=transit') : '#';
-                ?>
-                <div class="destination-item p-4 bg-slate-50 border border-slate-200 rounded-xl shadow-sm">
-                    <div class="destination-view">
-                        <div class="flex justify-between items-start gap-3">
-                            <h3 class="font-bold min-w-0">
-                                <?php if ($venueMapsUrl !== '#'): ?>
-                                    <a href="<?= htmlspecialchars($venueMapsUrl) ?>" target="_blank" rel="noopener" class="text-sky-600 hover:underline">
-                                        <?= htmlspecialchars($venueLabel) ?> <i class="fa-solid fa-external-link text-xs"></i>
-                                    </a>
-                                    <?php if ($venueDirUrl !== '#'): ?>
-                                        <a href="<?= htmlspecialchars($venueDirUrl) ?>" target="_blank" rel="noopener" class="text-sky-600 text-sm ml-2 whitespace-nowrap">
-                                            <i class="fa-solid fa-train text-slate-400"></i>電車で案内
-                                        </a>
-                                    <?php endif; ?>
-                                <?php else: ?>
-                                    <?= htmlspecialchars($venueLabel) ?>
-                                <?php endif; ?>
-                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white border border-slate-200 text-xs font-bold text-slate-700 ml-2">
-                                    <span aria-hidden="true">🎤</span><span>会場</span>
-                                </span>
-                            </h3>
-                            <span class="text-xs font-bold text-slate-500 whitespace-nowrap">編集不可</span>
-                        </div>
-                        <?php if ($venueAddress !== ''): ?>
-                            <p class="text-sm text-slate-500 mt-1"><?= htmlspecialchars($venueAddress) ?></p>
-                        <?php endif; ?>
-                        <p class="text-sm text-slate-600 mt-1">イベントの開催会場（自動表示）</p>
-                    </div>
-                </div>
-                <?php endif; ?>
 
-                <?php foreach ($destinations ?? [] as $d):
-                    $mapsUrl = $destinationModel->getGoogleMapsUrl($d);
-                    $typeLabel = \App\LiveTrip\Model\DestinationModel::$types[$d['destination_type'] ?? 'other'] ?? 'その他';
-                ?>
-                <div class="destination-item p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
-                    <div class="destination-view">
-                        <div class="flex justify-between">
-                            <h3 class="font-bold">
-                                <?php if ($mapsUrl !== '#'): ?>
-                                <a href="<?= htmlspecialchars($mapsUrl) ?>" target="_blank" rel="noopener" class="text-sky-600 hover:underline"><?= htmlspecialchars($d['name']) ?> <i class="fa-solid fa-external-link text-xs"></i></a>
-                                <a href="https://www.google.com/maps/dir/?api=1&destination=<?= rawurlencode($d['address'] ?? $d['name']) ?>&travelmode=transit" target="_blank" rel="noopener" class="text-sky-600 text-sm ml-2"><i class="fa-solid fa-train text-slate-400"></i>電車で案内</a>
-                                <?php else: ?>
-                                <?= htmlspecialchars($d['name']) ?>
+                    <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 items-stretch">
+                        <?php
+                            $destBadgeMap = [
+                                'venue' => ['label' => '会場', 'emoji' => '🏟️', 'cls' => 'bg-slate-100 text-slate-700'],
+                                'main' => ['label' => 'メイン', 'emoji' => '🎯', 'cls' => 'bg-emerald-50 text-emerald-700'],
+                                'collab' => ['label' => 'コラボ店', 'emoji' => '🛍️', 'cls' => 'bg-pink-50 text-pink-700'],
+                                'sightseeing' => ['label' => '観光', 'emoji' => '☀️', 'cls' => 'bg-indigo-50 text-indigo-700'],
+                                'other' => ['label' => 'その他', 'emoji' => '📌', 'cls' => 'bg-slate-100 text-slate-700'],
+                            ];
+                        ?>
+
+                        <?php if (!empty($eventPlace) && is_string($eventPlace)): ?>
+                        <?php
+                            $venueLabel = trim($eventPlace);
+                            $venueAddress = $eventPlaceAddress !== '' ? $eventPlaceAddress : '';
+                            $venueMapsUrl = $eventPlaceForMaps !== '#' ? $eventPlaceForMaps : '#';
+                            $venueMapTarget = $venueAddress !== '' ? $venueAddress : $venueLabel;
+                            $venueMapSearchUrl = $venueMapTarget !== '' ? ('https://www.google.com/maps/search/?api=1&query=' . rawurlencode($venueMapTarget)) : '#';
+                            $venueDirTarget = $venueAddress !== '' ? $venueAddress : $venueLabel;
+                            $venueDirUrl = $venueDirTarget !== '' ? ('https://www.google.com/maps/dir/?api=1&destination=' . rawurlencode($venueDirTarget) . '&travelmode=transit') : '#';
+                            $b = $destBadgeMap['venue'];
+                        ?>
+                        <div class="destination-item group relative p-4 rounded-xl border border-slate-200 bg-slate-50 shadow-sm h-full flex flex-col">
+                            <div class="destination-view flex flex-col h-full">
+                                <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-black <?= htmlspecialchars($b['cls']) ?>">
+                                    <span aria-hidden="true"><?= htmlspecialchars($b['emoji']) ?></span>
+                                    <span><?= htmlspecialchars($b['label']) ?></span>
+                                </div>
+                                <div class="mt-2 text-sm font-black text-slate-800 truncate">
+                                    <?php if ($venueMapsUrl !== '#'): ?>
+                                        <a href="<?= htmlspecialchars($venueMapsUrl) ?>" target="_blank" rel="noopener" class="hover:underline text-slate-800">
+                                            <?= htmlspecialchars($venueLabel) ?>
+                                        </a>
+                                    <?php else: ?>
+                                        <?= htmlspecialchars($venueLabel) ?>
+                                    <?php endif; ?>
+                                </div>
+                                <?php if ($venueAddress !== ''): ?>
+                                    <div class="mt-2 expense-hero__eyebrow truncate" title="<?= htmlspecialchars($venueAddress) ?>">📮<?= htmlspecialchars($venueAddress) ?></div>
                                 <?php endif; ?>
-                                <span class="text-xs font-normal text-slate-500 ml-2"><?= htmlspecialchars($typeLabel) ?></span>
-                            </h3>
-                            <span class="flex gap-1">
-                                <button type="button" class="destination-edit-btn text-slate-500 text-sm hover:text-slate-700" title="編集"><i class="fa-solid fa-pen text-xs"></i></button>
+                                <div class="mt-3 flex items-center gap-2 flex-wrap text-xs font-bold">
+                                    <?php if ($venueMapSearchUrl !== '#'): ?>
+                                        <a href="<?= htmlspecialchars($venueMapSearchUrl) ?>" target="_blank" rel="noopener"
+                                           class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50">
+                                            <span aria-hidden="true">🗺️</span><span>Map</span>
+                                        </a>
+                                    <?php else: ?>
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-400 cursor-not-allowed" title="住所情報がありません">
+                                            <span aria-hidden="true">🗺️</span><span>Map</span>
+                                        </span>
+                                    <?php endif; ?>
+                                    <?php if ($venueDirUrl !== '#'): ?>
+                                        <a href="<?= htmlspecialchars($venueDirUrl) ?>" target="_blank" rel="noopener"
+                                           class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50">
+                                            <span aria-hidden="true">🚇</span><span>電車</span>
+                                        </a>
+                                    <?php else: ?>
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-400 cursor-not-allowed" title="住所情報がありません">
+                                            <span aria-hidden="true">🚇</span><span>電車</span>
+                                        </span>
+                                    <?php endif; ?>
+                                    <span class="ml-auto text-slate-500">編集不可</span>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
+                        <?php foreach ($destinations ?? [] as $d):
+                            $mapsUrl = $destinationModel->getGoogleMapsUrl($d);
+                            $typeKey = (string)($d['destination_type'] ?? 'other');
+                            if (!isset($destBadgeMap[$typeKey])) $typeKey = 'other';
+                            $b = $destBadgeMap[$typeKey];
+                            $addrText = trim((string)($d['address'] ?? ''));
+                            $mapTarget = $addrText !== '' ? $addrText : trim((string)($d['name'] ?? ''));
+                            $mapSearchUrl = $mapTarget !== '' ? ('https://www.google.com/maps/search/?api=1&query=' . rawurlencode($mapTarget)) : '#';
+                            $dirTarget = $addrText !== '' ? $addrText : trim((string)($d['name'] ?? ''));
+                            $dirUrl = $dirTarget !== '' ? ('https://www.google.com/maps/dir/?api=1&destination=' . rawurlencode($dirTarget) . '&travelmode=transit') : '#';
+                        ?>
+                        <div class="destination-item group relative p-4 rounded-xl border border-slate-200 bg-white shadow-sm hover:border-slate-300 hover:shadow-md transition h-full flex flex-col">
+                            <div class="destination-view flex flex-col h-full">
+                                <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-black <?= htmlspecialchars($b['cls']) ?>">
+                                    <span aria-hidden="true"><?= htmlspecialchars($b['emoji']) ?></span>
+                                    <span><?= htmlspecialchars($b['label']) ?></span>
+                                </div>
+
+                                <div class="mt-2 text-sm font-black text-slate-800 truncate">
+                                    <?php if ($mapsUrl !== '#'): ?>
+                                        <a href="<?= htmlspecialchars($mapsUrl) ?>" target="_blank" rel="noopener" class="hover:underline text-slate-800">
+                                            <?= htmlspecialchars((string)($d['name'] ?? '')) ?>
+                                        </a>
+                                    <?php else: ?>
+                                        <?= htmlspecialchars((string)($d['name'] ?? '')) ?>
+                                    <?php endif; ?>
+                                </div>
+
+                                <?php if ($addrText !== ''): ?>
+                                    <div class="mt-2 expense-hero__eyebrow truncate" title="<?= htmlspecialchars($addrText) ?>">📮<?= htmlspecialchars($addrText) ?></div>
+                                <?php endif; ?>
+
+                                <?php if (!empty($d['visit_date'])): ?>
+                                    <div class="mt-2 text-xs font-bold text-slate-600">
+                                        🗓️ <?= htmlspecialchars((string)$d['visit_date']) ?><?= !empty($d['visit_time']) ? ' ' . htmlspecialchars((string)$d['visit_time']) : '' ?>
+                                    </div>
+                                <?php endif; ?>
+
+                                <div class="mt-3 flex items-center gap-2 flex-wrap text-xs font-bold">
+                                    <?php if ($mapSearchUrl !== '#'): ?>
+                                        <a href="<?= htmlspecialchars($mapSearchUrl) ?>" target="_blank" rel="noopener"
+                                           class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50">
+                                            <span aria-hidden="true">🗺️</span><span>Map</span>
+                                        </a>
+                                    <?php else: ?>
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-400 cursor-not-allowed" title="住所情報がありません">
+                                            <span aria-hidden="true">🗺️</span><span>Map</span>
+                                        </span>
+                                    <?php endif; ?>
+
+                                    <?php if ($dirUrl !== '#'): ?>
+                                        <a href="<?= htmlspecialchars($dirUrl) ?>" target="_blank" rel="noopener"
+                                           class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50">
+                                            <span aria-hidden="true">🚇</span><span>電車</span>
+                                        </a>
+                                    <?php else: ?>
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-400 cursor-not-allowed" title="住所情報がありません">
+                                            <span aria-hidden="true">🚇</span><span>電車</span>
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+
+                            <!-- Hover actions -->
+                            <div class="absolute right-3 bottom-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                    type="button"
+                                    class="destination-edit-to-side w-9 h-9 inline-flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+                                    title="編集"
+                                    aria-label="編集"
+                                    data-id="<?= (int)$d['id'] ?>"
+                                    data-name="<?= htmlspecialchars((string)($d['name'] ?? ''), ENT_QUOTES) ?>"
+                                    data-address="<?= htmlspecialchars((string)($d['address'] ?? ''), ENT_QUOTES) ?>"
+                                    data-destination-type="<?= htmlspecialchars((string)($d['destination_type'] ?? 'other'), ENT_QUOTES) ?>"
+                                    data-visit-date="<?= htmlspecialchars((string)($d['visit_date'] ?? ''), ENT_QUOTES) ?>"
+                                    data-visit-time="<?= htmlspecialchars((string)($d['visit_time'] ?? ''), ENT_QUOTES) ?>"
+                                    data-memo="<?= htmlspecialchars((string)($d['memo'] ?? ''), ENT_QUOTES) ?>"
+                                    data-latitude="<?= htmlspecialchars((string)($d['latitude'] ?? ''), ENT_QUOTES) ?>"
+                                    data-longitude="<?= htmlspecialchars((string)($d['longitude'] ?? ''), ENT_QUOTES) ?>"
+                                    data-place-id="<?= htmlspecialchars((string)($d['place_id'] ?? ''), ENT_QUOTES) ?>"
+                                >
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
                                 <form method="post" action="/live_trip/destination_delete.php" class="inline" onsubmit="return confirm('削除しますか？');">
                                     <input type="hidden" name="id" value="<?= (int)$d['id'] ?>">
                                     <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
                                     <input type="hidden" name="tab" value="destination">
-                                    <button type="submit" class="text-red-500 text-sm"><i class="fa-solid fa-trash-can"></i></button>
+                                    <button type="submit" class="w-9 h-9 inline-flex items-center justify-center rounded-lg bg-white border border-red-200 text-red-600 hover:bg-red-50" title="削除" aria-label="削除">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
                                 </form>
-                            </span>
+                            </div>
                         </div>
-                        <?php if (!empty($d['address'])): ?><p class="text-sm text-slate-500"><?= htmlspecialchars($d['address']) ?></p><?php endif; ?>
-                        <?php /* Static Map は共通Mapへ統合 */ ?>
-                        <?php if (!empty($d['visit_date'])): ?><p class="text-sm">訪問予定: <?= htmlspecialchars($d['visit_date']) ?><?= !empty($d['visit_time']) ? ' ' . htmlspecialchars($d['visit_time']) : '' ?></p><?php endif; ?>
-                        <?php if (!empty($d['memo'])): ?><p class="text-sm text-slate-600"><?= htmlspecialchars($d['memo']) ?></p><?php endif; ?>
+                        <?php endforeach; ?>
+
+                        <?php if (empty($destinations ?? []) && empty($eventPlace)): ?>
+                            <div class="col-span-full text-sm text-slate-500">目的地がありません。</div>
+                        <?php endif; ?>
                     </div>
-                    <form method="post" action="/live_trip/destination_update.php" class="destination-edit-form edit-form hidden space-y-3 p-4 bg-slate-50 rounded-lg mt-2">
-                        <input type="hidden" name="id" value="<?= (int)$d['id'] ?>">
-                        <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
-                        <input type="hidden" name="tab" value="destination">
-                        <input type="hidden" name="latitude" value="<?= htmlspecialchars($d['latitude'] ?? '') ?>">
-                        <input type="hidden" name="longitude" value="<?= htmlspecialchars($d['longitude'] ?? '') ?>">
-                        <input type="hidden" name="place_id" value="<?= htmlspecialchars($d['place_id'] ?? '') ?>">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div><label class="block text-xs font-bold text-slate-500 mb-1">名前 *</label><input type="text" name="name" value="<?= htmlspecialchars($d['name'] ?? '') ?>" required class="w-full border border-slate-200 rounded px-3 py-2 text-sm"></div>
-                            <div><label class="block text-xs font-bold text-slate-500 mb-1">種別</label><select name="destination_type" class="w-full border border-slate-200 rounded px-3 py-2 text-sm"><?php foreach (\App\LiveTrip\Model\DestinationModel::$types as $k => $label): ?><option value="<?= htmlspecialchars($k) ?>" <?= ($d['destination_type'] ?? '') === $k ? 'selected' : '' ?>><?= htmlspecialchars($label) ?></option><?php endforeach; ?></select></div>
-                        </div>
-                        <div><label class="block text-xs font-bold text-slate-500 mb-1">住所</label><input type="text" name="address" value="<?= htmlspecialchars($d['address'] ?? '') ?>" class="w-full border border-slate-200 rounded px-3 py-2 text-sm"></div>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div><label class="block text-xs font-bold text-slate-500 mb-1">訪問予定日</label><input type="date" name="visit_date" value="<?= htmlspecialchars($d['visit_date'] ?? '') ?>" class="w-full border border-slate-200 rounded px-2 py-1 text-sm"></div>
-                            <div><label class="block text-xs font-bold text-slate-500 mb-1">目安時刻</label><input type="text" name="visit_time" value="<?= htmlspecialchars($d['visit_time'] ?? '') ?>" class="w-full border border-slate-200 rounded px-2 py-1 text-sm"></div>
-                        </div>
-                        <div><label class="block text-xs font-bold text-slate-500 mb-1">メモ</label><input type="text" name="memo" value="<?= htmlspecialchars($d['memo'] ?? '') ?>" class="w-full border border-slate-200 rounded px-3 py-2 text-sm"></div>
-                        <div class="flex gap-2"><button type="submit" class="lt-theme-btn text-white px-4 py-2 rounded text-sm">保存</button><button type="button" class="destination-cancel-btn px-4 py-2 border border-slate-200 rounded text-sm">キャンセル</button></div>
-                    </form>
                 </div>
-                <?php endforeach; ?>
-            </div>
+
+                <!-- 右：目的地を追加 -->
+                <div class="lg:col-span-4 bg-white border border-slate-200 rounded-xl shadow-sm p-5 sm:p-6" id="<?= htmlspecialchars($destinationFormAnchorId) ?>">
+                    <button type="button" class="w-full flex items-center justify-between gap-3" id="destination-side-form-toggle" aria-expanded="true">
+                        <div class="min-w-0 text-left">
+                            <div class="text-base font-normal text-slate-900" id="destination-side-form-title">＋ 目的地を追加</div>
+                            <div class="text-xs text-slate-500 mt-1 hidden" id="destination-side-form-subtitle"></div>
+                        </div>
+                        <div class="flex items-center gap-3 shrink-0">
+                            <span class="hidden text-xs font-black text-slate-600 hover:text-slate-800" id="destination-side-form-cancel">
+                                <i class="fa-solid fa-xmark"></i> 編集をやめる
+                            </span>
+                            <i class="fa-solid fa-chevron-down text-slate-400" id="destination-side-form-chevron" aria-hidden="true"></i>
+                        </div>
+                    </button>
+
+                    <div class="mt-4" id="destination-side-form-body">
+                        <div class="flex items-center gap-2 p-1 rounded-xl bg-slate-100 border border-slate-200">
+                            <button type="button" class="dest-type-toggle flex-1 px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-white" data-destination-type="main">🎯 メイン</button>
+                            <button type="button" class="dest-type-toggle flex-1 px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-white" data-destination-type="collab">🛍️ コラボ店</button>
+                            <button type="button" class="dest-type-toggle flex-1 px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-white" data-destination-type="sightseeing">☀️ 観光</button>
+                            <button type="button" class="dest-type-toggle flex-1 px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-white" data-destination-type="other">📌 その他</button>
+                        </div>
+
+                        <form method="post" action="/live_trip/destination_store.php" class="mt-4 space-y-3" id="destination-side-form">
+                            <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
+                            <input type="hidden" name="tab" value="destination">
+                            <input type="hidden" name="id" id="destination-id-hidden" value="">
+                            <input type="hidden" name="destination_type" id="destination-type-hidden" value="main">
+                            <input type="hidden" name="latitude" id="destination-latitude" value="">
+                            <input type="hidden" name="longitude" id="destination-longitude" value="">
+                            <input type="hidden" name="place_id" id="destination-place-id" value="">
+
+                            <div class="relative">
+                                <label class="block text-xs font-bold text-slate-500 mb-1">名前 *</label>
+                                <input type="text" id="destination-name" name="name" required class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="店名・施設名など（日本語入力で候補を選択すると住所に反映）" autocomplete="off">
+                                <div id="destination-name-suggestions" class="hidden absolute left-0 right-0 top-full mt-0.5 z-20 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"></div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">住所</label>
+                                <input type="text" id="destination-address" name="address" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Google Maps用（名前で候補選択時に自動反映）">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 mb-1">訪問予定日</label>
+                                    <input type="date" name="visit_date" id="destination-visit-date" class="w-full border border-slate-200 rounded px-2 py-1 text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 mb-1">目安時刻</label>
+                                    <input type="text" name="visit_time" id="destination-visit-time" class="w-full border border-slate-200 rounded px-2 py-1 text-sm" placeholder="例 10:00">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">メモ</label>
+                                <input type="text" name="memo" id="destination-memo" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="営業時間・注意など">
+                            </div>
+
+                            <button type="submit" class="lt-theme-btn text-white w-full px-4 py-2 rounded-lg text-sm font-black" id="destination-side-form-submit">＋ 目的地を追加</button>
+                        </form>
+                    </div>
+
+                    <script>
+                    (function() {
+                        const root = document.getElementById('<?= htmlspecialchars($destinationFormAnchorId) ?>');
+                        if (!root) return;
+                        const toggleBtn = root.querySelector('#destination-side-form-toggle');
+                        const chevron = root.querySelector('#destination-side-form-chevron');
+                        const body = root.querySelector('#destination-side-form-body');
+                        const form = root.querySelector('#destination-side-form');
+                        const titleEl = root.querySelector('#destination-side-form-title');
+                        const subtitleEl = root.querySelector('#destination-side-form-subtitle');
+                        const cancelBtn = root.querySelector('#destination-side-form-cancel');
+                        const submitBtn = root.querySelector('#destination-side-form-submit');
+                        const idHidden = root.querySelector('#destination-id-hidden');
+                        const hidden = root.querySelector('#destination-type-hidden');
+                        const btns = Array.from(root.querySelectorAll('.dest-type-toggle'));
+                        function setType(t) {
+                            if (!hidden) return;
+                            hidden.value = t;
+                            btns.forEach(b => {
+                                const active = b.dataset.destinationType === t;
+                                b.classList.toggle('bg-white', active);
+                                b.classList.toggle('shadow-sm', active);
+                                b.classList.toggle('text-slate-800', active);
+                                b.classList.toggle('text-slate-600', !active);
+                            });
+                        }
+                        btns.forEach(b => b.addEventListener('click', () => setType(b.dataset.destinationType)));
+                        setType(hidden ? (hidden.value || 'main') : 'main');
+
+                        function setExpanded(expanded) {
+                            if (!toggleBtn || !body) return;
+                            toggleBtn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+                            body.classList.toggle('hidden', !expanded);
+                            if (chevron) {
+                                chevron.classList.toggle('fa-chevron-down', expanded);
+                                chevron.classList.toggle('fa-chevron-up', !expanded);
+                            }
+                        }
+                        toggleBtn && toggleBtn.addEventListener('click', function(e) {
+                            // cancel テキスト（span）クリック時は無視（別ハンドラで処理）
+                            if (e.target && e.target.closest && e.target.closest('#destination-side-form-cancel')) return;
+                            const cur = toggleBtn.getAttribute('aria-expanded') === 'true';
+                            setExpanded(!cur);
+                        });
+
+                        function enterAddMode() {
+                            if (!form) return;
+                            form.action = '/live_trip/destination_store.php';
+                            if (idHidden) idHidden.value = '';
+                            if (titleEl) titleEl.textContent = '＋ 目的地を追加';
+                            if (subtitleEl) { subtitleEl.classList.add('hidden'); subtitleEl.textContent = ''; }
+                            if (cancelBtn) cancelBtn.classList.add('hidden');
+                            if (submitBtn) submitBtn.textContent = '＋ 目的地を追加';
+                        }
+
+                        function enterEditMode(payload) {
+                            if (!form) return;
+                            form.action = '/live_trip/destination_update.php';
+                            if (idHidden) idHidden.value = payload.id || '';
+                            if (titleEl) titleEl.textContent = '✏️ 目的地を編集';
+                            if (subtitleEl) {
+                                subtitleEl.textContent = (payload.name || '') ? ('編集中: ' + (payload.name || '')) : '編集中';
+                                subtitleEl.classList.remove('hidden');
+                            }
+                            if (cancelBtn) cancelBtn.classList.remove('hidden');
+                            if (submitBtn) submitBtn.textContent = '保存';
+
+                            const nameInput = root.querySelector('#destination-name');
+                            const addrInput = root.querySelector('#destination-address');
+                            const visitDate = root.querySelector('#destination-visit-date');
+                            const visitTime = root.querySelector('#destination-visit-time');
+                            const memo = root.querySelector('#destination-memo');
+                            const placeId = root.querySelector('#destination-place-id');
+                            const lat = root.querySelector('#destination-latitude');
+                            const lng = root.querySelector('#destination-longitude');
+                            if (nameInput) nameInput.value = payload.name || '';
+                            if (addrInput) addrInput.value = payload.address || '';
+                            if (visitDate) visitDate.value = payload.visitDate || '';
+                            if (visitTime) visitTime.value = payload.visitTime || '';
+                            if (memo) memo.value = payload.memo || '';
+                            if (placeId) placeId.value = payload.placeId || '';
+                            if (lat) lat.value = payload.latitude || '';
+                            if (lng) lng.value = payload.longitude || '';
+                            if (payload.destinationType) setType(payload.destinationType);
+                        }
+
+                        cancelBtn && cancelBtn.addEventListener('click', function() {
+                            if (!form) return;
+                            form.reset();
+                            // reset() では hidden も初期値になるが、明示的に add の初期値に戻す
+                            setType('main');
+                            const placeId = root.querySelector('#destination-place-id');
+                            const lat = root.querySelector('#destination-latitude');
+                            const lng = root.querySelector('#destination-longitude');
+                            if (placeId) placeId.value = '';
+                            if (lat) lat.value = '';
+                            if (lng) lng.value = '';
+                            enterAddMode();
+                        });
+
+                        document.addEventListener('click', function(e) {
+                            const btn = e.target.closest('.destination-edit-to-side');
+                            if (!btn) return;
+                            e.preventDefault();
+                            const payload = {
+                                id: btn.dataset.id || '',
+                                name: btn.dataset.name || '',
+                                address: btn.dataset.address || '',
+                                destinationType: btn.dataset.destinationType || 'other',
+                                visitDate: btn.dataset.visitDate || '',
+                                visitTime: btn.dataset.visitTime || '',
+                                memo: btn.dataset.memo || '',
+                                latitude: btn.dataset.latitude || '',
+                                longitude: btn.dataset.longitude || '',
+                                placeId: btn.dataset.placeId || '',
+                            };
+                            enterEditMode(payload);
+                            setExpanded(true);
+                            // 右カードへスクロール
+                            root.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        });
+
+                        // 初期は追加モード
+                        enterAddMode();
+                        setExpanded(true);
+                    })();
+                    </script>
+                </div>
+            </section>
         </div>
         </div>
 
