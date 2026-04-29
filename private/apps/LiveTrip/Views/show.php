@@ -93,8 +93,10 @@ try {
     foreach ($mergedTimeline ?? [] as $m) {
         $d = (string)($m['date'] ?? '');
         $t = (string)($m['time'] ?? '');
-        if ($d === '' || $t === '' || $t === '99:99') continue;
-        $dt = \DateTimeImmutable::createFromFormat('Y-m-d H:i', $d . ' ' . $t, new \DateTimeZone('Asia/Tokyo'));
+        if ($d === '') continue;
+        // 時刻未設定の予定も「次の予定」候補に含める（表示時刻は空のまま）
+        $tForCalc = ($t !== '' && $t !== '99:99') ? $t : '12:00';
+        $dt = \DateTimeImmutable::createFromFormat('Y-m-d H:i', $d . ' ' . $tForCalc, new \DateTimeZone('Asia/Tokyo'));
         if (!$dt) continue;
         $diff = $dt->getTimestamp() - $now->getTimestamp();
         // 未来優先。過去は「次の日」とみなす（当日利用向け）
