@@ -73,3 +73,9 @@
 ## 3. エラー・ログ
 
 未捕捉例外は `Core\Bootstrap` により JSON/HTML 500 と `Logger::errorWithContext`。API パスは JSON エラー応答の条件あり（[Bootstrap](../../../private/lib/Bootstrap.php)）。
+
+## 4. 外部連携の境界（LiveTrip側）
+
+- **日向坂連携**: LiveTrip から日向坂データに触れる際は `private/apps/LiveTrip/Service/HinataEventBridge.php` を境界として利用する。
+- **Google Maps 連携**: Controller から `MapsGeocodeService` / `MapsDistanceMatrixService` / `MapsDirectionsService` / `MapsPlacesAutocompleteService` / `MapsLinkResolveService` を経由して利用する。
+- 本書では LiveTrip 側の依存境界のみ扱い、連携先（日向坂側）の内部実装詳細は対象外とする。

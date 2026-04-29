@@ -19,4 +19,5 @@
 - **対象ユーザー（現仕様）**: ログイン済み **かつ管理者**（`LiveTripController` が `requireAdmin()`）。`sys_apps` でも `admin_only`。
 - **外部 API**: Google Maps 系（Geocoding / Places / Directions 等、アプリサービス経由）。
 - **関連システム**: 日向坂 `hn_events` / `hn_user_events_status`。汎用 `lt_events`。
+- **連携境界**: 日向坂データへのアクセスは `private/apps/LiveTrip/Service/HinataEventBridge.php` を境界として行う（日向坂側の内部実装詳細は本設計書の対象外）。
 - **共通ドキュメント**: [docs/common/31](../../common/31_共通UIコンポーネント.md)（サイドバー・`theme_from_session`・`head_favicon`）、[32](../../common/32_デザインシステム・CSS.md)、[33](../../common/33_共通JS・ユーティリティ.md)（地図用 JS ほか機能固有は `live_trip_map.js`）、[34](../../common/34_コアライブラリ(PHP).md)。
