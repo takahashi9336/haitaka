@@ -24,6 +24,62 @@ $eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&qu
 $firstEv = $trip['events'][0] ?? null;
 $destinationModel = new \App\LiveTrip\Model\DestinationModel();
 
+// ヒーローボックス表示用（年月・日程・残日数）
+$heroStartDate = '';
+$heroEndDate = '';
+if (!empty($eventDates)) {
+    $heroStartDate = (string)($eventDates[0] ?? '');
+    $heroEndDate = (string)($eventDates[count($eventDates) - 1] ?? '');
+}
+if ($heroStartDate === '' && !empty($trip['event_date'])) {
+    if (preg_match('/\d{4}-\d{2}-\d{2}/', (string)$trip['event_date'], $m)) {
+        $heroStartDate = (string)($m[0] ?? '');
+    }
+    if (preg_match_all('/\d{4}-\d{2}-\d{2}/', (string)$trip['event_date'], $mm) && !empty($mm[0])) {
+        $heroEndDate = (string)($mm[0][count($mm[0]) - 1] ?? $heroStartDate);
+    }
+}
+if ($heroEndDate === '') $heroEndDate = $heroStartDate;
+
+$heroMonthLabel = '';
+$heroDatePillText = '';
+$heroRelativeText = '';
+$heroRelativeDays = null;
+try {
+    if ($heroStartDate !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $heroStartDate)) {
+        $dtStart = new \DateTimeImmutable($heroStartDate, new \DateTimeZone('Asia/Tokyo'));
+        $heroMonthLabel = $dtStart->format('Y年n月');
+        $dateText = $heroStartDate;
+        $nightsDaysText = '';
+        if ($heroEndDate !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $heroEndDate)) {
+            $dtEnd = new \DateTimeImmutable($heroEndDate, new \DateTimeZone('Asia/Tokyo'));
+            if ($dtEnd >= $dtStart) {
+                $diffDays = (int)$dtStart->diff($dtEnd)->days;
+                $days = $diffDays + 1;
+                $nights = max(0, $days - 1);
+                $endDisp = $dtEnd->format('m-d');
+                $dateText .= ' 〜 ' . $endDisp;
+                if ($days >= 2) {
+                    $nightsDaysText = '（' . $nights . '泊' . $days . '日）';
+                }
+            }
+        }
+        $heroDatePillText = $dateText . $nightsDaysText;
+
+        $today = new \DateTimeImmutable('today', new \DateTimeZone('Asia/Tokyo'));
+        $d = (int)$today->diff($dtStart)->days;
+        if ($dtStart >= $today) {
+            $heroRelativeDays = $d;
+            $heroRelativeText = $d === 0 ? '今日' : ($d === 1 ? '明日' : ('あと ' . $d . '日'));
+        } else {
+            $heroRelativeDays = $d;
+            $heroRelativeText = $d === 1 ? '1日前' : ($d . '日前');
+        }
+    }
+} catch (\Throwable $e) {
+    // 表示用なので握りつぶし
+}
+
 // Google Maps JavaScript API（キーはリファラ制限運用を前提）
 $mapsJsApiKey = (string)($_ENV['GOOGLE_MAPS_API_KEY'] ?? '');
 
@@ -216,115 +272,326 @@ try {
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <?php if ($mapsJsApiKey !== ''): ?>
+    <link rel="stylesheet" href="/live_trip/css/show.css">
+    <?php
+    // サマリの地図エリアは一旦非表示（API呼び出しも止める）
+    $enableSummaryMap = false;
+    ?>
+    <?php if ($enableSummaryMap && $mapsJsApiKey !== ''): ?>
     <script async defer src="https://maps.googleapis.com/maps/api/js?key=<?= htmlspecialchars($mapsJsApiKey) ?>&language=ja&region=JP&libraries=geometry"></script>
     <?php endif; ?>
     <style>
-        :root { --lt-theme: <?= htmlspecialchars($themePrimaryHex) ?>; }
-        .lt-theme-btn { background-color: var(--lt-theme); }
-        body { font-family: 'Inter', 'Noto Sans JP', sans-serif; }
+        :root {
+            --brand-primary: #0E8A5F;
+            --brand-primary-hover: #0B7350;
+            --brand-primary-soft: #E6F4EE;
+            --brand-primary-text: #0B5A3F;
+
+            --gray-900: #111827;
+            --gray-700: #374151;
+            --gray-500: #6B7280;
+            --gray-300: #D1D5DB;
+            --gray-200: #E5E7EB;
+            --gray-100: #F3F4F6;
+            --gray-50: #F9FAFB;
+
+            --danger: #DC2626;
+            --danger-soft: #FEF2F2;
+            --warn-soft: #FFFBEB;
+            --warn-text: #92400E;
+
+            /* 既存スタイル互換（ページ内は lt-theme を参照している） */
+            --lt-theme: var(--brand-primary);
+        }
+        .lt-theme-btn { background-color: var(--brand-primary); }
+        .lt-theme-btn:hover { background-color: var(--brand-primary-hover); }
+        body { font-family: 'Inter', 'Noto Sans JP', sans-serif; background: var(--gray-50); color: var(--gray-900); }
         .sidebar { width: 240px; }
         @media (max-width: 768px) { .sidebar { position: fixed; transform: translateX(-100%); z-index: 100; height: 100%; width: 240px !important; } .sidebar.mobile-open { transform: translateX(0); } }
         .section-card { break-inside: avoid; }
-        .lt-tab { padding: 0.5rem 0.75rem; font-weight: 600; font-size: 0.8125rem; color: #64748b; border-bottom: 2px solid transparent; transition: all 0.15s; white-space: nowrap; }
-        @media (min-width: 640px) { .lt-tab { padding: 0.75rem 1rem; font-size: 0.875rem; } }
-        .lt-tab:hover { color: var(--lt-theme); }
-        .lt-tab.active { color: var(--lt-theme); border-bottom-color: var(--lt-theme); }
+
+        /* スクロールバーでレイアウトが揺れないように */
+        .lt-main-scroll { scrollbar-gutter: stable; }
+
+        /* カード厚み・角丸を統一（モック寄せ） */
+        .rounded-xl { border-radius: 14px !important; }
+        .shadow-sm { box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important; }
+
+        /* ピル（薄塗り） */
+        .lt-pill-primary { background: var(--brand-primary-soft); color: var(--brand-primary-text); }
+        /* 下線型タブ（モック寄せ） */
+        .lt-tab { padding: 12px 16px; font-weight: 600; font-size: 0.875rem; color: var(--gray-500); border-bottom: 0; background: transparent; transition: color 0.15s; white-space: nowrap; }
+        .lt-tab-inner { position: relative; display: inline-flex; align-items: center; gap: 6px; padding: 0 0 12px; }
+        .lt-tab:hover { color: var(--gray-900); }
+        .lt-tab.active { color: var(--gray-900); font-weight: 700; }
+        .lt-tab.active .lt-tab-inner::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: -1px;
+            height: 2px;
+            background: var(--brand-primary);
+            border-radius: 0;
+        }
         .lt-tab-panel { display: none; }
         .lt-tab-panel.active { display: block; }
         .lt-checklist-row { transition: background 0.1s; }
         .lt-checklist-row:hover .lt-edit-btn { opacity: 1; }
         .lt-edit-btn { opacity: 0.5; }
         .edit-form.hidden { display: none !important; }
-        .lt-tab-bar { -webkit-overflow-scrolling: touch; }
+        .lt-tab-bar { -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+        .lt-tab-bar::-webkit-scrollbar { display: none; }
         .lt-checklist-sortable .sortable-ghost { opacity: 0.4; }
         .lt-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; display: flex; align-items: center; justify-content: center; }
         .lt-modal-overlay.hidden { display: none; }
         .lt-modal { background: white; border-radius: 1rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); max-width: 28rem; width: 100%; max-height: 90vh; overflow-y: auto; }
         .lt-timeline-view-btn.is-active { background: var(--lt-theme); color: #fff; border-color: var(--lt-theme); }
+
+        /* 持ち物チェック（チェックリスト）新UI */
+        .lt-pack-row { height: 42px; }
+        .lt-pack-row:hover { background: var(--gray-50); }
+        .lt-pack-checkbox { width: 18px; height: 18px; border-radius: 6px; border: 1px solid #d1d5db; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; background: #fff; }
+        .lt-pack-checkbox.is-checked { background: var(--lt-theme); border-color: var(--lt-theme); color: #fff; }
+
+        /* サマリ：横幅の統一（タイトルカードと同じコンテナ幅） */
+        .trip-detail-container { max-width: 1280px; margin: 0 auto; padding: 0 16px; width: 100%; }
+        @media (min-width: 640px) { .trip-detail-container { padding: 0 24px; } }
+
+        /* サマリ：KPI 3カードは親幅に追従 */
+        .summary-kpi-grid { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+        @media (max-width: 1024px) { .summary-kpi-grid { grid-template-columns: 1fr; } }
+
+        /* サマリ：2カラム×縦積み（モック準拠） */
+        .summary-grid { width: 100%; display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+        .summary-grid > .left-column,
+        .summary-grid > .right-column { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+        @media (max-width: 1024px) { .summary-grid { grid-template-columns: 1fr; } }
+
+        /* 行程プレビュー：時刻列を桁揃え */
+        .lt-summary-timeline-list .font-mono { font-variant-numeric: tabular-nums; }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden text-slate-800 <?= $bodyBgClass ?>"<?= $bodyStyle ? ' style="' . htmlspecialchars($bodyStyle) . '"' : '' ?>>
 
 <?php require_once __DIR__ . '/../../../components/sidebar.php'; ?>
 
-<main class="flex-1 flex flex-col min-w-0 overflow-auto overflow-x-hidden w-full">
-    <header class="min-h-14 bg-white border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 sm:px-6 py-3 shrink-0">
-        <div class="flex items-start gap-2 min-w-0 shrink">
-            <a href="/live_trip/" class="text-slate-500 hover:text-slate-700 pt-0.5 shrink-0"><i class="fa-solid fa-arrow-left"></i></a>
-            <div class="min-w-0 flex-1">
-                <h1 class="font-black text-slate-700 text-base sm:text-lg truncate"><?= htmlspecialchars($trip['event_name'] ?? '遠征') ?></h1>
-                <p class="text-xs sm:text-sm text-slate-500 truncate">
-                    <?= htmlspecialchars($trip['event_date'] ?? '') ?>
-                    <?php if ($eventPlace): ?>
-                        · <a href="<?= htmlspecialchars($eventPlaceForMaps) ?>" target="_blank" rel="noopener" class="text-sky-600 hover:underline"><?= htmlspecialchars($eventPlace) ?> <i class="fa-solid fa-external-link text-[10px]"></i></a>
-                    <?php endif; ?>
-                </p>
-            </div>
-        </div>
-        <div class="flex gap-2 shrink-0 flex-wrap">
-            <a href="/live_trip/shiori.php?id=<?= (int)$trip['id'] ?>" class="px-3 py-2 lt-theme-btn text-white rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap" target="_blank">しおり</a>
-            <a href="/live_trip/edit.php?id=<?= (int)$trip['id'] ?>" class="px-3 py-2 border border-slate-200 rounded-lg text-xs sm:text-sm font-bold hover:bg-slate-50 whitespace-nowrap">編集</a>
-            <form method="post" action="/live_trip/delete.php" onsubmit="return confirm('この遠征を削除しますか？');" class="inline">
-                <input type="hidden" name="id" value="<?= (int)$trip['id'] ?>">
-                <button type="submit" class="px-3 py-2 border border-red-200 text-red-600 rounded-lg text-xs sm:text-sm font-bold hover:bg-red-50 whitespace-nowrap">削除</button>
-            </form>
-        </div>
+<main class="lt-main-scroll flex-1 flex flex-col min-w-0 overflow-auto overflow-x-hidden w-full">
+    <header class="min-h-14 bg-white border-b border-slate-200 flex items-center gap-2 px-4 sm:px-6 py-3 shrink-0">
+        <a href="/live_trip/" class="text-slate-500 hover:text-slate-700 shrink-0"><i class="fa-solid fa-arrow-left"></i></a>
+        <p class="text-sm font-bold text-slate-600 truncate">遠征詳細</p>
     </header>
 
-    <div class="lt-tab-bar flex gap-1 border-b border-slate-200 bg-slate-50 px-2 sm:px-4 overflow-x-auto shrink-0">
-        <button type="button" class="lt-tab shrink-0" data-tab="summary"><i class="fa-solid fa-book mr-1 text-slate-400"></i>サマリ</button>
-        <button type="button" class="lt-tab shrink-0" data-tab="info"><i class="fa-solid fa-ticket mr-1 text-slate-400"></i>参加情報</button>
-        <button type="button" class="lt-tab shrink-0" data-tab="expense"><i class="fa-solid fa-yen-sign mr-1 text-slate-400"></i>費用</button>
-        <button type="button" class="lt-tab shrink-0" data-tab="hotel"><i class="fa-solid fa-hotel mr-1 text-slate-400"></i>宿泊</button>
-        <button type="button" class="lt-tab shrink-0" data-tab="destination"><i class="fa-solid fa-map-location-dot mr-1 text-slate-400"></i>目的地</button>
-        <button type="button" class="lt-tab shrink-0" data-tab="transport"><i class="fa-solid fa-train mr-1 text-slate-400"></i>移動</button>
-        <button type="button" class="lt-tab shrink-0" data-tab="timeline"><i class="fa-solid fa-clock mr-1 text-slate-400"></i>タイムライン</button>
-        <button type="button" class="lt-tab shrink-0" data-tab="checklist"><i class="fa-solid fa-list-check mr-1 text-slate-400"></i>チェックリスト</button>
-    </div>
-
-    <div class="px-4 sm:px-6 pt-4 sm:pt-5 max-w-6xl w-full">
-        <div class="grid gap-3 sm:gap-4 sm:grid-cols-[1fr_2fr]">
-            <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
-                <div class="flex items-start justify-between gap-3">
-                    <div class="min-w-0">
-                        <p class="text-xs font-bold text-slate-500">次の予定</p>
-                        <?php if (!empty($nextItem) && ($nextItem['type'] ?? '') === 'timeline'): $ti = $nextItem['data'] ?? []; ?>
-                            <p class="font-bold text-slate-800 mt-1 truncate"><?= htmlspecialchars((string)($ti['label'] ?? '')) ?></p>
-                            <p class="text-sm text-slate-600 truncate">
-                                <?= htmlspecialchars((string)($ti['scheduled_date'] ?? ($nextItem['date'] ?? ''))) ?>
-                                <?= htmlspecialchars((string)($ti['scheduled_time'] ?? ($nextItem['time'] ?? ''))) ?>
-                                <?php if (!empty($ti['location_label'] ?? '')): ?>
-                                    · <?= htmlspecialchars((string)$ti['location_label']) ?>
-                                <?php endif; ?>
-                            </p>
-                        <?php elseif (!empty($nextItem) && ($nextItem['type'] ?? '') === 'transport'): $tl = $nextItem['data'] ?? []; ?>
-                            <p class="font-bold text-slate-800 mt-1 truncate"><i class="fa-solid fa-train text-slate-400 mr-1"></i><?= htmlspecialchars(trim((string)($tl['transport_type'] ?? '') . ' ' . (string)($tl['route_memo'] ?? ''))) ?></p>
-                            <p class="text-sm text-slate-600 truncate">
-                                <?= htmlspecialchars((string)($nextItem['date'] ?? '')) ?> <?= htmlspecialchars((string)($nextItem['time'] ?? '')) ?>
-                                <?php if (($tl['departure'] ?? '') || ($tl['arrival'] ?? '')): ?>
-                                    · <?= htmlspecialchars((string)($tl['departure'] ?? '')) ?> → <?= htmlspecialchars((string)($tl['arrival'] ?? '')) ?>
-                                <?php endif; ?>
-                            </p>
-                        <?php else: ?>
-                            <p class="text-slate-500 text-sm mt-1">次の予定がありません。</p>
+    <div class="trip-detail-container py-6">
+        <div class="bg-white border border-slate-200 rounded-xl shadow-sm px-6 sm:px-7 py-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div class="min-w-0">
+                    <p class="text-xs text-slate-500 font-bold">
+                        遠征管理 <span class="text-slate-300 mx-1">›</span> <?= htmlspecialchars($heroMonthLabel !== '' ? $heroMonthLabel : '（年月未設定）') ?>
+                    </p>
+                    <h1 class="mt-1 text-lg sm:text-xl font-black text-slate-800 break-words">
+                        <?= htmlspecialchars($trip['event_name'] ?? '遠征') ?>
+                    </h1>
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        <?php if ($heroDatePillText !== ''): ?>
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-xs font-bold">
+                                <i class="fa-solid fa-calendar-days text-slate-500"></i>
+                                <span><?= htmlspecialchars($heroDatePillText) ?></span>
+                            </span>
                         <?php endif; ?>
-                    </div>
-                    <div class="shrink-0 flex gap-2">
-                        <?php if ($nextNavDestination !== ''): ?>
-                            <a href="<?= htmlspecialchars($nextNavDestination) ?>" target="_blank" rel="noopener" class="lt-theme-btn text-white px-3 py-2 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap">
-                                <i class="fa-solid fa-location-arrow mr-1"></i>ナビ起動
+
+                        <?php if ($eventPlace): ?>
+                            <a href="<?= htmlspecialchars($eventPlaceForMaps) ?>" target="_blank" rel="noopener"
+                               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200">
+                                <i class="fa-solid fa-location-dot text-slate-500"></i>
+                                <span class="truncate max-w-[18rem] sm:max-w-none"><?= htmlspecialchars($eventPlace) ?></span>
+                                <i class="fa-solid fa-external-link text-[10px] text-slate-400"></i>
                             </a>
                         <?php endif; ?>
-                        <button type="button" class="px-3 py-2 border border-slate-200 rounded-lg text-xs sm:text-sm font-bold hover:bg-slate-50 whitespace-nowrap js-switch-tab" data-tab="timeline">
-                            <i class="fa-solid fa-clock mr-1 text-slate-400"></i>開く
-                        </button>
+
+                        <?php if ($heroRelativeText !== ''): ?>
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-xs font-bold">
+                                <?php if (is_int($heroRelativeDays) && str_starts_with($heroRelativeText, 'あと ')): ?>
+                                    あと <span class="font-black" style="color: var(--lt-theme);"><?= (int)$heroRelativeDays ?></span>日
+                                <?php else: ?>
+                                    <?= htmlspecialchars($heroRelativeText) ?>
+                                <?php endif; ?>
+                            </span>
+                        <?php endif; ?>
                     </div>
                 </div>
-                <div class="mt-3 flex flex-wrap gap-2">
-                    <button type="button" class="px-3 py-1.5 rounded-full border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 js-switch-tab" data-tab="destination"><i class="fa-solid fa-map-location-dot text-slate-400 mr-1"></i>目的地</button>
-                    <button type="button" class="px-3 py-1.5 rounded-full border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 js-switch-tab" data-tab="transport"><i class="fa-solid fa-train text-slate-400 mr-1"></i>移動</button>
-                    <button type="button" class="px-3 py-1.5 rounded-full border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 js-switch-tab" data-tab="hotel"><i class="fa-solid fa-hotel text-slate-400 mr-1"></i>宿泊</button>
+
+                <div class="flex items-center gap-2 flex-wrap justify-start md:justify-end">
+                    <a href="/live_trip/shiori.php?id=<?= (int)$trip['id'] ?>" class="px-4 py-2 lt-theme-btn text-white rounded-lg text-sm font-bold whitespace-nowrap inline-flex items-center gap-2" target="_blank" rel="noopener">
+                        <i class="fa-solid fa-book"></i>しおり
+                    </a>
+                    <a href="/live_trip/edit.php?id=<?= (int)$trip['id'] ?>" class="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold hover:bg-slate-50 whitespace-nowrap">
+                        編集
+                    </a>
+                    <form method="post" action="/live_trip/delete.php" onsubmit="return confirm('この遠征を削除しますか？');" class="inline">
+                        <input type="hidden" name="id" value="<?= (int)$trip['id'] ?>">
+                        <button type="submit" class="w-10 h-10 inline-flex items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100" title="削除" aria-label="削除">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="trip-detail-container">
+        <div class="lt-tab-bar flex items-center gap-2 border-b border-slate-200 px-0 overflow-x-auto shrink-0">
+            <button type="button" class="lt-tab shrink-0" data-tab="summary"><span class="lt-tab-inner"><span aria-hidden="true">📋</span><span>サマリ</span></span></button>
+            <button type="button" class="lt-tab shrink-0" data-tab="info"><span class="lt-tab-inner"><span aria-hidden="true">👥</span><span>参加情報</span></span></button>
+            <button type="button" class="lt-tab shrink-0" data-tab="expense"><span class="lt-tab-inner"><span aria-hidden="true">💴</span><span>費用</span></span></button>
+            <button type="button" class="lt-tab shrink-0" data-tab="hotel"><span class="lt-tab-inner"><span aria-hidden="true">🏨</span><span>宿泊</span></span></button>
+            <button type="button" class="lt-tab shrink-0" data-tab="destination"><span class="lt-tab-inner"><span aria-hidden="true">📍</span><span>目的地</span></span></button>
+            <button type="button" class="lt-tab shrink-0" data-tab="transport"><span class="lt-tab-inner"><span aria-hidden="true">🚇</span><span>移動</span></span></button>
+            <button type="button" class="lt-tab shrink-0" data-tab="timeline"><span class="lt-tab-inner"><span aria-hidden="true">⏰</span><span>タイムライン</span></span></button>
+            <button type="button" class="lt-tab shrink-0" data-tab="checklist"><span class="lt-tab-inner"><span aria-hidden="true">✅</span><span>チェックリスト</span></span></button>
+        </div>
+    </div>
+
+    <?php
+    /**
+     * サマリ用「次の予定」表示データ
+     * NOTE: サマリの地図エリアを非表示にしても動くよう、表示用の計算は共通領域で行う。
+     */
+    $placeLabelForDisplay = function(string $raw): string {
+        $s = trim($raw);
+        if ($s === '') return '';
+        // Google Maps の検索クエリ由来（+連結等）を表示用に整形
+        $s = str_replace('+', ' ', $s);
+        $s = preg_replace('/〒\s*\d{3}-\d{4}\s*/u', '', $s) ?? $s;
+        // 施設名, 住所… の形なら先頭（施設名）優先
+        $parts = preg_split('/[、,]/u', $s);
+        if (is_array($parts) && !empty($parts[0])) {
+            $s = (string)$parts[0];
+        }
+        $s = trim(preg_replace('/\s+/u', ' ', $s) ?? $s);
+        if ($s === '') return '';
+        // 長すぎる表示名は少しだけ丸める（省略はCSSで）
+        if (mb_strlen($s) > 40) {
+            $s = mb_substr($s, 0, 40);
+        }
+        return $s;
+    };
+
+    $nextBadgeText = '';
+    if (is_int($heroRelativeDays) && $heroRelativeDays >= 0 && str_starts_with((string)$heroRelativeText, 'あと ')) {
+        $nextBadgeText = 'あと ' . $heroRelativeDays . '日';
+    }
+    $nextTitle = '';
+    $nextDateStr = '';
+    $nextTimeStr = '';
+    $nextDurationMin = null;
+    $nextFrom = '';
+    $nextTo = '';
+    $nextMapUrl = '';
+    $nextAmount = null;
+    if (!empty($nextItem) && ($nextItem['type'] ?? '') === 'timeline') {
+        $ti = $nextItem['data'] ?? [];
+        $nextTitle = (string)($ti['label'] ?? '');
+        $nextDateStr = (string)($ti['scheduled_date'] ?? ($nextItem['date'] ?? ''));
+        $nextTimeStr = (string)($ti['scheduled_time'] ?? ($nextItem['time'] ?? ''));
+        $nextDurationMin = isset($ti['duration_min']) ? (int)$ti['duration_min'] : (isset($nextItem['duration_min']) ? (int)$nextItem['duration_min'] : null);
+        $nextFrom = trim((string)($ti['location_label'] ?? '')) ?: trim((string)($ti['location_address'] ?? ''));
+        $nextTo = '';
+        $nextMapUrl = $nextNavDestination ?: ($eventPlaceForMaps !== '#' ? $eventPlaceForMaps : '');
+    } elseif (!empty($nextItem) && ($nextItem['type'] ?? '') === 'transport') {
+        $tl = $nextItem['data'] ?? [];
+        $nextTitle = trim((string)($tl['transport_type'] ?? '') . ' ' . (string)($tl['route_memo'] ?? ''));
+        $nextDateStr = (string)($nextItem['date'] ?? ($tl['departure_date'] ?? ''));
+        $nextTimeStr = (string)($nextItem['time'] ?? ($tl['scheduled_time'] ?? ''));
+        $nextDurationMin = isset($tl['duration_min']) && $tl['duration_min'] !== '' ? (int)$tl['duration_min'] : null;
+        $nextFrom = (string)($tl['departure'] ?? '');
+        $nextTo = (string)($tl['arrival'] ?? '');
+        // 表示は施設名だけ、リンクは従来どおり（maps_link / nextNavDestination）
+        $nextMapUrl = (string)($tl['maps_link'] ?? '') ?: $nextNavDestination;
+        $nextAmount = !empty($tl['amount']) ? (int)$tl['amount'] : null;
+    }
+    $nextDow = '';
+    try {
+        if ($nextDateStr !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $nextDateStr)) {
+            $dti = new \DateTimeImmutable($nextDateStr, new \DateTimeZone('Asia/Tokyo'));
+            $dow = ['日','月','火','水','木','金','土'][(int)$dti->format('w')] ?? '';
+            $nextDow = $dow ? '（' . $dow . '）' : '';
+        }
+    } catch (\Throwable $e) { }
+    $nextDurationText = '';
+    if (is_int($nextDurationMin) && $nextDurationMin > 0) {
+        $h = intdiv($nextDurationMin, 60);
+        $m = $nextDurationMin % 60;
+        $nextDurationText = ($h > 0 ? ($h . 'h') : '') . ($m > 0 ? ($m . 'm') : ($h > 0 ? '0m' : ''));
+    }
+    $nextFromDisplay = $placeLabelForDisplay((string)$nextFrom);
+    $nextToDisplay = $placeLabelForDisplay((string)$nextTo);
+    ?>
+
+    <?php if (false): ?>
+    <div class="px-4 sm:px-6 pt-4 sm:pt-5 max-w-6xl w-full">
+        <div class="grid gap-3 sm:gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+            <?php
+            // 旧：次の予定＋地図（現在は非表示）
+            ?>
+            <div class="p-5 sm:p-6 bg-white border border-slate-200 rounded-xl shadow-sm min-w-0 overflow-hidden" style="line-height: 1.6;">
+                <div class="flex items-center justify-between gap-3">
+                    <p class="text-xs font-bold text-slate-500 inline-flex items-center gap-2">
+                        <span aria-hidden="true">🚄</span><span>次の予定</span>
+                    </p>
+                    <?php if ($nextBadgeText !== ''): ?>
+                        <span class="lt-pill-primary inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold">
+                            <?= htmlspecialchars($nextBadgeText) ?>
+                        </span>
+                    <?php endif; ?>
+                </div>
+
+                <?php if ($nextTitle !== ''): ?>
+                    <p class="mt-2 text-lg sm:text-[21px] font-bold text-slate-900 truncate"><?= htmlspecialchars($nextTitle) ?></p>
+                    <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0 text-sm text-slate-700">
+                        <span class="font-mono font-bold text-slate-700 min-w-0 truncate">
+                            <?= htmlspecialchars($nextDateStr) ?><?= htmlspecialchars($nextDow) ?><?= $nextTimeStr !== '' ? ' ' . htmlspecialchars($nextTimeStr) : '' ?>
+                        </span>
+                        <?php if ($nextDurationText !== ''): ?>
+                            <span class="text-slate-500 shrink-0">出発・所要 <?= htmlspecialchars($nextDurationText) ?></span>
+                        <?php endif; ?>
+                    </div>
+                    <?php if ($nextFrom !== '' || $nextTo !== ''): ?>
+                        <div class="mt-2 flex items-center gap-2 min-w-0 flex-wrap">
+                            <span class="text-sm text-slate-600 min-w-0 truncate">
+                                <?= htmlspecialchars($nextFromDisplay !== '' ? $nextFromDisplay : '（出発地未設定）') ?>
+                            </span>
+                            <?php if ($nextTo !== ''): ?>
+                                <span class="text-slate-400 shrink-0">→</span>
+                                <span class="text-sm text-slate-600 min-w-0 truncate">
+                                    <?= htmlspecialchars($nextToDisplay !== '' ? $nextToDisplay : $nextTo) ?>
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+                <?php else: ?>
+                    <p class="mt-2 text-slate-500 text-sm">次の予定がありません。</p>
+                <?php endif; ?>
+
+                <div class="mt-4 flex flex-wrap gap-2">
+                    <?php if ($nextNavDestination !== ''): ?>
+                        <a href="<?= htmlspecialchars($nextNavDestination) ?>" target="_blank" rel="noopener" class="lt-theme-btn text-white px-3 py-2 rounded-lg text-sm font-bold whitespace-nowrap inline-flex items-center gap-2">
+                            <span aria-hidden="true">🧭</span><span>ナビ起動</span>
+                        </a>
+                    <?php endif; ?>
+                    <?php if ($nextMapUrl !== ''): ?>
+                        <a href="<?= htmlspecialchars($nextMapUrl) ?>" target="_blank" rel="noopener" class="px-3 py-2 border border-slate-200 rounded-lg text-sm font-bold hover:bg-slate-50 whitespace-nowrap inline-flex items-center gap-2">
+                            <span aria-hidden="true">🗺</span><span>地図で開く</span>
+                        </a>
+                    <?php endif; ?>
+                    <button type="button" class="px-3 py-2 border border-slate-200 rounded-lg text-sm font-bold hover:bg-slate-50 whitespace-nowrap inline-flex items-center gap-2 js-switch-tab" data-tab="hotel">
+                        <span aria-hidden="true">🏨</span><span>宿泊詳細</span>
+                    </button>
+                    <?php if (is_int($nextAmount) && $nextAmount > 0): ?>
+                        <button type="button" class="px-3 py-2 border border-slate-200 rounded-lg text-sm font-bold hover:bg-slate-50 whitespace-nowrap inline-flex items-center gap-2 js-switch-tab" data-tab="transport">
+                            <span aria-hidden="true">💴</span><span><span class="font-black">¥<?= number_format($nextAmount) ?></span></span>
+                        </button>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -359,9 +626,10 @@ try {
             </div>
         </div>
     </div>
+    <?php endif; ?>
 
-    <div class="p-4 sm:p-6 max-w-4xl lt-tab-panels min-w-0">
-        <div class="lt-tab-panel max-w-4xl" data-panel="summary" id="panel-summary">
+    <div class="trip-detail-container py-4 sm:py-6 lt-tab-panels min-w-0">
+        <div class="lt-tab-panel w-full" data-panel="summary" id="panel-summary">
         <?php
         $summaryTotalExpense = 0;
         foreach ($expenses ?? [] as $ex) { $summaryTotalExpense += (int)($ex['amount'] ?? 0); }
@@ -376,36 +644,166 @@ try {
         if ($summaryCheckTotal === 0) $summaryNextActions[] = ['label' => 'チェックリストを追加', 'tab' => 'checklist'];
         ?>
         <div class="space-y-4">
-            <h2 class="font-bold text-slate-700 flex items-center gap-2">
-                <i class="fa-solid fa-book text-slate-400"></i> しおりサマリ
-            </h2>
-            <div class="flex flex-wrap gap-4 p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
-                <?php if ($summaryTotalExpense > 0): ?>
-                <div><span class="text-xs font-bold text-slate-500">費用合計</span><p class="font-bold text-slate-800">¥<?= number_format($summaryTotalExpense) ?></p></div>
-                <?php endif; ?>
-                <?php if ($summaryCheckTotal > 0): ?>
-                <div><span class="text-xs font-bold text-slate-500">チェック進捗</span><p class="font-bold text-slate-800"><?= $summaryCheckChecked ?>/<?= $summaryCheckTotal ?></p></div>
-                <?php endif; ?>
-                <div><span class="text-xs font-bold text-slate-500">しおり</span><p><a href="/live_trip/shiori.php?id=<?= (int)$trip['id'] ?>" target="_blank" class="lt-theme-link font-medium hover:underline">当日用を開く <i class="fa-solid fa-external-link text-xs"></i></a></p></div>
-                <?php if (!empty($summaryNextActions)): ?>
-                <div class="w-full pt-2 border-t border-slate-200"><span class="text-xs font-bold text-slate-500">次のアクション</span>
-                    <p class="flex flex-wrap gap-2 mt-1">
-                        <?php foreach ($summaryNextActions as $a): ?>
-                        <button type="button" class="text-sm lt-theme-link hover:underline js-switch-tab" data-tab="<?= htmlspecialchars($a['tab']) ?>"><?= htmlspecialchars($a['label']) ?></button>
-                        <?php endforeach; ?>
+            <?php
+            // KPI 3カード（サマリタブのみ表示）
+            $kpiTotalExpense = 0;
+            foreach ($expenses ?? [] as $ex) { $kpiTotalExpense += (int)($ex['amount'] ?? 0); }
+            $kpiTransportTotal = 0;
+            foreach ($transportLegs ?? [] as $tl) { $kpiTransportTotal += (int)($tl['amount'] ?? 0); }
+            $kpiHotelTotal = 0;
+            foreach ($hotelStays ?? [] as $h) { $kpiHotelTotal += (int)($h['price'] ?? 0); }
+            $kpiGrandTotal = $kpiTotalExpense + $kpiTransportTotal + $kpiHotelTotal;
+
+            $kpiExpenseByCat = [];
+            foreach ($expenses ?? [] as $ex) {
+                $cat = (string)($ex['category'] ?? 'other');
+                $kpiExpenseByCat[$cat] = ($kpiExpenseByCat[$cat] ?? 0) + (int)($ex['amount'] ?? 0);
+            }
+            arsort($kpiExpenseByCat);
+            $kpiExpenseParts = [];
+            if ($kpiTransportTotal > 0) $kpiExpenseParts[] = '交通 ¥' . number_format($kpiTransportTotal);
+            if ($kpiHotelTotal > 0) $kpiExpenseParts[] = '宿 ¥' . number_format($kpiHotelTotal);
+            foreach ($kpiExpenseByCat as $cat => $amt) {
+                if ($amt <= 0) continue;
+                $label = \App\LiveTrip\Model\ExpenseModel::$categories[$cat] ?? $cat;
+                $kpiExpenseParts[] = $label . ' ¥' . number_format($amt);
+                if (count($kpiExpenseParts) >= 4) break;
+            }
+            $kpiExpenseBreakdown = implode(' ／ ', $kpiExpenseParts);
+
+            $kpiCheckTotal = count($checklistItems ?? []);
+            $kpiCheckChecked = (int)array_sum(array_column($checklistItems ?? [], 'checked'));
+            $kpiCheckPct = $kpiCheckTotal > 0 ? (int)round(($kpiCheckChecked / $kpiCheckTotal) * 100) : 0;
+            if ($kpiCheckPct < 0) $kpiCheckPct = 0;
+            if ($kpiCheckPct > 100) $kpiCheckPct = 100;
+
+            $kpiParticipationDays = count($eventDates ?? []);
+            if ($kpiParticipationDays <= 0 && $heroStartDate !== '' && $heroEndDate !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $heroStartDate) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $heroEndDate)) {
+                try {
+                    $ds = new \DateTimeImmutable($heroStartDate, new \DateTimeZone('Asia/Tokyo'));
+                    $de = new \DateTimeImmutable($heroEndDate, new \DateTimeZone('Asia/Tokyo'));
+                    if ($de >= $ds) $kpiParticipationDays = (int)$ds->diff($de)->days + 1;
+                } catch (\Throwable $e) { }
+            }
+            $kpiTransportCount = count($transportLegs ?? []);
+            $kpiHotelCount = count($hotelStays ?? []);
+            $kpiDestinationCount = count($destinations ?? []);
+            ?>
+
+            <div class="summary-kpi-grid">
+                <div class="bg-white border border-slate-200 rounded-xl p-5 sm:p-6">
+                    <p class="text-sm text-slate-500 font-bold">費用合計</p>
+                    <p class="mt-1 text-xl font-black text-slate-900">¥<?= number_format((int)$kpiGrandTotal) ?></p>
+                    <p class="mt-2 text-[13px] text-slate-500 truncate" title="<?= htmlspecialchars($kpiExpenseBreakdown) ?>">
+                        <?= htmlspecialchars($kpiExpenseBreakdown !== '' ? $kpiExpenseBreakdown : '内訳は未登録です') ?>
                     </p>
                 </div>
-                <?php endif; ?>
+
+                <div class="bg-white border border-slate-200 rounded-xl p-5 sm:p-6">
+                    <p class="text-sm text-slate-500 font-bold">チェック進捗</p>
+                    <p class="mt-1 text-slate-900">
+                        <span class="text-xl font-black"><?= (int)$kpiCheckChecked ?></span>
+                        <span class="text-lg text-slate-400 font-bold"> / <?= (int)$kpiCheckTotal ?></span>
+                    </p>
+                    <div class="mt-3 h-2 rounded-full bg-slate-200 overflow-hidden" role="progressbar" aria-valuenow="<?= (int)$kpiCheckPct ?>" aria-valuemin="0" aria-valuemax="100">
+                        <div class="h-full rounded-full" style="width: <?= (int)$kpiCheckPct ?>%; background: var(--lt-theme);"></div>
+                    </div>
+                </div>
+
+                <div class="bg-white border border-slate-200 rounded-xl p-5 sm:p-6">
+                    <p class="text-sm text-slate-500 font-bold">参加日数 / 移動</p>
+                    <p class="mt-1 text-slate-900">
+                        <span class="text-xl font-black"><?= (int)$kpiParticipationDays ?>日</span>
+                        <span class="text-lg font-black text-slate-900">・<?= (int)$kpiTransportCount ?>件</span>
+                    </p>
+                    <p class="mt-2 text-[13px] text-slate-500">
+                        宿泊 <?= (int)$kpiHotelCount ?>件・目的地 <?= (int)$kpiDestinationCount ?>件
+                    </p>
+                </div>
             </div>
-                <?php if (!empty($mergedTimeline)): ?>
-                <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
-                    <div class="flex items-center justify-between gap-2 mb-3">
-                        <p class="text-xs font-bold text-slate-500">タイムライン</p>
-                        <div class="flex items-center gap-2">
-                            <button type="button" class="lt-timeline-summary-view-btn lt-timeline-view-btn px-3 py-1.5 rounded-lg border border-slate-200 text-[11px] font-bold text-slate-600 hover:bg-slate-50" data-view="calendar">日表示</button>
-                            <button type="button" class="lt-timeline-summary-view-btn lt-timeline-view-btn px-3 py-1.5 rounded-lg border border-slate-200 text-[11px] font-bold text-slate-600 hover:bg-slate-50" data-view="list">リスト</button>
+
+            <?php
+            // サマリ上部：次の予定（左）＋持ち物チェック（右）
+            $summaryClTotal = count($checklistItems ?? []);
+            $summaryClChecked = (int)array_sum(array_column($checklistItems ?? [], 'checked'));
+            $summaryClPct = $summaryClTotal > 0 ? (int)round(($summaryClChecked / $summaryClTotal) * 100) : 0;
+            if ($summaryClPct < 0) $summaryClPct = 0;
+            if ($summaryClPct > 100) $summaryClPct = 100;
+            $summaryMyLists = [];
+            try { $summaryMyLists = (new \App\LiveTrip\Model\MyListModel())->getListsForSelect(); } catch (\Throwable $e) { }
+            $summarySetName = !empty($summaryMyLists) ? ($summaryMyLists[0]['list_name'] ?? '遠征基本セット') : '遠征基本セット';
+            ?>
+
+            <div class="summary-grid">
+                <div class="left-column">
+                    <!-- 左：次の予定 -->
+                    <div class="p-5 sm:p-6 bg-white border border-slate-200 rounded-xl shadow-sm min-w-0 overflow-hidden" style="line-height: 1.6;">
+                        <div class="flex items-center justify-between gap-3">
+                            <p class="text-xs font-bold text-slate-500 inline-flex items-center gap-2">
+                                <span aria-hidden="true">🚄</span><span>次の予定</span>
+                            </p>
+                            <?php if (!empty($nextBadgeText)): ?>
+                                <span class="lt-pill-primary inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold">
+                                    <?= htmlspecialchars($nextBadgeText) ?>
+                                </span>
+                            <?php endif; ?>
+                        </div>
+
+                        <?php if (!empty($nextTitle)): ?>
+                            <p class="mt-2 text-lg sm:text-[21px] font-bold text-slate-900 truncate"><?= htmlspecialchars($nextTitle) ?></p>
+                            <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0 text-sm text-slate-700">
+                                <span class="font-mono font-bold text-slate-700 min-w-0 truncate">
+                                    <?= htmlspecialchars((string)$nextDateStr) ?><?= htmlspecialchars((string)$nextDow) ?><?= !empty($nextTimeStr) ? ' ' . htmlspecialchars((string)$nextTimeStr) : '' ?>
+                                </span>
+                                <?php if (!empty($nextDurationText)): ?>
+                                    <span class="text-slate-500 shrink-0">出発・所要 <?= htmlspecialchars($nextDurationText) ?></span>
+                                <?php endif; ?>
+                            </div>
+                            <?php if (!empty($nextFrom) || !empty($nextTo)): ?>
+                                <div class="mt-2 flex items-center gap-2 min-w-0 flex-wrap">
+                                    <span class="text-sm text-slate-600 min-w-0 truncate"><?= htmlspecialchars($nextFromDisplay !== '' ? $nextFromDisplay : '（出発地未設定）') ?></span>
+                                    <?php if (!empty($nextTo)): ?>
+                                        <span class="text-slate-400 shrink-0">→</span>
+                                        <span class="text-sm text-slate-600 min-w-0 truncate"><?= htmlspecialchars($nextToDisplay !== '' ? $nextToDisplay : (string)$nextTo) ?></span>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endif; ?>
+                        <?php else: ?>
+                            <p class="mt-2 text-slate-500 text-sm">次の予定がありません。</p>
+                        <?php endif; ?>
+
+                        <div class="mt-4 flex flex-wrap gap-2">
+                            <?php if (!empty($nextNavDestination)): ?>
+                                <a href="<?= htmlspecialchars($nextNavDestination) ?>" target="_blank" rel="noopener" class="lt-theme-btn text-white px-3 py-2 rounded-lg text-sm font-bold whitespace-nowrap inline-flex items-center gap-2">
+                                    <span aria-hidden="true">🧭</span><span>ナビ起動</span>
+                                </a>
+                            <?php endif; ?>
+                            <?php if (!empty($nextMapUrl)): ?>
+                                <a href="<?= htmlspecialchars($nextMapUrl) ?>" target="_blank" rel="noopener" class="px-3 py-2 border border-slate-200 rounded-lg text-sm font-bold hover:bg-slate-50 whitespace-nowrap inline-flex items-center gap-2">
+                                    <span aria-hidden="true">🗺</span><span>地図で開く</span>
+                                </a>
+                            <?php endif; ?>
+                            <button type="button" class="px-3 py-2 border border-slate-200 rounded-lg text-sm font-bold hover:bg-slate-50 whitespace-nowrap inline-flex items-center gap-2 js-switch-tab" data-tab="hotel">
+                                <span aria-hidden="true">🏨</span><span>宿泊詳細</span>
+                            </button>
+                            <?php if (!empty($nextAmount) && (int)$nextAmount > 0): ?>
+                                <button type="button" class="px-3 py-2 border border-slate-200 rounded-lg text-sm font-bold hover:bg-slate-50 whitespace-nowrap inline-flex items-center gap-2 js-switch-tab" data-tab="transport">
+                                    <span aria-hidden="true">💴</span><span><span class="font-black">¥<?= number_format((int)$nextAmount) ?></span></span>
+                                </button>
+                            <?php endif; ?>
                         </div>
                     </div>
+                    <!-- 左：行程プレビュー（次の予定の下に固定） -->
+                    <?php if (!empty($mergedTimeline)): ?>
+                    <div class="bg-white border border-slate-200 rounded-xl p-5 sm:p-6 min-w-0">
+                        <div class="flex items-center justify-between gap-3 flex-wrap">
+                            <p class="text-lg font-bold text-slate-800">行程プレビュー</p>
+                            <div class="flex items-center gap-2 flex-wrap justify-end">
+                                <button type="button" class="lt-theme-btn text-white px-4 py-2 rounded-lg text-sm font-bold inline-flex items-center gap-2 js-switch-tab" data-tab="timeline">
+                                    <i class="fa-solid fa-plus"></i><span>追加</span>
+                                </button>
+                            </div>
+                        </div>
 
                     <?php
                     $dayStartMinSummary = 6 * 60;
@@ -425,7 +823,7 @@ try {
                     ksort($timelineByDaySummary);
                     ?>
 
-                    <div class="lt-summary-timeline-calendar hidden space-y-5">
+                    <div class="lt-summary-timeline-calendar hidden space-y-5 mt-4">
                         <?php foreach ($timelineByDaySummary as $day => $rows): ?>
                             <?php
                             $dayLabel = $day;
@@ -544,130 +942,237 @@ try {
                     <div class="lt-summary-timeline-list">
                     <?php
                     $lastDate = '';
+                    $dayIdx = 0;
+                    $firstEv = $eventDates[0] ?? '';
+                    $lastEv = $eventDates[count($eventDates) - 1] ?? '';
                     foreach ($mergedTimeline as $m):
                         $d = $m['date'] ?? '';
                         if ($d !== $lastDate):
                             $isFirstGroup = ($lastDate === '');
                             $lastDate = $d;
-                            $dayLabel = $d;
-                            if (!empty($eventDates) && $d) {
-                                $firstEv = $eventDates[0];
-                                $lastEv = $eventDates[count($eventDates) - 1];
-                                if (in_array($d, $eventDates, true)) $dayLabel .= '（当日）';
-                                elseif ($d < $firstEv) $dayLabel .= '（前日）';
-                                elseif ($d > $lastEv) $dayLabel .= '（翌日）';
-                            }
+                            $dayIdx++;
+                            $dow = '';
+                            try {
+                                if ($d && preg_match('/^\d{4}-\d{2}-\d{2}$/', $d)) {
+                                    $dd = new \DateTimeImmutable($d, new \DateTimeZone('Asia/Tokyo'));
+                                    $dow = ['日','月','火','水','木','金','土'][(int)$dd->format('w')] ?? '';
+                                    $dDisp = $dd->format('n/j') . ($dow ? '（' . $dow . '）' : '');
+                                } else {
+                                    $dDisp = $d;
+                                }
+                            } catch (\Throwable $e) { $dDisp = $d; }
+                            $isEventDay = ($d !== '' && in_array($d, $eventDates ?? [], true));
+                            $status = $isEventDay ? '当日' : (($firstEv !== '' && $d < $firstEv) ? '前日' : '終了');
+                            $sub = 'day' . $dayIdx . '・' . ($isEventDay ? '公演当日' : ($status === '前日' ? '前日' : '終了'));
                     ?>
-                    <p class="text-xs font-bold text-slate-500 <?= $isFirstGroup ? 'mt-0' : 'mt-3' ?> mb-1"><?= htmlspecialchars($dayLabel) ?></p>
+                    <div class="<?= $isFirstGroup ? 'mt-0' : 'mt-4' ?> mb-2">
+                        <div class="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-slate-100 bg-slate-50">
+                            <div class="min-w-0 flex items-center gap-3">
+                                <span class="font-bold text-slate-800"><?= htmlspecialchars($dDisp) ?></span>
+                                <span class="text-sm text-slate-500 truncate"><?= htmlspecialchars($sub) ?></span>
+                            </div>
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold <?= $status === '当日' ? 'lt-pill-primary' : 'bg-white border border-slate-200 text-slate-600' ?>">
+                                <?= htmlspecialchars($status) ?>
+                            </span>
+                        </div>
+                    </div>
                     <?php endif; ?>
-                    <div class="flex gap-3 py-2 border-b border-slate-200 last:border-0">
-                        <span class="font-mono font-bold text-emerald-600 w-14 shrink-0"><?= htmlspecialchars($m['time'] !== '99:99' ? $m['time'] : '') ?></span>
-                        <div>
-                            <?php if ($m['type'] === 'timeline'): $t = $m['data']; ?>
-                            <p class="font-medium"><?= htmlspecialchars($t['label']) ?><?= $t['memo'] ? ' · ' . htmlspecialchars($t['memo']) : '' ?></p>
-                            <?php else: $t = $m['data']; ?>
-                            <p class="font-medium"><i class="fa-solid fa-train text-slate-400 mr-1"></i><?= htmlspecialchars($t['transport_type'] ?? '') ?> <?= htmlspecialchars($t['route_memo'] ?? '') ?></p>
-                            <?php if ($t['departure'] || $t['arrival']): ?><p class="text-sm text-slate-500"><?= htmlspecialchars($t['departure']) ?> → <?= htmlspecialchars($t['arrival']) ?></p><?php endif; ?>
+                    <?php
+                    $time = (string)($m['time'] ?? '');
+                    $time = $time !== '99:99' ? $time : '';
+                    $durMin = (int)($m['duration_min'] ?? 0);
+                    $metaText = $durMin > 0 ? ($durMin . '分') : '';
+                    $emoji = '⏰';
+                    $chipBg = 'bg-slate-100';
+                    $chipText = 'text-slate-700';
+                    $title = '';
+                    $subText = '';
+                    if (($m['type'] ?? '') === 'transport') {
+                        $t = $m['data'] ?? [];
+                        $emoji = '🚇';
+                        $chipBg = 'bg-sky-50';
+                        $chipText = 'text-sky-700';
+                        $title = trim((string)($t['transport_type'] ?? '') . ' ' . (string)($t['route_memo'] ?? ''));
+                        $dep = trim((string)($t['departure'] ?? ''));
+                        $arr = trim((string)($t['arrival'] ?? ''));
+                        $subText = trim(($dep !== '' || $arr !== '') ? ($dep . ($arr !== '' ? ' → ' . $arr : '')) : '');
+                        if (!empty($t['duration_min'])) {
+                            $subText = $subText !== '' ? ($subText . ' ／ ' . (int)$t['duration_min'] . '分') : ((int)$t['duration_min'] . '分');
+                        }
+                        $amt = (int)($t['amount'] ?? 0);
+                        if ($amt > 0) $metaText = '¥' . number_format($amt);
+                    } else {
+                        $t = $m['data'] ?? [];
+                        $label = (string)($t['label'] ?? '');
+                        if (strpos($label, '開場') !== false || strpos($label, '開演') !== false) {
+                            $emoji = '🎤';
+                            $chipBg = 'bg-emerald-50';
+                            $chipText = 'text-emerald-700';
+                        } elseif (strpos($label, 'ホテル') !== false || strpos($label, 'チェックイン') !== false) {
+                            $emoji = '🏨';
+                            $chipBg = 'bg-rose-50';
+                            $chipText = 'text-rose-700';
+                        }
+                        $title = $label;
+                        $subText = trim((string)($t['memo'] ?? ''));
+                        if ($subText === '') {
+                            $loc = trim((string)($t['location_label'] ?? ''));
+                            if ($loc !== '') $subText = $loc;
+                        }
+                    }
+                    ?>
+                    <div class="grid grid-cols-[80px_minmax(0,1fr)_100px] gap-3 py-2.5 border-b border-slate-100 last:border-0 hover:bg-slate-50 rounded-lg px-2">
+                        <div class="font-mono font-bold text-slate-700 text-base"><?= htmlspecialchars($time) ?></div>
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span class="w-7 h-7 rounded-full <?= $chipBg ?> <?= $chipText ?> inline-flex items-center justify-center shrink-0"><?= htmlspecialchars($emoji) ?></span>
+                                <span class="font-bold text-slate-800 truncate"><?= htmlspecialchars($title !== '' ? $title : '（未設定）') ?></span>
+                            </div>
+                            <?php if ($subText !== ''): ?>
+                                <div class="text-sm text-slate-500 mt-0.5 truncate"><?= htmlspecialchars($subText) ?></div>
+                            <?php endif; ?>
+                        </div>
+                        <div class="text-right text-sm text-slate-500 font-semibold"><?= htmlspecialchars($metaText) ?></div>
+                    </div>
+                    <?php endforeach; ?>
+                    </div>
+                </div>
+                    <?php else: ?>
+                    <div class="bg-white border border-slate-200 rounded-xl p-5 sm:p-6 text-slate-500 text-sm">行程がありません。</div>
+                    <?php endif; ?>
+                </div>
+
+                <div class="right-column">
+                    <!-- 右：持ち物チェック（サマリ用コンパクト） -->
+                    <div class="bg-white border border-slate-200 rounded-xl p-5 sm:p-6 min-w-0 overflow-hidden">
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="text-lg font-bold text-slate-800">持ち物チェック</p>
+                                <p class="text-xs sm:text-sm text-slate-500 truncate"><?= htmlspecialchars((string)$summarySetName) ?> <?= (int)$summaryClChecked ?>/<?= (int)$summaryClTotal ?></p>
+                            </div>
+                            <div class="flex items-center gap-2 flex-wrap justify-end shrink-0">
+                                <a href="/live_trip/my_list.php?redirect=<?= urlencode('/live_trip/show.php?id=' . (int)$trip['id'] . '#checklist') ?>" class="px-3 py-2 border border-slate-200 rounded-lg text-sm font-bold hover:bg-slate-50 whitespace-nowrap">マイリスト</a>
+                                <button type="button" class="lt-theme-btn text-white px-3 py-2 rounded-lg text-sm font-bold whitespace-nowrap js-switch-tab" data-tab="checklist">
+                                    <i class="fa-solid fa-plus mr-1"></i>追加
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <div class="flex items-center justify-between gap-3">
+                                <div class="h-2 rounded-full bg-slate-200 overflow-hidden flex-1" role="progressbar" aria-valuenow="<?= (int)$summaryClPct ?>" aria-valuemin="0" aria-valuemax="100">
+                                    <div class="h-full rounded-full" style="width: <?= (int)$summaryClPct ?>%; background: var(--lt-theme);"></div>
+                                </div>
+                                <span class="text-xs font-bold text-slate-500 w-10 text-right"><?= (int)$summaryClPct ?>%</span>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <?php foreach (array_slice(($checklistItems ?? []), 0, 8) as $ci): $isChecked = !empty($ci['checked']); ?>
+                                <div class="lt-checklist-row lt-pack-row flex items-center gap-3 px-2 border-b border-slate-100 last:border-0" data-id="<?= (int)$ci['id'] ?>">
+                                    <button type="button" class="checklist-toggle text-left flex-1 flex items-center gap-3 min-w-0 py-2" data-id="<?= (int)$ci['id'] ?>" data-trip="<?= (int)$trip['id'] ?>">
+                                        <span class="lt-pack-checkbox<?= $isChecked ? ' is-checked' : '' ?>" aria-hidden="true"><?php if ($isChecked): ?><i class="fa-solid fa-check text-[11px]"></i><?php endif; ?></span>
+                                        <span class="checklist-label text-[15px] text-slate-800 truncate"><?= htmlspecialchars($ci['item_name']) ?></span>
+                                    </button>
+                                </div>
+                            <?php endforeach; ?>
+                            <?php if ($summaryClTotal > 8): ?>
+                                <button type="button" class="mt-2 text-sm font-bold lt-theme-link hover:underline js-switch-tab" data-tab="checklist">すべて見る</button>
                             <?php endif; ?>
                         </div>
                     </div>
-                    <?php endforeach; ?>
+
+                    <!-- 右：宿泊 -->
+                    <div class="bg-white border border-slate-200 rounded-xl p-5 sm:p-6">
+                        <p class="text-lg font-bold text-slate-800">宿泊</p>
+                        <div class="mt-4 divide-y divide-slate-100">
+                            <?php foreach ($hotelStays ?? [] as $h):
+                                $mapsUrl = (new \App\LiveTrip\Model\HotelStayModel())->getGoogleMapsUrl($h);
+                                $addr = trim((string)($h['address'] ?? ''));
+                                $venueInfo = trim((string)($h['distance_from_venue'] ?? '')) . ($h['time_from_venue'] ? '・' . trim((string)$h['time_from_venue']) : '');
+                                $in = trim((string)($h['check_in'] ?? ''));
+                                $price = !empty($h['price']) ? (int)$h['price'] : null;
+                            ?>
+                            <div class="py-4 first:pt-0 last:pb-0">
+                                <div class="flex gap-3 min-w-0">
+                                    <div class="w-9 h-9 rounded-full bg-rose-50 text-rose-700 flex items-center justify-center shrink-0">🏨</div>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="font-bold text-slate-800 truncate">
+                                            <?php if ($mapsUrl !== '#'): ?>
+                                                <a href="<?= htmlspecialchars($mapsUrl) ?>" target="_blank" rel="noopener" class="hover:underline"><?= htmlspecialchars((string)($h['hotel_name'] ?? '')) ?></a>
+                                            <?php else: ?>
+                                                <?= htmlspecialchars((string)($h['hotel_name'] ?? '')) ?>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="text-[13px] text-slate-500 truncate">
+                                            <?= htmlspecialchars($addr) ?><?= $venueInfo !== '' ? ' ／ 会場まで' . htmlspecialchars($venueInfo) : '' ?>
+                                        </div>
+                                        <div class="mt-2 flex flex-wrap gap-2">
+                                            <?php if ($in !== ''): ?>
+                                                <span class="px-3 py-1 rounded-full border border-slate-200 text-xs font-bold text-slate-600 bg-white">📅 <?= htmlspecialchars($in) ?> IN</span>
+                                            <?php endif; ?>
+                                            <?php if (is_int($price)): ?>
+                                                <span class="px-3 py-1 rounded-full border border-slate-200 text-xs font-bold text-slate-600 bg-white">💴 <span class="font-black">¥<?= number_format($price) ?></span></span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                            <?php if (empty($hotelStays ?? [])): ?>
+                                <p class="text-sm text-slate-500">宿泊がありません。</p>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <!-- 右：目的地 -->
+                    <div class="bg-white border border-slate-200 rounded-xl p-5 sm:p-6">
+                        <div class="flex items-center justify-between gap-3">
+                            <p class="text-lg font-bold text-slate-800">目的地</p>
+                            <span class="text-sm text-slate-500 font-bold"><?= (int)count($destinations ?? []) ?>件</span>
+                        </div>
+                        <div class="mt-4 divide-y divide-slate-100">
+                            <?php foreach ($destinations ?? [] as $d):
+                                $mapsUrl = $destinationModel->getGoogleMapsUrl($d);
+                                $type = (string)($d['destination_type'] ?? 'other');
+                                $emoji = $type === 'sightseeing' ? '🗼' : ($type === 'collab' ? '📍' : '📍');
+                                $chipBg = $type === 'sightseeing' ? 'bg-indigo-50 text-indigo-700' : 'bg-pink-50 text-pink-700';
+                                $date = trim((string)($d['visit_date'] ?? ''));
+                                $time = trim((string)($d['visit_time'] ?? ''));
+                                $addr = trim((string)($d['address'] ?? ''));
+                                $sub = trim(($date !== '' ? $date : '') . ($time !== '' ? (' ' . $time . '〜') : '') . ($addr !== '' ? ('・' . $addr) : ''));
+                            ?>
+                            <div class="py-4 first:pt-0 last:pb-0 hover:bg-slate-50 rounded-lg px-2">
+                                <div class="flex items-center gap-3 min-w-0">
+                                    <div class="w-10 h-10 rounded-full <?= $chipBg ?> flex items-center justify-center shrink-0"><?= htmlspecialchars($emoji) ?></div>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="font-bold text-slate-800 truncate"><?= htmlspecialchars((string)($d['name'] ?? '')) ?> <span class="text-slate-500 font-semibold text-sm">（<?= htmlspecialchars(\App\LiveTrip\Model\DestinationModel::$types[$type] ?? 'その他') ?>）</span></div>
+                                        <?php if ($sub !== ''): ?><div class="text-[13px] text-slate-500 truncate"><?= htmlspecialchars($sub) ?></div><?php endif; ?>
+                                    </div>
+                                    <?php if ($mapsUrl !== '#'): ?>
+                                        <a href="<?= htmlspecialchars($mapsUrl) ?>" target="_blank" rel="noopener" class="w-9 h-9 rounded-full border border-slate-200 bg-white hover:bg-slate-50 inline-flex items-center justify-center shrink-0" title="地図で開く" aria-label="地図で開く">🗺</a>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                            <?php if (empty($destinations ?? [])): ?>
+                                <p class="text-sm text-slate-500">目的地がありません。</p>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
-                <?php endif; ?>
-            <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
-                    <p class="text-xs font-bold text-slate-500 mb-2">イベント</p>
-                    <?php foreach ($trip['events'] ?? [] as $ev): 
-                        $evDate = $ev['event_date'] ?? '';
-                        $evPlace = $ev['event_place'] ?? $ev['hn_event_place'] ?? '';
-                        $dc = $eventDoorCurtain[$evDate] ?? [];
-                    ?>
-                    <div class="mb-4 last:mb-0 pb-4 last:pb-0 border-b border-slate-100 last:border-0">
-                        <p class="font-bold"><?= htmlspecialchars($ev['event_name'] ?? '') ?> <span class="text-slate-500 font-normal text-sm"><?= htmlspecialchars($evDate) ?></span></p>
-                        <?php if ($evPlace): ?>
-                        <a href="https://www.google.com/maps/search/?api=1&query=<?= rawurlencode($evPlace) ?>" target="_blank" rel="noopener" class="text-sky-600 font-medium text-sm mt-1 inline-flex items-center gap-1"><?= htmlspecialchars($evPlace) ?> <i class="fa-solid fa-external-link text-xs"></i></a>
-                        <a href="https://www.google.com/maps/dir/?api=1&destination=<?= rawurlencode($evPlace) ?>&travelmode=transit" target="_blank" rel="noopener" class="text-sky-600 text-sm ml-2 inline-flex items-center gap-1"><i class="fa-solid fa-train text-slate-400"></i>電車で案内</a>
-                        <?php endif; ?>
-                        <?php if (!empty($dc)): ?>
-                        <p class="text-sm text-slate-600 mt-2">
-                            <i class="fa-solid fa-door-open text-slate-400 mr-1"></i><?php if (!empty($dc['開場'])): ?>開場 <?= htmlspecialchars($dc['開場']) ?><?php endif; ?><?php if (!empty($dc['開場']) && !empty($dc['開演'])): ?>　<?php endif; ?><?php if (!empty($dc['開演'])): ?><i class="fa-solid fa-star text-slate-400 ml-2 mr-1"></i>開演 <?= htmlspecialchars($dc['開演']) ?><?php endif; ?>
-                        </p>
-                        <?php endif; ?>
-                        <?php /* Static Map は共通Mapへ統合 */ ?>
-                    </div>
-                    <?php endforeach; ?>
-                    <?php if (empty($trip['events'] ?? [])): ?>
-                    <p class="font-bold"><?= htmlspecialchars($trip['event_date'] ?? '') ?></p>
-                    <?php if ($eventPlace): ?>
-                    <a href="<?= htmlspecialchars($eventPlaceForMaps) ?>" target="_blank" rel="noopener" class="text-sky-600 font-medium text-sm mt-1 inline-flex items-center gap-1"><?= htmlspecialchars($eventPlace) ?> <i class="fa-solid fa-external-link text-xs"></i></a>
-                    <a href="https://www.google.com/maps/dir/?api=1&destination=<?= rawurlencode($eventPlace) ?>&travelmode=transit" target="_blank" rel="noopener" class="text-sky-600 text-sm ml-2 inline-flex items-center gap-1"><i class="fa-solid fa-train text-slate-400"></i>電車で案内</a>
-                    <?php endif; ?>
-                    <?php /* Static Map は共通Mapへ統合 */ ?>
-                    <?php endif; ?>
-                </div>
-                <?php if (!empty($hotelStays)): ?>
-                <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
-                    <p class="text-xs font-bold text-slate-500 mb-3">宿泊</p>
-                    <?php foreach ($hotelStays as $h):
-                        $mapsUrl = (new \App\LiveTrip\Model\HotelStayModel())->getGoogleMapsUrl($h);
-                    ?>
-                    <div class="mb-3 last:mb-0">
-                        <p class="font-bold"><?= htmlspecialchars($h['hotel_name']) ?></p>
-                        <?php if ($mapsUrl !== '#'): ?><a href="<?= htmlspecialchars($mapsUrl) ?>" target="_blank" rel="noopener" class="text-sky-600 text-sm">地図で開く</a><a href="https://www.google.com/maps/dir/?api=1&destination=<?= rawurlencode($h['address'] ?: $h['hotel_name']) ?>&travelmode=transit" target="_blank" rel="noopener" class="text-sky-600 text-sm ml-2"><i class="fa-solid fa-train text-slate-400"></i>電車で案内</a><?php endif; ?>
-                        <?php /* Static Map は共通Mapへ統合 */ ?>
-                        <?php if ($h['reservation_no']): ?><p class="text-sm">予約番号: <?= htmlspecialchars($h['reservation_no']) ?></p><?php endif; ?>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-                <?php endif; ?>
-                <?php if (!empty($destinations)): ?>
-                <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
-                    <p class="text-xs font-bold text-slate-500 mb-3">目的地</p>
-                    <?php foreach ($destinations as $d):
-                        $dMapsUrl = $destinationModel->getGoogleMapsUrl($d);
-                        $dTypeLabel = \App\LiveTrip\Model\DestinationModel::$types[$d['destination_type'] ?? 'other'] ?? 'その他';
-                    ?>
-                    <div class="mb-3 last:mb-0">
-                        <p class="font-bold"><?= htmlspecialchars($d['name']) ?> <span class="text-xs font-normal text-slate-500"><?= htmlspecialchars($dTypeLabel) ?></span></p>
-                        <?php if ($dMapsUrl !== '#'): ?><a href="<?= htmlspecialchars($dMapsUrl) ?>" target="_blank" rel="noopener" class="text-sky-600 text-sm">地図で開く</a><a href="https://www.google.com/maps/dir/?api=1&destination=<?= rawurlencode($d['address'] ?? $d['name']) ?>&travelmode=transit" target="_blank" rel="noopener" class="text-sky-600 text-sm ml-2"><i class="fa-solid fa-train text-slate-400"></i>電車で案内</a><?php endif; ?>
-                        <?php /* Static Map は共通Mapへ統合 */ ?>
-                        <?php if (!empty($d['visit_date'])): ?><p class="text-sm">訪問予定: <?= htmlspecialchars($d['visit_date']) ?><?= !empty($d['visit_time']) ? ' ' . htmlspecialchars($d['visit_time']) : '' ?></p><?php endif; ?>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-                <?php endif; ?>
-                <?php if (!empty($transportLegs)): ?>
-                <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
-                    <p class="text-xs font-bold text-slate-500 mb-3">移動</p>
-                    <?php foreach ($transportLegs as $t): ?>
-                    <div class="mb-2">
-                        <?php if ($t['departure_date']): ?><p class="text-xs text-slate-500"><?= htmlspecialchars($t['departure_date']) ?></p><?php endif; ?>
-                        <p><?= htmlspecialchars($t['transport_type'] ?? '') ?> <?= htmlspecialchars($t['route_memo'] ?? '') ?></p>
-                        <?php if ($t['departure'] || $t['arrival']): ?><p class="text-sm text-slate-600"><?= htmlspecialchars($t['departure']) ?> → <?= htmlspecialchars($t['arrival']) ?><?= $t['duration_min'] ? ' ('.$t['duration_min'].'分)' : '' ?></p><?php endif; ?>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-                <?php endif; ?>
-                <?php if (!empty($checklistItems)): ?>
-                <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
-                    <p class="text-xs font-bold text-slate-500 mb-3">チェックリスト</p>
-                    <?php foreach ($checklistItems as $ci): ?>
-                    <div class="lt-checklist-row flex items-center gap-2 py-1 border-b border-slate-200/50 last:border-0" data-id="<?= (int)$ci['id'] ?>">
-                        <button type="button" class="checklist-toggle text-left flex-1 flex items-center gap-2 hover:opacity-80 transition" data-id="<?= (int)$ci['id'] ?>" data-trip="<?= (int)$trip['id'] ?>">
-                            <i class="checklist-icon fa-<?= $ci['checked'] ? 'solid fa-circle-check text-emerald-500' : 'regular fa-circle text-slate-300' ?> w-4"></i>
-                            <span class="checklist-label <?= $ci['checked'] ? 'line-through text-slate-400' : '' ?>"><?= htmlspecialchars($ci['item_name']) ?></span>
-                        </button>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-                <?php endif; ?>
+            </div>
+            <?php /* サマリの「イベント」欄は最終版では非表示 */ ?>
+                <?php /* 宿泊・目的地は上の右カラムへ移動 */ ?>
+                <?php /* 移動は行程プレビューに集約 */ ?>
+                <?php /* 持ち物チェックはチェックリストタブへ移設 */ ?>
                 <?php if (empty($hotelStays) && empty($destinations) && empty($transportLegs) && empty($mergedTimeline) && empty($checklistItems)): ?>
                 <p class="text-slate-500 text-sm">宿泊・目的地・移動・タイムライン・チェックリストを登録すると、ここに表示されます。各タブから追加してください。</p>
                 <?php endif; ?>
         </div>
         </div>
 
-        <div class="lt-tab-panel max-w-4xl" data-panel="info" id="panel-info">
+        <div class="lt-tab-panel w-full" data-panel="info" id="panel-info">
         <div class="space-y-4">
             <h2 class="font-bold text-slate-700 flex items-center gap-2">
                 <i class="fa-solid fa-ticket text-slate-400"></i> 参加情報
@@ -709,140 +1214,554 @@ try {
         </div>
         </div>
 
-        <div class="lt-tab-panel max-w-4xl" data-panel="expense" id="panel-expense">
+        <div class="lt-tab-panel w-full" data-panel="expense" id="panel-expense">
         <div class="space-y-4">
-            <h2 class="font-bold text-slate-700 flex items-center gap-2">
-                <i class="fa-solid fa-yen-sign text-slate-400"></i> 費用
-            </h2>
             <?php
-            $totalExpense = 0;
-            foreach ($expenses as $ex) { $totalExpense += (int)($ex['amount'] ?? 0); }
-            $totalTransport = 0;
-            foreach ($transportLegs as $tl) { $totalTransport += (int)($tl['amount'] ?? 0); }
-            $totalHotel = 0;
-            foreach ($hotelStays ?? [] as $h) { $totalHotel += (int)($h['price'] ?? 0); }
-            $categoryOrder = array_keys(\App\LiveTrip\Model\ExpenseModel::$categories);
-            usort($expenses, function($a, $b) use ($categoryOrder) {
-                $posA = array_search($a['category'] ?? '', $categoryOrder);
-                $posB = array_search($b['category'] ?? '', $categoryOrder);
-                $posA = $posA === false ? 999 : $posA;
-                $posB = $posB === false ? 999 : $posB;
-                if ($posA !== $posB) return $posA - $posB;
-                return ((int)($a['id'] ?? 0)) - ((int)($b['id'] ?? 0));
-            });
+            require_once __DIR__ . '/lib/expense_summary.php';
+            $expense_summary = build_expense_summary((int)$trip['id']);
+            $expense_compare = build_expense_compare((int)$trip['id'], (int)($_SESSION['user']['id'] ?? 0));
+            if (!defined('APP_DEBUG')) {
+                // 開発中のみ。必要なら本番前に削除する。
+                define('APP_DEBUG', false);
+            }
+            // 期間ラベルは「イベント日（ヒーローの開始/終了）」を優先（移動/宿泊の前後日で膨らむのを防ぐ）
+            $trip_period_label = '日数未設定';
+            $days_inclusive = 0;
+            if (!empty($heroStartDate) && !empty($heroEndDate)
+                && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$heroStartDate)
+                && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$heroEndDate)
+            ) {
+                try {
+                    $start = new \DateTimeImmutable((string)$heroStartDate, new \DateTimeZone('Asia/Tokyo'));
+                    $end = new \DateTimeImmutable((string)$heroEndDate, new \DateTimeZone('Asia/Tokyo'));
+                    if ($end >= $start) $days_inclusive = (int)$start->diff($end)->days + 1;
+                } catch (\Throwable $e) { $days_inclusive = 0; }
+            }
+            if ($days_inclusive <= 0) {
+                $days_inclusive = (int)($expense_summary['days'] ?? 0);
+            }
+            if ($days_inclusive > 0) {
+                $nights = max(0, $days_inclusive - 1);
+                $trip_period_label = $nights > 0 ? sprintf('%d泊%d日', $nights, $days_inclusive) : '日帰り';
+            }
             ?>
-            <form method="post" action="/live_trip/expense_store.php" class="flex flex-wrap gap-2 p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
-                <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
-                <input type="hidden" name="tab" value="expense">
-                <select name="category" class="border border-slate-200 rounded px-2 py-1 text-sm" required>
-                    <?php foreach (\App\LiveTrip\Model\ExpenseModel::$categories as $k => $v): ?>
-                    <option value="<?= htmlspecialchars($k) ?>"><?= htmlspecialchars($v) ?></option>
-                    <?php endforeach; ?>
-                </select>
-                <input type="number" name="amount" placeholder="金額" class="border border-slate-200 rounded px-2 py-1 w-24 text-sm" required>
-                <input type="text" name="memo" placeholder="メモ" class="border border-slate-200 rounded px-2 py-1 flex-1 min-w-24 text-sm">
-                <button type="submit" class="lt-theme-btn text-white px-3 py-1 rounded text-sm">追加</button>
-            </form>
-            <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm space-y-4">
+
+            <section class="expense-hero" aria-labelledby="expense-hero-title">
+              <div class="expense-hero__head">
+                <div class="expense-hero__lead">
+                  <p class="expense-hero__eyebrow">遠征費用 合計</p>
+                  <p class="expense-hero__total" id="expense-hero-title">
+                    <span class="expense-hero__yen">¥</span><?= number_format((int)($expense_summary['total'] ?? 0)) ?>
+                  </p>
+                  <ul class="expense-hero__meta">
+                    <li>📅 <?= htmlspecialchars($trip_period_label) ?></li>
+                    <li>📊 1日あたり <strong>¥<?= number_format((int)($expense_summary['avg_per_day'] ?? 0)) ?></strong></li>
+                    <li>🧾 <strong><?= (int)($expense_summary['count'] ?? 0) ?>件</strong>の支出</li>
+                  </ul>
+                </div>
+
+                <div class="expense-hero__actions">
+                  <a class="btn-ghost"
+                     href="/live_trip/expense_export.php?trip_id=<?= (int)$trip['id'] ?>"
+                     data-action="export-csv">⬇ CSV</a>
+                  <button type="button" class="btn-primary" data-action="add-expense">＋ 支出を追加</button>
+                </div>
+              </div>
+
+              <div class="expense-hero__bar" role="img" aria-label="カテゴリ別支出比率">
+                <?php foreach (($expense_summary['categories'] ?? []) as $cat): ?>
+                  <?php if ((int)($cat['amount'] ?? 0) <= 0) continue; ?>
+                  <span
+                    class="expense-hero__bar-seg cat-<?= htmlspecialchars((string)($cat['key'] ?? 'other')) ?>"
+                    style="width: <?= round(((float)($cat['ratio'] ?? 0)) * 100, 2) ?>%"
+                    title="<?= htmlspecialchars((string)($cat['label'] ?? '')) ?> ¥<?= number_format((int)($cat['amount'] ?? 0)) ?>"></span>
+                <?php endforeach; ?>
+              </div>
+
+              <ul class="expense-hero__legend">
+                <?php foreach (($expense_summary['categories'] ?? []) as $cat): ?>
+                  <?php if ((int)($cat['amount'] ?? 0) <= 0) continue; ?>
+                  <li>
+                    <span class="dot cat-<?= htmlspecialchars((string)($cat['key'] ?? 'other')) ?>"></span>
+                    <span class="legend-label"><?= htmlspecialchars((string)($cat['label'] ?? '')) ?></span>
+                    <span class="legend-amount">¥<?= number_format((int)($cat['amount'] ?? 0)) ?></span>
+                    <span class="legend-ratio"><?= round(((float)($cat['ratio'] ?? 0)) * 100) ?>%</span>
+                  </li>
+                <?php endforeach; ?>
+              </ul>
+            </section>
+
+            <section class="expense-cats" aria-label="カテゴリ別の費用サマリ">
+              <?php
+                // 表示順を固定（チケット → 宿泊 → 交通 → グッズ）
+                $cat_order = ['ticket','hotel','transport','goods'];
+                $cat_icons = [
+                  'ticket'    => '🎫',
+                  'hotel'     => '🏨',
+                  'transport' => '🚆',
+                  'goods'     => '🛍️',
+                ];
+                $cat_map = [];
+                foreach (($expense_summary['categories'] ?? []) as $c) { $cat_map[(string)($c['key'] ?? '')] = $c; }
+              ?>
+              <?php foreach ($cat_order as $key): ?>
+                <?php if (empty($cat_map[$key])) continue; ?>
+                <?php $c = $cat_map[$key]; ?>
+                <?php if ((int)($c['amount'] ?? 0) <= 0) continue; ?>
+                <article class="expense-cat cat-<?= htmlspecialchars($key) ?>">
+                  <header class="expense-cat__head">
+                    <span class="expense-cat__icon"><?= $cat_icons[$key] ?></span>
+                    <span class="expense-cat__label"><?= htmlspecialchars((string)($c['label'] ?? '')) ?></span>
+                    <span class="expense-cat__count"><?= (int)($c['count'] ?? 0) ?>件</span>
+                  </header>
+                  <p class="expense-cat__amount">¥<?= number_format((int)($c['amount'] ?? 0)) ?></p>
+                  <div class="expense-cat__bar" aria-hidden="true">
+                    <span style="width: <?= round(((float)($c['ratio'] ?? 0)) * 100, 2) ?>%"></span>
+                  </div>
+                  <p class="expense-cat__ratio">
+                    全体の <strong><?= round(((float)($c['ratio'] ?? 0)) * 100) ?>%</strong>
+                  </p>
+                </article>
+              <?php endforeach; ?>
+            </section>
+
+            <div class="expense-grid">
+              <div class="expense-grid__main">
                 <?php
-                $groupedByCat = [];
-                foreach ($expenses as $ex) {
-                    $c = $ex['category'] ?? 'other';
-                    if (!isset($groupedByCat[$c])) $groupedByCat[$c] = [];
-                    $groupedByCat[$c][] = $ex;
-                }
-                foreach ($categoryOrder as $catKey):
-                    if (empty($groupedByCat[$catKey])) continue;
-                    $catLabel = \App\LiveTrip\Model\ExpenseModel::$categories[$catKey] ?? $catKey;
+                  $defaultOccurredOn = '';
+                  if (!empty($heroStartDate) && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$heroStartDate)) {
+                    $defaultOccurredOn = (string)$heroStartDate;
+                  } else {
+                    $defaultOccurredOn = date('Y-m-d');
+                  }
                 ?>
-                <div>
-                    <p class="font-bold text-slate-700"><?= htmlspecialchars($catLabel) ?></p>
-                    <hr class="border-slate-200 my-1">
-                    <div class="space-y-2 mt-2">
-                        <?php foreach ($groupedByCat[$catKey] as $ex):
-                            $exLabel = trim($ex['memo'] ?? '') !== '' ? trim($ex['memo']) : $catLabel;
+                <section class="expense-quickadd" aria-label="支出をクイック追加">
+                  <header class="expense-quickadd__head">
+                    <h3 class="expense-quickadd__title">＋ 支出を追加</h3>
+                    <p class="expense-quickadd__sub">手入力の費用をここから登録できます</p>
+                  </header>
+
+                  <form class="expense-quickadd__form"
+                        method="post"
+                        action="/live_trip/expense_store.php"
+                        id="expense-quick-add-form">
+                    <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
+                    <input type="hidden" name="tab" value="expense">
+
+                    <label class="qa-field qa-field--cat">
+                      <span class="qa-field__label">カテゴリ</span>
+                      <select name="category" required>
+                        <option value="ticket">🎫 チケット</option>
+                        <option value="transport" selected>🚆 交通</option>
+                        <option value="hotel">🏨 宿泊</option>
+                        <option value="goods">🛍️ グッズ</option>
+                        <option value="food">🍴 飲食</option>
+                        <option value="other">📌 その他</option>
+                      </select>
+                    </label>
+
+                    <label class="qa-field qa-field--date">
+                      <span class="qa-field__label">日付</span>
+                      <input type="date"
+                             name="occurred_on"
+                             value="<?= htmlspecialchars($defaultOccurredOn) ?>">
+                    </label>
+
+                    <label class="qa-field qa-field--amount">
+                      <span class="qa-field__label">金額</span>
+                      <span class="qa-field__prefix">¥</span>
+                      <input type="number"
+                             name="amount"
+                             inputmode="numeric"
+                             min="0"
+                             step="1"
+                             placeholder="0"
+                             required>
+                    </label>
+
+                    <label class="qa-field qa-field--note">
+                      <span class="qa-field__label">メモ</span>
+                      <input type="text"
+                             name="memo"
+                             maxlength="120"
+                             placeholder="例：1日目チケット代">
+                    </label>
+
+                    <button type="submit" class="qa-submit">追加</button>
+                  </form>
+
+                  <p class="expense-quickadd__hint">
+                    💡 交通費は <a href="#transport">移動タブ</a>、宿泊費は <a href="#hotel">宿泊タブ</a> から登録すると自動でここに連携されます。
+                  </p>
+                </section>
+
+                <section class="expense-items" aria-label="費用明細">
+                  <header class="expense-items__head">
+                    <h3 class="expense-items__title">明細</h3>
+                    <p class="expense-items__count"><?= (int)($expense_summary['count'] ?? 0) ?>件</p>
+                  </header>
+
+              <?php
+                // カテゴリ単位でグルーピング（表示順固定）
+                $cat_order_items = ['ticket','hotel','transport','goods','food','other'];
+                $cat_labels_items = [
+                  'ticket'=>'チケット','hotel'=>'宿泊','transport'=>'交通',
+                  'goods'=>'グッズ','food'=>'飲食','other'=>'その他',
+                ];
+                $cat_icons_items = [
+                  'ticket'=>'🎫','hotel'=>'🏨','transport'=>'🚆',
+                  'goods'=>'🛍️','food'=>'🍴','other'=>'📌',
+                ];
+                $grouped = [];
+                foreach (($expense_summary['items'] ?? []) as $it) {
+                  $k = (string)($it['category'] ?? 'other');
+                  $grouped[$k][] = $it;
+                }
+              ?>
+
+              <?php if (empty($expense_summary['items'] ?? [])): ?>
+                <p class="text-slate-500 text-sm">費用タブ、宿泊タブ、または移動タブから追加してください。</p>
+              <?php else: ?>
+                <?php foreach ($cat_order_items as $key): ?>
+                  <?php if (empty($grouped[$key])) continue; ?>
+                  <?php
+                    $rows = $grouped[$key];
+                    $subtotal = array_sum(array_map(fn($r) => (int)($r['amount'] ?? 0), $rows));
+                  ?>
+                  <div class="expense-group cat-<?= htmlspecialchars($key) ?>">
+                    <header class="expense-group__head">
+                      <span class="expense-group__dot" aria-hidden="true"></span>
+                      <span class="expense-group__icon"><?= $cat_icons_items[$key] ?? '📌' ?></span>
+                      <span class="expense-group__label"><?= htmlspecialchars($cat_labels_items[$key] ?? $key) ?></span>
+                      <span class="expense-group__count"><?= count($rows) ?>件</span>
+                      <span class="expense-group__sub">¥<?= number_format((int)$subtotal) ?></span>
+                    </header>
+
+                    <ul class="expense-group__list">
+                      <?php foreach ($rows as $it): ?>
+                        <?php
+                          $source = (string)($it['source'] ?? 'manual');
+                          $label = trim((string)($it['label'] ?? ($it['title'] ?? '')));
+                          $note = trim((string)($it['note'] ?? ($it['sub'] ?? '')));
+                          $date = trim((string)($it['occurred_on'] ?? ($it['date'] ?? '')));
+                          $time = trim((string)($it['time'] ?? ''));
+                          if ($date !== '' && $note === '' && $source !== 'manual') {
+                            $note = $date . ($time !== '' ? (' ' . $time) : '');
+                          }
+                          $amount = (int)($it['amount'] ?? 0);
+                          $editUrl = trim((string)($it['edit_url'] ?? ''));
+                          $id = (int)($it['id'] ?? 0);
                         ?>
-                        <div class="expense-item py-2 border-b border-slate-100 last:border-0">
-                            <div class="expense-view flex justify-between items-center">
-                                <span class="text-slate-700"><?= htmlspecialchars($exLabel) ?></span>
-                                <span class="flex items-center gap-2">
-                                    <span class="font-medium">¥<?= number_format((int)($ex['amount'] ?? 0)) ?></span>
-                                    <button type="button" class="expense-edit-btn text-slate-500 text-sm hover:text-slate-700" title="編集"><i class="fa-solid fa-pen text-xs"></i></button>
-                                    <form method="post" action="/live_trip/expense_delete.php" class="inline" onsubmit="return confirm('削除しますか？');">
-                                        <input type="hidden" name="id" value="<?= (int)$ex['id'] ?>">
-                                        <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
-                                        <input type="hidden" name="tab" value="expense">
-                                        <button type="submit" class="text-red-500 text-sm hover:underline"><i class="fa-solid fa-trash-can"></i></button>
-                                    </form>
+                        <li class="expense-row expense-item source-<?= htmlspecialchars($source) ?>">
+                          <div class="expense-view expense-row__main">
+                            <p class="expense-row__label">
+                              <?= htmlspecialchars($label !== '' ? $label : ($cat_labels_items[$key] ?? '（未設定）')) ?>
+                              <?php if ($source !== 'manual'): ?>
+                                <span class="expense-badge badge-auto" title="他タブから自動連携">
+                                  <?= $source === 'transport' ? '🚆 移動' : '🏨 宿泊' ?> 連携
                                 </span>
-                            </div>
-                            <form method="post" action="/live_trip/expense_update.php" class="expense-edit-form edit-form hidden flex flex-wrap gap-2 items-center p-2 bg-slate-50 rounded">
-                                <input type="hidden" name="id" value="<?= (int)$ex['id'] ?>">
+                              <?php endif; ?>
+                            </p>
+                            <?php if ($note !== ''): ?>
+                              <p class="expense-row__note"><?= htmlspecialchars($note) ?></p>
+                            <?php endif; ?>
+                          </div>
+
+                          <p class="expense-row__amount">¥<?= number_format($amount) ?></p>
+
+                          <div class="expense-row__actions">
+                            <?php if ($source === 'manual'): ?>
+                              <button type="button" class="icon-btn expense-edit-btn" aria-label="編集" title="編集">✏️</button>
+                              <form method="post" action="/live_trip/expense_delete.php" class="inline" onsubmit="return confirm('削除しますか？');">
+                                <input type="hidden" name="id" value="<?= $id ?>">
                                 <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
                                 <input type="hidden" name="tab" value="expense">
-                                <select name="category" class="border border-slate-200 rounded px-2 py-1 text-sm" required>
-                                    <?php foreach (\App\LiveTrip\Model\ExpenseModel::$categories as $k => $v): ?>
-                                    <option value="<?= htmlspecialchars($k) ?>" <?= ($ex['category'] ?? '') === $k ? 'selected' : '' ?>><?= htmlspecialchars($v) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <input type="number" name="amount" value="<?= (int)($ex['amount'] ?? 0) ?>" class="border border-slate-200 rounded px-2 py-1 w-24 text-sm" required>
-                                <input type="text" name="memo" value="<?= htmlspecialchars($ex['memo'] ?? '') ?>" placeholder="メモ" class="border border-slate-200 rounded px-2 py-1 flex-1 min-w-24 text-sm">
-                                <button type="submit" class="lt-theme-btn text-white px-3 py-1 rounded text-sm">保存</button>
-                                <button type="button" class="expense-cancel-btn px-3 py-1 border border-slate-200 rounded text-sm">キャンセル</button>
+                                <button type="submit" class="icon-btn icon-btn--danger" aria-label="削除" title="削除">🗑</button>
+                              </form>
+                            <?php else: ?>
+                              <?php if ($editUrl !== ''): ?>
+                                <a class="icon-btn" href="<?= htmlspecialchars($editUrl) ?>" aria-label="元データを編集" title="元データを編集">↗</a>
+                              <?php else: ?>
+                                <span class="icon-btn is-disabled" aria-hidden="true">↗</span>
+                              <?php endif; ?>
+                            <?php endif; ?>
+                          </div>
+
+                          <?php if ($source === 'manual'): ?>
+                            <form method="post" action="/live_trip/expense_update.php" class="expense-edit-form edit-form hidden flex flex-wrap gap-2 items-center p-2 bg-slate-50 rounded mt-2 w-full">
+                              <input type="hidden" name="id" value="<?= $id ?>">
+                              <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
+                              <input type="hidden" name="tab" value="expense">
+                              <select name="category" class="border border-slate-200 rounded px-2 py-1 text-sm" required>
+                                <?php foreach (\App\LiveTrip\Model\ExpenseModel::$categories as $k => $v): ?>
+                                  <option value="<?= htmlspecialchars($k) ?>" <?= $key === $k ? 'selected' : '' ?>><?= htmlspecialchars($v) ?></option>
+                                <?php endforeach; ?>
+                              </select>
+                              <input type="number" name="amount" value="<?= $amount ?>" class="border border-slate-200 rounded px-2 py-1 w-24 text-sm" required>
+                              <input type="text" name="memo" value="<?= htmlspecialchars($label) ?>" placeholder="メモ" class="border border-slate-200 rounded px-2 py-1 flex-1 min-w-24 text-sm">
+                              <button type="submit" class="lt-theme-btn text-white px-3 py-1 rounded text-sm">保存</button>
+                              <button type="button" class="expense-cancel-btn px-3 py-1 border border-slate-200 rounded text-sm">キャンセル</button>
                             </form>
-                        </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
+                          <?php endif; ?>
+                        </li>
+                      <?php endforeach; ?>
+                    </ul>
+                  </div>
                 <?php endforeach; ?>
-                <?php if ($totalTransport > 0): ?>
-                <div>
-                    <p class="font-bold text-slate-700">交通費（移動タブから登録）</p>
-                    <hr class="border-slate-200 my-1">
-                    <div class="space-y-2 mt-2">
-                        <?php foreach ($transportLegs as $tl): ?>
-                        <?php if (!empty($tl['amount']) && (int)$tl['amount'] > 0): ?>
-                        <div class="py-2 border-b border-slate-100 last:border-0 flex justify-between items-center text-sm">
-                            <span class="text-slate-700">
-                                <?= htmlspecialchars($tl['transport_type'] ?? '') ?> <?= htmlspecialchars($tl['route_memo'] ?? '') ?>
-                                <?php if ($tl['departure'] || $tl['arrival']): ?><span class="text-slate-500">(<?= htmlspecialchars($tl['departure'] ?? '') ?>→<?= htmlspecialchars($tl['arrival'] ?? '') ?>)</span><?php endif; ?>
-                            </span>
-                            <span class="font-medium">¥<?= number_format((int)$tl['amount']) ?></span>
-                        </div>
-                        <?php endif; ?>
-                        <?php endforeach; ?>
-                        <p class="pt-2 font-bold text-slate-700 text-right">小計: ¥<?= number_format($totalTransport) ?></p>
+              <?php endif; ?>
+                </section>
+              </div>
+
+              <aside class="expense-grid__side">
+                <section class="expense-donut" aria-label="カテゴリ別の構成比">
+                  <header class="expense-donut__head">
+                    <h3 class="expense-donut__title">カテゴリ構成比</h3>
+                    <p class="expense-donut__sub">支出の内訳をビジュアルで確認</p>
+                  </header>
+
+                  <?php
+                    $donut_size = 180;
+                    $donut_radius = 60;
+                    $donut_stroke = 22;
+                    $donut_cx = $donut_size / 2;
+                    $donut_cy = $donut_size / 2;
+                    $donut_circ = 2 * pi() * $donut_radius;
+
+                    $cat_order_donut = ['ticket','hotel','transport','goods','food','other'];
+                    $cat_map_donut = [];
+                    foreach (($expense_summary['categories'] ?? []) as $c) { $cat_map_donut[(string)($c['key'] ?? '')] = $c; }
+                    $segments = [];
+                    foreach ($cat_order_donut as $k) {
+                      if (!empty($cat_map_donut[$k]) && (int)($cat_map_donut[$k]['amount'] ?? 0) > 0) {
+                        $segments[] = $cat_map_donut[$k];
+                      }
+                    }
+
+                    $offset = 0.0;
+                    $cat_color_hex = [
+                      'ticket'    => '#8B5CF6',
+                      'hotel'     => '#EC4899',
+                      'transport' => '#3B82F6',
+                      'goods'     => '#F59E0B',
+                      'food'      => '#10B981',
+                      'other'     => '#9CA3AF',
+                    ];
+                  ?>
+
+                  <div class="expense-donut__chart-wrap">
+                    <svg class="expense-donut__chart"
+                         viewBox="0 0 <?= (int)$donut_size ?> <?= (int)$donut_size ?>"
+                         width="<?= (int)$donut_size ?>" height="<?= (int)$donut_size ?>"
+                         role="img"
+                         aria-label="カテゴリ別の支出構成比">
+                      <circle cx="<?= (float)$donut_cx ?>" cy="<?= (float)$donut_cy ?>" r="<?= (float)$donut_radius ?>"
+                              fill="none" stroke="#F3F4F6" stroke-width="<?= (int)$donut_stroke ?>"/>
+
+                      <?php foreach ($segments as $seg): ?>
+                        <?php
+                          $ratio = (float)($seg['ratio'] ?? 0);
+                          if ($ratio <= 0) continue;
+                          $len = $donut_circ * $ratio;
+                          $gap = max(0.0, $donut_circ - $len);
+                          $key = (string)($seg['key'] ?? 'other');
+                          $color = $cat_color_hex[$key] ?? '#9CA3AF';
+                        ?>
+                        <circle
+                          cx="<?= (float)$donut_cx ?>" cy="<?= (float)$donut_cy ?>" r="<?= (float)$donut_radius ?>"
+                          fill="none"
+                          stroke="<?= htmlspecialchars($color) ?>"
+                          stroke-width="<?= (int)$donut_stroke ?>"
+                          stroke-dasharray="<?= $len ?> <?= $gap ?>"
+                          stroke-dashoffset="<?= -$offset ?>"
+                          transform="rotate(-90 <?= (float)$donut_cx ?> <?= (float)$donut_cy ?>)"
+                          stroke-linecap="butt">
+                          <title><?= htmlspecialchars((string)($seg['label'] ?? '')) ?> ¥<?= number_format((int)($seg['amount'] ?? 0)) ?> （<?= round($ratio * 100) ?>%）</title>
+                        </circle>
+                        <?php $offset += $len; ?>
+                      <?php endforeach; ?>
+                    </svg>
+
+                    <div class="expense-donut__center">
+                      <p class="expense-donut__center-eyebrow">合計</p>
+                      <p class="expense-donut__center-total">¥<?= number_format((int)($expense_summary['total'] ?? 0)) ?></p>
+                      <p class="expense-donut__center-count"><?= (int)($expense_summary['count'] ?? 0) ?>件</p>
                     </div>
-                </div>
-                <?php endif; ?>
-                <?php if ($totalHotel > 0): ?>
-                <div>
-                    <p class="font-bold text-slate-700">ホテル代（宿泊タブから登録）</p>
-                    <hr class="border-slate-200 my-1">
-                    <div class="space-y-2 mt-2">
-                        <?php foreach ($hotelStays ?? [] as $h): ?>
-                        <?php if (!empty($h['price']) && (int)$h['price'] > 0): ?>
-                        <div class="py-2 border-b border-slate-100 last:border-0 flex justify-between items-center text-sm">
-                            <span class="text-slate-700"><?= htmlspecialchars($h['hotel_name']) ?></span>
-                            <span class="font-medium">¥<?= number_format((int)$h['price']) ?></span>
-                        </div>
-                        <?php endif; ?>
-                        <?php endforeach; ?>
-                        <p class="pt-2 font-bold text-slate-700 text-right">小計: ¥<?= number_format($totalHotel) ?></p>
+                  </div>
+
+                  <ul class="expense-donut__legend">
+                    <?php foreach ($segments as $seg): ?>
+                      <?php
+                        $key = (string)($seg['key'] ?? 'other');
+                        $ratio = (float)($seg['ratio'] ?? 0);
+                      ?>
+                      <li>
+                        <span class="dot cat-<?= htmlspecialchars($key) ?>"></span>
+                        <span class="legend-label"><?= htmlspecialchars((string)($seg['label'] ?? '')) ?></span>
+                        <span class="legend-amount">¥<?= number_format((int)($seg['amount'] ?? 0)) ?></span>
+                        <span class="legend-ratio"><?= round($ratio * 100) ?>%</span>
+                      </li>
+                    <?php endforeach; ?>
+                  </ul>
+                </section>
+
+                <section class="expense-daily" aria-label="日別の支出">
+                  <header class="expense-daily__head">
+                    <h3 class="expense-daily__title">日別の支出</h3>
+                    <p class="expense-daily__sub">遠征期間中の日ごとの合計</p>
+                  </header>
+
+                  <?php
+                    $daily = $expense_summary['daily'] ?? [];
+                    $daily_actual_max = 0;
+                    foreach ($daily as $d) {
+                      if (($d['amount'] ?? 0) > $daily_actual_max) {
+                        $daily_actual_max = (int)$d['amount'];
+                      }
+                    }
+                    $daily_max = max($daily_actual_max, 1); // 0除算回避（バー高さ用）
+                  ?>
+
+                  <?php if (empty($daily)): ?>
+                    <p class="expense-daily__empty">日別の支出データがありません。</p>
+                  <?php else: ?>
+                    <ul class="expense-daily__list">
+                      <?php foreach ($daily as $d): ?>
+                        <?php
+                          $ratio = $d['amount'] / $daily_max;
+                          $h = max(2, round($ratio * 100)); // %（2%は最小視認）
+                          $ts = strtotime($d['date']);
+                          $md = date('n/j', $ts);
+                          $w  = ['日','月','火','水','木','金','土'][(int)date('w', $ts)];
+                        ?>
+                        <li class="expense-daily__item<?= $d['amount'] === 0 ? ' is-zero' : '' ?>">
+                          <div class="expense-daily__bar-wrap" aria-hidden="true">
+                            <span class="expense-daily__bar" style="height: <?= $h ?>%"></span>
+                          </div>
+                          <p class="expense-daily__date">
+                            <span class="md"><?= $md ?></span>
+                            <span class="dow">(<?= $w ?>)</span>
+                          </p>
+                          <p class="expense-daily__amount">
+                            <?= $d['amount'] > 0 ? '¥'.number_format($d['amount']) : '—' ?>
+                          </p>
+                        </li>
+                      <?php endforeach; ?>
+                    </ul>
+
+                    <p class="expense-daily__foot">
+                      最大日 <strong>¥<?= number_format($daily_actual_max) ?></strong>
+                      ／ 平均 <strong>¥<?= number_format((int)($expense_summary['avg_per_day'] ?? 0)) ?></strong>
+                    </p>
+                  <?php endif; ?>
+                </section>
+
+                <section class="expense-budget is-empty" aria-label="予算（準備中）">
+                  <header class="expense-budget__head">
+                    <div>
+                      <h3 class="expense-budget__title">予算</h3>
+                      <p class="expense-budget__sub">遠征の予算を設定して、超過リスクを早期に把握</p>
                     </div>
-                </div>
-                <?php endif; ?>
-                <?php if ($totalExpense > 0 || $totalTransport > 0 || $totalHotel > 0): ?>
-                <p class="pt-2 font-bold text-slate-700 border-t border-slate-200 mt-2 text-right">合計: ¥<?= number_format($totalExpense + $totalTransport + $totalHotel) ?></p>
-                <?php endif; ?>
-                <?php if ($totalExpense === 0 && $totalTransport === 0 && $totalHotel === 0): ?>
-                <p class="text-slate-500 text-sm">費用タブ、宿泊タブ、または移動タブから追加してください。</p>
-                <?php endif; ?>
+                    <span class="expense-budget__badge">準備中</span>
+                  </header>
+
+                  <div class="expense-budget__body">
+                    <div class="expense-budget__row">
+                      <span class="expense-budget__row-label">予算</span>
+                      <span class="expense-budget__row-value is-muted">未設定</span>
+                    </div>
+                    <div class="expense-budget__row">
+                      <span class="expense-budget__row-label">現在の支出</span>
+                      <span class="expense-budget__row-value">¥<?= number_format((int)($expense_summary['total'] ?? 0)) ?></span>
+                    </div>
+                    <div class="expense-budget__row">
+                      <span class="expense-budget__row-label">残り</span>
+                      <span class="expense-budget__row-value is-muted">—</span>
+                    </div>
+
+                    <div class="expense-budget__bar" aria-hidden="true">
+                      <span class="expense-budget__bar-fill" style="width: 0%"></span>
+                    </div>
+                    <p class="expense-budget__bar-caption">
+                      <span class="expense-budget__bar-pct">0%</span>
+                      <span class="expense-budget__bar-note">予算が設定されると進捗が表示されます</span>
+                    </p>
+                  </div>
+
+                  <footer class="expense-budget__foot">
+                    <button type="button" class="expense-budget__cta" disabled>
+                      予算を設定（近日対応）
+                    </button>
+                  </footer>
+                </section>
+
+                <section class="expense-compare" aria-label="過去の遠征との比較">
+                  <header class="expense-compare__head">
+                    <h3 class="expense-compare__title">過去の遠征と比較</h3>
+                    <p class="expense-compare__sub">
+                      <?php if ((int)$expense_compare['sample_size'] === 1): ?>
+                        過去 <strong>1件</strong> の遠征と比較
+                      <?php elseif ((int)$expense_compare['sample_size'] > 1): ?>
+                        過去 <strong><?= (int)$expense_compare['sample_size'] ?>件</strong> の中央値と比較
+                      <?php else: ?>
+                        まだ比較できる過去遠征がありません
+                      <?php endif; ?>
+                    </p>
+                  </header>
+
+                  <?php if ((int)$expense_compare['sample_size'] === 0): ?>
+                    <p class="expense-compare__empty">
+                      遠征を完了するたびに、こちらで自動的に比較データが蓄積されます。
+                    </p>
+                  <?php else: ?>
+                    <ul class="expense-compare__list">
+                      <?php
+                        $rows = [
+                          ['label'=>'合計支出',  'self'=>$expense_compare['self_total'],       'median'=>$expense_compare['median_total'],       'diff'=>$expense_compare['diff_total_pct'],       'fmt'=>'yen',   'mute_diff'=>false],
+                          ['label'=>'1日あたり', 'self'=>$expense_compare['self_avg_per_day'], 'median'=>$expense_compare['median_avg_per_day'], 'diff'=>$expense_compare['diff_avg_per_day_pct'], 'fmt'=>'yen',   'mute_diff'=>false],
+                          ['label'=>'件数',      'self'=>$expense_compare['self_count'],       'median'=>$expense_compare['median_count'],       'diff'=>$expense_compare['diff_count_pct'],       'fmt'=>'count', 'mute_diff'=>true],
+                        ];
+                        $fmt = function($v, $kind) {
+                          if ($v === null) return '—';
+                          return $kind === 'yen' ? '¥'.number_format((int)$v) : number_format((int)$v).'件';
+                        };
+                      ?>
+                      <?php foreach ($rows as $r): ?>
+                        <?php
+                          $diff = $r['diff'];
+                          $cls = 'is-flat';
+                          $sign = '±';
+                          if (empty($r['mute_diff']) && $diff !== null) {
+                            if ($diff > 2)      { $cls = 'is-up';   $sign = '▲'; }
+                            elseif ($diff < -2) { $cls = 'is-down'; $sign = '▼'; }
+                          }
+                        ?>
+                        <li class="expense-compare__row">
+                          <span class="expense-compare__label"><?= htmlspecialchars($r['label']) ?></span>
+                          <div class="expense-compare__values">
+                            <span class="expense-compare__self"><?= $fmt($r['self'], $r['fmt']) ?></span>
+                            <span class="expense-compare__median">中央値 <?= $fmt($r['median'], $r['fmt']) ?></span>
+                          </div>
+                          <span class="expense-compare__diff <?= $cls ?>">
+                            <?= $sign ?>
+                            <?= $diff === null ? '—' : abs($diff).'%' ?>
+                          </span>
+                        </li>
+                      <?php endforeach; ?>
+                    </ul>
+                  <?php endif; ?>
+                </section>
+              </aside>
             </div>
+
+            <?php if (defined('APP_DEBUG') && APP_DEBUG === true): ?>
+              <pre style="background:#0f172a;color:#e2e8f0;padding:12px;border-radius:8px;overflow:auto;">
+<?= htmlspecialchars(json_encode($expense_summary, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8') ?>
+              </pre>
+            <?php endif; ?>
         </div>
         </div>
 
-        <div class="lt-tab-panel max-w-4xl" data-panel="hotel" id="panel-hotel">
+        <div class="lt-tab-panel w-full" data-panel="hotel" id="panel-hotel">
         <div class="space-y-4">
             <h2 class="font-bold text-slate-700 flex items-center gap-2">
                 <i class="fa-solid fa-hotel text-slate-400"></i> 宿泊
@@ -909,7 +1828,7 @@ try {
                 <?php foreach ($hotelStays ?? [] as $h): 
                     $mapsUrl = (new \App\LiveTrip\Model\HotelStayModel())->getGoogleMapsUrl($h);
                 ?>
-                <div class="hotel-item p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
+                <div id="hotel-<?= (int)$h['id'] ?>" class="hotel-item hotel-row p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
                     <div class="hotel-view">
                         <div class="flex justify-between">
                             <h3 class="font-bold">
@@ -975,7 +1894,7 @@ try {
         </div>
         </div>
 
-        <div class="lt-tab-panel max-w-4xl" data-panel="destination" id="panel-destination">
+        <div class="lt-tab-panel w-full" data-panel="destination" id="panel-destination">
         <div class="space-y-4">
             <h2 class="font-bold text-slate-700 flex items-center gap-2">
                 <i class="fa-solid fa-map-location-dot text-slate-400"></i> 目的地
@@ -1078,7 +1997,7 @@ try {
         </div>
         </div>
 
-        <div class="lt-tab-panel max-w-4xl" data-panel="transport" id="panel-transport">
+        <div class="lt-tab-panel w-full" data-panel="transport" id="panel-transport">
         <?php
         $transportCandidates = [];
         // 自宅（ユーザー別に保存）
@@ -1221,7 +2140,7 @@ try {
             </div>
             <div class="space-y-3">
                 <?php foreach ($transportLegs ?? [] as $t): ?>
-                <div class="transport-item p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
+                <div id="transport-<?= (int)$t['id'] ?>" class="transport-item transport-row p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
                     <div class="transport-view flex justify-between items-start">
                         <div>
                             <?php if (!empty($t['scheduled_time'])): ?><span class="font-mono font-bold text-emerald-600 mr-2"><?= htmlspecialchars($t['scheduled_time']) ?></span><?php endif; ?>
@@ -1273,7 +2192,7 @@ try {
         </div>
         </div>
 
-        <div class="lt-tab-panel max-w-4xl" data-panel="timeline" id="panel-timeline">
+        <div class="lt-tab-panel w-full" data-panel="timeline" id="panel-timeline">
         <div class="space-y-4">
             <div class="flex items-center justify-between gap-2">
                 <h2 class="font-bold text-slate-700 flex items-center gap-2">
@@ -1628,55 +2547,96 @@ try {
         </div>
         </div>
 
-        <div class="lt-tab-panel max-w-4xl" data-panel="checklist" id="panel-checklist">
+        <div class="lt-tab-panel w-full" data-panel="checklist" id="panel-checklist">
         <div class="space-y-4">
             <h2 class="font-bold text-slate-700 flex items-center gap-2">
                 <i class="fa-solid fa-list-check text-slate-400"></i> チェックリスト
             </h2>
-            <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
-                <div class="flex justify-between items-center gap-2 mb-2">
-                    <p class="text-xs font-bold text-slate-500">マイリストを適用</p>
-                    <a href="/live_trip/my_list.php?redirect=<?= urlencode('/live_trip/show.php?id=' . (int)$trip['id'] . '#checklist') ?>" class="text-sm lt-theme-link hover:underline shrink-0" title="持ち物マイリストの管理">マイリストを管理</a>
+            <?php
+            $myLists = [];
+            try { $myLists = (new \App\LiveTrip\Model\MyListModel())->getListsForSelect(); } catch (\Throwable $e) { }
+            $clTotal = count($checklistItems ?? []);
+            $clChecked = (int)array_sum(array_column($checklistItems ?? [], 'checked'));
+            $clPct = $clTotal > 0 ? (int)round(($clChecked / $clTotal) * 100) : 0;
+            if ($clPct < 0) $clPct = 0;
+            if ($clPct > 100) $clPct = 100;
+            $clSetName = !empty($myLists) ? ($myLists[0]['list_name'] ?? '遠征基本セット') : '遠征基本セット';
+            ?>
+
+            <div class="bg-white border border-slate-200 rounded-xl p-5 sm:p-6">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="text-lg font-bold text-slate-800">持ち物チェック</p>
+                        <p class="text-xs sm:text-sm text-slate-500 truncate">
+                            <?= htmlspecialchars((string)$clSetName) ?> <?= (int)$clChecked ?>/<?= (int)$clTotal ?>
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2 flex-wrap justify-start sm:justify-end">
+                        <a href="/live_trip/my_list.php?redirect=<?= urlencode('/live_trip/show.php?id=' . (int)$trip['id'] . '#checklist') ?>" class="px-3 py-2 border border-slate-200 rounded-lg text-sm font-bold hover:bg-slate-50 whitespace-nowrap">マイリスト</a>
+                        <button type="button" id="checklist-open-add" class="lt-theme-btn text-white px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap inline-flex items-center gap-2">
+                            <i class="fa-solid fa-plus"></i>追加
+                        </button>
+                    </div>
                 </div>
-                <form method="post" action="/live_trip/apply_mylist.php" class="flex flex-wrap gap-2">
+
+                <div class="mt-4">
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="h-2 rounded-full bg-slate-200 overflow-hidden flex-1" role="progressbar" aria-valuenow="<?= (int)$clPct ?>" aria-valuemin="0" aria-valuemax="100">
+                            <div class="h-full rounded-full" style="width: <?= (int)$clPct ?>%; background: var(--lt-theme);"></div>
+                        </div>
+                        <span class="text-xs font-bold text-slate-500 w-10 text-right"><?= (int)$clPct ?>%</span>
+                    </div>
+                </div>
+
+                <details class="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                    <summary class="cursor-pointer text-sm font-bold text-slate-600">マイリストを適用 / 登録</summary>
+                    <div class="mt-3 space-y-3">
+                        <form method="post" action="/live_trip/apply_mylist.php" class="flex flex-wrap gap-2">
+                            <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
+                            <input type="hidden" name="tab" value="checklist">
+                            <select name="my_list_id" class="border border-slate-200 rounded px-3 py-2 text-sm flex-1 min-w-0" required>
+                                <option value="">選択</option>
+                                <?php foreach ($myLists as $ml): ?>
+                                    <option value="<?= (int)$ml['id'] ?>"><?= htmlspecialchars($ml['list_name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <button type="submit" class="px-3 py-2 border border-slate-200 rounded text-sm hover:bg-slate-50 shrink-0">適用</button>
+                        </form>
+                        <button type="button" id="mylist-register-btn" class="text-sm font-bold lt-theme-link hover:underline">
+                            <i class="fa-solid fa-cloud-arrow-up mr-1"></i>マイリスト登録
+                        </button>
+                    </div>
+                </details>
+
+                <form id="checklist-add-form" class="mt-4 hidden gap-2">
                     <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
-                    <input type="hidden" name="tab" value="checklist">
-                    <select name="my_list_id" class="border border-slate-200 rounded px-3 py-2 text-sm flex-1 min-w-0">
-                        <option value="">選択</option>
-                        <?php
-                        $myLists = [];
-                        try { $myLists = (new \App\LiveTrip\Model\MyListModel())->getListsForSelect(); } catch (\Throwable $e) { }
-                        foreach ($myLists as $ml): ?>
-                        <option value="<?= (int)$ml['id'] ?>"><?= htmlspecialchars($ml['list_name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                    <button type="submit" class="px-3 py-2 border border-slate-200 rounded text-sm hover:bg-slate-50 shrink-0">適用</button>
+                    <input type="text" name="item_name" id="checklist-item-input" placeholder="チケット確認、財布など" class="border border-slate-200 rounded-lg px-3 py-2 text-sm flex-1" required>
+                    <button type="submit" class="lt-theme-btn text-white px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap">追加</button>
                 </form>
-            </div>
-            <form id="checklist-add-form" class="flex gap-2 p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
-                <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
-                <input type="text" name="item_name" id="checklist-item-input" placeholder="チケット確認、財布など" class="border border-slate-200 rounded px-3 py-2 text-sm flex-1" required>
-                <button type="submit" class="lt-theme-btn text-white px-4 py-2 rounded text-sm">追加</button>
-            </form>
-            <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
-                <div class="flex justify-between items-center gap-2 mb-3">
-                    <p class="text-xs font-bold text-slate-500">チェックリスト</p>
-                    <button type="button" id="mylist-register-btn" class="text-sm font-medium lt-theme-link hover:underline shrink-0">
-                        <i class="fa-solid fa-cloud-arrow-up mr-0.5"></i>マイリスト登録
-                    </button>
+
+                <div class="mt-4">
+                    <div class="flex items-center justify-between gap-2 mb-2">
+                        <p class="text-sm font-bold text-slate-600">セット: <?= htmlspecialchars((string)$clSetName) ?> <span class="text-slate-400 font-bold"><?= (int)$clChecked ?>/<?= (int)$clTotal ?></span></p>
+                        <span class="text-xs font-bold text-slate-500"><?= (int)$clPct ?>%</span>
+                    </div>
+                    <div class="h-1.5 rounded-full bg-slate-200 overflow-hidden">
+                        <div class="h-full rounded-full" style="width: <?= (int)$clPct ?>%; background: var(--lt-theme);"></div>
+                    </div>
                 </div>
-                <div id="checklist-list" class="lt-checklist-sortable">
-            <?php foreach ($checklistItems ?? [] as $ci): ?>
-            <div class="lt-checklist-row flex items-center gap-2 py-2 border-b border-slate-100" data-id="<?= (int)$ci['id'] ?>">
-                <span class="lt-checklist-drag-handle cursor-grab text-slate-400 hover:text-slate-600 shrink-0" title="並び替え"><i class="fa-solid fa-grip-vertical text-xs"></i></span>
-                <button type="button" class="checklist-toggle text-left flex-1 flex items-center gap-2 min-w-0" data-id="<?= (int)$ci['id'] ?>" data-trip="<?= (int)$trip['id'] ?>">
-                    <i class="checklist-icon fa-<?= $ci['checked'] ? 'solid fa-circle-check text-emerald-500' : 'regular fa-circle text-slate-300' ?> w-5"></i>
-                    <span class="checklist-label <?= $ci['checked'] ? 'line-through text-slate-400' : '' ?>"><?= htmlspecialchars($ci['item_name']) ?></span>
-                </button>
-                <button type="button" class="lt-edit-btn text-slate-500 text-sm hover:text-slate-700 px-1" title="編集" data-id="<?= (int)$ci['id'] ?>" data-trip="<?= (int)$trip['id'] ?>" data-name="<?= htmlspecialchars($ci['item_name']) ?>"><i class="fa-solid fa-pen text-xs"></i></button>
-                <button type="button" class="checklist-delete text-red-500 text-sm hover:text-red-600" data-id="<?= (int)$ci['id'] ?>" data-trip="<?= (int)$trip['id'] ?>"><i class="fa-solid fa-trash-can"></i></button>
-            </div>
-            <?php endforeach; ?>
+
+                <div id="checklist-list" class="mt-4">
+                    <?php foreach ($checklistItems ?? [] as $ci): $isChecked = !empty($ci['checked']); ?>
+                        <div class="lt-checklist-row lt-pack-row flex items-center gap-3 px-2 border-b border-slate-100 last:border-0" data-id="<?= (int)$ci['id'] ?>">
+                            <button type="button" class="checklist-toggle text-left flex-1 flex items-center gap-3 min-w-0 py-2" data-id="<?= (int)$ci['id'] ?>" data-trip="<?= (int)$trip['id'] ?>">
+                                <span class="lt-pack-checkbox<?= $isChecked ? ' is-checked' : '' ?>" aria-hidden="true">
+                                    <?php if ($isChecked): ?><i class="fa-solid fa-check text-[11px]"></i><?php endif; ?>
+                                </span>
+                                <span class="checklist-label text-[15px] text-slate-800 truncate"><?= htmlspecialchars($ci['item_name']) ?></span>
+                            </button>
+                            <button type="button" class="lt-edit-btn text-slate-500 text-sm hover:text-slate-700 px-2" title="編集" data-id="<?= (int)$ci['id'] ?>" data-trip="<?= (int)$trip['id'] ?>" data-name="<?= htmlspecialchars($ci['item_name']) ?>"><i class="fa-solid fa-pen text-xs"></i></button>
+                            <button type="button" class="checklist-delete text-red-500 text-sm hover:text-red-600 px-2" title="削除" data-id="<?= (int)$ci['id'] ?>" data-trip="<?= (int)$trip['id'] ?>"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    <?php endforeach; ?>
                 </div>
             </div>
         </div>
@@ -1826,15 +2786,13 @@ try {
     function esc(s) { var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
     function rowHtml(ci) {
         var checked = parseInt(ci.checked,10)||0;
-        var iconCls = checked ? 'solid fa-circle-check text-emerald-500' : 'regular fa-circle text-slate-300';
-        var labelCls = checked ? 'line-through text-slate-400' : '';
-        return '<div class="lt-checklist-row flex items-center gap-2 py-2 border-b border-slate-100" data-id="'+ci.id+'">'+
-            '<span class="lt-checklist-drag-handle cursor-grab text-slate-400 hover:text-slate-600 shrink-0" title="並び替え"><i class="fa-solid fa-grip-vertical text-xs"></i></span>'+
-            '<button type="button" class="checklist-toggle text-left flex-1 flex items-center gap-2 min-w-0" data-id="'+ci.id+'" data-trip="'+tripId+'">'+
-            '<i class="checklist-icon fa-'+iconCls+' w-5"></i>'+
-            '<span class="checklist-label '+labelCls+'">'+esc(ci.item_name||'')+'</span></button>'+
-            '<button type="button" class="lt-edit-btn text-slate-500 text-sm hover:text-slate-700 px-1" title="編集" data-id="'+ci.id+'" data-trip="'+tripId+'" data-name="'+esc(ci.item_name||'')+'"><i class="fa-solid fa-pen text-xs"></i></button>'+
-            '<button type="button" class="checklist-delete text-red-500 text-sm hover:text-red-600" data-id="'+ci.id+'" data-trip="'+tripId+'"><i class="fa-solid fa-trash-can"></i></button>'+
+        var cb = checked ? '<span class="lt-pack-checkbox is-checked"><i class="fa-solid fa-check text-[11px]"></i></span>' : '<span class="lt-pack-checkbox"></span>';
+        return '<div class="lt-checklist-row lt-pack-row flex items-center gap-3 px-2 border-b border-slate-100 last:border-0" data-id="'+ci.id+'">'+
+            '<button type="button" class="checklist-toggle text-left flex-1 flex items-center gap-3 min-w-0 py-2" data-id="'+ci.id+'" data-trip="'+tripId+'">'+
+            cb+
+            '<span class="checklist-label text-[15px] text-slate-800 truncate">'+esc(ci.item_name||'')+'</span></button>'+
+            '<button type="button" class="lt-edit-btn text-slate-500 text-sm hover:text-slate-700 px-2" title="編集" data-id="'+ci.id+'" data-trip="'+tripId+'" data-name="'+esc(ci.item_name||'')+'"><i class="fa-solid fa-pen text-xs"></i></button>'+
+            '<button type="button" class="checklist-delete text-red-500 text-sm hover:text-red-600 px-2" title="削除" data-id="'+ci.id+'" data-trip="'+tripId+'"><i class="fa-solid fa-trash-can"></i></button>'+
         '</div>';
     }
     function bindRow(row) {
@@ -1849,16 +2807,15 @@ try {
             .then(function(data){
                 if (data.status==='ok') {
                     document.querySelectorAll('.lt-checklist-row[data-id="'+id+'"]').forEach(function(row){
-                        var icon = row.querySelector('.checklist-icon');
                         var label = row.querySelector('.checklist-label');
-                        if (!icon || !label) return;
-                        var wClass = icon.classList.contains('w-4') ? 'w-4' : 'w-5';
+                        var cb = row.querySelector('.lt-pack-checkbox');
+                        if (!cb || !label) return;
                         if (data.checked) {
-                            icon.className = 'checklist-icon fa-solid fa-circle-check text-emerald-500 '+wClass;
-                            label.classList.add('line-through','text-slate-400');
+                            cb.classList.add('is-checked');
+                            cb.innerHTML = '<i class="fa-solid fa-check text-[11px]"></i>';
                         } else {
-                            icon.className = 'checklist-icon fa-regular fa-circle text-slate-300 '+wClass;
-                            label.classList.remove('line-through','text-slate-400');
+                            cb.classList.remove('is-checked');
+                            cb.innerHTML = '';
                         }
                     });
                 }
@@ -1869,7 +2826,7 @@ try {
         var row = document.querySelector('.lt-checklist-row[data-id="'+id+'"]');
         if (!row) return;
         var toggle = row.querySelector('.checklist-toggle');
-        var wasChecked = toggle && toggle.querySelector('.checklist-icon')?.classList.contains('fa-solid');
+        var wasChecked = !!(toggle && toggle.querySelector('.lt-pack-checkbox')?.classList.contains('is-checked'));
         var inp = document.createElement('input');
         inp.type='text';
         inp.className='border border-slate-200 rounded px-2 py-1 text-sm flex-1';
@@ -1882,11 +2839,10 @@ try {
             var newName = inp.value.trim();
             if (newName===name) {
                 var wrap=document.createElement('button');
-                wrap.className='checklist-toggle text-left flex-1 flex items-center gap-2';
+                wrap.className='checklist-toggle text-left flex-1 flex items-center gap-3 min-w-0 py-2';
                 wrap.dataset.id=id; wrap.dataset.trip=trip;
-                var iconCls = wasChecked ? 'solid fa-circle-check text-emerald-500' : 'regular fa-circle text-slate-300';
-                var labelCls = wasChecked ? 'line-through text-slate-400' : '';
-                wrap.innerHTML='<i class="checklist-icon fa-'+iconCls+' w-5"></i><span class="checklist-label '+labelCls+'">'+esc(name)+'</span>';
+                var cb = wasChecked ? '<span class="lt-pack-checkbox is-checked"><i class="fa-solid fa-check text-[11px]"></i></span>' : '<span class="lt-pack-checkbox"></span>';
+                wrap.innerHTML=cb+'<span class="checklist-label text-[15px] text-slate-800 truncate">'+esc(name)+'</span>';
                 row.replaceChild(wrap, inp);
                 bindRow(row);
                 return;
@@ -1896,12 +2852,11 @@ try {
                 .then(function(data){
                     if (data.status==='ok' && data.item) {
                         var wrap=document.createElement('button');
-                        wrap.className='checklist-toggle text-left flex-1 flex items-center gap-2';
+                        wrap.className='checklist-toggle text-left flex-1 flex items-center gap-3 min-w-0 py-2';
                         wrap.dataset.id=id; wrap.dataset.trip=trip;
                         var c=data.item.checked;
-                        var ic=c ? 'solid fa-circle-check text-emerald-500' : 'regular fa-circle text-slate-300';
-                        var lc=c ? 'line-through text-slate-400' : '';
-                        wrap.innerHTML='<i class="checklist-icon fa-'+ic+' w-5"></i><span class="checklist-label '+lc+'">'+esc(data.item.item_name||'')+'</span>';
+                        var cb = c ? '<span class="lt-pack-checkbox is-checked"><i class="fa-solid fa-check text-[11px]"></i></span>' : '<span class="lt-pack-checkbox"></span>';
+                        wrap.innerHTML=cb+'<span class="checklist-label text-[15px] text-slate-800 truncate">'+esc(data.item.item_name||'')+'</span>';
                         row.replaceChild(wrap, inp);
                         row.querySelector('.lt-edit-btn').dataset.name = data.item.item_name||'';
                         bindRow(row);
@@ -1920,26 +2875,7 @@ try {
     document.querySelectorAll('.checklist-toggle').forEach(function(){});
     document.querySelectorAll('.lt-checklist-row').forEach(function(row){ bindRow(row); });
 
-    if (typeof Sortable !== 'undefined') {
-        var list = document.getElementById('checklist-list');
-        if (list) {
-            new Sortable(list, {
-                animation: 150,
-                handle: '.lt-checklist-drag-handle',
-                ghostClass: 'sortable-ghost',
-                onEnd: function(evt) {
-                    var ids = Array.from(list.querySelectorAll('.lt-checklist-row')).map(function(r) { return r.dataset.id; }).filter(Boolean);
-                    if (ids.length === 0) return;
-                    var fd = new FormData();
-                    fd.append('trip_plan_id', tripId);
-                    ids.forEach(function(id, i) { fd.append('order[]', id); });
-                    fetch('/live_trip/checklist_reorder.php', { method: 'POST', body: fd, headers: {'X-Requested-With': 'XMLHttpRequest'} })
-                        .then(function(r) { return r.json(); })
-                        .then(function(data) { if (data.status !== 'ok') console.warn('Reorder failed'); });
-                }
-            });
-        }
-    }
+    // ドラッグ並び替えは今回はスコープ外（既存APIは残す）
 
     document.getElementById('checklist-add-form')?.addEventListener('submit', function(e){
         e.preventDefault();
@@ -1961,14 +2897,51 @@ try {
             });
     });
 
-    var hash = (location.hash||'').replace('#','');
-    var defaultTab = ['summary','info','expense','hotel','destination','transport','timeline','checklist'].indexOf(hash)>=0 ? hash : 'summary';
-    document.querySelectorAll('.lt-tab').forEach(function(t){
-        t.classList.toggle('active', t.dataset.tab===defaultTab);
+    document.getElementById('checklist-open-add')?.addEventListener('click', function() {
+        var f = document.getElementById('checklist-add-form');
+        var inp = document.getElementById('checklist-item-input');
+        if (!f) return;
+        f.classList.remove('hidden');
+        f.classList.add('flex');
+        inp?.focus();
     });
-    document.querySelectorAll('.lt-tab-panel').forEach(function(p){
-        p.classList.toggle('active', p.dataset.panel===defaultTab);
-    });
+
+    var tabIds = ['summary','info','expense','hotel','destination','transport','timeline','checklist'];
+    function parseHashState() {
+        var rawFrag = (location.hash || '').replace(/^#/, '');
+        var tab = 'summary';
+        var anchorSel = '';
+        if (/^transport-\d+$/.test(rawFrag)) {
+            tab = 'transport';
+            anchorSel = '#' + rawFrag;
+        } else if (/^hotel-\d+$/.test(rawFrag)) {
+            tab = 'hotel';
+            anchorSel = '#' + rawFrag;
+        } else if (tabIds.indexOf(rawFrag) >= 0) {
+            tab = rawFrag;
+        }
+        return { tab: tab, anchorSel: anchorSel };
+    }
+    function applyHashState() {
+        var state = parseHashState();
+        document.querySelectorAll('.lt-tab').forEach(function(t){
+            t.classList.toggle('active', t.dataset.tab === state.tab);
+        });
+        document.querySelectorAll('.lt-tab-panel').forEach(function(p){
+            p.classList.toggle('active', p.dataset.panel === state.tab);
+        });
+        if (state.anchorSel) {
+            setTimeout(function() {
+                var el = document.querySelector(state.anchorSel);
+                if (el && typeof el.scrollIntoView === 'function') {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }, 50);
+        }
+    }
+    var initialState = parseHashState();
+    var defaultTab = initialState.tab;
+    applyHashState();
     function switchTab(tab) {
         document.querySelectorAll('.lt-tab').forEach(function(x){ x.classList.toggle('active', x.dataset.tab===tab); });
         document.querySelectorAll('.lt-tab-panel').forEach(function(x){ x.classList.toggle('active', x.dataset.panel===tab); });
@@ -1982,6 +2955,23 @@ try {
     });
     if (defaultTab && !location.hash) location.hash = defaultTab;
     window.switchTab = switchTab;
+    window.addEventListener('hashchange', applyHashState);
+
+    // 費用ヒーロー：追加ボタンからクイック追加フォームへスクロール
+    (function() {
+        var hero = document.querySelector('#panel-expense .expense-hero');
+        if (!hero) return;
+
+        hero.querySelector('[data-action="add-expense"]')?.addEventListener('click', function(){
+            var form = document.getElementById('expense-quick-add-form');
+            if (!form) return;
+            form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            var amount = form.querySelector('input[name="amount"]');
+            if (amount) {
+                try { amount.focus({ preventScroll: true }); } catch (e) { amount.focus(); }
+            }
+        });
+    })();
 
     function setTimelineView(view) {
         var panel = document.getElementById('panel-timeline');
@@ -2008,28 +2998,18 @@ try {
     });
 
     function setSummaryTimelineView(view) {
+        // サマリはリスト表示固定（タイムラインタブに日表示を集約）
+        view = 'list';
         var root = document.querySelector('.lt-summary-timeline-calendar')?.closest('.p-4');
         if (!root) return;
         var cal = root.querySelector('.lt-summary-timeline-calendar');
         var list = root.querySelector('.lt-summary-timeline-list');
         if (cal) cal.classList.toggle('hidden', view !== 'calendar');
         if (list) list.classList.toggle('hidden', view === 'calendar');
-        root.querySelectorAll('.lt-timeline-summary-view-btn').forEach(function(btn){
-            btn.classList.toggle('is-active', btn.dataset.view === view);
-        });
-        try { localStorage.setItem('ltTimelineSummaryView', view); } catch (e) {}
     }
     var initialSummaryView = 'list';
-    try {
-        var savedSummary = localStorage.getItem('ltTimelineSummaryView');
-        if (savedSummary === 'calendar' || savedSummary === 'list') initialSummaryView = savedSummary;
-    } catch (e) {}
     setSummaryTimelineView(initialSummaryView);
-    document.querySelectorAll('.lt-timeline-summary-view-btn').forEach(function(btn){
-        btn.addEventListener('click', function(){
-            setSummaryTimelineView(this.dataset.view || 'list');
-        });
-    });
+    // サマリの表示モード切替UIは撤去（ボタンも描画しない）
 
     function openTimelineModalFromEvent(el) {
         var type = el.getAttribute('data-lt-type') || '';
@@ -2558,7 +3538,9 @@ try {
     })();
 })();
 </script>
+<?php if ($enableSummaryMap): ?>
 <script src="/assets/js/live_trip_map.js" defer></script>
+<?php endif; ?>
 <?php require_once __DIR__ . '/../../../components/flash_toast.php'; ?>
 <script>
 document.querySelectorAll('form[method="post"]:not(#checklist-add-form)').forEach(function(f) {
