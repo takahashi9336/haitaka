@@ -289,9 +289,19 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
     <?php
     // サマリの地図エリアは一旦非表示（API呼び出しも止める）
     $enableSummaryMap = false;
+    // 目的地タブの埋め込み地図（会場 or 目的地に座標がある場合のみ）
+    $enableDestinationMap = ($mapsJsApiKey !== '') && ($hasVenueForMap || $hasDestinationsForMap);
     ?>
-    <?php if ($enableSummaryMap && $mapsJsApiKey !== ''): ?>
-    <script async defer src="https://maps.googleapis.com/maps/api/js?key=<?= htmlspecialchars($mapsJsApiKey) ?>&language=ja&region=JP&libraries=geometry"></script>
+    <?php if (($enableSummaryMap || $enableDestinationMap) && $mapsJsApiKey !== ''): ?>
+    <script>
+        // Google Maps JS API ready hook
+        window.__ltMapsReady = false;
+        window.ltMapsBootstrap = function() {
+            window.__ltMapsReady = true;
+            document.dispatchEvent(new Event('lt-maps-ready'));
+        };
+    </script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=<?= htmlspecialchars($mapsJsApiKey) ?>&language=ja&region=JP&libraries=geometry&callback=ltMapsBootstrap"></script>
     <?php endif; ?>
     <style>
         :root {
@@ -2029,9 +2039,9 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
                         <button type="button" class="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold hover:bg-slate-50 whitespace-nowrap" disabled title="準備中">
                             🗺️ 地図表示
                         </button>
-                        <a href="#<?= htmlspecialchars($destinationFormAnchorId) ?>" class="lt-theme-btn text-white px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap inline-flex items-center gap-2">
+                        <button type="button" class="lt-theme-btn text-white px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap inline-flex items-center gap-2" data-action="open-destination-add">
                             <i class="fa-solid fa-plus"></i><span>目的地を追加</span>
-                        </a>
+                        </button>
                     </div>
                 </div>
             </section>
@@ -2085,13 +2095,16 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
                                     <div class="mt-2 expense-hero__eyebrow truncate" title="<?= htmlspecialchars($venueAddress) ?>">📮<?= htmlspecialchars($venueAddress) ?></div>
                                 <?php endif; ?>
                                 <div class="mt-3 flex items-center gap-2 flex-wrap text-xs font-bold">
-                                    <?php if ($venueMapSearchUrl !== '#'): ?>
-                                        <a href="<?= htmlspecialchars($venueMapSearchUrl) ?>" target="_blank" rel="noopener"
-                                           class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50">
+                                    <?php if ($venue !== null): ?>
+                                        <button type="button"
+                                                class="js-destination-map-focus inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
+                                                data-lat="<?= htmlspecialchars((string)$venue['lat'], ENT_QUOTES) ?>"
+                                                data-lng="<?= htmlspecialchars((string)$venue['lng'], ENT_QUOTES) ?>"
+                                                data-name="<?= htmlspecialchars((string)$venueLabel, ENT_QUOTES) ?>">
                                             <span aria-hidden="true">🗺️</span><span>Map</span>
-                                        </a>
+                                        </button>
                                     <?php else: ?>
-                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-400 cursor-not-allowed" title="住所情報がありません">
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-400 cursor-not-allowed" title="会場の座標が未登録です">
                                             <span aria-hidden="true">🗺️</span><span>Map</span>
                                         </span>
                                     <?php endif; ?>
@@ -2121,6 +2134,8 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
                             $mapSearchUrl = $mapTarget !== '' ? ('https://www.google.com/maps/search/?api=1&query=' . rawurlencode($mapTarget)) : '#';
                             $dirTarget = $addrText !== '' ? $addrText : trim((string)($d['name'] ?? ''));
                             $dirUrl = $dirTarget !== '' ? ('https://www.google.com/maps/dir/?api=1&destination=' . rawurlencode($dirTarget) . '&travelmode=transit') : '#';
+                            $dLat = trim((string)($d['latitude'] ?? ''));
+                            $dLng = trim((string)($d['longitude'] ?? ''));
                         ?>
                         <div class="destination-item group relative p-4 rounded-xl border border-slate-200 bg-white shadow-sm hover:border-slate-300 hover:shadow-md transition h-full flex flex-col">
                             <div class="destination-view flex flex-col h-full">
@@ -2150,13 +2165,16 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
                                 <?php endif; ?>
 
                                 <div class="mt-3 flex items-center gap-2 flex-wrap text-xs font-bold">
-                                    <?php if ($mapSearchUrl !== '#'): ?>
-                                        <a href="<?= htmlspecialchars($mapSearchUrl) ?>" target="_blank" rel="noopener"
-                                           class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50">
+                                    <?php if ($dLat !== '' && $dLng !== ''): ?>
+                                        <button type="button"
+                                                class="js-destination-map-focus inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
+                                                data-lat="<?= htmlspecialchars($dLat, ENT_QUOTES) ?>"
+                                                data-lng="<?= htmlspecialchars($dLng, ENT_QUOTES) ?>"
+                                                data-name="<?= htmlspecialchars((string)($d['name'] ?? ''), ENT_QUOTES) ?>">
                                             <span aria-hidden="true">🗺️</span><span>Map</span>
-                                        </a>
+                                        </button>
                                     <?php else: ?>
-                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-400 cursor-not-allowed" title="住所情報がありません">
+                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-400 cursor-not-allowed" title="座標が未登録です（住所候補から選択すると登録されます）">
                                             <span aria-hidden="true">🗺️</span><span>Map</span>
                                         </span>
                                     <?php endif; ?>
@@ -2206,14 +2224,48 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
                         </div>
                         <?php endforeach; ?>
 
+                        <?php foreach ($hotelStays ?? [] as $h):
+                            $hotelName = (string)($h['hotel_name'] ?? '');
+                            $hotelAddr = trim((string)($h['address'] ?? ''));
+                        ?>
+                        <div class="destination-item group relative p-4 rounded-xl border border-slate-200 bg-white shadow-sm hover:border-slate-300 hover:shadow-md transition h-full flex flex-col">
+                            <div class="destination-view flex flex-col h-full">
+                                <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-black bg-amber-50 text-amber-700">
+                                    <span aria-hidden="true">🏨</span><span>宿泊</span>
+                                </div>
+                                <div class="mt-2 text-sm font-black text-slate-800 truncate">
+                                    <?= htmlspecialchars($hotelName !== '' ? $hotelName : '（ホテル名未設定）') ?>
+                                </div>
+                                <?php if ($hotelAddr !== ''): ?>
+                                    <div class="mt-2 expense-hero__eyebrow truncate" title="<?= htmlspecialchars($hotelAddr) ?>">📮<?= htmlspecialchars($hotelAddr) ?></div>
+                                <?php endif; ?>
+                                <div class="mt-auto"></div>
+                            </div>
+
+                            <!-- Hover actions: edit only -->
+                            <div class="absolute right-3 bottom-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                    type="button"
+                                    class="js-hotel-edit-from-destination w-9 h-9 inline-flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+                                    title="宿泊を編集"
+                                    aria-label="宿泊を編集"
+                                    data-hotel-id="<?= (int)($h['id'] ?? 0) ?>"
+                                >
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+
                         <?php if (empty($destinations ?? []) && empty($eventPlace)): ?>
                             <div class="col-span-full text-sm text-slate-500">目的地がありません。</div>
                         <?php endif; ?>
                     </div>
                 </div>
 
-                <!-- 右：目的地を追加 -->
-                <div class="lg:col-span-4 bg-white border border-slate-200 rounded-xl shadow-sm p-5 sm:p-6" id="<?= htmlspecialchars($destinationFormAnchorId) ?>">
+                <!-- 右：目的地を追加 + 地図表示 -->
+                <div class="lg:col-span-4 space-y-4" id="<?= htmlspecialchars($destinationFormAnchorId) ?>">
+                <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-5 sm:p-6">
                     <button type="button" class="w-full flex items-center justify-between gap-3" id="destination-side-form-toggle" aria-expanded="true">
                         <div class="min-w-0 text-left">
                             <div class="text-base font-normal text-slate-900" id="destination-side-form-title">＋ 目的地を追加</div>
@@ -2397,12 +2449,166 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
                             root.scrollIntoView({ behavior: 'smooth', block: 'start' });
                         });
 
-                        // 初期は追加モード
+                        function expandAndFocusName() {
+                            setExpanded(true);
+                            setTimeout(function() {
+                                const nameInput = root.querySelector('#destination-name');
+                                if (nameInput) nameInput.focus();
+                            }, 50);
+                        }
+
+                        // KPI等の外部トリガー用
+                        window.__ltDestinationSideForm = window.__ltDestinationSideForm || {};
+                        window.__ltDestinationSideForm.expandAndFocus = expandAndFocusName;
+
+                        // 初期は追加モード（縮小状態）
                         enterAddMode();
-                        setExpanded(true);
+                        setExpanded(false);
                     })();
                     </script>
+
+                    <script>
+                    // KPIの「目的地を追加」押下で展開＆フォーカス
+                    (function() {
+                        function run() {
+                            if (typeof window.switchTab === 'function') window.switchTab('destination');
+                            if (window.__ltDestinationSideForm && typeof window.__ltDestinationSideForm.expandAndFocus === 'function') {
+                                window.__ltDestinationSideForm.expandAndFocus();
+                            }
+                        }
+                        document.addEventListener('click', function(e) {
+                            var btn = e.target.closest('[data-action="open-destination-add"]');
+                            if (!btn) return;
+                            e.preventDefault();
+                            setTimeout(run, 0);
+                        });
+                    })();
+                    </script>
+
+                    <script>
+                    // 目的地サマリ内の宿泊「編集」→宿泊タブの該当行を編集状態で開く
+                    (function() {
+                        document.addEventListener('click', function(e) {
+                            var btn = e.target.closest('.js-hotel-edit-from-destination');
+                            if (!btn) return;
+                            e.preventDefault();
+                            var id = btn.dataset.hotelId || '';
+                            if (!id) return;
+                            // hashでホテルタブへ + 該当行へスクロール
+                            location.hash = 'hotel-' + id;
+                            setTimeout(function() {
+                                var row = document.getElementById('hotel-' + id);
+                                if (row && typeof row.scrollIntoView === 'function') {
+                                    row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                                }
+                                var edit = row ? row.querySelector('.hotel-edit-btn') : null;
+                                if (edit) edit.click();
+                            }, 120);
+                        });
+                    })();
+                    </script>
+
+                    <script>
+                    // Destination tab embedded map (below the form)
+                    (function() {
+                        function init() {
+                            if (!window.google || !window.google.maps) return;
+                            var el = document.getElementById('ltDestinationMap');
+                            if (!el) return;
+                            if (el.dataset.inited === '1') return;
+                            el.dataset.inited = '1';
+
+                            var venue = <?= json_encode($venue, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+                            var destinations = <?= json_encode(array_values($destinationsForMap ?? []), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+
+                            function firstPoint() {
+                                if (venue && typeof venue.lat === 'number' && typeof venue.lng === 'number') return { lat: venue.lat, lng: venue.lng, name: venue.name || '会場' };
+                                if (Array.isArray(destinations) && destinations.length > 0) {
+                                    var d = destinations[0];
+                                    if (d && typeof d.lat === 'number' && typeof d.lng === 'number') return { lat: d.lat, lng: d.lng, name: d.name || '目的地' };
+                                }
+                                return { lat: 35.681236, lng: 139.767125, name: '地図' }; // fallback
+                            }
+
+                            var p0 = firstPoint();
+                            var map = new google.maps.Map(el, {
+                                center: { lat: p0.lat, lng: p0.lng },
+                                zoom: 14,
+                                mapTypeControl: false,
+                                streetViewControl: false,
+                                fullscreenControl: false
+                            });
+                            var marker = new google.maps.Marker({
+                                map: map,
+                                position: { lat: p0.lat, lng: p0.lng },
+                                title: p0.name || ''
+                            });
+                            var info = new google.maps.InfoWindow({ content: '' });
+
+                            function escapeHtml(s) {
+                                return String(s).replace(/[&<>"']/g, function(ch) {
+                                    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]);
+                                });
+                            }
+                            function focusPoint(lat, lng, name) {
+                                if (!isFinite(lat) || !isFinite(lng)) return;
+                                var pos = { lat: lat, lng: lng };
+                                map.panTo(pos);
+                                map.setZoom(Math.max(map.getZoom() || 14, 14));
+                                marker.setPosition(pos);
+                                marker.setTitle(name || '');
+                                if (name) {
+                                    info.setContent('<div style="font-weight:700;">' + escapeHtml(name) + '</div>');
+                                    info.open({ map: map, anchor: marker });
+                                }
+                            }
+
+                            document.addEventListener('click', function(e) {
+                                var btn = e.target.closest('.js-destination-map-focus');
+                                if (!btn) return;
+                                e.preventDefault();
+                                var lat = parseFloat(btn.dataset.lat || '');
+                                var lng = parseFloat(btn.dataset.lng || '');
+                                var name = btn.dataset.name || '';
+                                if (!isFinite(lat) || !isFinite(lng)) {
+                                    window.App && App.toast && App.toast('座標が未登録のため地図表示できません。', 3000);
+                                    return;
+                                }
+                                focusPoint(lat, lng, name);
+                                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            });
+                        }
+
+                        if (window.__ltMapsReady) {
+                            init();
+                        } else {
+                            document.addEventListener('lt-maps-ready', init, { once: true });
+                        }
+                    })();
+                    </script>
+                </div><!-- /目的地追加カード -->
+
+                <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-5 sm:p-6">
+                    <div class="flex items-center justify-between gap-3">
+                        <p class="expense-hero__eyebrow">地図表示</p>
+                        <p class="text-xs text-slate-500">Mapボタンでここに表示します</p>
+                    </div>
+                    <?php if (!$enableDestinationMap): ?>
+                        <div class="mt-3 p-4 rounded-lg bg-slate-50 border border-slate-200 text-sm text-slate-600">
+                            <?php if ($mapsJsApiKey === ''): ?>
+                                Google Maps APIキーが未設定のため、地図は表示できません。
+                            <?php else: ?>
+                                表示できる座標付きスポットがありません。（会場または目的地に座標が必要です）
+                            <?php endif; ?>
+                        </div>
+                    <?php else: ?>
+                        <div id="ltDestinationMap" class="mt-3 w-full rounded-xl border border-slate-200 overflow-hidden" style="height: 280px;"></div>
+                        <p class="mt-2 text-xs text-slate-500">
+                            初期表示は会場を表示します（会場の座標が無い場合は、座標付きの目的地を表示します）。
+                        </p>
+                    <?php endif; ?>
                 </div>
+                </div><!-- /right column wrapper -->
             </section>
         </div>
         </div>
