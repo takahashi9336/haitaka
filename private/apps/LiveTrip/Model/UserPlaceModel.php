@@ -9,7 +9,7 @@ use Core\Encryption;
  * ユーザー別の場所（自宅など）
  */
 class UserPlaceModel extends BaseModel {
-    protected string $table = 'lt_user_places';
+    protected string $table = 'com_user_places';
     protected array $fields = [
         'id', 'user_id', 'place_key',
         'label', 'address', 'place_id', 'latitude', 'longitude',

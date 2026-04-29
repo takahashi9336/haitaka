@@ -6,8 +6,8 @@
 |----------------|---------------------|------------------|------|
 | 遠征一覧 | `live_trip/index.php` | `private/apps/LiveTrip/Views/index.php` | 参加 trip の一覧・期間ソート・集計情報 |
 | 遠征詳細・シオリハブ | `live_trip/show.php?id=` | `private/apps/LiveTrip/Views/show.php` | イベント・タイムライン・チェックリスト・費用・ホテル・移動・目的地・マップ等 |
-| 新規作成 | `live_trip/create.php` | `private/apps/LiveTrip/Views/form.php` | trip 作成 |
-| 編集 | `live_trip/edit.php?id=` | 同上 | trip 情報更新・削除 |
+| 新規作成 | `live_trip/create.php` | `private/apps/LiveTrip/Views/form.php` | `title` 必須で trip 作成（イベント未紐付可） |
+| 編集 | `live_trip/edit.php?id=` | 同上 | タイトル・イベント紐付・感想を更新 |
 | しおり出力 | `live_trip/shiori.php` | （コントローラが View を選択） | 印刷向けレイアウト |
 | マイリスト（持ち物テンプレート）一覧 | `live_trip/my_list.php` | `private/apps/LiveTrip/Views/my_list_index.php` | ユーザー別テンプレ CRUD |
 | 汎用イベント登録 | `live_trip/lt_event_create.php` | （該当 View） | `lt_events` 向けフォーム |
@@ -42,7 +42,7 @@
 | `lt_timeline_items` | タイムライン | 開始日時・位置 |
 | `lt_checklist_items` | チェックリスト | checked / sort_order |
 | `lt_my_lists` / `lt_my_list_items` | マイリスト | ユーザー隔離あり |
-| `lt_user_places` | 自宅等ユーザー地点 | Maps 距離算出等 |
-| `lt_maps_api_usage` | Maps 利用量記録 | 任意 |
+| `com_user_places` | 自宅等ユーザー地点 | Maps 距離算出等（共通） |
+| `com_maps_api_usage` | Maps 利用量記録 | 任意（共通） |
 | `hn_events` | 日向坂イベント | 参照のみ（紐付け） |
 | `hn_user_events_status` | 参加ステータス | 日向坂側座席・感想参照 |

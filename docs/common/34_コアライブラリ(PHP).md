@@ -34,5 +34,6 @@
 | **Encryption** | フィールド単位の暗号化 |
 | **Utils\\DateUtil** / **Utils\\StringUtil** | 日付・文字列ユーティリティ |
 | **GuideModel** | ガイドAPI用（[`guide_display.php`](../../private/components/guide_display.php) と対） |
+| **Maps\\*** | Google Maps API 連携の共通モジュール（`Core\\Maps\\GeocodeService` など）。APIキー取得は `Core\\Maps\\ApiKeyProvider`、利用量制限は `Core\\Maps\\UsageLimiterInterface` 実装（例: `SqlUsageLimiter`）で注入する |
 
 アプリ別の Model / Controller / View は **`private/apps/{AppName}/`** に配置する（例: [`private/apps/LiveTrip/`](../../private/apps/LiveTrip/)）。

@@ -6,11 +6,12 @@
 
 ### lt_trip_plans
 
-TripPlanModel: `id`, `impression`, `created_at`, `updated_at`
+TripPlanModel: `id`, `title`, `impression`, `created_at`, `updated_at`
 
 | カラム名 | 論理名 | 型 | 制約・備考 |
 |----------|--------|-----|------------|
 | id | PK | BIGINT UNSIGNED | 自動採番 |
+| title | 遠征タイトル | VARCHAR(255) | 必須。遠征プロジェクト表示名 |
 | impression | 感想 | TEXT | nullable |
 | created_at | 作成 | DATETIME | |
 | updated_at | 更新 | DATETIME | |
@@ -55,7 +56,7 @@ ChecklistItemModel: `item_name`, `checked`（0/1）, `sort_order`。
 
 MyListModel は **`isUserIsolated = true`**。
 
-### lt_user_places
+### com_user_places
 
 自宅などキー単位で保持（`UserPlaceModel::getByUserAndKey($userId, 'home')`）。
 

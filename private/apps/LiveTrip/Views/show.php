@@ -3,6 +3,16 @@ $appKey = 'live_trip';
 require_once __DIR__ . '/../../../components/theme_from_session.php';
 \Core\Database::connect();
 $eventPlace = $trip['event_place'] ?? $trip['hn_event_place'] ?? '';
+$eventPlaceAddress = '';
+foreach (($trip['events'] ?? []) as $ev) {
+    $addr = trim((string)($ev['hn_event_place_address'] ?? ''));
+    if ($addr !== '') {
+        $eventPlaceAddress = $addr;
+        break;
+    }
+}
+$eventPlaceForArea = $eventPlaceAddress !== '' ? $eventPlaceAddress : (string)$eventPlace;
+$eventPlaceForMaps = $eventPlaceAddress !== '' ? $eventPlaceAddress : (string)$eventPlace;
 $eventDates = array_values(array_unique(array_filter(array_column($trip['events'] ?? [], 'event_date'))));
 sort($eventDates);
 // イベント日付ごとの開場・開演（タイムライン項目から紐づけ）
@@ -20,7 +30,7 @@ foreach ($mergedTimeline ?? [] as $m) {
         }
     }
 }
-$eventPlaceForMaps = $eventPlace ? 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode($eventPlace) : '#';
+$eventPlaceForMaps = $eventPlaceForMaps ? 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode($eventPlaceForMaps) : '#';
 $firstEv = $trip['events'][0] ?? null;
 $destinationModel = new \App\LiveTrip\Model\DestinationModel();
 
@@ -263,13 +273,14 @@ try {
     @file_put_contents($debugLogPath, json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . PHP_EOL, FILE_APPEND);
 } catch (\Throwable $e) { }
 // #endregion agent log
+$tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name'] ?? '遠征'));
 ?>
 <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($trip['event_name'] ?? '遠征') ?> - MyPlatform</title>
+    <title><?= htmlspecialchars($tripTitle) ?> - MyPlatform</title>
     <?php require_once __DIR__ . '/../../../components/head_favicon.php'; ?>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
@@ -392,7 +403,7 @@ try {
                         遠征管理 <span class="text-slate-300 mx-1">›</span> <?= htmlspecialchars($heroMonthLabel !== '' ? $heroMonthLabel : '（年月未設定）') ?>
                     </p>
                     <h1 class="mt-1 text-lg sm:text-xl font-black text-slate-800 break-words">
-                        <?= htmlspecialchars($trip['event_name'] ?? '遠征') ?>
+                        <?= htmlspecialchars($tripTitle) ?>
                     </h1>
                     <div class="mt-3 flex flex-wrap gap-2">
                         <?php if ($heroDatePillText !== ''): ?>
@@ -1137,8 +1148,20 @@ try {
                             <?php foreach ($destinations ?? [] as $d):
                                 $mapsUrl = $destinationModel->getGoogleMapsUrl($d);
                                 $type = (string)($d['destination_type'] ?? 'other');
-                                $emoji = $type === 'sightseeing' ? '🗼' : ($type === 'collab' ? '📍' : '📍');
-                                $chipBg = $type === 'sightseeing' ? 'bg-indigo-50 text-indigo-700' : 'bg-pink-50 text-pink-700';
+                                $typeIconMap = [
+                                    'main' => '🎯',
+                                    'collab' => '📍',
+                                    'sightseeing' => '🗼',
+                                    'other' => '📌',
+                                ];
+                                $typeChipMap = [
+                                    'main' => 'bg-emerald-50 text-emerald-700',
+                                    'collab' => 'bg-pink-50 text-pink-700',
+                                    'sightseeing' => 'bg-indigo-50 text-indigo-700',
+                                    'other' => 'bg-slate-100 text-slate-700',
+                                ];
+                                $emoji = $typeIconMap[$type] ?? '📌';
+                                $chipBg = $typeChipMap[$type] ?? 'bg-slate-100 text-slate-700';
                                 $date = trim((string)($d['visit_date'] ?? ''));
                                 $time = trim((string)($d['visit_time'] ?? ''));
                                 $addr = trim((string)($d['address'] ?? ''));
@@ -1205,6 +1228,14 @@ try {
                     </div>
                     <?php endforeach; ?>
                     </div>
+                </div>
+                <?php else: ?>
+                <div class="p-4 bg-amber-50 border border-amber-200 rounded-xl shadow-sm">
+                    <p class="text-sm font-bold text-amber-800">イベントが未紐付です。</p>
+                    <p class="text-sm text-amber-700 mt-1">「編集」からイベントを追加して、座席・感想を管理できます。</p>
+                    <a href="/live_trip/edit.php?id=<?= (int)$trip['id'] ?>" class="inline-flex items-center gap-2 mt-3 px-3 py-2 text-sm rounded-lg bg-white border border-amber-300 text-amber-900 hover:bg-amber-100">
+                        <i class="fa-solid fa-pen-to-square"></i><span>イベントを紐づける</span>
+                    </a>
                 </div>
                 <?php endif; ?>
                 <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
@@ -1898,9 +1929,114 @@ try {
 
         <div class="lt-tab-panel w-full" data-panel="destination" id="panel-destination">
         <div class="space-y-4">
-            <h2 class="font-bold text-slate-700 flex items-center gap-2">
-                <i class="fa-solid fa-map-location-dot text-slate-400"></i> 目的地
-            </h2>
+            <?php
+            $destinationTypeLabelMap = \App\LiveTrip\Model\DestinationModel::$types;
+            $destinationTypeIconMap = [
+                'main' => '🎯',
+                'collab' => '🛍️',
+                'sightseeing' => '🗼',
+                'other' => '📌',
+            ];
+            $hasVenueDestination = (!empty($eventPlaceForArea) && is_string($eventPlaceForArea) && trim($eventPlaceForArea) !== '');
+            $destinationTotal = (int)count($destinations ?? []) + ($hasVenueDestination ? 1 : 0);
+            $destinationCountsByType = [];
+            $prefSet = [];
+            $prefList = [
+                '北海道','青森県','岩手県','宮城県','秋田県','山形県','福島県',
+                '茨城県','栃木県','群馬県','埼玉県','千葉県','東京都','神奈川県',
+                '新潟県','富山県','石川県','福井県','山梨県','長野県',
+                '岐阜県','静岡県','愛知県','三重県',
+                '滋賀県','京都府','大阪府','兵庫県','奈良県','和歌山県',
+                '鳥取県','島根県','岡山県','広島県','山口県',
+                '徳島県','香川県','愛媛県','高知県',
+                '福岡県','佐賀県','長崎県','熊本県','大分県','宮崎県','鹿児島県','沖縄県',
+            ];
+            // 会場（イベント開催地）も目的地KPIに含める（編集不可・DB未登録）
+            if ($hasVenueDestination) {
+                $destinationCountsByType['venue'] = 1;
+                $venueText = trim((string)$eventPlaceForArea);
+                foreach ($prefList as $pref) {
+                    if ($venueText !== '' && mb_strpos($venueText, $pref) !== false) {
+                        $prefSet[$pref] = true;
+                        break;
+                    }
+                }
+            }
+
+            foreach (($destinations ?? []) as $d) {
+                $t = (string)($d['destination_type'] ?? 'other');
+                if (!isset($destinationTypeLabelMap[$t])) $t = 'other';
+                $destinationCountsByType[$t] = ($destinationCountsByType[$t] ?? 0) + 1;
+
+                $addr = trim((string)($d['address'] ?? ''));
+                foreach ($prefList as $pref) {
+                    if ($addr !== '' && mb_strpos($addr, $pref) !== false) {
+                        $prefSet[$pref] = true;
+                        break;
+                    }
+                }
+            }
+            $prefNames = array_keys($prefSet);
+            $prefShort = array_map(function($p) {
+                return preg_replace('/(都|道|府|県)$/u', '', (string)$p);
+            }, $prefNames);
+            $destinationPrefText = '';
+            if (!empty($prefShort)) {
+                $destinationPrefText = '🗾 ' . implode('・', $prefShort);
+            }
+
+            $destinationFormAnchorId = 'destination-add';
+            ?>
+
+            <section class="bg-white border border-slate-200 rounded-xl shadow-sm px-5 sm:px-6 py-5">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div class="min-w-0">
+                        <p class="expense-hero__eyebrow">📍 登録された目的地</p>
+                        <div class="mt-2 flex items-end gap-2">
+                            <div class="text-3xl font-black text-slate-900"><?= (int)$destinationTotal ?><span class="text-base font-bold text-slate-500 ml-1">件</span></div>
+                        </div>
+                        <div class="mt-3 flex flex-wrap gap-2">
+                            <?php
+                            $destinationTypeLabelMap['venue'] = '会場';
+                            $destinationTypeIconMap['venue'] = '🎤';
+                            $typeOrder = ['venue', 'main', 'collab', 'sightseeing', 'other'];
+                            foreach ($typeOrder as $k):
+                                $c = (int)($destinationCountsByType[$k] ?? 0);
+                                if ($c <= 0) continue;
+                                $label = (string)($destinationTypeLabelMap[$k] ?? 'その他');
+                                $icon = (string)($destinationTypeIconMap[$k] ?? '📌');
+                            ?>
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-xs font-bold">
+                                    <span aria-hidden="true"><?= htmlspecialchars($icon) ?></span>
+                                    <span><?= htmlspecialchars($label) ?> <?= (int)$c ?></span>
+                                </span>
+                            <?php endforeach; ?>
+                            <?php if ($destinationTotal === 0): ?>
+                                <span class="text-xs font-bold text-slate-500">まだ登録がありません</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <div class="min-w-0 flex-1 lg:max-w-[420px]">
+                        <p class="expense-hero__eyebrow">エリア</p>
+                        <p class="mt-2 text-base font-black text-slate-900 truncate">
+                            <?= htmlspecialchars($destinationPrefText !== '' ? $destinationPrefText : '未設定') ?>
+                        </p>
+                        <p class="mt-1 text-xs text-slate-500">住所から都道府県を抽出して表示します</p>
+                    </div>
+
+                    <div class="flex items-start gap-2 shrink-0 justify-start lg:justify-end">
+                        <button type="button" class="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold hover:bg-slate-50 whitespace-nowrap" disabled title="準備中">
+                            🗺️ 地図表示
+                        </button>
+                        <a href="#<?= htmlspecialchars($destinationFormAnchorId) ?>" class="lt-theme-btn text-white px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap inline-flex items-center gap-2">
+                            <i class="fa-solid fa-plus"></i><span>目的地を追加</span>
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <div id="<?= htmlspecialchars($destinationFormAnchorId) ?>"></div>
             <form method="post" action="/live_trip/destination_store.php" class="space-y-3 p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
                 <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
                 <input type="hidden" name="tab" value="destination">
@@ -1943,6 +2079,44 @@ try {
                 <button type="submit" class="lt-theme-btn text-white px-4 py-2 rounded text-sm">目的地を追加</button>
             </form>
             <div class="space-y-4">
+                <?php if (!empty($eventPlace) && is_string($eventPlace)): ?>
+                <?php
+                    $venueLabel = trim($eventPlace);
+                    $venueAddress = $eventPlaceAddress !== '' ? $eventPlaceAddress : '';
+                    $venueMapsUrl = $eventPlaceForMaps !== '#' ? $eventPlaceForMaps : '#';
+                    $venueDirTarget = $venueAddress !== '' ? $venueAddress : $venueLabel;
+                    $venueDirUrl = $venueDirTarget !== '' ? ('https://www.google.com/maps/dir/?api=1&destination=' . rawurlencode($venueDirTarget) . '&travelmode=transit') : '#';
+                ?>
+                <div class="destination-item p-4 bg-slate-50 border border-slate-200 rounded-xl shadow-sm">
+                    <div class="destination-view">
+                        <div class="flex justify-between items-start gap-3">
+                            <h3 class="font-bold min-w-0">
+                                <?php if ($venueMapsUrl !== '#'): ?>
+                                    <a href="<?= htmlspecialchars($venueMapsUrl) ?>" target="_blank" rel="noopener" class="text-sky-600 hover:underline">
+                                        <?= htmlspecialchars($venueLabel) ?> <i class="fa-solid fa-external-link text-xs"></i>
+                                    </a>
+                                    <?php if ($venueDirUrl !== '#'): ?>
+                                        <a href="<?= htmlspecialchars($venueDirUrl) ?>" target="_blank" rel="noopener" class="text-sky-600 text-sm ml-2 whitespace-nowrap">
+                                            <i class="fa-solid fa-train text-slate-400"></i>電車で案内
+                                        </a>
+                                    <?php endif; ?>
+                                <?php else: ?>
+                                    <?= htmlspecialchars($venueLabel) ?>
+                                <?php endif; ?>
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white border border-slate-200 text-xs font-bold text-slate-700 ml-2">
+                                    <span aria-hidden="true">🎤</span><span>会場</span>
+                                </span>
+                            </h3>
+                            <span class="text-xs font-bold text-slate-500 whitespace-nowrap">編集不可</span>
+                        </div>
+                        <?php if ($venueAddress !== ''): ?>
+                            <p class="text-sm text-slate-500 mt-1"><?= htmlspecialchars($venueAddress) ?></p>
+                        <?php endif; ?>
+                        <p class="text-sm text-slate-600 mt-1">イベントの開催会場（自動表示）</p>
+                    </div>
+                </div>
+                <?php endif; ?>
+
                 <?php foreach ($destinations ?? [] as $d):
                     $mapsUrl = $destinationModel->getGoogleMapsUrl($d);
                     $typeLabel = \App\LiveTrip\Model\DestinationModel::$types[$d['destination_type'] ?? 'other'] ?? 'その他';

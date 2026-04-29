@@ -12,6 +12,7 @@ class EventModel extends BaseModel {
     protected string $table = 'hn_events';
     protected array $fields = [
         'id', 'event_name', 'event_date', 'category', 'mg_rounds', 'event_place', 'event_info', 'event_url',
+        'event_place_address', 'latitude', 'longitude', 'place_id',
         'event_hashtag', 'collaboration_urls',
         'updated_at', 'update_user'
     ];

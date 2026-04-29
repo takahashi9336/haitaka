@@ -54,7 +54,7 @@
     $usageModel = new \App\LiveTrip\Model\MapsApiUsageModel();
     $ym = date('Y-m');
     $before = $usageModel->getCurrentCount('geocoding');
-    $out('[3] lt_maps_api_usage (geocoding ' . $ym . '): ' . $before . ' 件');
+    $out('[3] com_maps_api_usage (geocoding ' . $ym . '): ' . $before . ' 件');
 
     // 3. Geocoding API 実行
     $geo = (new \App\LiveTrip\Service\MapsGeocodeService())->geocode('東京駅');
@@ -68,7 +68,7 @@
 
     // 4. 利用量テーブル（テスト後）
     $after = $usageModel->getCurrentCount('geocoding');
-    $out('[5] lt_maps_api_usage (geocoding ' . $ym . '): ' . $after . ' 件');
+    $out('[5] com_maps_api_usage (geocoding ' . $ym . '): ' . $after . ' 件');
     if ($geo !== null && $after > $before) {
         $out('    → DBへの記録: OK (+' . ($after - $before) . ')');
     } elseif ($geo !== null && $after === $before) {
@@ -77,9 +77,9 @@
 
     // 5. 全SKUの利用状況
     $out('');
-    $out('--- 月間利用状況 (lt_maps_api_usage) ---');
+    $out('--- 月間利用状況 (com_maps_api_usage) ---');
     try {
-        $stmt = $pdo->prepare("SELECT sku, `year_month`, `count` FROM lt_maps_api_usage WHERE `year_month` = :ym ORDER BY sku");
+        $stmt = $pdo->prepare("SELECT sku, `year_month`, `count` FROM com_maps_api_usage WHERE `year_month` = :ym ORDER BY sku");
         $stmt->execute(['ym' => $ym]);
         $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
         if (empty($rows)) {

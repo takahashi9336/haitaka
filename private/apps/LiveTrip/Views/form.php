@@ -39,8 +39,17 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             <?php endif; ?>
 
             <div class="mb-6">
+                <label class="block text-sm font-bold text-slate-600 mb-2">遠征タイトル <span class="text-red-500">*</span></label>
+                <input type="text" name="title" required maxlength="255"
+                       value="<?= htmlspecialchars($trip['title'] ?? $_POST['title'] ?? '') ?>"
+                       placeholder="例: 2026春ツアー 横浜2days遠征"
+                       class="w-full border border-slate-200 rounded-lg px-4 py-2">
+                <p class="text-xs text-slate-500 mt-2">イベント未選択でも、遠征プロジェクトとして先に作成できます。</p>
+            </div>
+
+            <div class="mb-6">
                 <label class="block text-sm font-bold text-slate-600 mb-2">イベント</label>
-                <p class="text-sm text-slate-500 mb-3">複数登録可（2日フェス、前日移動など）</p>
+                <p class="text-sm text-slate-500 mb-3">任意。複数登録可（2日フェス、前日移動など）</p>
                 <div id="events-container" class="space-y-4">
                     <?php if ($isEdit && !empty($tripEvents)): ?>
                         <?php foreach ($tripEvents as $i => $ev): ?>
@@ -69,11 +78,6 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                     <button type="button" id="add-event-btn" class="text-emerald-600 hover:underline font-bold text-sm"><i class="fa-solid fa-plus mr-1"></i>イベントを追加</button>
                     <a href="/live_trip/lt_event_create.php?redirect=<?= urlencode($isEdit ? '/live_trip/edit.php?id=' . (int)$trip['id'] : '/live_trip/create.php') ?>" class="text-slate-500 hover:text-slate-700 text-sm">+ 汎用イベントを新規登録</a>
                 </div>
-            </div>
-
-            <div class="mb-6">
-                <label class="block text-sm font-bold text-slate-600 mb-2">遠征全体の感想</label>
-                <textarea name="impression" rows="4" placeholder="複数イベントの総括・振り返り" class="w-full border border-slate-200 rounded-lg px-4 py-2"><?= htmlspecialchars($trip['impression'] ?? $_POST['impression'] ?? '') ?></textarea>
             </div>
 
             <div class="flex gap-3">
@@ -159,9 +163,6 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         }
     });
 
-    <?php if (!$isEdit || empty($tripEvents)): ?>
-    document.getElementById('add-event-btn')?.click();
-    <?php endif; ?>
 })();
 </script>
 <?php require_once __DIR__ . '/../../../components/flash_toast.php'; ?>

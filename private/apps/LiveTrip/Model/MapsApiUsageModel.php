@@ -9,7 +9,7 @@ use Core\BaseModel;
  * 90% 制限を超えないよう自前でカウント
  */
 class MapsApiUsageModel extends BaseModel {
-    protected string $table = 'lt_maps_api_usage';
+    protected string $table = 'com_maps_api_usage';
     protected array $fields = ['id', 'sku', 'year_month', 'count', 'updated_at'];
     protected bool $isUserIsolated = false;
 

@@ -11,7 +11,7 @@
 | GET | index.php | index | `period`, `sort` | HTML 一覧 |
 | GET | show.php | show | `id` | HTML 詳細 |
 | GET | create.php | createForm | — | HTML フォーム |
-| POST | store.php | store | フォーム body | リダイレクト |
+| POST | store.php | store | `title` 必須、イベント任意 | リダイレクト |
 | GET | edit.php | editForm | `id` | HTML |
 | POST | update.php | update | form | リダイレクト |
 | POST | delete.php | delete | — | リダイレクト |
@@ -64,8 +64,9 @@
 
 ### store（store.php）
 
-1. 認可後、POST から trip・イベント紐付けを検証。
-2. `TripPlanModel` / `TripPlanEventModel` / `TripMemberModel` 等で INSERT。
+1. 認可後、POST の `title`（必須）を検証し trip を作成。
+2. POST のイベント配列を検証し、指定がある場合のみ `TripPlanEventModel` で紐付け INSERT。
+3. `TripMemberModel` で作成者を owner として紐付け。
 3. 成功時 `Location` で詳細または一覧へ。
 
 （他 CRUD も同型: 対応 Model の create/update/delete → リダイレクト。）
@@ -77,5 +78,5 @@
 ## 4. 外部連携の境界（LiveTrip側）
 
 - **日向坂連携**: LiveTrip から日向坂データに触れる際は `private/apps/LiveTrip/Service/HinataEventBridge.php` を境界として利用する。
-- **Google Maps 連携**: Controller から `MapsGeocodeService` / `MapsDistanceMatrixService` / `MapsDirectionsService` / `MapsPlacesAutocompleteService` / `MapsLinkResolveService` を経由して利用する。
+- **Google Maps 連携**: Controller から `MapsGeocodeService` / `MapsDistanceMatrixService` / `MapsDirectionsService` / `MapsPlacesAutocompleteService` / `MapsLinkResolveService` を経由して利用する（内部実装は `Core\\Maps` 共通モジュールに委譲）。
 - 本書では LiveTrip 側の依存境界のみ扱い、連携先（日向坂側）の内部実装詳細は対象外とする。

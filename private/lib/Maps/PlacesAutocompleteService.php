@@ -1,0 +1,67 @@
+<?php
+
+namespace Core\Maps;
+
+/**
+ * Google Places API (Legacy) Place Autocomplete 呼び出し
+ * 住所・施設名のサジェストを取得。
+ */
+class PlacesAutocompleteService {
+    private string $apiKey = '';
+    private UsageLimiterInterface $limiter;
+    private const AUTOCOMPLETE_URL = 'https://maps.googleapis.com/maps/api/place/autocomplete/json';
+
+    public function __construct(?UsageLimiterInterface $limiter = null) {
+        $this->limiter = $limiter ?? new NoopUsageLimiter();
+        $this->apiKey = ApiKeyProvider::getGoogleMapsApiKey();
+    }
+
+    public function isConfigured(): bool {
+        return $this->apiKey !== '';
+    }
+
+    /**
+     * @return array<array{description: string, place_id: string}>
+     */
+    public function getSuggestions(string $input): array {
+        $input = trim($input);
+        if (mb_strlen($input) < 2) return [];
+        if (!$this->isConfigured()) return [];
+        if (!$this->limiter->incrementAndCheck('autocomplete', 1)) return [];
+
+        try {
+            $params = [
+                'input' => $input,
+                'language' => 'ja',
+                'region' => 'jp',
+                'key' => $this->apiKey,
+            ];
+            $url = self::AUTOCOMPLETE_URL . '?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+
+            $ctx = stream_context_create([
+                'http' => ['timeout' => 5],
+            ]);
+            $json = @file_get_contents($url, false, $ctx);
+            if ($json === false) return [];
+
+            $data = json_decode($json, true);
+            $status = $data['status'] ?? '';
+            if ($status !== 'OK' && $status !== 'ZERO_RESULTS') return [];
+
+            $predictions = $data['predictions'] ?? [];
+            $result = [];
+            foreach ($predictions as $p) {
+                $desc = $p['description'] ?? '';
+                $placeId = $p['place_id'] ?? '';
+                if ($desc !== '' && $placeId !== '') {
+                    $result[] = ['description' => $desc, 'place_id' => $placeId];
+                }
+            }
+            return $result;
+        } catch (\Throwable $e) {
+            \Core\Logger::errorWithContext('Places Autocomplete failed', $e);
+            return [];
+        }
+    }
+}
+

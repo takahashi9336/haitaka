@@ -88,6 +88,20 @@ use App\Hinata\Helper\MemberGroupHelper;
                                 </div>
                             </div>
 
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 mb-1 tracking-wider">会場住所（Maps用）</label>
+                                <div class="flex gap-2 items-center">
+                                    <input type="text" name="event_place_address" id="f_place_address" class="flex-1 w-full h-12 border border-slate-100 rounded-lg px-4 text-sm outline-none" placeholder="例: 神奈川県横浜市西区みなとみらい6-2-14">
+                                    <button type="button" id="btnGeocodePlace" class="shrink-0 h-12 px-4 rounded-lg bg-white border border-slate-200 text-sm font-black text-slate-700 hover:bg-slate-50 disabled:opacity-50" title="住所から緯度経度を取得">
+                                        📍座標取得
+                                    </button>
+                                </div>
+                                <p class="mt-1 text-[10px] text-slate-400">LiveTrip の「エリア」表示に使います。都道府県まで含めて入力してください。</p>
+                                <input type="hidden" name="latitude" id="f_latitude">
+                                <input type="hidden" name="longitude" id="f_longitude">
+                                <input type="hidden" name="place_id" id="f_place_id">
+                            </div>
+
                             <textarea name="event_info" id="f_info" rows="3" class="w-full border rounded-lg p-4 text-sm outline-none focus:ring-2 <?= $isThemeHex ? 'focus:ring-[var(--hinata-theme)]' : 'focus:ring-' . $themeTailwind . '-100' ?>" placeholder="詳細メモ"></textarea>
                             
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -190,6 +204,10 @@ use App\Hinata\Helper\MemberGroupHelper;
             document.getElementById('f_mg_rounds').value = ev.mg_rounds || 6;
             toggleMgRounds();
             document.getElementById('f_place').value = ev.event_place || '';
+            document.getElementById('f_place_address').value = ev.event_place_address || '';
+            document.getElementById('f_latitude').value = ev.latitude || '';
+            document.getElementById('f_longitude').value = ev.longitude || '';
+            document.getElementById('f_place_id').value = ev.place_id || '';
             document.getElementById('f_info').value = ev.event_info || '';
             document.getElementById('f_url').value = ev.event_url || '';
             document.getElementById('f_hashtag').value = ev.event_hashtag || '';
@@ -205,6 +223,61 @@ use App\Hinata\Helper\MemberGroupHelper;
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
         document.getElementById('btnCancel').onclick = () => location.reload();
+
+        async function geocodePlaceAndSave() {
+            const id = document.getElementById('event_id').value;
+            const addr = document.getElementById('f_place_address').value || '';
+            if (!id) {
+                if (window.App?.toast) {
+                    App.toast('先にイベントを保存してから実行してください（ID未設定）', 3500);
+                } else {
+                    alert('先にイベントを保存してから実行してください（ID未設定）');
+                }
+                return;
+            }
+            if (!addr.trim()) {
+                if (window.App?.toast) {
+                    App.toast('会場住所（Maps用）を入力してください', 3500);
+                } else {
+                    alert('会場住所（Maps用）を入力してください');
+                }
+                return;
+            }
+            const btn = document.getElementById('btnGeocodePlace');
+            btn.disabled = true;
+            const orig = btn.innerText;
+            btn.innerText = '取得中...';
+            try {
+                const res = await App.post('api/geocode_event_place.php', { id: id, event_place_address: addr });
+                if (res.status === 'success') {
+                    const geo = res.geo || {};
+                    document.getElementById('f_latitude').value = geo.latitude || '';
+                    document.getElementById('f_longitude').value = geo.longitude || '';
+                    document.getElementById('f_place_id').value = geo.place_id || '';
+                    if (window.App?.toast) App.toast('座標を保存しました。', 2500);
+                } else {
+                    const msg = (res.message || '取得に失敗しました');
+                    if (window.App?.toast) {
+                        App.toast('座標取得に失敗しました: ' + msg, 4500);
+                    } else {
+                        alert('エラー: ' + msg);
+                    }
+                }
+            } catch (e) {
+                const msg = (e && e.message) ? e.message : '通信エラー';
+                if (window.App?.toast) {
+                    App.toast('座標取得に失敗しました: ' + msg, 4500);
+                } else {
+                    alert('エラー: ' + msg);
+                }
+            } finally {
+                btn.disabled = false;
+                btn.innerText = orig;
+            }
+        }
+
+        document.getElementById('btnGeocodePlace')?.addEventListener('click', geocodePlaceAndSave);
+
         document.getElementById('eventForm').onsubmit = async (e) => {
             e.preventDefault();
             const formData = new FormData(e.target);

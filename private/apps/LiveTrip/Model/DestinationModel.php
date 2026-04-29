@@ -5,7 +5,7 @@ namespace App\LiveTrip\Model;
 use Core\BaseModel;
 
 /**
- * 遠征の目的地モデル（コラボ店・観光・その他）
+ * 遠征の目的地モデル（メイン・コラボ店・観光・その他）
  */
 class DestinationModel extends BaseModel {
     protected string $table = 'lt_destinations';
@@ -16,8 +16,9 @@ class DestinationModel extends BaseModel {
     ];
     protected bool $isUserIsolated = false;
 
-    /** 種別: コラボ店 / 観光 / その他 */
+    /** 種別: メイン / コラボ店 / 観光 / その他 */
     public static array $types = [
+        'main' => 'メイン',
         'collab' => 'コラボ店',
         'sightseeing' => '観光',
         'other' => 'その他',

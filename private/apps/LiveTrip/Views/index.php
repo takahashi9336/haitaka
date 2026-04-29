@@ -103,9 +103,9 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 <a href="/live_trip/show.php?id=<?= (int)$t['id'] ?>" class="absolute inset-0 z-0 rounded-xl" aria-hidden="true"></a>
                 <div class="flex justify-between items-start gap-2 relative z-10 pointer-events-none">
                     <div class="min-w-0 flex-1">
-                        <h3 class="font-bold text-slate-800"><?= htmlspecialchars($t['event_name'] ?? '（未設定）') ?></h3>
+                        <h3 class="font-bold text-slate-800"><?= htmlspecialchars($t['title'] ?? $t['event_name'] ?? '（無題の遠征）') ?></h3>
                         <p class="text-sm text-slate-500 mt-1">
-                            <?= htmlspecialchars($ed) ?>
+                            <?= htmlspecialchars($ed !== '' ? $ed : 'イベント未紐付') ?>
                             <?php if ($relativeDate): ?><span class="text-slate-400">(<?= htmlspecialchars($relativeDate) ?>)</span><?php endif; ?>
                             <?php if (!empty($t['event_place'])): ?>
                                 · <?= htmlspecialchars($t['event_place']) ?>

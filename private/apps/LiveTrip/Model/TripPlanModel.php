@@ -11,7 +11,7 @@ use Core\BaseModel;
 class TripPlanModel extends BaseModel {
     protected string $table = 'lt_trip_plans';
     protected array $fields = [
-        'id', 'impression', 'created_at', 'updated_at'
+        'id', 'title', 'impression', 'created_at', 'updated_at'
     ];
     protected bool $isUserIsolated = false;
 
@@ -89,6 +89,9 @@ class TripPlanModel extends BaseModel {
 
     public function createWithMember(array $data, int $userId): int {
         $filtered = $this->filterFields($data);
+        if (empty($filtered)) {
+            $filtered = ['title' => '無題の遠征'];
+        }
         $cols = implode(', ', array_keys($filtered));
         $placeholders = ':' . implode(', :', array_keys($filtered));
         $sql = "INSERT INTO {$this->table} ({$cols}) VALUES ({$placeholders})";

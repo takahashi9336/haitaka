@@ -232,13 +232,16 @@ class LiveTripController {
                 $validEvents[] = ['event_type' => 'generic', 'hn_event_id' => null, 'lt_event_id' => $ltId, 'seat_info' => trim($ev['seat_info'] ?? ''), 'impression' => trim($ev['impression'] ?? '')];
             }
         }
-        if (empty($validEvents)) {
-            $_SESSION['flash_error'] = 'イベントを1件以上選択してください';
+        $title = trim((string)($_POST['title'] ?? ''));
+        if ($title === '') {
+            $_SESSION['flash_error'] = '遠征タイトルを入力してください';
             header('Location: /live_trip/create.php');
             exit;
         }
         $tripPlanModel = new TripPlanModel();
-        $tripId = $tripPlanModel->createWithMember(['impression' => trim($_POST['impression'] ?? '')], (int) $_SESSION['user']['id']);
+        $tripId = $tripPlanModel->createWithMember([
+            'title' => $title,
+        ], (int) $_SESSION['user']['id']);
         $tpeModel = new TripPlanEventModel();
         $userId = (int) $_SESSION['user']['id'];
         foreach ($validEvents as $i => $ev) {
@@ -301,8 +304,16 @@ class LiveTripController {
             header('Location: /live_trip/');
             exit;
         }
+        $title = trim((string)($_POST['title'] ?? ''));
+        if ($title === '') {
+            $_SESSION['flash_error'] = '遠征タイトルを入力してください';
+            header('Location: /live_trip/edit.php?id=' . $id);
+            exit;
+        }
         $tripPlanModel = new TripPlanModel();
-        $tripPlanModel->update($id, ['impression' => trim($_POST['impression'] ?? '')]);
+        $tripPlanModel->update($id, [
+            'title' => $title,
+        ]);
         $eventsInput = $_POST['events'] ?? [];
         if (is_array($eventsInput)) {
             $validEvents = [];
@@ -604,7 +615,7 @@ class LiveTripController {
         }
 
         $type = trim($_POST['destination_type'] ?? 'other');
-        if (!in_array($type, ['collab', 'sightseeing', 'other'], true)) $type = 'other';
+        if (!in_array($type, ['main', 'collab', 'sightseeing', 'other'], true)) $type = 'other';
 
         $model = new DestinationModel();
         $model->create([
@@ -653,7 +664,7 @@ class LiveTripController {
         }
 
         $type = trim($_POST['destination_type'] ?? 'other');
-        if (!in_array($type, ['collab', 'sightseeing', 'other'], true)) $type = 'other';
+        if (!in_array($type, ['main', 'collab', 'sightseeing', 'other'], true)) $type = 'other';
 
         $model->update($id, [
             'name' => trim($_POST['name'] ?? ''),
