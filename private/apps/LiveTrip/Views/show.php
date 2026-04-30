@@ -370,6 +370,19 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
         .lt-modal-overlay.hidden { display: none; }
         .lt-modal { background: white; border-radius: 1rem; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); max-width: 28rem; width: 100%; max-height: 90vh; overflow-y: auto; }
         .lt-timeline-view-btn.is-active { background: var(--lt-theme); color: #fff; border-color: var(--lt-theme); }
+        .lt-timeline-view-btn.is-active:hover { background: var(--brand-primary-hover); color: #fff; border-color: var(--brand-primary-hover); }
+
+        /* タイムライン：日付フィルタ（選択中ホバーで白飛びしない） */
+        .js-tl-date-btn { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 14px; font-size: 12px; color: #64748b; cursor: pointer; flex-shrink: 0; text-align: center; }
+        .js-tl-date-btn:hover { background: #f1f5f9; }
+        .js-tl-date-btn .js-tl-date-rel { font-size: 10px; color: #64748b; }
+        .js-tl-date-btn .js-tl-date-main { font-weight: 700; color: #334155; }
+        .js-tl-date-btn .js-tl-date-count { font-size: 10px; margin-top: 2px; color: #64748b; }
+        .js-tl-date-btn.is-active { background: var(--lt-theme); color: #fff; border-color: var(--lt-theme); }
+        .js-tl-date-btn.is-active:hover { background: var(--brand-primary-hover); border-color: var(--brand-primary-hover); }
+        .js-tl-date-btn.is-active .js-tl-date-rel,
+        .js-tl-date-btn.is-active .js-tl-date-main,
+        .js-tl-date-btn.is-active .js-tl-date-count { color: #fff; }
 
         /* 持ち物チェック（チェックリスト）新UI */
         .lt-pack-row { height: 42px; }
@@ -1209,9 +1222,6 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
 
         <div class="lt-tab-panel w-full" data-panel="info" id="panel-info">
         <div class="space-y-4">
-            <h2 class="font-bold text-slate-700 flex items-center gap-2">
-                <i class="fa-solid fa-ticket text-slate-400"></i> 参加情報
-            </h2>
             <form method="post" action="/live_trip/participation_update.php" class="space-y-4">
                 <input type="hidden" name="id" value="<?= (int)$trip['id'] ?>">
                 <input type="hidden" name="tab" value="info">
@@ -1806,9 +1816,6 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
 
         <div class="lt-tab-panel w-full" data-panel="hotel" id="panel-hotel">
         <div class="space-y-4">
-            <h2 class="font-bold text-slate-700 flex items-center gap-2">
-                <i class="fa-solid fa-hotel text-slate-400"></i> 宿泊
-            </h2>
             <form method="post" action="/live_trip/hotel_store.php" class="space-y-3 p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
                 <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
                 <input type="hidden" name="tab" value="hotel">
@@ -2635,9 +2642,6 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
         }
         ?>
         <div class="space-y-4">
-            <h2 class="font-bold text-slate-700 flex items-center gap-2">
-                <i class="fa-solid fa-train text-slate-400"></i> 移動
-            </h2>
             <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
                 <p class="text-sm text-slate-600 mb-3">移動を追加する際に交通費も登録できます。費用タブで集計を確認できます。</p>
                 <details class="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
@@ -2810,42 +2814,401 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
 
         <div class="lt-tab-panel w-full" data-panel="timeline" id="panel-timeline">
         <div class="space-y-4">
-            <div class="flex items-center justify-between gap-2">
-                <h2 class="font-bold text-slate-700 flex items-center gap-2">
-                    <i class="fa-solid fa-clock text-slate-400"></i> タイムライン
-                </h2>
-                <div class="flex items-center gap-2">
-                    <button type="button" class="lt-timeline-view-btn px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50" data-view="calendar" title="Googleカレンダー風">日表示</button>
-                    <button type="button" class="lt-timeline-view-btn px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50" data-view="list" title="一覧表示">リスト</button>
+            <?php
+            // Timeline KPI
+            $tlTotal = 0;
+            $tlDaysSet = [];
+            $tlCatCounts = [];
+            $tlWorkMin = 0;
+            $tlEarliest = null; // min from 00:00
+            $tlLatest = null;   // min from 00:00 (end)
+
+            $tlCats = [
+                'transport' => ['label' => '移動', 'emoji' => '🚇'],
+                'live' => ['label' => 'ライブ', 'emoji' => '🎤'],
+                'collab' => ['label' => 'コラボ', 'emoji' => '🛍️'],
+                'meal' => ['label' => '食事', 'emoji' => '🍱'],
+                'hotel' => ['label' => '宿泊', 'emoji' => '🏨'],
+                'other' => ['label' => 'その他', 'emoji' => '📌'],
+            ];
+            $classifyTimelineLabel = function(string $label): string {
+                $s = trim($label);
+                if ($s === '') return 'other';
+                if (preg_match('/(🎤|ライブ|開場|開演|終演|終幕)/u', $s)) return 'live';
+                if (preg_match('/(🛍️|コラボ|ポップアップ|POPUP|popup)/u', $s)) return 'collab';
+                if (preg_match('/(🍱|食事|ごはん|ランチ|ディナー|朝食|昼食|夕食)/u', $s)) return 'meal';
+                if (preg_match('/(🏨|宿泊|ホテル|チェックイン|チェックアウト)/u', $s)) return 'hotel';
+                return 'other';
+            };
+            foreach ($mergedTimeline ?? [] as $m) {
+                $d = (string)($m['date'] ?? '');
+                if ($d !== '') $tlDaysSet[$d] = true;
+                $tlTotal++;
+                $catKey = 'other';
+                if (($m['type'] ?? '') === 'transport') {
+                    $catKey = 'transport';
+                } else {
+                    $ti = $m['data'] ?? [];
+                    $catKey = $classifyTimelineLabel((string)($ti['label'] ?? ''));
+                }
+                $tlCatCounts[$catKey] = ($tlCatCounts[$catKey] ?? 0) + 1;
+
+                $t = (string)($m['time'] ?? '');
+                if ($d === '' || $t === '' || $t === '99:99') continue;
+                if (!preg_match('/^(\d{1,2}):(\d{2})$/', trim($t), $mm)) continue;
+                $startMin = ((int)$mm[1]) * 60 + (int)$mm[2];
+                $dur = (int)($m['duration_min'] ?? 0);
+                if ($dur <= 0) $dur = 30;
+                $endMin = $startMin + $dur;
+                $tlWorkMin += $dur;
+                $tlEarliest = ($tlEarliest === null) ? $startMin : min($tlEarliest, $startMin);
+                $tlLatest = ($tlLatest === null) ? $endMin : max($tlLatest, $endMin);
+            }
+            $tlDays = count(array_keys($tlDaysSet));
+            $tlWorkHoursText = $tlWorkMin > 0 ? ('⏱️ 合計 約 ' . (int)round($tlWorkMin / 60) . '時間') : '—';
+            $fmtHm = function(?int $min): string {
+                if ($min === null) return '—';
+                $min = max(0, min(24*60, $min));
+                return sprintf('%02d:%02d', intdiv($min, 60), $min % 60);
+            };
+            $tlEarliestText = $fmtHm($tlEarliest);
+            $tlLatestText = $fmtHm($tlLatest);
+            ?>
+
+            <section class="bg-white border border-slate-200 rounded-xl shadow-sm px-5 sm:px-6 py-5">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div class="min-w-0">
+                        <p class="expense-hero__eyebrow">⏰ タイムライン</p>
+                        <div class="mt-2 flex items-end gap-2">
+                            <div class="text-3xl font-black text-slate-900"><?= (int)$tlTotal ?><span class="text-base font-bold text-slate-500 ml-1">件</span></div>
+                            <div class="text-sm font-bold text-slate-500"><?= (int)$tlDays ?>日</div>
+                        </div>
+                        <div class="mt-3 flex flex-wrap gap-2">
+                            <?php
+                            $tlOrder = ['transport','live','collab','meal','hotel','other'];
+                            foreach ($tlOrder as $k):
+                                $c = (int)($tlCatCounts[$k] ?? 0);
+                                if ($c <= 0) continue;
+                                $icon = $tlCats[$k]['emoji'] ?? '📌';
+                                $label = $tlCats[$k]['label'] ?? 'その他';
+                            ?>
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-xs font-bold">
+                                    <span aria-hidden="true"><?= htmlspecialchars($icon) ?></span>
+                                    <span><?= htmlspecialchars($label) ?> <?= (int)$c ?></span>
+                                </span>
+                            <?php endforeach; ?>
+                            <?php if ($tlTotal === 0): ?>
+                                <span class="text-xs font-bold text-slate-500">まだ登録がありません</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <div class="min-w-0 flex-1 lg:max-w-[420px]">
+                        <p class="expense-hero__eyebrow">活動時間（実働）</p>
+                        <p class="mt-2 text-base font-black text-slate-900 truncate"><?= htmlspecialchars($tlWorkMin > 0 ? $tlWorkHoursText : '未設定') ?></p>
+                        <p class="mt-1 text-xs text-slate-500">最早 <?= htmlspecialchars($tlEarliestText) ?> ／ 最遅 <?= htmlspecialchars($tlLatestText) ?></p>
+                    </div>
+
+                    <div class="flex items-start gap-2 shrink-0 justify-start lg:justify-end">
+                        <button type="button" class="lt-timeline-view-btn px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold hover:bg-slate-50 whitespace-nowrap" data-view="list" title="一覧表示">
+                            リスト表示
+                        </button>
+                        <button type="button" class="lt-timeline-view-btn px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold hover:bg-slate-50 whitespace-nowrap" data-view="calendar" title="Googleカレンダー風">
+                            日表示
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <?php
+            // 日付フィルタ用データ
+            $tlDateCounts = [];
+            $tlDateHasMain = []; // イベント未登録時の「当日」推定（メイン=ライブ扱い）
+            foreach ($mergedTimeline ?? [] as $m) {
+                $d = (string)($m['date'] ?? '');
+                if ($d === '') continue;
+                $tlDateCounts[$d] = ($tlDateCounts[$d] ?? 0) + 1;
+                if (($m['type'] ?? '') === 'timeline') {
+                    $ti = $m['data'] ?? [];
+                    $cat = $classifyTimelineLabel((string)($ti['label'] ?? ''));
+                    if ($cat === 'live') $tlDateHasMain[$d] = true;
+                }
+            }
+            ksort($tlDateCounts);
+
+            $defaultFilterDay = '';
+            if (!empty($eventDates)) {
+                $defaultFilterDay = (string)($eventDates[0] ?? '');
+            } else {
+                // メインカテゴリ（ライブ）のある日を「当日」とみなす。無ければ最初の日付。
+                foreach (array_keys($tlDateCounts) as $d) {
+                    if (!empty($tlDateHasMain[$d])) { $defaultFilterDay = (string)$d; break; }
+                }
+                if ($defaultFilterDay === '' && !empty($tlDateCounts)) {
+                    $defaultFilterDay = (string)array_keys($tlDateCounts)[0];
+                }
+            }
+
+            $fmtMdDow = function(string $d): string {
+                try {
+                    if ($d !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $d)) {
+                        $dd = new \DateTimeImmutable($d, new \DateTimeZone('Asia/Tokyo'));
+                        $dow = ['日','月','火','水','木','金','土'][(int)$dd->format('w')] ?? '';
+                        return $dd->format('n/j') . ($dow ? '（' . $dow . '）' : '');
+                    }
+                } catch (\Throwable $e) {}
+                return $d;
+            };
+            $relLabel = function(string $d) use ($eventDates, $defaultFilterDay): string {
+                if (!empty($eventDates)) {
+                    $first = (string)($eventDates[0] ?? '');
+                    $idx = array_search($d, $eventDates, true);
+                    if ($idx !== false) {
+                        $n = (int)$idx + 1;
+                        return $n === 1 ? '当日⭐' : ($n . '日目');
+                    }
+                    if ($first !== '' && $d < $first) return '前日';
+                    return '終了';
+                }
+                return $d === $defaultFilterDay ? '当日⭐' : '';
+            };
+            ?>
+
+            <section class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 sm:px-5 py-3">
+                <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-3 overflow-x-auto pb-1">
+                            <?php foreach ($tlDateCounts as $d => $c): ?>
+                                <?php
+                                    $r = (string)$relLabel((string)$d);
+                                    $md = (string)$fmtMdDow((string)$d);
+                                ?>
+                                <button type="button"
+                                        class="js-tl-date-btn shadow-sm transition"
+                                        data-tl-day="<?= htmlspecialchars((string)$d, ENT_QUOTES) ?>">
+                                    <div class="js-tl-date-rel"><?= htmlspecialchars($r !== '' ? $r : ' ') ?></div>
+                                    <div class="js-tl-date-main"><?= htmlspecialchars($md) ?></div>
+                                    <div class="js-tl-date-count">予定 <?= (int)$c ?>件</div>
+                                </button>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <div class="shrink-0">
+                        <button type="button" class="js-tl-date-all lt-timeline-view-btn px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold hover:bg-slate-50 whitespace-nowrap inline-flex items-center gap-2">
+                            <i class="fa-solid fa-layer-group text-slate-400"></i>
+                            全日まとめて表示
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-5 sm:p-6">
+                <button type="button" class="w-full flex items-center justify-between gap-3" id="timeline-add-toggle" aria-expanded="true">
+                    <div class="min-w-0 text-left">
+                        <div class="text-base font-normal text-slate-900" id="timeline-add-title">＋ 予定を追加</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-down text-slate-400" id="timeline-add-chevron" aria-hidden="true"></i>
+                </button>
+
+                <div class="mt-4" id="timeline-add-body">
+                    <div class="inline-flex items-center gap-2 flex-wrap w-fit max-w-full p-1 rounded-xl bg-slate-100 border border-slate-200">
+                        <button type="button" class="timeline-cat-toggle px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-white whitespace-nowrap" data-cat="transport" data-prefix="🚇 ">🚇 移動</button>
+                        <button type="button" class="timeline-cat-toggle px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-white whitespace-nowrap" data-cat="live" data-prefix="🎤 ">🎤 ライブ</button>
+                        <button type="button" class="timeline-cat-toggle px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-white whitespace-nowrap" data-cat="collab" data-prefix="🛍️ ">🛍️ コラボ</button>
+                        <button type="button" class="timeline-cat-toggle px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-white whitespace-nowrap" data-cat="meal" data-prefix="🍱 ">🍱 食事</button>
+                        <button type="button" class="timeline-cat-toggle px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-white whitespace-nowrap" data-cat="hotel" data-prefix="🏨 ">🏨 宿泊</button>
+                        <button type="button" class="timeline-cat-toggle px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-white whitespace-nowrap" data-cat="other" data-prefix="📌 ">📌 その他</button>
+                    </div>
+
+                    <form method="post" action="/live_trip/timeline_store.php" class="mt-4 space-y-3" id="timeline-add-form-modern">
+                        <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
+                        <input type="hidden" name="tab" value="timeline">
+                        <input type="hidden" id="timeline-label-prefix" value="🎤 ">
+
+                        <div class="grid grid-cols-1 lg:grid-cols-[140px_120px_120px_minmax(0,1fr)_120px] gap-3 items-end">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">日付</label>
+                                <input type="date" name="scheduled_date" id="timeline-add-date" class="w-full border border-slate-200 rounded px-3 py-2 text-sm" title="未入力時は当日">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">時刻</label>
+                                <input type="time" name="scheduled_time" id="timeline-add-time" class="w-full border border-slate-200 rounded px-3 py-2 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">所要(分)</label>
+                                <input type="number" name="duration_min" min="1" class="w-full border border-slate-200 rounded px-3 py-2 text-sm" placeholder="30">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">項目 *</label>
+                                <input type="text" name="label" id="timeline-label" placeholder="開場、開演など" class="w-full border border-slate-200 rounded px-3 py-2 text-sm" required>
+                            </div>
+                            <div class="flex">
+                                <button type="submit" class="lt-theme-btn text-white px-4 py-2 rounded-lg text-sm font-bold w-full">追加</button>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_260px] gap-3">
+                            <div class="relative">
+                                <label class="block text-xs font-bold text-slate-500 mb-1">場所（目的地からも選択可）</label>
+                                <input type="text" id="timeline-location" name="location_label" placeholder="会場、ホテル、駅、店名など" class="w-full border border-slate-200 rounded px-3 py-2 text-sm" autocomplete="off">
+                                <div id="timeline-location-suggestions" class="hidden absolute left-0 right-0 top-full mt-0.5 z-20 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"></div>
+                                <input type="hidden" id="timeline-location-address" name="location_address" value="">
+                                <input type="hidden" id="timeline-place-id" name="place_id" value="">
+                                <input type="hidden" id="timeline-lat" name="latitude" value="">
+                                <input type="hidden" id="timeline-lng" name="longitude" value="">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">メモ</label>
+                                <input type="text" name="memo" placeholder="メモ" class="w-full border border-slate-200 rounded px-3 py-2 text-sm">
+                            </div>
+                        </div>
+                    </form>
+
+                    <script>
+                    (function() {
+                        var root = document.getElementById('panel-timeline');
+                        if (!root) return;
+                        var toggle = root.querySelector('#timeline-add-toggle');
+                        var body = root.querySelector('#timeline-add-body');
+                        var chev = root.querySelector('#timeline-add-chevron');
+                        function setExpanded(x) {
+                            if (!toggle || !body) return;
+                            toggle.setAttribute('aria-expanded', x ? 'true' : 'false');
+                            body.classList.toggle('hidden', !x);
+                            if (chev) {
+                                chev.classList.toggle('fa-chevron-down', x);
+                                chev.classList.toggle('fa-chevron-up', !x);
+                            }
+                        }
+                        toggle && toggle.addEventListener('click', function(){ setExpanded(toggle.getAttribute('aria-expanded') !== 'true'); });
+                        setExpanded(true);
+
+                        var prefixHidden = root.querySelector('#timeline-label-prefix');
+                        var labelInput = root.querySelector('#timeline-label');
+                        var btns = Array.from(root.querySelectorAll('.timeline-cat-toggle'));
+                        function setCat(btn) {
+                            if (!btn) return;
+                            var pref = btn.dataset.prefix || '';
+                            if (prefixHidden) prefixHidden.value = pref;
+                            btns.forEach(function(b){
+                                var active = b === btn;
+                                b.classList.toggle('bg-white', active);
+                                b.classList.toggle('shadow-sm', active);
+                                b.classList.toggle('text-slate-800', active);
+                                b.classList.toggle('text-slate-600', !active);
+                            });
+                        }
+                        btns.forEach(function(b){ b.addEventListener('click', function(){ setCat(b); }); });
+                        if (btns[1]) setCat(btns[1]); // default: ライブ
+
+                        var form = root.querySelector('#timeline-add-form-modern');
+                        form && form.addEventListener('submit', function() {
+                            if (!labelInput) return;
+                            var pref = (prefixHidden && prefixHidden.value) ? prefixHidden.value : '';
+                            var v = (labelInput.value || '').trim();
+                            if (pref && v && v.indexOf(pref.trim()) !== 0 && v.indexOf(pref) !== 0) {
+                                labelInput.value = pref + v;
+                            }
+                        });
+
+                        // 空き時間クリック → 予定追加フォームを開いて日付/時刻をセット
+                        document.addEventListener('click', function(e) {
+                            var btn = e.target.closest('.js-tl-gap-add');
+                            if (!btn) return;
+                            e.preventDefault();
+                            // フィルタはそのまま、追加フォームを開く
+                            try { btn.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+                            setExpanded(true);
+                            var d = btn.dataset.day || '';
+                            var t = btn.dataset.time || '';
+                            var dateInput = root.querySelector('#timeline-add-date');
+                            var timeInput = root.querySelector('#timeline-add-time');
+                            if (dateInput && d) dateInput.value = d;
+                            if (timeInput && t) timeInput.value = t;
+                            setTimeout(function() {
+                                if (labelInput) labelInput.focus();
+                            }, 80);
+                        });
+                    })();
+                    </script>
                 </div>
             </div>
-            <form method="post" action="/live_trip/timeline_store.php" class="flex flex-wrap gap-2 p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
-                <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
-                <input type="hidden" name="tab" value="timeline">
-                <div><label class="block text-xs font-bold text-slate-500 mb-1">日付</label><input type="date" name="scheduled_date" class="border border-slate-200 rounded px-3 py-2 text-sm w-36" title="未入力時は当日"></div>
-                <div><label class="block text-xs font-bold text-slate-500 mb-1">項目</label><input type="text" name="label" placeholder="開場、開演など" class="border border-slate-200 rounded px-3 py-2 text-sm w-32" required></div>
-                <div class="relative flex-1 min-w-48">
-                    <label class="block text-xs font-bold text-slate-500 mb-1">場所</label>
-                    <input type="text" id="timeline-location" name="location_label" placeholder="会場、ホテル、駅、店名など" class="border border-slate-200 rounded px-3 py-2 text-sm w-full" autocomplete="off">
-                    <div id="timeline-location-suggestions" class="hidden absolute left-0 right-0 top-full mt-0.5 z-20 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"></div>
-                    <input type="hidden" id="timeline-location-address" name="location_address" value="">
-                    <input type="hidden" id="timeline-place-id" name="place_id" value="">
-                    <input type="hidden" id="timeline-lat" name="latitude" value="">
-                    <input type="hidden" id="timeline-lng" name="longitude" value="">
-                </div>
-                <div><label class="block text-xs font-bold text-slate-500 mb-1">時刻</label><input type="time" name="scheduled_time" class="border border-slate-200 rounded px-3 py-2 text-sm w-32"></div>
-                <div><label class="block text-xs font-bold text-slate-500 mb-1">終了</label><input type="time" name="end_time" class="border border-slate-200 rounded px-3 py-2 text-sm w-32" title="未指定なら30分扱い"></div>
-                <div><label class="block text-xs font-bold text-slate-500 mb-1">所要(分)</label><input type="number" name="duration_min" min="1" class="border border-slate-200 rounded px-3 py-2 text-sm w-28" placeholder="30"></div>
-                <input type="text" name="memo" placeholder="メモ" class="border border-slate-200 rounded px-3 py-2 text-sm flex-1 min-w-24">
-                <button type="submit" class="lt-theme-btn text-white px-3 py-2 rounded text-sm">追加</button>
-            </form>
+
+            <script>
+            // Timeline date filter (calendar/list)
+            (function() {
+                var defaultDay = <?= json_encode((string)$defaultFilterDay, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+                var currentDay = defaultDay || '';
+
+                function setActive(day) {
+                    var panel = document.getElementById('panel-timeline');
+                    if (!panel) return;
+                    var btns = Array.from(panel.querySelectorAll('.js-tl-date-btn'));
+                    btns.forEach(function(b) {
+                        var active = (b.dataset.tlDay || '') === day;
+                        b.classList.toggle('ring-2', active);
+                        b.classList.toggle('ring-emerald-400', active);
+                        b.classList.toggle('border-emerald-300', active);
+                        b.classList.toggle('is-active', active);
+                        // eyebrow(相対日付/件数)の色も反転
+                        // 文字色はCSS（.is-active）で制御
+                    });
+                }
+                function applyFilter(day) {
+                    var panel = document.getElementById('panel-timeline');
+                    if (!panel) return;
+                    var allBtn = panel.querySelector('.js-tl-date-all');
+                    var showAll = !day || day === '__all__';
+                    panel.querySelectorAll('.lt-day').forEach(function(el) {
+                        var d = el.getAttribute('data-tl-day') || '';
+                        el.classList.toggle('hidden', !showAll && d !== day);
+                    });
+                    panel.querySelectorAll('.tl-day-group').forEach(function(el) {
+                        var d = el.getAttribute('data-tl-day') || '';
+                        el.classList.toggle('hidden', !showAll && d !== day);
+                    });
+                    setActive(showAll ? '' : day);
+                    if (allBtn) {
+                        // 日表示/リスト表示ボタンと同じ見た目にする
+                        allBtn.classList.toggle('is-active', showAll);
+                    }
+                }
+
+                function bind() {
+                    var panel = document.getElementById('panel-timeline');
+                    if (!panel) return;
+                    var btns = Array.from(panel.querySelectorAll('.js-tl-date-btn'));
+                    var allBtn = panel.querySelector('.js-tl-date-all');
+                    btns.forEach(function(b) {
+                        b.addEventListener('click', function() {
+                            var d = b.dataset.tlDay || '';
+                            currentDay = d;
+                            applyFilter(d);
+                        });
+                    });
+                    allBtn && allBtn.addEventListener('click', function() {
+                        currentDay = '__all__';
+                        applyFilter('__all__');
+                    });
+                }
+
+                function boot() {
+                    bind();
+                    // DOM構築後にデフォルト適用（初期表示で全日見える問題を回避）
+                    if (defaultDay) {
+                        currentDay = defaultDay;
+                        applyFilter(defaultDay);
+                    }
+                }
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', function() { requestAnimationFrame(boot); });
+                } else {
+                    requestAnimationFrame(boot);
+                }
+            })();
+            </script>
             <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
             <?php
-            $dayStartMin = 6 * 60;
-            $dayEndMin = 24 * 60;
-            $pxPerMin = 1; // 1時間=60px（半分）
-            $laneHeight = ($dayEndMin - $dayStartMin) * $pxPerMin;
-
             $timelineByDay = [];
             foreach ($mergedTimeline ?? [] as $m) {
                 $d = $m['date'] ?? '';
@@ -2858,62 +3221,103 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
             }
             ksort($timelineByDay);
             ?>
-            <div class="lt-timeline-calendar hidden space-y-6">
+                    <div class="lt-timeline-calendar hidden space-y-6">
                 <?php foreach ($timelineByDay as $day => $rows): ?>
                     <?php
-                    $dayLabel = $day;
-                    if (!empty($eventDates) && $day) {
-                        $firstEv = $eventDates[0];
-                        $lastEv = $eventDates[count($eventDates) - 1];
-                        if (in_array($day, $eventDates, true)) $dayLabel .= '（当日）';
-                        elseif ($day < $firstEv) $dayLabel .= '（前日）';
-                        elseif ($day > $lastEv) $dayLabel .= '（翌日）';
+                    $rowsSorted = $rows;
+                    usort($rowsSorted, function($a, $b) {
+                        return (int)($a['_startMin'] ?? 0) <=> (int)($b['_startMin'] ?? 0);
+                    });
+                    $dayCount = count($rowsSorted);
+                    $dayWorkMin = 0;
+                    $dayVenue = trim((string)($eventPlace ?? ''));
+                    if ($dayVenue === '' && isset($venue['name'])) $dayVenue = trim((string)$venue['name']);
+                    foreach ($rowsSorted as $x) {
+                        $dur = (int)($x['duration_min'] ?? 0);
+                        if ($dur <= 0) $dur = 30;
+                        $dayWorkMin += $dur;
                     }
-                    $sameStartBuckets = [];
-                    foreach ($rows as $r) {
-                        $k = (string)($r['_startMin'] ?? 0);
-                        $sameStartBuckets[$k] ??= 0;
-                        $sameStartBuckets[$k]++;
+                    $dayWorkH = $dayWorkMin > 0 ? (int)round($dayWorkMin / 60) : 0;
+
+                    $dayStatus = '';
+                    if (!empty($eventDates)) {
+                        $idx = array_search($day, $eventDates, true);
+                        if ($idx !== false) {
+                            $n = (int)$idx + 1;
+                            $dayStatus = $n === 1 ? '当日' : ($n . '日目');
+                        } else {
+                            $firstEv = (string)($eventDates[0] ?? '');
+                            $lastEv = (string)($eventDates[count($eventDates) - 1] ?? '');
+                            if ($firstEv !== '' && $day < $firstEv) $dayStatus = '前日';
+                            elseif ($lastEv !== '' && $day > $lastEv) $dayStatus = '翌日';
+                            else $dayStatus = '終了';
+                        }
+                    } else {
+                        $dayStatus = ($day === $defaultFilterDay) ? '当日' : '';
                     }
-                    $sameStartIndex = [];
+
+                    $dayTitle = $day;
+                    try {
+                        if ($day !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$day)) {
+                            $dd = new \DateTimeImmutable((string)$day, new \DateTimeZone('Asia/Tokyo'));
+                            $dow = ['日','月','火','水','木','金','土'][(int)$dd->format('w')] ?? '';
+                            $dayTitle = $dd->format('n月j日') . ($dow ? '（' . $dow . '）' : '');
+                        }
+                    } catch (\Throwable $e) { }
+
+                    $daySubParts = [];
+                    $daySubParts[] = '予定 ' . (int)$dayCount . '件';
+                    if ($dayWorkH > 0) $daySubParts[] = '実働 約' . (int)$dayWorkH . '時間';
+                    if ($dayVenue !== '') $daySubParts[] = $dayVenue;
+                    $daySubText = implode(' ・ ', $daySubParts);
+
+                    $catStyleMap = [
+                        'transport' => ['dot' => 'bg-violet-700 ring-violet-700', 'card' => 'bg-violet-50 border-violet-700', 'badge' => 'bg-violet-100 text-violet-700', 'label' => '移動', 'emoji' => '🚇'],
+                        'live' => ['dot' => 'bg-emerald-600 ring-emerald-600', 'card' => 'bg-emerald-50 border-emerald-600', 'badge' => 'bg-emerald-100 text-emerald-700', 'label' => 'ライブ', 'emoji' => '🎤'],
+                        'collab' => ['dot' => 'bg-amber-700 ring-amber-700', 'card' => 'bg-amber-50 border-amber-700', 'badge' => 'bg-amber-100 text-amber-800', 'label' => 'コラボ', 'emoji' => '🛍️'],
+                        'meal' => ['dot' => 'bg-orange-600 ring-orange-600', 'card' => 'bg-orange-50 border-orange-600', 'badge' => 'bg-orange-100 text-orange-700', 'label' => '食事', 'emoji' => '🍱'],
+                        'hotel' => ['dot' => 'bg-blue-800 ring-blue-800', 'card' => 'bg-blue-50 border-blue-800', 'badge' => 'bg-blue-100 text-blue-800', 'label' => '宿泊', 'emoji' => '🏨'],
+                        'other' => ['dot' => 'bg-slate-400 ring-slate-400', 'card' => 'bg-slate-50 border-slate-400', 'badge' => 'bg-slate-100 text-slate-700', 'label' => 'その他', 'emoji' => '📌'],
+                    ];
                     ?>
-                    <div class="lt-day">
-                        <p class="text-xs font-bold text-slate-500 mb-2"><?= htmlspecialchars($dayLabel) ?></p>
-                        <div class="lt-day-grid grid grid-cols-[52px_1fr] gap-3">
-                            <div class="lt-time-col text-[11px] text-slate-500 font-mono">
-                                <?php for ($h = 6; $h <= 23; $h++): ?>
-                                    <div class="h-[60px] flex items-start justify-end pr-1"><?= sprintf('%02d:00', $h) ?></div>
-                                <?php endfor; ?>
+                    <div class="lt-day" data-tl-day="<?= htmlspecialchars((string)$day, ENT_QUOTES) ?>">
+                        <div class="bg-white rounded-xl p-5 sm:p-6 shadow-sm border border-slate-200">
+                            <!-- 日付ヘッダー -->
+                            <div class="flex justify-between items-center gap-3 flex-wrap mb-4 pb-3 border-b-2 border-slate-100">
+                                <div class="min-w-0">
+                                    <div class="font-extrabold text-slate-900 text-lg">
+                                        📅 <?= htmlspecialchars($dayTitle) ?><?= $dayStatus !== '' ? ' ' . htmlspecialchars($dayStatus) : '' ?>
+                                    </div>
+                                    <div class="text-xs text-slate-500 mt-1 truncate"><?= htmlspecialchars($daySubText) ?></div>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button type="button" class="px-3 py-1.5 rounded-md border border-slate-200 bg-slate-50 text-slate-500 text-[11px] font-bold cursor-not-allowed" disabled>
+                                        空白を圧縮 ✓
+                                    </button>
+                                    <button type="button" class="px-3 py-1.5 rounded-md border border-slate-200 bg-slate-50 text-slate-500 text-[11px] font-bold cursor-not-allowed" disabled>
+                                        📥 しおり連携
+                                    </button>
+                                </div>
                             </div>
-                            <div class="lt-lane relative rounded-lg border border-slate-200 bg-white overflow-hidden" style="height: <?= (int)$laneHeight ?>px;">
-                                <?php for ($h = 6; $h <= 23; $h++): ?>
-                                    <div class="absolute left-0 right-0 border-t border-slate-100" style="top: <?= (int)(($h*60 - $dayStartMin) * $pxPerMin) ?>px;"></div>
-                                <?php endfor; ?>
-                                <?php foreach ($rows as $m): ?>
+
+                            <!-- タイムライン本体（縦軸 + カード） -->
+                            <div class="relative pl-[44px]">
+                                <div class="absolute left-[34px] top-0 bottom-0 w-[2px] bg-slate-200"></div>
+
+                                <?php
+                                $gapThresholdMin = 30; // 30分以上を「空き時間」として表示
+                                $rowsCount = count($rowsSorted);
+                                ?>
+                                <?php foreach ($rowsSorted as $i => $m): ?>
                                     <?php
-                                    $startMin = (int)($m['_startMin'] ?? 0);
-                                    $dur = (int)($m['duration_min'] ?? 30);
+                                    $time = (string)($m['time'] ?? '');
+                                    $time = $time !== '99:99' ? $time : '';
+                                    $dur = (int)($m['duration_min'] ?? 0);
                                     if ($dur <= 0) $dur = 30;
-                                    $endMin = $startMin + $dur;
-                                    $visStart = max($startMin, $dayStartMin);
-                                    $visEnd = min($endMin, $dayEndMin);
-                                    if ($visEnd <= $visStart) continue;
-                                    $top = ($visStart - $dayStartMin) * $pxPerMin;
-                                    $height = ($visEnd - $visStart) * $pxPerMin;
-                                    if ($height < 18) $height = 18;
-                                    if ($top + $height > $laneHeight) $height = max(18, $laneHeight - $top);
+                                    $durText = $dur >= 60 ? (int)round($dur/60) . '時間' : ($dur . '分');
+                                    $startMin = (int)($m['_startMin'] ?? 0);
+                                    $endMin = $startMin + (int)$dur;
 
-                                    $bucketKey = (string)$startMin;
-                                    $sameStartIndex[$bucketKey] ??= 0;
-                                    $idx = $sameStartIndex[$bucketKey]++;
-                                    $bucketCount = (int)($sameStartBuckets[$bucketKey] ?? 1);
-                                    $cols = $bucketCount >= 2 ? 2 : 1;
-                                    $col = $cols === 2 ? ($idx % 2) : 0;
-                                    $left = $cols === 2 ? (8 + $col * 50) : 8;
-                                    $right = $cols === 2 ? 8 : 8;
-                                    $widthStyle = $cols === 2 ? 'width: calc(50% - 12px);' : 'right: 8px;';
-
-                                    $bg = $m['type'] === 'transport' ? 'bg-sky-50 border-sky-200' : 'bg-emerald-50 border-emerald-200';
                                     $label = '';
                                     $sub = '';
                                     $placeIdAttr = '';
@@ -2921,7 +3325,8 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
                                     $lngAttr = '';
                                     $locLabelAttr = '';
                                     $locAddrAttr = '';
-                                    if ($m['type'] === 'timeline') {
+                                    $catKey = 'other';
+                                    if (($m['type'] ?? '') === 'timeline') {
                                         $ti = $m['data'] ?? [];
                                         $label = (string)($ti['label'] ?? '');
                                         $sub = (string)($ti['memo'] ?? '');
@@ -2930,115 +3335,167 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
                                         $lngAttr = (string)($ti['longitude'] ?? '');
                                         $locLabelAttr = (string)($ti['location_label'] ?? '');
                                         $locAddrAttr = (string)($ti['location_address'] ?? '');
+                                        $catKey = $classifyTimelineLabel($label);
                                     } else {
                                         $tl = $m['data'] ?? [];
                                         $label = trim(($tl['transport_type'] ?? '') . ' ' . ($tl['route_memo'] ?? ''));
                                         $sub = trim(($tl['departure'] ?? '') . ($tl['arrival'] ? ' → ' . ($tl['arrival'] ?? '') : ''));
+                                        $catKey = 'transport';
                                     }
+                                    $sty = $catStyleMap[$catKey] ?? $catStyleMap['other'];
                                     ?>
-                                    <div class="lt-event absolute rounded-lg border shadow-sm <?= $bg ?> p-2 text-xs text-slate-700 overflow-hidden cursor-pointer"
-                                         data-lt-type="<?= htmlspecialchars($m['type']) ?>"
-                                         data-lt-id="<?= (int)(($m['data']['id'] ?? 0)) ?>"
-                                         data-lt-date="<?= htmlspecialchars($day) ?>"
-                                         data-lt-time="<?= htmlspecialchars($m['time']) ?>"
-                                         data-lt-duration="<?= (int)$dur ?>"
-                                         data-lt-label="<?= htmlspecialchars($label, ENT_QUOTES) ?>"
-                                         data-lt-memo="<?= htmlspecialchars($sub, ENT_QUOTES) ?>"
-                                         data-lt-place-id="<?= htmlspecialchars($placeIdAttr, ENT_QUOTES) ?>"
-                                         data-lt-lat="<?= htmlspecialchars($latAttr, ENT_QUOTES) ?>"
-                                         data-lt-lng="<?= htmlspecialchars($lngAttr, ENT_QUOTES) ?>"
-                                         data-lt-location-label="<?= htmlspecialchars($locLabelAttr, ENT_QUOTES) ?>"
-                                         data-lt-location-address="<?= htmlspecialchars($locAddrAttr, ENT_QUOTES) ?>"
-                                         data-lt-scheduled-date="<?= htmlspecialchars((string)($m['date'] ?? '')) ?>"
-                                         data-lt-transport-type="<?= htmlspecialchars((string)(($m['data']['transport_type'] ?? '')), ENT_QUOTES) ?>"
-                                         data-lt-route-memo="<?= htmlspecialchars((string)(($m['data']['route_memo'] ?? '')), ENT_QUOTES) ?>"
-                                         data-lt-departure="<?= htmlspecialchars((string)(($m['data']['departure'] ?? '')), ENT_QUOTES) ?>"
-                                         data-lt-arrival="<?= htmlspecialchars((string)(($m['data']['arrival'] ?? '')), ENT_QUOTES) ?>"
-                                         data-lt-duration-min-transport="<?= (int)(($m['data']['duration_min'] ?? 0)) ?>"
-                                         data-lt-amount="<?= (int)(($m['data']['amount'] ?? 0)) ?>"
-                                         data-lt-maps-link="<?= htmlspecialchars((string)(($m['data']['maps_link'] ?? '')), ENT_QUOTES) ?>"
-                                         style="top: <?= (int)$top ?>px; left: <?= (int)$left ?>px; <?= $widthStyle ?> height: <?= (int)$height ?>px;">
-                                        <div class="flex items-start justify-between gap-2">
-                                            <div class="min-w-0">
-                                                <div class="flex items-center gap-2 min-w-0">
-                                                    <span class="font-mono font-bold text-slate-600 shrink-0"><?= htmlspecialchars($m['time']) ?></span>
-                                                    <span class="font-bold truncate flex-1 min-w-0"><?= htmlspecialchars($label) ?></span>
-                                                    <span class="text-slate-400 font-normal shrink-0">(<?= (int)$dur ?>m)</span>
+                                    <div class="relative mb-3">
+                                        <div class="absolute left-[-58px] top-1.5 text-[11px] text-slate-500 w-[50px] text-right whitespace-nowrap font-mono"><?= htmlspecialchars($time) ?></div>
+                                        <div class="absolute left-[-14px] top-2 w-3.5 h-3.5 rounded-full <?= $sty['dot'] ?> border-[3px] border-white shadow-[0_0_0_1px_rgba(15,23,42,0.12)]"></div>
+
+                                        <div class="lt-event rounded-lg border-l-4 border border-slate-200 <?= $sty['card'] ?> p-3 cursor-pointer"
+                                             data-lt-type="<?= htmlspecialchars((string)($m['type'] ?? '')) ?>"
+                                             data-lt-id="<?= (int)(($m['data']['id'] ?? 0)) ?>"
+                                             data-lt-date="<?= htmlspecialchars((string)$day) ?>"
+                                             data-lt-time="<?= htmlspecialchars((string)($m['time'] ?? '')) ?>"
+                                             data-lt-duration="<?= (int)$dur ?>"
+                                             data-lt-label="<?= htmlspecialchars((string)$label, ENT_QUOTES) ?>"
+                                             data-lt-memo="<?= htmlspecialchars((string)$sub, ENT_QUOTES) ?>"
+                                             data-lt-place-id="<?= htmlspecialchars((string)$placeIdAttr, ENT_QUOTES) ?>"
+                                             data-lt-lat="<?= htmlspecialchars((string)$latAttr, ENT_QUOTES) ?>"
+                                             data-lt-lng="<?= htmlspecialchars((string)$lngAttr, ENT_QUOTES) ?>"
+                                             data-lt-location-label="<?= htmlspecialchars((string)$locLabelAttr, ENT_QUOTES) ?>"
+                                             data-lt-location-address="<?= htmlspecialchars((string)$locAddrAttr, ENT_QUOTES) ?>"
+                                             data-lt-scheduled-date="<?= htmlspecialchars((string)($m['date'] ?? '')) ?>"
+                                             data-lt-transport-type="<?= htmlspecialchars((string)(($m['data']['transport_type'] ?? '')), ENT_QUOTES) ?>"
+                                             data-lt-route-memo="<?= htmlspecialchars((string)(($m['data']['route_memo'] ?? '')), ENT_QUOTES) ?>"
+                                             data-lt-departure="<?= htmlspecialchars((string)(($m['data']['departure'] ?? '')), ENT_QUOTES) ?>"
+                                             data-lt-arrival="<?= htmlspecialchars((string)(($m['data']['arrival'] ?? '')), ENT_QUOTES) ?>"
+                                             data-lt-duration-min-transport="<?= (int)(($m['data']['duration_min'] ?? 0)) ?>"
+                                             data-lt-amount="<?= (int)(($m['data']['amount'] ?? 0)) ?>"
+                                             data-lt-maps-link="<?= htmlspecialchars((string)(($m['data']['maps_link'] ?? '')), ENT_QUOTES) ?>"
+                                        >
+                                            <div class="lt-event-view flex justify-between items-start gap-3">
+                                                <div class="flex-1 min-w-0">
+                                                    <div class="flex items-center gap-2 flex-wrap min-w-0">
+                                                        <span class="text-sm"><?= htmlspecialchars((string)($sty['emoji'] ?? '⏰')) ?></span>
+                                                        <span class="font-bold text-slate-900 text-sm truncate"><?= htmlspecialchars($label) ?></span>
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded bg-white/60 text-[10px] font-bold <?= $sty['badge'] ?>">
+                                                            <?= htmlspecialchars((string)($sty['label'] ?? 'その他')) ?>
+                                                        </span>
+                                                        <span class="text-[11px] text-slate-500">⏱ <?= htmlspecialchars($durText) ?></span>
+                                                    </div>
+                                                    <?php if ($catKey === 'transport' && $sub !== ''): ?>
+                                                        <div class="text-[11px] text-slate-500 mt-1">📍 <?= htmlspecialchars($sub) ?></div>
+                                                    <?php elseif ($m['type'] === 'timeline' && $locLabelAttr !== ''): ?>
+                                                        <div class="text-[11px] text-slate-500 mt-1">🔗 <?= htmlspecialchars($locLabelAttr) ?></div>
+                                                    <?php endif; ?>
+                                                    <?php if ($m['type'] === 'timeline' && $sub !== ''): ?>
+                                                        <div class="text-[11px] text-slate-500 mt-1 truncate"><?= htmlspecialchars($sub) ?></div>
+                                                    <?php endif; ?>
+                                                </div>
+                                                <div class="shrink-0 flex gap-1">
+                                                    <?php if (($m['type'] ?? '') === 'timeline'): $ti = $m['data']; ?>
+                                                        <button type="button" class="timeline-edit-btn bg-white border border-slate-200 rounded w-7 h-7 text-[11px] text-slate-600 hover:bg-slate-50" title="編集" data-id="<?= (int)$ti['id'] ?>"><i class="fa-solid fa-pen"></i></button>
+                                                        <form method="post" action="/live_trip/timeline_delete.php" class="inline" onsubmit="return confirm('削除しますか？');">
+                                                            <input type="hidden" name="id" value="<?= (int)$ti['id'] ?>">
+                                                            <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
+                                                            <input type="hidden" name="tab" value="timeline">
+                                                            <button type="submit" class="bg-white border border-red-200 text-red-600 rounded w-7 h-7 text-[11px] hover:bg-red-50" title="削除"><i class="fa-solid fa-trash-can"></i></button>
+                                                        </form>
+                                                    <?php else: $tl = $m['data']; ?>
+                                                        <button type="button" class="transport-timeline-edit-btn bg-white border border-slate-200 rounded w-7 h-7 text-[11px] text-slate-600 hover:bg-slate-50" title="時刻を編集"><i class="fa-solid fa-pen"></i></button>
+                                                        <form method="post" action="/live_trip/transport_delete.php" class="inline" onsubmit="return confirm('削除しますか？');">
+                                                            <input type="hidden" name="id" value="<?= (int)$tl['id'] ?>">
+                                                            <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
+                                                            <input type="hidden" name="tab" value="timeline">
+                                                            <button type="submit" class="bg-white border border-red-200 text-red-600 rounded w-7 h-7 text-[11px] hover:bg-red-50" title="削除"><i class="fa-solid fa-trash-can"></i></button>
+                                                        </form>
+                                                    <?php endif; ?>
                                                 </div>
                                             </div>
-                                            <div class="shrink-0 flex gap-1">
-                                                <?php if ($m['type'] === 'timeline'): $ti = $m['data']; ?>
-                                                    <button type="button" class="timeline-edit-btn text-slate-500 text-[11px] hover:text-slate-700" title="編集" data-id="<?= (int)$ti['id'] ?>"><i class="fa-solid fa-pen"></i></button>
-                                                    <form method="post" action="/live_trip/timeline_delete.php" class="inline" onsubmit="return confirm('削除しますか？');">
-                                                        <input type="hidden" name="id" value="<?= (int)$ti['id'] ?>">
-                                                        <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
-                                                        <input type="hidden" name="tab" value="timeline">
-                                                        <button type="submit" class="text-red-500 text-[11px]"><i class="fa-solid fa-trash-can"></i></button>
-                                                    </form>
-                                                <?php else: $tl = $m['data']; ?>
-                                                    <button type="button" class="transport-timeline-edit-btn text-slate-500 text-[11px] hover:text-slate-700" title="時刻を編集"><i class="fa-solid fa-pen"></i></button>
-                                                    <form method="post" action="/live_trip/transport_delete.php" class="inline" onsubmit="return confirm('削除しますか？');">
-                                                        <input type="hidden" name="id" value="<?= (int)$tl['id'] ?>">
-                                                        <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
-                                                        <input type="hidden" name="tab" value="timeline">
-                                                        <button type="submit" class="text-red-500 text-[11px]"><i class="fa-solid fa-trash-can"></i></button>
-                                                    </form>
-                                                <?php endif; ?>
-                                            </div>
-                                        </div>
-                                        <?php if ($sub !== ''): ?><div class="text-[11px] text-slate-500 mt-1 truncate"><?= htmlspecialchars($sub) ?></div><?php endif; ?>
 
-                                        <?php if ($m['type'] === 'timeline'): $ti = $m['data']; ?>
-                                        <?php
-                                            $st = trim($ti['scheduled_time'] ?? '');
-                                            $prefillEnd = '';
-                                            if (preg_match('/^(\d{1,2}):(\d{2})/', $st, $mm3)) {
-                                                $sm = ((int)$mm3[1]) * 60 + (int)$mm3[2];
-                                                $em = $sm + (int)$dur;
-                                                if ($em > 0 && $em <= 24*60) {
-                                                    $prefillEnd = sprintf('%02d:%02d', intdiv($em, 60), $em % 60);
+                                            <?php if (($m['type'] ?? '') === 'timeline'): $ti = $m['data']; ?>
+                                            <?php
+                                                $st = trim($ti['scheduled_time'] ?? '');
+                                                $prefillEnd = '';
+                                                if (preg_match('/^(\d{1,2}):(\d{2})/', $st, $mm3)) {
+                                                    $sm = ((int)$mm3[1]) * 60 + (int)$mm3[2];
+                                                    $em = $sm + (int)$dur;
+                                                    if ($em > 0 && $em <= 24*60) {
+                                                        $prefillEnd = sprintf('%02d:%02d', intdiv($em, 60), $em % 60);
+                                                    }
                                                 }
-                                            }
-                                        ?>
-                                        <form method="post" action="/live_trip/timeline_update.php" class="timeline-edit-form edit-form hidden flex flex-wrap gap-2 items-center p-2 bg-slate-50 rounded mt-2">
-                                            <input type="hidden" name="id" value="<?= (int)$ti['id'] ?>">
-                                            <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
-                                            <input type="hidden" name="tab" value="timeline">
-                                            <input type="hidden" name="place_id" value="<?= htmlspecialchars($ti['place_id'] ?? '') ?>">
-                                            <input type="hidden" name="latitude" value="<?= htmlspecialchars($ti['latitude'] ?? '') ?>">
-                                            <input type="hidden" name="longitude" value="<?= htmlspecialchars($ti['longitude'] ?? '') ?>">
-                                            <input type="hidden" name="location_label" value="<?= htmlspecialchars($ti['location_label'] ?? '') ?>">
-                                            <input type="hidden" name="location_address" value="<?= htmlspecialchars($ti['location_address'] ?? '') ?>">
-                                            <div><label class="block text-xs font-bold text-slate-500 mb-0.5">日付</label><input type="date" name="scheduled_date" value="<?= htmlspecialchars($ti['scheduled_date'] ?? '') ?>" class="border border-slate-200 rounded px-2 py-1 text-sm w-32"></div>
-                                            <input type="text" name="label" value="<?= htmlspecialchars($ti['label'] ?? '') ?>" class="border border-slate-200 rounded px-2 py-1 text-sm w-28" required>
-                                            <input type="time" name="scheduled_time" value="<?php $st = $ti['scheduled_time'] ?? ''; echo htmlspecialchars(preg_match('/^(\d{1,2}):(\d{2})/', trim($st), $m4) ? sprintf('%02d:%02d', (int)$m4[1], (int)$m4[2]) : ''); ?>" class="border border-slate-200 rounded px-2 py-1 text-sm w-32">
-                                            <input type="time" name="end_time" value="<?= htmlspecialchars($prefillEnd) ?>" class="border border-slate-200 rounded px-2 py-1 text-sm w-32" title="未指定なら30分扱い">
-                                            <input type="number" name="duration_min" min="1" value="<?= (int)$dur ?>" class="border border-slate-200 rounded px-2 py-1 text-sm w-24" title="所要時間(分)。指定すると終了より優先">
-                                            <input type="text" name="memo" value="<?= htmlspecialchars($ti['memo'] ?? '') ?>" placeholder="メモ" class="border border-slate-200 rounded px-2 py-1 text-sm flex-1 min-w-24">
-                                            <button type="submit" class="lt-theme-btn text-white px-3 py-1 rounded text-sm">保存</button>
-                                            <button type="button" class="timeline-cancel-btn px-3 py-1 border border-slate-200 rounded text-sm">キャンセル</button>
-                                        </form>
-                                        <?php endif; ?>
-                                        <?php if ($m['type'] === 'transport'): $tl = $m['data']; ?>
-                                        <form method="post" action="/live_trip/transport_update.php" class="transport-timeline-edit-form edit-form hidden flex flex-wrap gap-2 items-center p-2 bg-slate-50 rounded mt-2">
-                                            <input type="hidden" name="id" value="<?= (int)$tl['id'] ?>">
-                                            <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
-                                            <input type="hidden" name="tab" value="timeline">
-                                            <input type="hidden" name="departure_date" value="<?= htmlspecialchars($tl['departure_date'] ?? '') ?>">
-                                            <input type="hidden" name="transport_type" value="<?= htmlspecialchars($tl['transport_type'] ?? '') ?>">
-                                            <input type="hidden" name="route_memo" value="<?= htmlspecialchars($tl['route_memo'] ?? '') ?>">
-                                            <input type="hidden" name="departure" value="<?= htmlspecialchars($tl['departure'] ?? '') ?>">
-                                            <input type="hidden" name="arrival" value="<?= htmlspecialchars($tl['arrival'] ?? '') ?>">
-                                            <input type="hidden" name="duration_min" value="<?= (int)($tl['duration_min'] ?? 0) ?>">
-                                            <input type="hidden" name="amount" value="<?= (int)($tl['amount'] ?? 0) ?>">
-                                            <input type="hidden" name="maps_link" value="<?= htmlspecialchars($tl['maps_link'] ?? '') ?>">
-                                            <label class="text-sm font-bold text-slate-600">出発時刻:</label>
-                                            <input type="time" name="scheduled_time" value="<?php $st = $tl['scheduled_time'] ?? ''; echo htmlspecialchars(preg_match('/^(\d{1,2}):(\d{2})/', trim($st), $m5) ? sprintf('%02d:%02d', (int)$m5[1], (int)$m5[2]) : ''); ?>" class="border border-slate-200 rounded px-2 py-1 text-sm w-32">
-                                            <button type="submit" class="lt-theme-btn text-white px-3 py-1 rounded text-sm">保存</button>
-                                            <button type="button" class="transport-timeline-cancel-btn px-3 py-1 border border-slate-200 rounded text-sm">キャンセル</button>
-                                        </form>
-                                        <?php endif; ?>
+                                            ?>
+                                            <form method="post" action="/live_trip/timeline_update.php" class="timeline-edit-form edit-form hidden flex flex-wrap gap-2 items-center p-2 bg-white/60 rounded mt-2">
+                                                <input type="hidden" name="id" value="<?= (int)$ti['id'] ?>">
+                                                <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
+                                                <input type="hidden" name="tab" value="timeline">
+                                                <input type="hidden" name="place_id" value="<?= htmlspecialchars($ti['place_id'] ?? '') ?>">
+                                                <input type="hidden" name="latitude" value="<?= htmlspecialchars($ti['latitude'] ?? '') ?>">
+                                                <input type="hidden" name="longitude" value="<?= htmlspecialchars($ti['longitude'] ?? '') ?>">
+                                                <input type="hidden" name="location_label" value="<?= htmlspecialchars($ti['location_label'] ?? '') ?>">
+                                                <input type="hidden" name="location_address" value="<?= htmlspecialchars($ti['location_address'] ?? '') ?>">
+                                                <div><label class="block text-xs font-bold text-slate-500 mb-0.5">日付</label><input type="date" name="scheduled_date" value="<?= htmlspecialchars($ti['scheduled_date'] ?? '') ?>" class="border border-slate-200 rounded px-2 py-1 text-sm w-32"></div>
+                                                <input type="text" name="label" value="<?= htmlspecialchars($ti['label'] ?? '') ?>" class="border border-slate-200 rounded px-2 py-1 text-sm w-28" required>
+                                                <input type="time" name="scheduled_time" value="<?php $st = $ti['scheduled_time'] ?? ''; echo htmlspecialchars(preg_match('/^(\d{1,2}):(\d{2})/', trim($st), $m4) ? sprintf('%02d:%02d', (int)$m4[1], (int)$m4[2]) : ''); ?>" class="border border-slate-200 rounded px-2 py-1 text-sm w-32">
+                                                <input type="time" name="end_time" value="<?= htmlspecialchars($prefillEnd) ?>" class="border border-slate-200 rounded px-2 py-1 text-sm w-32" title="未指定なら30分扱い">
+                                                <input type="number" name="duration_min" min="1" value="<?= (int)$dur ?>" class="border border-slate-200 rounded px-2 py-1 text-sm w-24" title="所要時間(分)。指定すると終了より優先">
+                                                <input type="text" name="memo" value="<?= htmlspecialchars($ti['memo'] ?? '') ?>" placeholder="メモ" class="border border-slate-200 rounded px-2 py-1 text-sm flex-1 min-w-24">
+                                                <button type="submit" class="lt-theme-btn text-white px-3 py-1 rounded text-sm">保存</button>
+                                                <button type="button" class="timeline-cancel-btn px-3 py-1 border border-slate-200 rounded text-sm">キャンセル</button>
+                                            </form>
+                                            <?php endif; ?>
+                                            <?php if (($m['type'] ?? '') === 'transport'): $tl = $m['data']; ?>
+                                            <form method="post" action="/live_trip/transport_update.php" class="transport-timeline-edit-form edit-form hidden flex flex-wrap gap-2 items-center p-2 bg-white/60 rounded mt-2">
+                                                <input type="hidden" name="id" value="<?= (int)$tl['id'] ?>">
+                                                <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
+                                                <input type="hidden" name="tab" value="timeline">
+                                                <input type="hidden" name="departure_date" value="<?= htmlspecialchars($tl['departure_date'] ?? '') ?>">
+                                                <input type="hidden" name="transport_type" value="<?= htmlspecialchars($tl['transport_type'] ?? '') ?>">
+                                                <input type="hidden" name="route_memo" value="<?= htmlspecialchars($tl['route_memo'] ?? '') ?>">
+                                                <input type="hidden" name="departure" value="<?= htmlspecialchars($tl['departure'] ?? '') ?>">
+                                                <input type="hidden" name="arrival" value="<?= htmlspecialchars($tl['arrival'] ?? '') ?>">
+                                                <input type="hidden" name="duration_min" value="<?= (int)($tl['duration_min'] ?? 0) ?>">
+                                                <input type="hidden" name="amount" value="<?= (int)($tl['amount'] ?? 0) ?>">
+                                                <input type="hidden" name="maps_link" value="<?= htmlspecialchars($tl['maps_link'] ?? '') ?>">
+                                                <label class="text-sm font-bold text-slate-600">出発時刻:</label>
+                                                <input type="time" name="scheduled_time" value="<?php $st = $tl['scheduled_time'] ?? ''; echo htmlspecialchars(preg_match('/^(\d{1,2}):(\d{2})/', trim($st), $m5) ? sprintf('%02d:%02d', (int)$m5[1], (int)$m5[2]) : ''); ?>" class="border border-slate-200 rounded px-2 py-1 text-sm w-32">
+                                                <button type="submit" class="lt-theme-btn text-white px-3 py-1 rounded text-sm">保存</button>
+                                                <button type="button" class="transport-timeline-cancel-btn px-3 py-1 border border-slate-200 rounded text-sm">キャンセル</button>
+                                            </form>
+                                            <?php endif; ?>
+                                        </div>
                                     </div>
+
+                                    <?php
+                                    // 空き時間要素（次の予定まで）
+                                    $next = ($i + 1 < $rowsCount) ? $rowsSorted[$i + 1] : null;
+                                    if ($next) {
+                                        $nextStart = (int)($next['_startMin'] ?? 0);
+                                        $gap = $nextStart - $endMin;
+                                        if ($gap >= $gapThresholdMin) {
+                                            $gapStart = $endMin;
+                                            $gapEnd = $nextStart;
+                                            $fmtGapHm = function(int $min): string {
+                                                $min = max(0, min(24*60, $min));
+                                                return sprintf('%02d:%02d', intdiv($min, 60), $min % 60);
+                                            };
+                                            $gapStartStr = $fmtGapHm($gapStart);
+                                            $gapEndStr = $fmtGapHm($gapEnd);
+                                            $gapH = intdiv($gap, 60);
+                                            $gapM = $gap % 60;
+                                            $gapDurText = ($gapH > 0 ? ($gapH . '時間') : '') . ($gapM > 0 ? ($gapM . '分') : ($gapH > 0 ? '0分' : ''));
+                                    ?>
+                                        <div class="relative mb-3">
+                                            <div class="absolute left-[-14px] top-1.5 w-3.5 h-3.5 rounded-full bg-slate-300 border-[3px] border-white shadow-[0_0_0_1px_rgba(15,23,42,0.12)]"></div>
+                                            <button type="button"
+                                                    class="js-tl-gap-add w-full text-center bg-slate-50 border border-dashed border-slate-300 rounded-lg px-3 py-2 text-[11px] text-slate-400 hover:bg-slate-100"
+                                                    data-day="<?= htmlspecialchars((string)$day, ENT_QUOTES) ?>"
+                                                    data-time="<?= htmlspecialchars((string)$gapStartStr, ENT_QUOTES) ?>"
+                                                    title="クリックで予定を追加">
+                                                ⋯ <?= htmlspecialchars($gapStartStr) ?> - <?= htmlspecialchars($gapEndStr) ?> 空き時間（<?= htmlspecialchars($gapDurText) ?>） ・ クリックで予定を追加 ＋
+                                            </button>
+                                        </div>
+                                    <?php
+                                        }
+                                    }
+                                    ?>
                                 <?php endforeach; ?>
                             </div>
                         </div>
@@ -3051,22 +3508,44 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
 
             <div class="lt-timeline-list">
             <?php
+            // サマリタブ「行程プレビュー」のリストUIを踏襲（タイトル/追加ボタンなし）
             $lastDate = '';
+            $dayIdx = 0;
+            $firstEv = $eventDates[0] ?? '';
+            $lastEv = $eventDates[count($eventDates) - 1] ?? '';
             foreach ($mergedTimeline ?? [] as $m):
                 $d = $m['date'] ?? '';
                 if ($d !== $lastDate):
                     $isFirstGroup = ($lastDate === '');
+                    if (!$isFirstGroup) echo '</div>';
                     $lastDate = $d;
-                    $dayLabel = $d;
-                    if (!empty($eventDates) && $d) {
-                        $firstEv = $eventDates[0];
-                        $lastEv = $eventDates[count($eventDates) - 1];
-                        if (in_array($d, $eventDates, true)) $dayLabel .= '（当日）';
-                        elseif ($d < $firstEv) $dayLabel .= '（前日）';
-                        elseif ($d > $lastEv) $dayLabel .= '（翌日）';
-                    }
+                    $dayIdx++;
+                    $dow = '';
+                    try {
+                        if ($d && preg_match('/^\d{4}-\d{2}-\d{2}$/', $d)) {
+                            $dd = new \DateTimeImmutable($d, new \DateTimeZone('Asia/Tokyo'));
+                            $dow = ['日','月','火','水','木','金','土'][(int)$dd->format('w')] ?? '';
+                            $dDisp = $dd->format('n/j') . ($dow ? '（' . $dow . '）' : '');
+                        } else {
+                            $dDisp = $d;
+                        }
+                    } catch (\Throwable $e) { $dDisp = $d; }
+                    $isEventDay = ($d !== '' && in_array($d, $eventDates ?? [], true));
+                    $status = $isEventDay ? '当日' : (($firstEv !== '' && $d < $firstEv) ? '前日' : '終了');
+                    $sub = 'day' . $dayIdx . '・' . ($isEventDay ? '公演当日' : ($status === '前日' ? '前日' : '終了'));
             ?>
-            <p class="text-xs font-bold text-slate-500 <?= $isFirstGroup ? 'mt-0' : 'mt-4' ?> mb-2"><?= htmlspecialchars($dayLabel) ?></p>
+            <div class="tl-day-group" data-tl-day="<?= htmlspecialchars((string)$d, ENT_QUOTES) ?>">
+            <div class="<?= $isFirstGroup ? 'mt-0' : 'mt-4' ?> mb-2">
+                <div class="flex items-center justify-between gap-3 px-3 py-2 rounded-lg border border-slate-100 bg-slate-50">
+                    <div class="min-w-0 flex items-center gap-3">
+                        <span class="font-bold text-slate-800"><?= htmlspecialchars($dDisp) ?></span>
+                        <span class="text-sm text-slate-500 truncate"><?= htmlspecialchars($sub) ?></span>
+                    </div>
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold <?= $status === '当日' ? 'lt-pill-primary' : 'bg-white border border-slate-200 text-slate-600' ?>">
+                        <?= htmlspecialchars($status) ?>
+                    </span>
+                </div>
+            </div>
             <?php endif; ?>
             <div class="timeline-row py-2 border-b border-slate-100 <?= $m['type'] === 'timeline' ? 'timeline-item' : '' ?>"
                  data-lt-type="<?= htmlspecialchars((string)($m['type'] ?? '')) ?>"
@@ -3078,34 +3557,68 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
                  data-lt-lng="<?= htmlspecialchars((string)(($m['type'] ?? '') === 'timeline' ? (($m['data']['longitude'] ?? '') ?: '') : ''), ENT_QUOTES) ?>"
                  data-lt-location-label="<?= htmlspecialchars((string)(($m['type'] ?? '') === 'timeline' ? (($m['data']['location_label'] ?? '') ?: '') : ''), ENT_QUOTES) ?>"
                  data-lt-location-address="<?= htmlspecialchars((string)(($m['type'] ?? '') === 'timeline' ? (($m['data']['location_address'] ?? '') ?: '') : ''), ENT_QUOTES) ?>">
-                <div class="timeline-view flex justify-between items-center">
-                    <span class="font-mono font-bold text-emerald-600 w-14 shrink-0"><?= htmlspecialchars($m['time'] !== '99:99' ? $m['time'] : '') ?></span>
-                    <span class="flex-1">
-                        <?php if ($m['type'] === 'timeline'): $ti = $m['data']; ?>
-                        <?= htmlspecialchars($ti['label']) ?><?= $ti['memo'] ? ' · ' . htmlspecialchars($ti['memo']) : '' ?>
+                <?php
+                $time = (string)($m['time'] ?? '');
+                $time = $time !== '99:99' ? $time : '';
+                $durMin = (int)($m['duration_min'] ?? 0);
+                $metaText = $durMin > 0 ? ($durMin . '分') : '';
+                $emoji = '⏰';
+                $chipBg = 'bg-slate-100';
+                $chipText = 'text-slate-700';
+                $title = '';
+                $subText = '';
+                if (($m['type'] ?? '') === 'transport') {
+                    $t = $m['data'] ?? [];
+                    $emoji = '🚇';
+                    $chipBg = 'bg-sky-50';
+                    $chipText = 'text-sky-700';
+                    $title = trim((string)($t['transport_type'] ?? '') . ' ' . (string)($t['route_memo'] ?? ''));
+                    $dep = trim((string)($t['departure'] ?? ''));
+                    $arr = trim((string)($t['arrival'] ?? ''));
+                    $subText = trim($dep . ($arr !== '' ? (' → ' . $arr) : ''));
+                } else {
+                    $t = $m['data'] ?? [];
+                    $title = (string)($t['label'] ?? '');
+                    $subText = (string)($t['memo'] ?? '');
+                }
+                ?>
+                <div class="timeline-view flex items-start justify-between gap-3 px-2">
+                    <div class="min-w-0 flex items-start gap-3">
+                        <div class="w-14 shrink-0 text-right">
+                            <span class="font-mono font-bold text-slate-700"><?= htmlspecialchars($time) ?></span>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2 min-w-0 flex-wrap">
+                                <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-bold <?= $chipBg ?> <?= $chipText ?>">
+                                    <span aria-hidden="true"><?= htmlspecialchars($emoji) ?></span>
+                                    <span><?= htmlspecialchars($metaText !== '' ? $metaText : '—') ?></span>
+                                </span>
+                                <span class="font-bold text-slate-800 truncate"><?= htmlspecialchars($title) ?></span>
+                            </div>
+                            <?php if ($subText !== ''): ?>
+                                <div class="text-sm text-slate-500 mt-0.5 truncate"><?= htmlspecialchars($subText) ?></div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <div class="shrink-0 flex gap-1">
+                        <?php if (($m['type'] ?? '') === 'timeline'): $ti = $m['data']; ?>
+                            <button type="button" class="timeline-edit-btn text-slate-500 text-sm hover:text-slate-700" title="編集" data-id="<?= (int)$ti['id'] ?>"><i class="fa-solid fa-pen text-xs"></i></button>
+                            <form method="post" action="/live_trip/timeline_delete.php" class="inline" onsubmit="return confirm('削除しますか？');">
+                                <input type="hidden" name="id" value="<?= (int)$ti['id'] ?>">
+                                <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
+                                <input type="hidden" name="tab" value="timeline">
+                                <button type="submit" class="text-red-500 text-sm"><i class="fa-solid fa-trash-can"></i></button>
+                            </form>
                         <?php else: $tl = $m['data']; ?>
-                        <i class="fa-solid fa-train text-slate-400 mr-1"></i><?= htmlspecialchars($tl['transport_type'] ?? '') ?> <?= htmlspecialchars($tl['route_memo'] ?? '') ?><?= $tl['departure'] || $tl['arrival'] ? ' (' . htmlspecialchars($tl['departure'] ?? '') . '→' . htmlspecialchars($tl['arrival'] ?? '') . ')' : '' ?>
+                            <button type="button" class="transport-timeline-edit-btn text-slate-500 text-sm hover:text-slate-700" title="時刻を編集"><i class="fa-solid fa-pen text-xs"></i></button>
+                            <form method="post" action="/live_trip/transport_delete.php" class="inline" onsubmit="return confirm('削除しますか？');">
+                                <input type="hidden" name="id" value="<?= (int)$tl['id'] ?>">
+                                <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
+                                <input type="hidden" name="tab" value="timeline">
+                                <button type="submit" class="text-red-500 text-sm"><i class="fa-solid fa-trash-can"></i></button>
+                            </form>
                         <?php endif; ?>
-                    </span>
-                    <span class="flex gap-1">
-                        <?php if ($m['type'] === 'timeline'): $ti = $m['data']; ?>
-                        <button type="button" class="timeline-edit-btn text-slate-500 text-sm hover:text-slate-700" title="編集" data-id="<?= (int)$ti['id'] ?>"><i class="fa-solid fa-pen text-xs"></i></button>
-                        <form method="post" action="/live_trip/timeline_delete.php" class="inline" onsubmit="return confirm('削除しますか？');">
-                            <input type="hidden" name="id" value="<?= (int)$ti['id'] ?>">
-                            <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
-                            <input type="hidden" name="tab" value="timeline">
-                            <button type="submit" class="text-red-500 text-sm"><i class="fa-solid fa-trash-can"></i></button>
-                        </form>
-                        <?php else: $tl = $m['data']; ?>
-                        <button type="button" class="transport-timeline-edit-btn text-slate-500 text-sm hover:text-slate-700" title="時刻を編集"><i class="fa-solid fa-pen text-xs"></i></button>
-                        <form method="post" action="/live_trip/transport_delete.php" class="inline" onsubmit="return confirm('削除しますか？');">
-                            <input type="hidden" name="id" value="<?= (int)$tl['id'] ?>">
-                            <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
-                            <input type="hidden" name="tab" value="timeline">
-                            <button type="submit" class="text-red-500 text-sm"><i class="fa-solid fa-trash-can"></i></button>
-                        </form>
-                        <?php endif; ?>
-                    </span>
+                    </div>
                 </div>
                 <?php if ($m['type'] === 'timeline'): $ti = $m['data']; ?>
                 <form method="post" action="/live_trip/timeline_update.php" class="timeline-edit-form edit-form hidden flex flex-wrap gap-2 items-center p-2 bg-slate-50 rounded mt-1">
@@ -3158,6 +3671,7 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
                 <?php endif; ?>
             </div>
             <?php endforeach; ?>
+            <?php if ($lastDate !== ''): ?></div><?php endif; ?>
             </div>
             </div>
         </div>
@@ -3165,9 +3679,6 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
 
         <div class="lt-tab-panel w-full" data-panel="checklist" id="panel-checklist">
         <div class="space-y-4">
-            <h2 class="font-bold text-slate-700 flex items-center gap-2">
-                <i class="fa-solid fa-list-check text-slate-400"></i> チェックリスト
-            </h2>
             <?php
             $myLists = [];
             try { $myLists = (new \App\LiveTrip\Model\MyListModel())->getListsForSelect(); } catch (\Throwable $e) { }
@@ -3601,12 +4112,8 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
         });
         try { localStorage.setItem('ltTimelineView', view); } catch (e) {}
     }
-    var initialView = 'calendar';
-    try {
-        var saved = localStorage.getItem('ltTimelineView');
-        if (saved === 'calendar' || saved === 'list') initialView = saved;
-    } catch (e) {}
-    setTimelineView(initialView);
+    // デフォルトは常に「日表示」
+    setTimelineView('calendar');
     document.querySelectorAll('.lt-timeline-view-btn').forEach(function(btn){
         btn.addEventListener('click', function(){
             setTimelineView(this.dataset.view || 'calendar');
