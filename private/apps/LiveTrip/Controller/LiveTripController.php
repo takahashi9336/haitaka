@@ -62,10 +62,49 @@ class LiveTripController {
             $t['checklist_checked'] = $c['checked'];
         }
         unset($t);
+        $allTrips = $trips;
 
-        $period = $_GET['period'] ?? 'all';
+        // 一覧の初期表示は「今後の遠征」
+        $period = $_GET['period'] ?? 'upcoming';
         $sort = $_GET['sort'] ?? 'date_desc';
-        $trips = (new TripPlanFilterService())->filterAndSort($trips, (string)$period, (string)$sort);
+        $filterService = new TripPlanFilterService();
+
+        // 初回ロードで今後/過去/未設定をすべて用意（トグルはクライアント側で表示切替）
+        $upcomingTripsView = $filterService->filterAndSort($allTrips, 'upcoming', (string)$sort);
+        $pastTripsView = $filterService->filterAndSort($allTrips, 'past', (string)$sort);
+        $undatedTripsView = array_values(array_filter($allTrips, fn($t) => trim((string)($t['event_date'] ?? '')) === ''));
+
+        // イベント未紐付時に表示する「メインの予定名」（タイムライン先頭ラベル）
+        $firstTimelineLabels = [];
+        try {
+            $firstTimelineLabels = (new TimelineItemModel())->getFirstLabelsByTripPlanIds($tripIds);
+        } catch (\Throwable $e) { /* テーブル未作成時 */ }
+
+        // KPI: 今後の遠征 / 総遠征数 / 累計費用
+        $allTripsSorted = $filterService->filterAndSort($allTrips, 'all', 'date_asc');
+        $upcomingTrips = $filterService->filterAndSort($allTripsSorted, 'upcoming', 'date_asc');
+        $kpiUpcomingCount = count($upcomingTrips);
+        $kpiTotalCount = count($allTripsSorted);
+        $kpiTotalExpense = 0;
+        foreach ($allTripsSorted as $row) {
+            $kpiTotalExpense += (int)($row['total_expense'] ?? 0);
+        }
+
+        // KPI: 次回の遠征まで（表示用）
+        $kpiNextText = '';
+        if (!empty($upcomingTrips)) {
+            $ed = (string)($upcomingTrips[0]['event_date'] ?? '');
+            $range = $filterService->parseEventDateRange($ed);
+            $start = $range['start'] ?? $ed;
+            if ($start !== '') {
+                try {
+                    $d1 = new \DateTime($start);
+                    $d2 = new \DateTime(date('Y-m-d'));
+                    $days = (int)($d1->diff($d2, true)->days ?? 0);
+                    $kpiNextText = $days === 0 ? '次回: 今日' : ($days === 1 ? '次回: 明日' : '次回: あと' . $days . '日');
+                } catch (\Throwable $e) { }
+            }
+        }
 
         $user = $_SESSION['user'];
         require_once __DIR__ . '/../Views/index.php';
