@@ -44,12 +44,13 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                        value="<?= htmlspecialchars($trip['title'] ?? $_POST['title'] ?? '') ?>"
                        placeholder="例: 2026春ツアー 横浜2days遠征"
                        class="w-full border border-slate-200 rounded-lg px-4 py-2">
-                <p class="text-xs text-slate-500 mt-2">イベント未選択でも、遠征プロジェクトとして先に作成できます。</p>
             </div>
 
             <div class="mb-6">
-                <label class="block text-sm font-bold text-slate-600 mb-2">イベント</label>
-                <p class="text-sm text-slate-500 mb-3">任意。複数登録可（2日フェス、前日移動など）</p>
+                <div class="flex items-center justify-between gap-2 mb-3">
+                    <label class="text-sm font-bold text-slate-600">イベント</label>
+                    <span class="text-sm text-slate-500 shrink-0">任意</span>
+                </div>
                 <div id="events-container" class="space-y-4">
                     <?php if ($isEdit && !empty($tripEvents)): ?>
                         <?php foreach ($tripEvents as $i => $ev): ?>
@@ -80,10 +81,10 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 </div>
             </div>
 
-            <div class="flex gap-3">
-                <button type="submit" class="lt-theme-btn text-white px-6 py-2 rounded-lg font-bold"><?= $isEdit ? '更新' : '登録' ?></button>
+            <div class="mt-8 pt-6 border-t border-slate-100 flex flex-wrap justify-end gap-3">
                 <?php $cancelUrl = $isEdit ? '/live_trip/show.php?id=' . (int)$trip['id'] : '/live_trip/'; ?>
                 <a href="<?= htmlspecialchars($cancelUrl) ?>" class="px-6 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">キャンセル</a>
+                <button type="submit" class="lt-theme-btn text-white px-6 py-2 rounded-lg font-bold"><?= $isEdit ? '更新' : '登録' ?></button>
             </div>
         </form>
     </div>
@@ -93,63 +94,164 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
 (function() {
     const hinataEvents = <?= json_encode($hinataEvents ?? []) ?>;
     const ltEvents = <?= json_encode($ltEvents ?? []) ?>;
+    const isEdit = <?= $isEdit ? 'true' : 'false' ?>;
     let eventIdx = <?= $isEdit ? count($tripEvents) : 0 ?>;
+
+    function escapeHtml(s) {
+        const d = document.createElement('div');
+        d.textContent = s || '';
+        return d.innerHTML;
+    }
+
+    /** @param {string|undefined} s */
+    function parseYmdParts(s) {
+        if (!s || typeof s !== 'string') return null;
+        const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (!m) return null;
+        return { y: +m[1], mo: +m[2], d: +m[3] };
+    }
+    function compareEvents(a, b) {
+        const pa = parseYmdParts(a.event_date);
+        const pb = parseYmdParts(b.event_date);
+        if (pa && pb) {
+            if (pa.y !== pb.y) return pa.y - pb.y;
+            if (pa.mo !== pb.mo) return pa.mo - pb.mo;
+            return pa.d - pb.d;
+        }
+        if (pa && !pb) return -1;
+        if (!pa && pb) return 1;
+        return String(a.event_name || '').localeCompare(String(b.event_name || ''), 'ja');
+    }
+
+    /** 日向坂 hn_events.category（絵文字のみ。ラベル文言は出さない） */
+    const HINATA_CATEGORY_EMOJI = {
+        1: '🎵',
+        2: '🤝',
+        3: '👥',
+        4: '💿',
+        5: '📺',
+        6: '⭐',
+        99: '📌'
+    };
+
+    /**
+     * 表示例: 09/05 🎵 ひなたフェスday1
+     * @param {{event_name?:string,event_date?:string,category?:number|string}} e
+     * @param {'hinata'|'generic'} source
+     */
+    function formatEventOptionText(e, source) {
+        const name = e.event_name != null ? String(e.event_name) : '';
+        const p = parseYmdParts(e.event_date);
+        const dateStr = p
+            ? (String(p.mo).padStart(2, '0') + '/' + String(p.d).padStart(2, '0'))
+            : '日付未設定';
+        let badge;
+        if (source === 'hinata') {
+            const c = parseInt(String(e.category != null ? e.category : ''), 10);
+            badge = HINATA_CATEGORY_EMOJI[c] || '📌';
+        } else {
+            badge = '🗓️';
+        }
+        return dateStr + ' ' + badge + ' ' + name;
+    }
+    function groupEventsByMonth(events) {
+        const groups = {};
+        for (const e of events || []) {
+            const p = parseYmdParts(e.event_date);
+            const key = p ? (String(p.y) + '-' + String(p.mo).padStart(2, '0')) : 'z_undated';
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(e);
+        }
+        Object.keys(groups).forEach(function(k) { groups[k].sort(compareEvents); });
+        return groups;
+    }
+    function sortMonthKeys(keys) {
+        const rest = keys.filter(function(k) { return k !== 'z_undated'; }).sort();
+        if (keys.indexOf('z_undated') !== -1) rest.push('z_undated');
+        return rest;
+    }
+    function monthLabelForKey(key) {
+        if (key === 'z_undated') return '日付未設定';
+        const parts = key.split('-');
+        return parts[0] + '年' + String(parseInt(parts[1], 10)) + '月';
+    }
+    /**
+     * @param {Array<{id:number|string,event_name?:string,event_date?:string,category?:number|string}>} events
+     * @param {'hinata'|'generic'} source
+     */
+    function buildEventSelectInnerHtml(events, source) {
+        let html = '<option value="">イベントを選択</option>';
+        const groups = groupEventsByMonth(events);
+        const keys = sortMonthKeys(Object.keys(groups));
+        for (let i = 0; i < keys.length; i++) {
+            const key = keys[i];
+            const list = groups[key] || [];
+            if (!list.length) continue;
+            html += '<optgroup label="' + escapeHtml(monthLabelForKey(key)) + '">';
+            for (let j = 0; j < list.length; j++) {
+                const e = list[j];
+                html += '<option value="' + String(e.id) + '">' + escapeHtml(formatEventOptionText(e, source)) + '</option>';
+            }
+            html += '</optgroup>';
+        }
+        return html;
+    }
 
     function buildEventRow() {
         const id = eventIdx++;
         const div = document.createElement('div');
         div.className = 'event-row flex flex-wrap gap-2 items-start p-3 bg-slate-50 rounded-lg border border-slate-200';
+        const seatImpressionFields = isEdit
+            ? `<div class="flex-1 min-w-[100px]"><input type="text" name="events[${id}][seat_info]" placeholder="座席" class="w-full border border-slate-200 rounded px-2 py-1 text-sm"></div>
+                <div class="flex-1 min-w-[100px]"><input type="text" name="events[${id}][impression]" placeholder="感想" class="w-full border border-slate-200 rounded px-2 py-1 text-sm"></div>`
+            : '';
         div.innerHTML = `
-            <div class="w-full flex flex-wrap gap-2 items-start">
-                <div class="flex rounded border border-slate-200 overflow-hidden shrink-0">
-                    <button type="button" class="event-tab-btn px-3 py-1.5 text-xs font-bold bg-slate-100 text-slate-700" data-type="hinata">日向坂</button>
-                    <button type="button" class="event-tab-btn px-3 py-1.5 text-xs font-bold text-slate-500 hover:bg-slate-50" data-type="generic">汎用</button>
+            <div class="w-full flex flex-col gap-3">
+                <div class="flex items-center gap-2 p-1 rounded-xl bg-slate-100 border border-slate-200 w-full">
+                    <button type="button" class="event-type-toggle flex-1 px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-white" data-type="hinata">🩵日向坂</button>
+                    <button type="button" class="event-type-toggle flex-1 px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-white" data-type="generic">🗓️その他</button>
                 </div>
                 <input type="hidden" name="events[${id}][event_type]" class="event-type-input" value="hinata">
-                <div class="event-select-wrap hinata-select flex-1 min-w-[160px]">
-                    <select name="events[${id}][hn_event_id]" class="hn-event-select w-full border border-slate-200 rounded px-2 py-1 text-sm">
-                        <option value="">イベントを選択</option>
-                        ${(hinataEvents||[]).map(e => '<option value="'+e.id+'">'+escapeHtml(e.event_name)+' ('+e.event_date+')</option>').join('')}
-                    </select>
+                <div class="flex flex-wrap gap-2 items-start w-full">
+                    <div class="event-select-wrap hinata-select flex-1 min-w-[160px]">
+                        <select name="events[${id}][hn_event_id]" class="hn-event-select w-full border border-slate-200 rounded px-2 py-1 text-sm">
+                            ${buildEventSelectInnerHtml(hinataEvents, 'hinata')}
+                        </select>
+                    </div>
+                    <div class="event-select-wrap generic-select flex-1 min-w-[160px]" style="display:none">
+                        <select name="events[${id}][lt_event_id]" class="lt-event-select w-full border border-slate-200 rounded px-2 py-1 text-sm">
+                            ${buildEventSelectInnerHtml(ltEvents, 'generic')}
+                        </select>
+                    </div>
+                    ${seatImpressionFields}
+                    <button type="button" class="event-remove-btn text-red-500 hover:text-red-700 text-sm shrink-0 self-center" title="削除"><i class="fa-solid fa-trash-can"></i></button>
                 </div>
-                <div class="event-select-wrap generic-select flex-1 min-w-[160px]" style="display:none">
-                    <select name="events[${id}][lt_event_id]" class="lt-event-select w-full border border-slate-200 rounded px-2 py-1 text-sm">
-                        <option value="">イベントを選択</option>
-                        ${(ltEvents||[]).map(e => '<option value="'+e.id+'">'+escapeHtml(e.event_name)+' ('+e.event_date+')</option>').join('')}
-                    </select>
-                </div>
-                <div class="flex-1 min-w-[100px]"><input type="text" name="events[${id}][seat_info]" placeholder="座席" class="w-full border border-slate-200 rounded px-2 py-1 text-sm"></div>
-                <div class="flex-1 min-w-[100px]"><input type="text" name="events[${id}][impression]" placeholder="感想" class="w-full border border-slate-200 rounded px-2 py-1 text-sm"></div>
-                <button type="button" class="event-remove-btn text-red-500 hover:text-red-700 text-sm shrink-0" title="削除"><i class="fa-solid fa-trash-can"></i></button>
             </div>
         `;
         const typeInput = div.querySelector('.event-type-input');
-        const tabs = div.querySelectorAll('.event-tab-btn');
+        const typeBtns = div.querySelectorAll('.event-type-toggle');
         const hinataWrap = div.querySelector('.hinata-select');
         const genericWrap = div.querySelector('.generic-select');
         const hnSel = div.querySelector('.hn-event-select');
         const ltSel = div.querySelector('.lt-event-select');
         function setType(t) {
             typeInput.value = t;
-            tabs.forEach(bt => {
-                bt.classList.toggle('bg-slate-100', bt.dataset.type === t);
-                bt.classList.toggle('text-slate-700', bt.dataset.type === t);
-                bt.classList.toggle('text-slate-500', bt.dataset.type !== t);
+            typeBtns.forEach(bt => {
+                const active = bt.dataset.type === t;
+                bt.classList.toggle('bg-white', active);
+                bt.classList.toggle('shadow-sm', active);
+                bt.classList.toggle('text-slate-800', active);
+                bt.classList.toggle('text-slate-600', !active);
             });
             hinataWrap.style.display = t === 'hinata' ? 'block' : 'none';
             genericWrap.style.display = t === 'generic' ? 'block' : 'none';
             hnSel.name = t === 'hinata' ? `events[${id}][hn_event_id]` : '';
             ltSel.name = t === 'generic' ? `events[${id}][lt_event_id]` : '';
         }
-        tabs.forEach(bt => bt.addEventListener('click', () => setType(bt.dataset.type)));
+        typeBtns.forEach(bt => bt.addEventListener('click', () => setType(bt.dataset.type)));
         div.querySelector('.event-remove-btn').addEventListener('click', () => div.remove());
         setType('hinata');
         return div;
-    }
-    function escapeHtml(s) {
-        const d = document.createElement('div');
-        d.textContent = s || '';
-        return d.innerHTML;
     }
 
     document.getElementById('add-event-btn')?.addEventListener('click', function() {
