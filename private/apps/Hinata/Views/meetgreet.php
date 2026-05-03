@@ -759,17 +759,45 @@ $dayNames = ['日','月','火','水','木','金','土'];
         if (this.value !== 'other') otherEl.value = '';
     };
 
-    // 保存済みのアコーディオン状態を復元
+    // 保存済みのアコーディオン状態を復元 + ダッシュボード等からのフォーカス
+    function mgOpenDateAccordion(dateStr) {
+        const el = document.getElementById('content-' + dateStr);
+        const icon = document.getElementById('icon-' + dateStr);
+        if (el && el.classList.contains('hidden')) {
+            el.classList.remove('hidden');
+            if (icon) icon.classList.add('rotate-180');
+        }
+    }
+
     window.onload = () => {
         const opened = JSON.parse(localStorage.getItem('mg_opened_dates') || '[]');
         opened.forEach(date => {
-            const el = document.getElementById('content-' + date);
-            const icon = document.getElementById('icon-' + date);
-            if (el && el.classList.contains('hidden')) {
-                el.classList.remove('hidden');
-                if (icon) icon.classList.add('rotate-180');
-            }
+            mgOpenDateAccordion(date);
         });
+
+        const p = new URLSearchParams(window.location.search);
+        const focusSlot = (p.get('focus_slot_id') || '').replace(/\D/g, '');
+        const focusDate = p.get('focus_event_date') || '';
+        if (focusSlot) {
+            setTimeout(() => {
+                const row = document.querySelector('.slot-row[data-slot-id="' + focusSlot + '"]');
+                if (row) {
+                    const grp = row.closest('[data-date-group]');
+                    if (grp) mgOpenDateAccordion(grp.getAttribute('data-date-group'));
+                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    row.classList.add('ring-2', 'ring-sky-400', 'bg-sky-50/70');
+                    setTimeout(() => row.classList.remove('ring-2', 'ring-sky-400', 'bg-sky-50/70'), 2400);
+                }
+                window.history.replaceState({}, '', '/hinata/meetgreet.php');
+            }, 400);
+        } else if (/^\d{4}-\d{2}-\d{2}$/.test(focusDate)) {
+            setTimeout(() => {
+                mgOpenDateAccordion(focusDate);
+                const grp = document.querySelector('[data-date-group="' + focusDate + '"]');
+                if (grp) grp.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                window.history.replaceState({}, '', '/hinata/meetgreet.php');
+            }, 400);
+        }
     };
     </script>
 </body>

@@ -117,6 +117,7 @@ require_once __DIR__ . '/../../private/components/theme_from_session.php';
                                 $all[] = [
                                     'channel_title' => (string)($ch['channel_title'] ?: $ch['input_spec']),
                                     'mode_label' => (string)($ch['mode_label'] ?? ''),
+                                    'mode' => (string)($ch['mode'] ?? 'video'),
                                     'video' => $v,
                                 ];
                             }
@@ -126,59 +127,119 @@ require_once __DIR__ . '/../../private/components/theme_from_session.php';
                             $bt = strtotime((string)($b['video']['published_at'] ?? '')) ?: 0;
                             return $bt <=> $at;
                         });
+                        $allShorts = array_values(array_filter($all, static function (array $r): bool {
+                            return ($r['mode'] ?? '') === 'short';
+                        }));
+                        $allRegular = array_values(array_filter($all, static function (array $r): bool {
+                            return ($r['mode'] ?? '') !== 'short';
+                        }));
                     ?>
 
                     <?php if ($view !== 'grouped'): ?>
                         <?php if (empty($all)): ?>
                             <p class="text-sm text-slate-500">表示できる動画がありません。</p>
                         <?php else: ?>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                                <?php foreach ($all as $row):
-                                    $v = $row['video'];
-                                    $videoForModal = [
-                                        'platform' => 'youtube',
-                                        'media_key' => $v['video_id'] ?? '',
-                                        'title' => $v['title'] ?? '',
-                                        'upload_date' => $v['published_at'] ?? '',
-                                        'category' => $row['channel_title'] . ($row['mode_label'] !== '' ? ' / ' . $row['mode_label'] : ''),
-                                        'description' => '',
-                                    ];
-                                    $dataVideo = htmlspecialchars(json_encode($videoForModal, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
-                                    $thumb = htmlspecialchars($v['thumbnail_url'] ?? '', ENT_QUOTES, 'UTF-8');
-                                ?>
-                                    <article
-                                        class="yt-focus-card group/card cursor-pointer rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
-                                        tabindex="0"
-                                        role="button"
-                                        data-video="<?= $dataVideo ?>"
-                                        onclick="youtubeFocusOpenModal(this, event)"
-                                        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();youtubeFocusOpenModal(this,event);}"
-                                        aria-label="再生"
-                                    >
-                                        <div class="relative aspect-video rounded-xl overflow-hidden bg-slate-200 shadow-sm ring-1 ring-slate-200/80">
-                                            <img src="<?= $thumb ?>" alt="" class="w-full h-full object-cover group-hover/card:scale-[1.02] transition-transform duration-200" loading="lazy" width="320" height="180">
-                                            <span class="absolute inset-0 flex items-center justify-center bg-black/25 opacity-0 group-hover/card:opacity-100 transition-opacity pointer-events-none">
-                                                <i class="fa-solid fa-circle-play text-white text-4xl drop-shadow-lg"></i>
-                                            </span>
+                            <div class="space-y-10">
+                                <?php if (!empty($allShorts)): ?>
+                                    <section aria-label="Shorts">
+                                        <div class="flex flex-row flex-nowrap gap-4 overflow-x-auto pb-2 -mx-1 px-1 scroll-smooth [scrollbar-width:thin]">
+                                            <?php foreach ($allShorts as $row):
+                                                $v = $row['video'];
+                                                $videoForModal = [
+                                                    'platform' => 'youtube',
+                                                    'media_key' => $v['video_id'] ?? '',
+                                                    'title' => $v['title'] ?? '',
+                                                    'upload_date' => $v['published_at'] ?? '',
+                                                    'category' => $row['channel_title'] . ($row['mode_label'] !== '' ? ' / ' . $row['mode_label'] : ''),
+                                                    'description' => '',
+                                                ];
+                                                $dataVideo = htmlspecialchars(json_encode($videoForModal, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
+                                                $thumb = htmlspecialchars($v['thumbnail_url'] ?? '', ENT_QUOTES, 'UTF-8');
+                                            ?>
+                                                <article
+                                                    class="yt-focus-card group/card shrink-0 w-[min(42vw,11rem)] cursor-pointer rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
+                                                    tabindex="0"
+                                                    role="button"
+                                                    data-video="<?= $dataVideo ?>"
+                                                    onclick="youtubeFocusOpenModal(this, event)"
+                                                    onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();youtubeFocusOpenModal(this,event);}"
+                                                    aria-label="再生"
+                                                >
+                                                    <div class="relative aspect-[9/16] rounded-xl overflow-hidden bg-slate-200 shadow-sm ring-1 ring-slate-200/80">
+                                                        <img src="<?= $thumb ?>" alt="" class="w-full h-full object-cover group-hover/card:scale-[1.02] transition-transform duration-200" loading="lazy" width="180" height="320">
+                                                        <span class="absolute inset-0 flex items-center justify-center bg-black/25 opacity-0 group-hover/card:opacity-100 transition-opacity pointer-events-none">
+                                                            <i class="fa-solid fa-circle-play text-white text-3xl drop-shadow-lg"></i>
+                                                        </span>
+                                                    </div>
+                                                    <div class="mt-2 max-w-[min(42vw,11rem)]">
+                                                        <p class="text-[10px] text-slate-500 font-semibold truncate">
+                                                            <?= htmlspecialchars($row['channel_title']) ?>
+                                                        </p>
+                                                        <h3 class="text-xs font-semibold text-slate-900 yt-line-clamp-2 leading-snug mt-0.5 group-hover/card:text-red-600 transition-colors">
+                                                            <?= htmlspecialchars($v['title'] ?? '') ?>
+                                                        </h3>
+                                                        <?php if (!empty($v['published_at'])): ?>
+                                                            <p class="text-[10px] text-slate-400 mt-0.5">
+                                                                <?= htmlspecialchars(date('Y/m/d H:i', strtotime((string) $v['published_at']))) ?>
+                                                            </p>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </article>
+                                            <?php endforeach; ?>
                                         </div>
-                                        <div class="mt-2.5">
-                                            <p class="text-[11px] text-slate-500 font-semibold truncate">
-                                                <?= htmlspecialchars($row['channel_title']) ?>
-                                                <?php if ($row['mode_label'] !== ''): ?>
-                                                    <span class="text-slate-400"> / <?= htmlspecialchars($row['mode_label']) ?></span>
-                                                <?php endif; ?>
-                                            </p>
-                                            <h3 class="text-sm font-semibold text-slate-900 yt-line-clamp-2 leading-snug mt-1 group-hover/card:text-red-600 transition-colors">
-                                                <?= htmlspecialchars($v['title'] ?? '') ?>
-                                            </h3>
-                                            <?php if (!empty($v['published_at'])): ?>
-                                                <p class="text-[11px] text-slate-400 mt-1">
-                                                    <?= htmlspecialchars(date('Y/m/d H:i', strtotime((string) $v['published_at']))) ?>
-                                                </p>
-                                            <?php endif; ?>
-                                        </div>
-                                    </article>
-                                <?php endforeach; ?>
+                                    </section>
+                                <?php endif; ?>
+
+                                <?php if (!empty($allRegular)): ?>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                                        <?php foreach ($allRegular as $row):
+                                            $v = $row['video'];
+                                            $videoForModal = [
+                                                'platform' => 'youtube',
+                                                'media_key' => $v['video_id'] ?? '',
+                                                'title' => $v['title'] ?? '',
+                                                'upload_date' => $v['published_at'] ?? '',
+                                                'category' => $row['channel_title'] . ($row['mode_label'] !== '' ? ' / ' . $row['mode_label'] : ''),
+                                                'description' => '',
+                                            ];
+                                            $dataVideo = htmlspecialchars(json_encode($videoForModal, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8');
+                                            $thumb = htmlspecialchars($v['thumbnail_url'] ?? '', ENT_QUOTES, 'UTF-8');
+                                        ?>
+                                            <article
+                                                class="yt-focus-card group/card cursor-pointer rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
+                                                tabindex="0"
+                                                role="button"
+                                                data-video="<?= $dataVideo ?>"
+                                                onclick="youtubeFocusOpenModal(this, event)"
+                                                onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();youtubeFocusOpenModal(this,event);}"
+                                                aria-label="再生"
+                                            >
+                                                <div class="relative aspect-video rounded-xl overflow-hidden bg-slate-200 shadow-sm ring-1 ring-slate-200/80">
+                                                    <img src="<?= $thumb ?>" alt="" class="w-full h-full object-cover group-hover/card:scale-[1.02] transition-transform duration-200" loading="lazy" width="320" height="180">
+                                                    <span class="absolute inset-0 flex items-center justify-center bg-black/25 opacity-0 group-hover/card:opacity-100 transition-opacity pointer-events-none">
+                                                        <i class="fa-solid fa-circle-play text-white text-4xl drop-shadow-lg"></i>
+                                                    </span>
+                                                </div>
+                                                <div class="mt-2.5">
+                                                    <p class="text-[11px] text-slate-500 font-semibold truncate">
+                                                        <?= htmlspecialchars($row['channel_title']) ?>
+                                                        <?php if ($row['mode_label'] !== ''): ?>
+                                                            <span class="text-slate-400"> / <?= htmlspecialchars($row['mode_label']) ?></span>
+                                                        <?php endif; ?>
+                                                    </p>
+                                                    <h3 class="text-sm font-semibold text-slate-900 yt-line-clamp-2 leading-snug mt-1 group-hover/card:text-red-600 transition-colors">
+                                                        <?= htmlspecialchars($v['title'] ?? '') ?>
+                                                    </h3>
+                                                    <?php if (!empty($v['published_at'])): ?>
+                                                        <p class="text-[11px] text-slate-400 mt-1">
+                                                            <?= htmlspecialchars(date('Y/m/d H:i', strtotime((string) $v['published_at']))) ?>
+                                                        </p>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </article>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         <?php endif; ?>
                     <?php else: ?>

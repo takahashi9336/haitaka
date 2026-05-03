@@ -65,6 +65,27 @@ class TripPlanModel extends BaseModel {
     }
 
     /**
+     * 日向坂イベントに紐づく遠征（参加計画）のうち、作成日が最も新しい trip の ID。
+     * 複数ある場合は created_at DESC で先頭1件。
+     */
+    public function findLatestTripIdForHinataEvent(int $userId, int $hnEventId): ?int {
+        if ($userId <= 0 || $hnEventId <= 0) {
+            return null;
+        }
+        $sql = "SELECT tp.id
+                FROM {$this->table} tp
+                JOIN lt_trip_members m ON m.trip_plan_id = tp.id AND m.user_id = :uid
+                JOIN lt_trip_plan_events tpe ON tpe.trip_plan_id = tp.id
+                WHERE tpe.event_type = 'hinata' AND tpe.hn_event_id = :eid
+                ORDER BY tp.created_at DESC, tp.id DESC
+                LIMIT 1";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute(['uid' => $userId, 'eid' => $hnEventId]);
+        $v = $stmt->fetchColumn();
+        return $v !== false ? (int) $v : null;
+    }
+
+    /**
      * 遠征の表示用情報を events から補完
      * event_name: 複数なら「A・B」、event_date: 範囲または最初、event_place: 会場名の重複除去後を「・」で結合
      */
