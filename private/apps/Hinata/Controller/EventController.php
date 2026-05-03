@@ -78,7 +78,28 @@ class EventController {
         $eventModel = new EventModel();
 
         $members = $memberModel->getActiveMembersWithColors();
-        $events = $eventModel->getEventsForCalendar(date('Y-01-01'), date('Y-12-31'));
+        $y = (int)date('Y');
+        $listFrom = ($y - 1) . '-01-01';
+        $listTo = ($y + 1) . '-12-31';
+        $allForRecent = $eventModel->getEventsForCalendar($listFrom, $listTo);
+        $today = date('Y-m-d');
+        $recentUpcoming = [];
+        $recentPast = [];
+        foreach ($allForRecent as $row) {
+            $d = $row['event_date'] ?? '';
+            if ($d === '' || $d < $today) {
+                $recentPast[] = $row;
+            } else {
+                $recentUpcoming[] = $row;
+            }
+        }
+        usort($recentUpcoming, static function ($a, $b) {
+            return strcmp($a['event_date'] ?? '', $b['event_date'] ?? '');
+        });
+        usort($recentPast, static function ($a, $b) {
+            return strcmp($b['event_date'] ?? '', $a['event_date'] ?? '');
+        });
+        $miniCalEvents = $eventModel->getEventsForCalendar(($y - 1) . '-01-01', ($y + 1) . '-12-31');
 
         $user = $_SESSION['user'];
         require_once __DIR__ . '/../Views/event_admin.php';
