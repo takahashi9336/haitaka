@@ -66,7 +66,7 @@ class TripPlanModel extends BaseModel {
 
     /**
      * 遠征の表示用情報を events から補完
-     * event_name: 複数なら「A・B」、event_date: 範囲または最初、event_place: 最初の会場
+     * event_name: 複数なら「A・B」、event_date: 範囲または最初、event_place: 会場名の重複除去後を「・」で結合
      */
     public static function enrichTripWithEvents(array $trip, array $events): array {
         $trip['events'] = $events;
@@ -82,7 +82,14 @@ class TripPlanModel extends BaseModel {
         sort($dates);
         $trip['event_name'] = implode('・', $names) ?: null;
         $trip['event_date'] = count($dates) > 1 ? ($dates[0] . '〜' . $dates[count($dates) - 1]) : ($dates[0] ?? null);
-        $trip['event_place'] = $events[0]['event_place'] ?? null;
+        $placeOrdered = [];
+        foreach ($events as $e) {
+            $p = trim((string)($e['event_place'] ?? ''));
+            if ($p !== '' && !in_array($p, $placeOrdered, true)) {
+                $placeOrdered[] = $p;
+            }
+        }
+        $trip['event_place'] = !empty($placeOrdered) ? implode('・', $placeOrdered) : null;
         $trip['hn_event_place'] = $events[0]['hn_event_place'] ?? null;
         return $trip;
     }

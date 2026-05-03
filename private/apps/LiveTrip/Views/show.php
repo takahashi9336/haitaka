@@ -15,6 +15,31 @@ $eventPlaceForArea = $eventPlaceAddress !== '' ? $eventPlaceAddress : (string)$e
 $eventPlaceForMaps = $eventPlaceAddress !== '' ? $eventPlaceAddress : (string)$eventPlace;
 $eventDates = array_values(array_unique(array_filter(array_column($trip['events'] ?? [], 'event_date'))));
 sort($eventDates);
+
+/** @var list<array{label:string,address:string,lat:string,lng:string}> 紐づけイベントごとの会場（同一施設+住所は1枚にまとめる） */
+$eventVenueCards = [];
+$seenVenueSig = [];
+foreach (($trip['events'] ?? []) as $ev) {
+    $pl = trim((string)($ev['event_place'] ?? $ev['hn_event_place'] ?? ''));
+    if ($pl === '') {
+        continue;
+    }
+    $addr = trim((string)($ev['hn_event_place_address'] ?? '')) ?: trim((string)($ev['venue_address'] ?? ''));
+    $sig = md5(mb_strtolower($pl . "\0" . $addr));
+    if (isset($seenVenueSig[$sig])) {
+        continue;
+    }
+    $seenVenueSig[$sig] = true;
+    $lat = trim((string)($ev['hn_venue_latitude'] ?? '')) ?: trim((string)($ev['venue_latitude'] ?? ''));
+    $lng = trim((string)($ev['hn_venue_longitude'] ?? '')) ?: trim((string)($ev['venue_longitude'] ?? ''));
+    $eventVenueCards[] = [
+        'label' => $pl,
+        'address' => $addr,
+        'lat' => $lat,
+        'lng' => $lng,
+    ];
+}
+
 // イベント日付ごとの開場・開演（タイムライン項目から紐づけ）
 $eventDoorCurtain = [];
 foreach ($mergedTimeline ?? [] as $m) {
@@ -93,6 +118,33 @@ try {
 // Google Maps JavaScript API（キーはリファラ制限運用を前提）
 $mapsJsApiKey = (string)($_ENV['GOOGLE_MAPS_API_KEY'] ?? '');
 
+// 各会場の座標が無い場合のみ Geocode（複数イベント・会場が異なる場合の埋め込み地図用）
+if ($mapsJsApiKey !== '' && !empty($eventVenueCards)) {
+    try {
+        $geoSvc = new \App\LiveTrip\Service\MapsGeocodeService();
+        foreach (array_keys($eventVenueCards) as $evi) {
+            $lat0 = trim((string)($eventVenueCards[$evi]['lat'] ?? ''));
+            $lng0 = trim((string)($eventVenueCards[$evi]['lng'] ?? ''));
+            if ($lat0 !== '' && $lng0 !== '') {
+                continue;
+            }
+            $q = trim((string)$eventVenueCards[$evi]['address']) !== ''
+                ? trim((string)$eventVenueCards[$evi]['address'])
+                : trim((string)$eventVenueCards[$evi]['label']);
+            if ($q === '') {
+                continue;
+            }
+            $geo = $geoSvc->geocode($q);
+            if ($geo && !empty($geo['latitude']) && !empty($geo['longitude'])) {
+                $eventVenueCards[$evi]['lat'] = (string)$geo['latitude'];
+                $eventVenueCards[$evi]['lng'] = (string)$geo['longitude'];
+            }
+        }
+    } catch (\Throwable $e) {
+        // 表示用なので握りつぶし
+    }
+}
+
 // 「次の予定」（モバイルダッシュボード用）
 $nextItem = null;
 $nextNavLabel = '';
@@ -142,21 +194,22 @@ try {
     // 表示用なので握りつぶし
 }
 
-// 共通Mapへ渡すデータ
+// 共通Mapへ渡すデータ（代表点：座標が取れた最初の会場）
 $venue = null;
-if ($firstEv) {
-    $lat = trim((string)($firstEv['venue_latitude'] ?? ''));
-    $lng = trim((string)($firstEv['venue_longitude'] ?? ''));
+foreach ($eventVenueCards as $vc0) {
+    $lat = trim((string)($vc0['lat'] ?? ''));
+    $lng = trim((string)($vc0['lng'] ?? ''));
     if ($lat !== '' && $lng !== '') {
         $venue = [
             'id' => 'venue',
-            'name' => (string)($firstEv['event_place'] ?? $firstEv['hn_event_place'] ?? $eventPlace ?? '会場'),
+            'name' => (string)($vc0['label'] ?? '会場'),
             'lat' => (float)$lat,
             'lng' => (float)$lng,
         ];
+        break;
     }
 }
-// 会場座標が無い場合は、会場名から最低限の補完（当日利用のUX優先）
+// 会場がまだ取れない場合のフォールバック（列挙した会場名の連結を1クエリに）
 if ($venue === null && $eventPlace !== '' && $mapsJsApiKey !== '') {
     try {
         $geo = (new \App\LiveTrip\Service\MapsGeocodeService())->geocode($eventPlace);
@@ -1951,8 +2004,8 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
                 'sightseeing' => '☀️',
                 'other' => '📌',
             ];
-            $hasVenueDestination = (!empty($eventPlaceForArea) && is_string($eventPlaceForArea) && trim($eventPlaceForArea) !== '');
-            $destinationTotal = (int)count($destinations ?? []) + ($hasVenueDestination ? 1 : 0);
+            $hasVenueDestination = !empty($eventVenueCards);
+            $destinationTotal = (int)count($destinations ?? []) + (int)count($eventVenueCards);
             $destinationCountsByType = [];
             $prefSet = [];
             $prefList = [
@@ -1967,12 +2020,14 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
             ];
             // 会場（イベント開催地）も目的地KPIに含める（編集不可・DB未登録）
             if ($hasVenueDestination) {
-                $destinationCountsByType['venue'] = 1;
-                $venueText = trim((string)$eventPlaceForArea);
-                foreach ($prefList as $pref) {
-                    if ($venueText !== '' && mb_strpos($venueText, $pref) !== false) {
-                        $prefSet[$pref] = true;
-                        break;
+                $destinationCountsByType['venue'] = count($eventVenueCards);
+                foreach ($eventVenueCards as $vrow) {
+                    $venueText = trim((string)($vrow['address'] ?? '')) ?: trim((string)($vrow['label'] ?? ''));
+                    foreach ($prefList as $pref) {
+                        if ($venueText !== '' && mb_strpos($venueText, $pref) !== false) {
+                            $prefSet[$pref] = true;
+                            break;
+                        }
                     }
                 }
             }
@@ -2069,13 +2124,15 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
                             ];
                         ?>
 
-                        <?php if (!empty($eventPlace) && is_string($eventPlace)): ?>
-                        <?php
-                            $venueLabel = trim($eventPlace);
-                            $venueAddress = $eventPlaceAddress !== '' ? $eventPlaceAddress : '';
-                            $venueMapsUrl = $eventPlaceForMaps !== '#' ? $eventPlaceForMaps : '#';
-                            $venueMapTarget = $venueAddress !== '' ? $venueAddress : $venueLabel;
-                            $venueMapSearchUrl = $venueMapTarget !== '' ? ('https://www.google.com/maps/search/?api=1&query=' . rawurlencode($venueMapTarget)) : '#';
+                        <?php if (!empty($eventVenueCards)): ?>
+                        <?php foreach ($eventVenueCards as $vc):
+                            $venueLabel = trim((string)($vc['label'] ?? ''));
+                            $venueAddress = trim((string)($vc['address'] ?? ''));
+                            $vcLat = trim((string)($vc['lat'] ?? ''));
+                            $vcLng = trim((string)($vc['lng'] ?? ''));
+                            $venueHasCoords = ($vcLat !== '' && $vcLng !== '');
+                            $mapQuery = $venueAddress !== '' ? $venueAddress : $venueLabel;
+                            $venueMapsUrl = $mapQuery !== '' ? ('https://www.google.com/maps/search/?api=1&query=' . rawurlencode($mapQuery)) : '#';
                             $venueDirTarget = $venueAddress !== '' ? $venueAddress : $venueLabel;
                             $venueDirUrl = $venueDirTarget !== '' ? ('https://www.google.com/maps/dir/?api=1&destination=' . rawurlencode($venueDirTarget) . '&travelmode=transit') : '#';
                             $b = $destBadgeMap['venue'];
@@ -2099,12 +2156,12 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
                                     <div class="mt-2 expense-hero__eyebrow truncate" title="<?= htmlspecialchars($venueAddress) ?>">📮<?= htmlspecialchars($venueAddress) ?></div>
                                 <?php endif; ?>
                                 <div class="mt-3 flex items-center gap-2 flex-wrap text-xs font-bold">
-                                    <?php if ($venue !== null): ?>
+                                    <?php if ($venueHasCoords): ?>
                                         <button type="button"
                                                 class="js-destination-map-focus inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
-                                                data-lat="<?= htmlspecialchars((string)$venue['lat'], ENT_QUOTES) ?>"
-                                                data-lng="<?= htmlspecialchars((string)$venue['lng'], ENT_QUOTES) ?>"
-                                                data-name="<?= htmlspecialchars((string)$venueLabel, ENT_QUOTES) ?>">
+                                                data-lat="<?= htmlspecialchars($vcLat, ENT_QUOTES) ?>"
+                                                data-lng="<?= htmlspecialchars($vcLng, ENT_QUOTES) ?>"
+                                                data-name="<?= htmlspecialchars($venueLabel, ENT_QUOTES) ?>">
                                             <span aria-hidden="true">🗺️</span><span>Map</span>
                                         </button>
                                     <?php else: ?>
@@ -2126,6 +2183,7 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
                                 </div>
                             </div>
                         </div>
+                        <?php endforeach; ?>
                         <?php endif; ?>
 
                         <?php foreach ($destinations ?? [] as $d):
@@ -2261,7 +2319,7 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
                         </div>
                         <?php endforeach; ?>
 
-                        <?php if (empty($destinations ?? []) && empty($eventPlace)): ?>
+                        <?php if (empty($destinations ?? []) && empty($eventVenueCards)): ?>
                             <div class="col-span-full text-sm text-slate-500">目的地がありません。</div>
                         <?php endif; ?>
                     </div>
