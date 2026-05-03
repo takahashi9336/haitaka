@@ -11,9 +11,9 @@ use Core\BaseModel;
 class EventModel extends BaseModel {
     protected string $table = 'hn_events';
     protected array $fields = [
-        'id', 'event_name', 'event_date', 'category', 'mg_rounds', 'event_place', 'event_info', 'event_url',
+        'id', 'event_name', 'event_date', 'category', 'series_id', 'mg_rounds', 'event_place', 'event_info', 'event_url',
         'event_place_address', 'latitude', 'longitude', 'place_id',
-        'event_hashtag', 'collaboration_urls',
+        'event_hashtag', 'collaboration_urls', 'related_links',
         'updated_at', 'update_user'
     ];
 
@@ -23,12 +23,21 @@ class EventModel extends BaseModel {
     protected bool $isUserIsolated = false;
 
     public function getEventsForCalendar(string $start, string $end): array {
-        $sql = "SELECT e.*, s.status as my_status, s.seat_info as seat_info, s.impression as impression,
-                       ma.media_key as video_key
+        $sql = "SELECT e.*, hm_series.name AS series_name,
+                       s.status as my_status, s.seat_info as seat_info, s.impression as impression,
+                       ma.media_key as video_key,
+                       evm.member_ids_csv AS member_ids_csv
                 FROM {$this->table} e
+                LEFT JOIN hn_event_series hm_series ON e.series_id = hm_series.id
                 LEFT JOIN hn_user_events_status s ON e.id = s.event_id AND s.user_id = :uid
                 LEFT JOIN hn_event_movies em ON e.id = em.event_id
                 LEFT JOIN com_media_assets ma ON em.movie_id = ma.id AND ma.platform = 'youtube'
+                LEFT JOIN (
+                    SELECT event_id,
+                           GROUP_CONCAT(DISTINCT member_id ORDER BY member_id) AS member_ids_csv
+                    FROM hn_event_members
+                    GROUP BY event_id
+                ) evm ON evm.event_id = e.id
                 WHERE e.event_date BETWEEN :start AND :end
                 ORDER BY e.event_date ASC";
         
