@@ -458,9 +458,6 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
                 </div>
 
                 <div class="flex items-center gap-2 flex-wrap justify-start md:justify-end">
-                    <a href="/live_trip/shiori.php?id=<?= (int)$trip['id'] ?>" class="px-4 py-2 lt-theme-btn text-white rounded-lg text-sm font-bold whitespace-nowrap inline-flex items-center gap-2" target="_blank" rel="noopener">
-                        <i class="fa-solid fa-book"></i>しおり
-                    </a>
                     <a href="/live_trip/edit.php?id=<?= (int)$trip['id'] ?>" class="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold hover:bg-slate-50 whitespace-nowrap">
                         編集
                     </a>
@@ -2642,37 +2639,61 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
         }
         ?>
         <div class="space-y-4">
-            <div class="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
-                <p class="text-sm text-slate-600 mb-3">移動を追加する際に交通費も登録できます。費用タブで集計を確認できます。</p>
-                <details class="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                    <summary class="cursor-pointer text-sm font-bold text-slate-600">自宅を登録（ユーザー別）</summary>
-                    <div class="mt-3">
-                        <form method="post" action="/live_trip/home_place_store.php" class="space-y-2">
-                            <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
-                            <input type="hidden" name="label" value="自宅">
-                            <input type="hidden" name="place_id" id="home-place-id" value="<?= htmlspecialchars((string)($homePlace['place_id'] ?? '')) ?>">
-                            <input type="hidden" name="latitude" id="home-lat" value="<?= htmlspecialchars((string)($homePlace['latitude'] ?? '')) ?>">
-                            <input type="hidden" name="longitude" id="home-lng" value="<?= htmlspecialchars((string)($homePlace['longitude'] ?? '')) ?>">
-                            <input type="hidden" name="address" id="home-address-hidden" value="<?= htmlspecialchars((string)($homePlace['address'] ?? '')) ?>">
-                            <div class="relative">
-                                <label class="block text-xs font-bold text-slate-500 mb-1">住所 / 施設名</label>
-                                <input type="text" id="home-address-input" class="w-full border border-slate-200 rounded px-3 py-2 text-sm" autocomplete="off"
-                                       placeholder="例: 渋谷駅 / 東京都渋谷区..." value="<?= htmlspecialchars((string)($homePlace['address'] ?? '')) ?>">
-                                <div id="home-address-suggestions" class="hidden absolute left-0 right-0 top-full mt-0.5 z-20 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"></div>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <button type="submit" class="lt-theme-btn text-white px-3 py-2 rounded text-sm">自宅を保存</button>
-                                <?php if (!empty($homePlace['address'])): ?>
-                                    <span class="text-xs text-slate-500">現在: <?= htmlspecialchars((string)$homePlace['address']) ?></span>
-                                <?php endif; ?>
-                            </div>
-                            <p class="text-xs text-slate-500">「登録済みから選ぶ」に自宅が表示されます。</p>
-                        </form>
+            <?php
+            $transportCount = count($transportLegs ?? []);
+            $transportTotalAmount = 0;
+            foreach ($transportLegs ?? [] as $tl) { $transportTotalAmount += (int)($tl['amount'] ?? 0); }
+            ?>
+            <section class="bg-white border border-slate-200 rounded-xl shadow-sm p-5 sm:p-6">
+                <div class="flex items-start sm:items-center justify-between gap-4 flex-wrap">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-0 flex-1">
+                        <div>
+                            <div class="text-xs font-black text-slate-500">🚇 登録された移動</div>
+                            <div class="mt-1 text-2xl font-black text-slate-900"><?= (int)$transportCount ?><span class="text-sm font-bold text-slate-500 ml-1">件</span></div>
+                        </div>
+                        <div>
+                            <div class="text-xs font-black text-slate-500">💴 交通費合計</div>
+                            <div class="mt-1 text-2xl font-black text-slate-900">¥<?= number_format((int)$transportTotalAmount) ?></div>
+                        </div>
                     </div>
-                </details>
+                    <div class="shrink-0">
+                        <button type="button" id="transport-add-focus-btn" class="lt-theme-btn text-white px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap inline-flex items-center gap-2">
+                            <i class="fa-solid fa-plus"></i>＋移動を追加
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,6fr)_minmax(0,4fr)] gap-4 items-start">
+            <div id="transport-add-card" class="bg-white border border-slate-200 rounded-xl shadow-sm lg:order-2 p-5 sm:p-6 flex flex-col">
+                <button type="button" class="w-full flex items-center justify-between gap-3" id="transport-side-form-toggle" aria-expanded="true">
+                    <div class="min-w-0 text-left">
+                        <div class="text-base font-normal text-slate-900" id="transport-side-form-title">＋ 移動を追加</div>
+                    </div>
+                    <div class="flex items-center gap-3 shrink-0">
+                        <span class="hidden text-xs font-black text-slate-600 hover:text-slate-800" id="transport-side-form-cancel">
+                            <i class="fa-solid fa-xmark"></i> 編集をやめる
+                        </span>
+                        <i class="fa-solid fa-chevron-down text-slate-400" id="transport-side-form-chevron" aria-hidden="true"></i>
+                    </div>
+                </button>
+
+                <div class="mt-4 flex flex-col flex-1" id="transport-side-form-body">
+                <div class="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 hidden" id="transport-edit-banner">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="text-sm font-black text-slate-700"><i class="fa-solid fa-pen mr-1 text-slate-500"></i>編集中</div>
+                        <button type="button" id="transport-edit-cancel" class="text-xs font-bold text-slate-600 hover:text-slate-800">キャンセル</button>
+                    </div>
+                </div>
                 <form id="transport-add-form" method="post" action="/live_trip/transport_store.php" class="space-y-3">
                 <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
                 <input type="hidden" name="tab" value="transport">
+                <input type="hidden" name="id" id="transport-edit-id" value="">
+                <input type="hidden" name="amount" id="transport-edit-amount" value="">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">移動内容</label>
+                    <input type="text" id="transport-route-memo" name="route_memo" class="w-full border border-slate-200 rounded px-3 py-2 text-sm" placeholder="東京→名古屋 のぞみ、名古屋→会場 在来線">
+                </div>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div>
                         <label class="block text-xs font-bold text-slate-500 mb-1">出発日</label>
@@ -2683,56 +2704,68 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
                         <input type="time" id="transport-scheduled-time" name="scheduled_time" class="w-full border border-slate-200 rounded px-3 py-2 text-sm" title="タイムラインに表示・Google Mapで検索の出発時刻">
                     </div>
                 </div>
-                <?php if (!empty($transportCandidates)): ?>
-                <div class="border border-slate-200 rounded-lg p-3 bg-slate-50">
-                    <button type="button" id="transport-quick-select-toggle" class="text-sm font-bold text-slate-600 hover:text-slate-800 flex items-center gap-1">
-                        <i class="fa-solid fa-chevron-down transport-quick-select-chevron"></i> 登録済みから選ぶ
-                    </button>
-                    <div id="transport-quick-select-body" class="hidden mt-2 space-y-2">
-                        <p class="text-xs text-slate-500 mb-2">下のボタンをクリックすると、発・着の入力欄に反映されます。</p>
-                        <div>
-                            <span class="text-xs font-bold text-slate-500">発にセット:</span>
-                            <div class="flex flex-wrap gap-1.5 mt-1" id="transport-quick-departure">
-                                <?php foreach ($transportCandidates as $c): ?>
-                                <button type="button" class="transport-quick-set-dep px-2 py-1.5 text-xs rounded-md border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 cursor-pointer shadow-sm" title="クリックで「発」に入力" data-value="<?= htmlspecialchars($c['value'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($c['label']) ?></button>
-                                <?php endforeach; ?>
+                <div class="space-y-3">
+                    <div class="relative">
+                        <label class="block text-xs font-bold text-slate-500 mb-1">出発点</label>
+                        <div class="flex items-center gap-2">
+                            <div class="relative flex-1 min-w-0">
+                                <input type="text" id="transport-departure" name="departure" class="w-full border border-slate-200 rounded px-3 py-2 text-sm" placeholder="発着駅・空港" autocomplete="off">
+                                <div id="transport-departure-suggestions" class="hidden absolute left-0 right-0 top-full mt-0.5 z-20 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"></div>
                             </div>
+                            <button type="button" id="transport-quick-dep-toggle" class="w-10 h-10 inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-slate-50" title="登録済みから選ぶ（出発点）">
+                                <i class="fa-solid fa-plus text-slate-500" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                        <?php if (!empty($transportCandidates)): ?>
+                            <div id="transport-quick-dep-body" class="hidden mt-2 border border-slate-200 rounded-lg p-3 bg-slate-50">
+                                <p class="text-xs text-slate-500 mb-2">下のボタンをクリックすると、出発点に反映されます。</p>
+                                <div class="flex flex-wrap gap-1.5" id="transport-quick-departure">
+                                    <?php foreach ($transportCandidates as $c): ?>
+                                        <button type="button" class="transport-quick-set-dep px-2 py-1.5 text-xs rounded-md border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 cursor-pointer shadow-sm" title="クリックで「出発点」に入力" data-value="<?= htmlspecialchars($c['value'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($c['label']) ?></button>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="relative">
+                        <label class="block text-xs font-bold text-slate-500 mb-1">到着点</label>
+                        <div class="flex items-center gap-2">
+                            <div class="relative flex-1 min-w-0">
+                                <input type="text" id="transport-arrival" name="arrival" class="w-full border border-slate-200 rounded px-3 py-2 text-sm" autocomplete="off">
+                                <div id="transport-arrival-suggestions" class="hidden absolute left-0 right-0 top-full mt-0.5 z-20 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"></div>
+                            </div>
+                            <button type="button" id="transport-quick-arr-toggle" class="w-10 h-10 inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-slate-50" title="登録済みから選ぶ（到着点）">
+                                <i class="fa-solid fa-plus text-slate-500" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                        <?php if (!empty($transportCandidates)): ?>
+                            <div id="transport-quick-arr-body" class="hidden mt-2 border border-slate-200 rounded-lg p-3 bg-slate-50">
+                                <p class="text-xs text-slate-500 mb-2">下のボタンをクリックすると、到着点に反映されます。</p>
+                                <div class="flex flex-wrap gap-1.5" id="transport-quick-arrival">
+                                    <?php foreach ($transportCandidates as $c): ?>
+                                        <button type="button" class="transport-quick-set-arr px-2 py-1.5 text-xs rounded-md border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 cursor-pointer shadow-sm" title="クリックで「到着点」に入力" data-value="<?= htmlspecialchars($c['value'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($c['label']) ?></button>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-[auto_1fr_1fr] gap-3 items-end">
+                        <div class="md:pt-6">
+                            <button type="button" id="transport-google-maps-btn" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50 inline-flex items-center justify-center gap-1" title="発・着を入力してからクリック">
+                                <i class="fa-solid fa-map-location-dot text-slate-500"></i>Google Mapで検索
+                            </button>
                         </div>
                         <div>
-                            <span class="text-xs font-bold text-slate-500">着にセット:</span>
-                            <div class="flex flex-wrap gap-1.5 mt-1" id="transport-quick-arrival">
-                                <?php foreach ($transportCandidates as $c): ?>
-                                <button type="button" class="transport-quick-set-arr px-2 py-1.5 text-xs rounded-md border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 cursor-pointer shadow-sm" title="クリックで「着」に入力" data-value="<?= htmlspecialchars($c['value'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($c['label']) ?></button>
-                                <?php endforeach; ?>
-                            </div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">所要時間(分)</label>
+                            <input type="number" id="transport-duration-min" name="duration_min" class="w-full border border-slate-200 rounded px-3 py-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">交通費(円)</label>
+                            <input type="number" name="transport_amount" id="transport-amount-visible" class="w-full border border-slate-200 rounded px-3 py-2 text-sm" placeholder="費用も登録">
                         </div>
                     </div>
-                </div>
-                <?php endif; ?>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div class="relative">
-                        <label class="block text-xs font-bold text-slate-500 mb-1">発</label>
-                        <input type="text" id="transport-departure" name="departure" class="w-full border border-slate-200 rounded px-2 py-1 text-sm" placeholder="発着駅・空港" autocomplete="off">
-                        <div id="transport-departure-suggestions" class="hidden absolute left-0 right-0 top-full mt-0.5 z-20 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"></div>
-                    </div>
-                    <div class="relative">
-                        <label class="block text-xs font-bold text-slate-500 mb-1">着</label>
-                        <input type="text" id="transport-arrival" name="arrival" class="w-full border border-slate-200 rounded px-2 py-1 text-sm" autocomplete="off">
-                        <div id="transport-arrival-suggestions" class="hidden absolute left-0 right-0 top-full mt-0.5 z-20 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"></div>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">所要時間(分)</label>
-                        <input type="number" id="transport-duration-min" name="duration_min" class="w-full border border-slate-200 rounded px-2 py-1 text-sm">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">交通費(円)</label>
-                        <input type="number" name="transport_amount" class="w-full border border-slate-200 rounded px-2 py-1 text-sm" placeholder="費用も登録">
-                    </div>
-                </div>
-                <div class="flex items-center gap-2 flex-wrap">
-                    <button type="button" id="transport-google-maps-btn" class="px-3 py-2 border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50 inline-flex items-center gap-1" title="発・着を入力してからクリック">
-                        <i class="fa-solid fa-map-location-dot text-slate-500"></i>Google Mapで検索
-                    </button>
                 </div>
                 <div class="space-y-2">
                     <p class="text-sm text-slate-600">Google Mapsでルートを選んだあと、共有リンクをコピーして貼り付けてください。</p>
@@ -2745,72 +2778,193 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
                     <input type="hidden" name="maps_link" id="transport-maps-link" value="">
                     <span id="transport-link-status" class="text-sm text-slate-500"></span>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div class="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto] gap-3 items-end">
                     <div>
                         <label class="block text-xs font-bold text-slate-500 mb-1">交通機関</label>
                         <input type="text" id="transport-type" name="transport_type" class="w-full border border-slate-200 rounded px-3 py-2 text-sm" placeholder="新幹線、在来線など">
                     </div>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">経路メモ</label>
-                    <input type="text" id="transport-route-memo" name="route_memo" class="w-full border border-slate-200 rounded px-3 py-2 text-sm" placeholder="東京→名古屋 のぞみ、名古屋→会場 在来線">
-                </div>
-                <button type="submit" class="lt-theme-btn text-white px-4 py-2 rounded text-sm">移動を追加</button>
-                </form>
-            </div>
-            <div class="space-y-3">
-                <?php foreach ($transportLegs ?? [] as $t): ?>
-                <div id="transport-<?= (int)$t['id'] ?>" class="transport-item transport-row p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
-                    <div class="transport-view flex justify-between items-start">
-                        <div>
-                            <?php if (!empty($t['scheduled_time'])): ?><span class="font-mono font-bold text-emerald-600 mr-2"><?= htmlspecialchars($t['scheduled_time']) ?></span><?php endif; ?>
-                            <?php if ($t['departure_date']): ?><span class="text-xs font-bold text-slate-500"><?= htmlspecialchars($t['departure_date']) ?></span><?php endif; ?>
-                            <p class="text-slate-700"><?= htmlspecialchars($t['transport_type'] ?? '') ?> <?= htmlspecialchars($t['route_memo'] ?? '') ?><?= !empty($t['amount']) ? ' ¥' . number_format($t['amount']) : '' ?></p>
-                            <?php if ($t['departure'] || $t['arrival']): ?>
-                            <p class="text-sm text-slate-500"><?= htmlspecialchars($t['departure']) ?> → <?= htmlspecialchars($t['arrival']) ?><?= $t['duration_min'] ? ' (' . $t['duration_min'] . '分)' : '' ?></p>
-                            <?php endif; ?>
-                            <?php if (!empty($t['maps_link'])): ?>
-                            <p class="mt-1"><a href="<?= htmlspecialchars($t['maps_link']) ?>" target="_blank" rel="noopener noreferrer" class="text-sm text-emerald-600 hover:underline"><i class="fa-solid fa-map-location-dot mr-1"></i>保存したルートで開く</a></p>
-                            <?php endif; ?>
-                        </div>
-                        <span class="flex gap-1">
-                            <button type="button" class="transport-edit-btn text-slate-500 text-sm hover:text-slate-700" title="編集"><i class="fa-solid fa-pen text-xs"></i></button>
-                            <form method="post" action="/live_trip/transport_delete.php" class="inline" onsubmit="return confirm('削除しますか？');">
-                                <input type="hidden" name="id" value="<?= (int)$t['id'] ?>">
-                                <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
-                                <input type="hidden" name="tab" value="transport">
-                                <button type="submit" class="text-red-500 text-sm"><i class="fa-solid fa-trash-can"></i></button>
-                            </form>
-                        </span>
+                    <div class="md:pt-6">
+                        <button type="submit" class="lt-theme-btn text-white px-4 py-2 rounded text-sm whitespace-nowrap w-full" id="transport-submit-btn">移動を追加</button>
                     </div>
-                    <form method="post" action="/live_trip/transport_update.php" class="transport-edit-form edit-form hidden space-y-3 p-3 bg-slate-50 rounded mt-2">
-                        <input type="hidden" name="id" value="<?= (int)$t['id'] ?>">
-                        <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
-                        <input type="hidden" name="tab" value="transport">
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-                            <div><label class="block text-xs font-bold text-slate-500 mb-1">出発日</label><input type="date" name="departure_date" value="<?= htmlspecialchars($t['departure_date'] ?? '') ?>" class="w-full border border-slate-200 rounded px-2 py-1 text-sm"></div>
-                            <div><label class="block text-xs font-bold text-slate-500 mb-1">出発時刻</label><input type="time" name="scheduled_time" value="<?php $st = $t['scheduled_time'] ?? ''; echo htmlspecialchars(preg_match('/^(\d{1,2}):(\d{2})/', trim($st), $m) ? sprintf('%02d:%02d', (int)$m[1], (int)$m[2]) : ''); ?>" class="w-full border border-slate-200 rounded px-2 py-1 text-sm"></div>
-                        </div>
-                        <div><label class="block text-xs font-bold text-slate-500 mb-1">交通機関</label><input type="text" name="transport_type" value="<?= htmlspecialchars($t['transport_type'] ?? '') ?>" class="w-full border border-slate-200 rounded px-2 py-1 text-sm"></div>
-                        <div><label class="block text-xs font-bold text-slate-500 mb-1">経路メモ</label><input type="text" name="route_memo" value="<?= htmlspecialchars($t['route_memo'] ?? '') ?>" class="w-full border border-slate-200 rounded px-2 py-1 text-sm"></div>
-                        <div class="grid grid-cols-3 md:grid-cols-4 gap-2">
-                            <div><label class="block text-xs font-bold text-slate-500 mb-1">発</label><input type="text" name="departure" value="<?= htmlspecialchars($t['departure'] ?? '') ?>" class="w-full border border-slate-200 rounded px-2 py-1 text-sm"></div>
-                            <div><label class="block text-xs font-bold text-slate-500 mb-1">着</label><input type="text" name="arrival" value="<?= htmlspecialchars($t['arrival'] ?? '') ?>" class="w-full border border-slate-200 rounded px-2 py-1 text-sm"></div>
-                            <div><label class="block text-xs font-bold text-slate-500 mb-1">所要時間(分)</label><input type="number" name="duration_min" value="<?= (int)($t['duration_min'] ?? 0) ?>" class="w-full border border-slate-200 rounded px-2 py-1 text-sm"></div>
-                            <div><label class="block text-xs font-bold text-slate-500 mb-1">交通費(円)</label><input type="number" name="amount" value="<?= (int)($t['amount'] ?? 0) ?>" class="w-full border border-slate-200 rounded px-2 py-1 text-sm" placeholder="0"></div>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1">保存したルート（Google Maps リンク）</label>
-                            <?php if (!empty($t['maps_link'])): ?><a href="<?= htmlspecialchars($t['maps_link']) ?>" target="_blank" rel="noopener noreferrer" class="text-sm text-emerald-600 hover:underline mr-2">地図で開く</a><?php endif; ?>
-                            <input type="text" name="maps_link" value="<?= htmlspecialchars($t['maps_link'] ?? '') ?>" class="w-full border border-slate-200 rounded px-2 py-1 text-sm mt-1" placeholder="https://... 貼り付けて更新可">
-                        </div>
-                        <div class="flex gap-2"><button type="submit" class="lt-theme-btn text-white px-3 py-1 rounded text-sm">保存</button><button type="button" class="transport-cancel-btn px-3 py-1 border border-slate-200 rounded text-sm">キャンセル</button></div>
-                    </form>
                 </div>
-                <?php endforeach; ?>
+                </form>
+
+                <div class="mt-auto pt-4 flex justify-end">
+                    <details class="w-full sm:w-auto rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                        <summary class="cursor-pointer text-sm font-bold text-slate-600 inline-flex items-center gap-2 justify-end w-full">
+                            <i class="fa-solid fa-house text-slate-400"></i>自宅を登録（ユーザー別）
+                        </summary>
+                        <div class="mt-3">
+                            <form method="post" action="/live_trip/home_place_store.php" class="space-y-2">
+                                <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
+                                <input type="hidden" name="label" value="自宅">
+                                <input type="hidden" name="place_id" id="home-place-id" value="<?= htmlspecialchars((string)($homePlace['place_id'] ?? '')) ?>">
+                                <input type="hidden" name="latitude" id="home-lat" value="<?= htmlspecialchars((string)($homePlace['latitude'] ?? '')) ?>">
+                                <input type="hidden" name="longitude" id="home-lng" value="<?= htmlspecialchars((string)($homePlace['longitude'] ?? '')) ?>">
+                                <input type="hidden" name="address" id="home-address-hidden" value="<?= htmlspecialchars((string)($homePlace['address'] ?? '')) ?>">
+                                <div class="relative">
+                                    <label class="block text-xs font-bold text-slate-500 mb-1">住所 / 施設名</label>
+                                    <input type="text" id="home-address-input" class="w-full border border-slate-200 rounded px-3 py-2 text-sm" autocomplete="off"
+                                           placeholder="例: 渋谷駅 / 東京都渋谷区..." value="<?= htmlspecialchars((string)($homePlace['address'] ?? '')) ?>">
+                                    <div id="home-address-suggestions" class="hidden absolute left-0 right-0 top-full mt-0.5 z-20 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"></div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button type="submit" class="lt-theme-btn text-white px-3 py-2 rounded text-sm">自宅を保存</button>
+                                    <?php if (!empty($homePlace['address'])): ?>
+                                        <span class="text-xs text-slate-500">現在: <?= htmlspecialchars((string)$homePlace['address']) ?></span>
+                                    <?php endif; ?>
+                                </div>
+                                <p class="text-xs text-slate-500">「登録済みから選ぶ」に自宅が表示されます。</p>
+                            </form>
+                        </div>
+                    </details>
+                </div>
+                </div><!-- /transport-side-form-body -->
             </div>
-        </div>
-        </div>
+            <div class="lg:order-1">
+                <section class="bg-white border border-slate-200 rounded-xl shadow-sm p-5 sm:p-6">
+                    <div class="flex items-center justify-between gap-3">
+                        <h3 class="font-black text-slate-800">📜 登録済みの移動</h3>
+                        <div class="text-xs text-slate-500">日付ごとにまとめて表示しています。編集で右の追加カードに反映されます。</div>
+                    </div>
+
+                    <?php
+                    $weekday = ['日','月','火','水','木','金','土'];
+                    $byDate = [];
+                    foreach ($transportLegs ?? [] as $tl) {
+                        $k = trim((string)($tl['departure_date'] ?? ''));
+                        if ($k === '') $k = 'undated';
+                        $byDate[$k] ??= [];
+                        $byDate[$k][] = $tl;
+                    }
+                    $dateKeys = array_keys($byDate);
+                    usort($dateKeys, function($a, $b) {
+                        if ($a === 'undated' && $b !== 'undated') return 1;
+                        if ($b === 'undated' && $a !== 'undated') return -1;
+                        return strcmp((string)$a, (string)$b);
+                    });
+                    ?>
+
+                    <?php if (empty($dateKeys)): ?>
+                        <div class="py-10 text-center text-slate-500">
+                            <div class="text-3xl text-slate-200 mb-3">🚇</div>
+                            <div class="font-bold">移動がまだ登録されていません</div>
+                            <div class="text-sm mt-1">右の「移動追加」から登録できます。</div>
+                        </div>
+                    <?php else: ?>
+                        <div class="mt-4 space-y-6">
+                            <?php foreach ($dateKeys as $dk):
+                                $rows = $byDate[$dk] ?? [];
+                                usort($rows, function($x, $y) {
+                                    $tx = trim((string)($x['scheduled_time'] ?? ''));
+                                    $ty = trim((string)($y['scheduled_time'] ?? ''));
+                                    $cmp = strcmp($tx, $ty);
+                                    if ($cmp !== 0) return $cmp;
+                                    return ((int)($x['id'] ?? 0)) <=> ((int)($y['id'] ?? 0));
+                                });
+                                $dayTotal = 0;
+                                foreach ($rows as $r) { $dayTotal += (int)($r['amount'] ?? 0); }
+
+                                $dayLabel = '日程未設定';
+                                if ($dk !== 'undated') {
+                                    try {
+                                        $dt = new DateTime($dk);
+                                        $dayLabel = $dt->format('n/j') . '（' . $weekday[(int)$dt->format('w')] . '）';
+                                    } catch (\Throwable $e) { $dayLabel = (string)$dk; }
+                                }
+                            ?>
+                                <div>
+                                    <div class="flex items-center justify-between gap-3 py-2 border-b border-slate-200">
+                                        <div class="font-black text-slate-700 inline-flex items-center gap-2">
+                                            <i class="fa-regular fa-calendar text-slate-400"></i>
+                                            <?= htmlspecialchars($dayLabel) ?>
+                                        </div>
+                                        <div class="text-xs font-bold text-slate-500">合計 ¥<?= number_format((int)$dayTotal) ?> / <?= count($rows) ?>件</div>
+                                    </div>
+
+                                    <div class="mt-3 space-y-2">
+                                        <?php foreach ($rows as $t):
+                                            $time = trim((string)($t['scheduled_time'] ?? ''));
+                                            $dur = (int)($t['duration_min'] ?? 0);
+                                            $amount = (int)($t['amount'] ?? 0);
+                                            $dep = trim((string)($t['departure'] ?? ''));
+                                            $arr = trim((string)($t['arrival'] ?? ''));
+                                            $routeMain = ($dep !== '' || $arr !== '') ? ($dep . ' → ' . $arr) : trim((string)($t['route_memo'] ?? ''));
+                                            if ($routeMain === '') $routeMain = '（未入力）';
+                                        ?>
+                                            <div id="transport-<?= (int)$t['id'] ?>" class="bg-white border border-slate-200 rounded-xl p-4 pr-24 flex items-start justify-between gap-3 transport-item group relative">
+                                                <div class="shrink-0 w-[72px] text-left">
+                                                    <div class="font-mono font-black text-slate-800"><?= $time !== '' ? htmlspecialchars($time) : '—' ?></div>
+                                                    <?php if ($dk !== 'undated'): ?>
+                                                        <div class="text-[11px] text-slate-400"><?= htmlspecialchars(substr((string)$dk, 5)) ?></div>
+                                                    <?php endif; ?>
+                                                </div>
+
+                                                <div class="min-w-0 flex-1">
+                                                    <?php
+                                                    $memoTop = trim((string)($t['route_memo'] ?? ''));
+                                                    $typeTop = trim((string)($t['transport_type'] ?? ''));
+                                                    $topLine = trim($typeTop . ' ' . $memoTop);
+                                                    ?>
+                                                    <?php if ($topLine !== ''): ?>
+                                                        <div class="text-sm font-bold truncate">
+                                                            <span class="text-slate-400 mr-1">🚇</span>
+                                                            <?php if ($typeTop !== ''): ?>
+                                                                <span class="text-emerald-600"><?= htmlspecialchars($typeTop) ?></span>
+                                                            <?php endif; ?>
+                                                            <?php if ($memoTop !== ''): ?>
+                                                                <span class="text-slate-700<?= $typeTop !== '' ? ' ml-1' : '' ?>"><?= htmlspecialchars($memoTop) ?></span>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                    <div class="font-bold text-slate-800 truncate">
+                                                        <?= htmlspecialchars($routeMain) ?>
+                                                    </div>
+                                                    <div class="mt-1 text-xs text-slate-500 flex flex-wrap items-center gap-x-3 gap-y-1">
+                                                        <?php if ($dur > 0): ?>
+                                                            <span>所要 <span class="font-black text-slate-700"><?= (int)$dur ?>分</span></span>
+                                                        <?php endif; ?>
+                                                        <span>費用 <span class="font-black text-slate-700"><?= $amount > 0 ? ('¥' . number_format($amount)) : '—' ?></span></span>
+                                                    </div>
+                                                </div>
+
+                                                <div class="absolute right-3 bottom-3 flex items-center gap-1.5 pointer-events-auto opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+                                                    <button type="button"
+                                                            class="transport-edit-to-form w-10 h-10 inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-slate-50"
+                                                            title="編集"
+                                                            data-id="<?= (int)$t['id'] ?>"
+                                                            data-departure-date="<?= htmlspecialchars((string)($t['departure_date'] ?? ''), ENT_QUOTES) ?>"
+                                                            data-scheduled-time="<?= htmlspecialchars((string)($t['scheduled_time'] ?? ''), ENT_QUOTES) ?>"
+                                                            data-departure="<?= htmlspecialchars((string)($t['departure'] ?? ''), ENT_QUOTES) ?>"
+                                                            data-arrival="<?= htmlspecialchars((string)($t['arrival'] ?? ''), ENT_QUOTES) ?>"
+                                                            data-duration-min="<?= (int)($t['duration_min'] ?? 0) ?>"
+                                                            data-amount="<?= (int)($t['amount'] ?? 0) ?>"
+                                                            data-maps-link="<?= htmlspecialchars((string)($t['maps_link'] ?? ''), ENT_QUOTES) ?>"
+                                                            data-transport-type="<?= htmlspecialchars((string)($t['transport_type'] ?? ''), ENT_QUOTES) ?>"
+                                                            data-route-memo="<?= htmlspecialchars((string)($t['route_memo'] ?? ''), ENT_QUOTES) ?>">
+                                                        <i class="fa-solid fa-pen text-slate-500"></i>
+                                                    </button>
+                                                    <form method="post" action="/live_trip/transport_delete.php" class="inline" onsubmit="return confirm('削除しますか？');">
+                                                        <input type="hidden" name="id" value="<?= (int)$t['id'] ?>">
+                                                        <input type="hidden" name="trip_plan_id" value="<?= (int)$trip['id'] ?>">
+                                                        <input type="hidden" name="tab" value="transport">
+                                                        <button type="submit" class="w-10 h-10 inline-flex items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100" title="削除" aria-label="削除">
+                                                            <i class="fa-solid fa-trash-can"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </section>
+            </div>
+        </div><!-- /grid -->
+        </div><!-- /panel-transport inner .space-y-4 -->
+        </div><!-- /panel-transport -->
 
         <div class="lt-tab-panel w-full" data-panel="timeline" id="panel-timeline">
         <div class="space-y-4">
@@ -4437,21 +4591,141 @@ $tripTitle = trim((string)($trip['title'] ?? '')) ?: ((string)($trip['event_name
             return;
         }
     });
+    // 登録済みから選ぶ（出発/到着）
     document.body.addEventListener('click', function(e) {
-        var toggle = e.target && e.target.closest ? e.target.closest('#transport-quick-select-toggle') : null;
-        if (!toggle) return;
-        var body = document.getElementById('transport-quick-select-body');
-        if (!body) return;
-        e.preventDefault();
-        e.stopPropagation();
-        var hidden = body.classList.contains('hidden');
-        body.classList.toggle('hidden', !hidden);
-        var chevron = toggle.querySelector('.transport-quick-select-chevron');
-        if (chevron) {
-            chevron.classList.toggle('fa-chevron-down', hidden);
-            chevron.classList.toggle('fa-chevron-up', !hidden);
+        var depToggle = e.target && e.target.closest ? e.target.closest('#transport-quick-dep-toggle') : null;
+        if (depToggle) {
+            var depBody = document.getElementById('transport-quick-dep-body');
+            if (!depBody) return;
+            e.preventDefault();
+            e.stopPropagation();
+            var hidden = depBody.classList.contains('hidden');
+            depBody.classList.toggle('hidden', !hidden);
+            return;
+        }
+        var arrToggle = e.target && e.target.closest ? e.target.closest('#transport-quick-arr-toggle') : null;
+        if (arrToggle) {
+            var arrBody = document.getElementById('transport-quick-arr-body');
+            if (!arrBody) return;
+            e.preventDefault();
+            e.stopPropagation();
+            var hidden2 = arrBody.classList.contains('hidden');
+            arrBody.classList.toggle('hidden', !hidden2);
+            return;
         }
     });
+
+    // Transport KPI: 「＋移動を追加」→追加カードへフォーカス
+    var transportAddFocusBtn = document.getElementById('transport-add-focus-btn');
+    if (transportAddFocusBtn) {
+        transportAddFocusBtn.addEventListener('click', function() {
+            var card = document.getElementById('transport-add-card');
+            if (card && card.scrollIntoView) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            setTimeout(function() {
+                var first = document.getElementById('transport-departure-date') || document.getElementById('transport-departure');
+                if (first && first.focus) first.focus();
+            }, 150);
+        });
+    }
+
+    // Transport side form accordion (destination side form の簡易踏襲)
+    (function() {
+        var toggleBtn = document.getElementById('transport-side-form-toggle');
+        var chevron = document.getElementById('transport-side-form-chevron');
+        var body = document.getElementById('transport-side-form-body');
+        if (!toggleBtn || !body) return;
+        function setExpanded(expanded) {
+            toggleBtn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+            body.classList.toggle('hidden', !expanded);
+            if (chevron) {
+                chevron.classList.toggle('fa-chevron-down', expanded);
+                chevron.classList.toggle('fa-chevron-up', !expanded);
+            }
+        }
+        toggleBtn.addEventListener('click', function(e) {
+            if (e.target && e.target.closest && e.target.closest('#transport-side-form-cancel')) return;
+            var cur = toggleBtn.getAttribute('aria-expanded') === 'true';
+            setExpanded(!cur);
+        });
+        setExpanded(true);
+    })();
+
+    function resetTransportEditMode() {
+        var form = document.getElementById('transport-add-form');
+        if (!form) return;
+        form.setAttribute('action', '/live_trip/transport_store.php');
+        var idEl = document.getElementById('transport-edit-id');
+        var amountEl = document.getElementById('transport-edit-amount');
+        if (idEl) idEl.value = '';
+        if (amountEl) amountEl.value = '';
+        var banner = document.getElementById('transport-edit-banner');
+        if (banner) banner.classList.add('hidden');
+        var submitBtn = document.getElementById('transport-submit-btn');
+        if (submitBtn) submitBtn.textContent = '移動を追加';
+    }
+
+    var transportEditCancel = document.getElementById('transport-edit-cancel');
+    if (transportEditCancel) {
+        transportEditCancel.addEventListener('click', function() {
+            resetTransportEditMode();
+        });
+    }
+
+    // 一覧の編集 → 右フォームに反映（編集モード）
+    document.body.addEventListener('click', function(e) {
+        var btn = e.target && e.target.closest ? e.target.closest('.transport-edit-to-form') : null;
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        var form = document.getElementById('transport-add-form');
+        if (!form) return;
+
+        var idEl = document.getElementById('transport-edit-id');
+        if (idEl) idEl.value = btn.dataset.id || '';
+        var banner = document.getElementById('transport-edit-banner');
+        if (banner) banner.classList.remove('hidden');
+        var submitBtn = document.getElementById('transport-submit-btn');
+        if (submitBtn) submitBtn.textContent = '変更を保存';
+
+        form.setAttribute('action', '/live_trip/transport_update.php');
+
+        var setVal = function(id, v) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            el.value = v || '';
+        };
+        setVal('transport-departure-date', btn.dataset.departureDate || '');
+        setVal('transport-scheduled-time', btn.dataset.scheduledTime || '');
+        setVal('transport-departure', btn.dataset.departure || '');
+        setVal('transport-arrival', btn.dataset.arrival || '');
+        setVal('transport-duration-min', btn.dataset.durationMin || '');
+        setVal('transport-type', btn.dataset.transportType || '');
+        setVal('transport-route-memo', btn.dataset.routeMemo || '');
+        setVal('transport-maps-link-input', btn.dataset.mapsLink || '');
+        setVal('transport-maps-link', btn.dataset.mapsLink || '');
+        setVal('transport-amount-visible', btn.dataset.amount || '');
+
+        var card = document.getElementById('transport-add-card');
+        if (card && card.scrollIntoView) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setTimeout(function() {
+            var first = document.getElementById('transport-departure-date') || document.getElementById('transport-departure');
+            if (first && first.focus) first.focus();
+        }, 150);
+    });
+
+    // 編集モード時は transport_amount → amount にコピーして送信
+    var transportForm = document.getElementById('transport-add-form');
+    if (transportForm) {
+        transportForm.addEventListener('submit', function() {
+            var idEl = document.getElementById('transport-edit-id');
+            var amountHidden = document.getElementById('transport-edit-amount');
+            var amountVisible = document.getElementById('transport-amount-visible');
+            if (idEl && idEl.value && amountHidden) {
+                amountHidden.value = (amountVisible && amountVisible.value) ? amountVisible.value : '';
+            }
+        });
+    }
 
     function getDepartureTimestamp(dateStr, timeStr) {
         var date = dateStr || '';

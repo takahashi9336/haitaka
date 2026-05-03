@@ -31,6 +31,42 @@ class DestinationModel extends BaseModel {
         return $stmt->fetchAll();
     }
 
+    /**
+     * 一覧用: 各遠征の「メイン目的地日付（visit_date）」を返す
+     * - destination_type='main' を最優先、無ければ他種別の最も早い visit_date
+     *
+     * @param array<int,int> $tripPlanIds
+     * @return array<int,string> trip_plan_id => visit_date (YYYY-MM-DD)
+     */
+    public function getPrimaryVisitDatesByTripPlanIds(array $tripPlanIds): array {
+        $tripPlanIds = array_values(array_unique(array_map('intval', $tripPlanIds)));
+        if (empty($tripPlanIds)) return [];
+
+        $in = implode(',', array_fill(0, count($tripPlanIds), '?'));
+        $sql = "SELECT trip_plan_id, destination_type, visit_date, sort_order, id
+                FROM {$this->table}
+                WHERE trip_plan_id IN ({$in}) AND visit_date IS NOT NULL
+                ORDER BY trip_plan_id ASC,
+                         (destination_type = 'main') DESC,
+                         visit_date ASC,
+                         sort_order ASC,
+                         id ASC";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($tripPlanIds);
+        $rows = $stmt->fetchAll();
+
+        $out = [];
+        foreach ($rows as $r) {
+            $tid = (int)($r['trip_plan_id'] ?? 0);
+            if ($tid <= 0) continue;
+            if (isset($out[$tid])) continue;
+            $d = trim((string)($r['visit_date'] ?? ''));
+            if ($d === '') continue;
+            $out[$tid] = $d;
+        }
+        return $out;
+    }
+
     public function getGoogleMapsUrl(array $row): string {
         $lat = trim($row['latitude'] ?? '');
         $lng = trim($row['longitude'] ?? '');

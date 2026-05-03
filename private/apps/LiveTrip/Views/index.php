@@ -192,11 +192,28 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                         <div class="absolute left-0 top-0 bottom-0 w-1.5 z-20 <?= htmlspecialchars($accentClass) ?>" aria-hidden="true"></div>
                         <a href="/live_trip/show.php?id=<?= (int)$t['id'] ?>" class="absolute inset-0 z-0 rounded-xl" aria-hidden="true"></a>
 
-                        <div class="relative z-10 pointer-events-none flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-                            <div class="shrink-0 self-stretch -my-4 pr-4 pl-4 py-4 bg-slate-50/80 border-r border-slate-200 flex items-center">
-                                <div class="text-center w-[86px] sm:w-[92px]">
+                        <div class="relative z-10 pointer-events-none flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 pl-5 sm:pl-0">
+                            <!-- mobile: 日付は上部ヘッダ帯（左カラムにしない） -->
+                            <div class="sm:hidden -mt-4 -mr-4 mb-1 bg-slate-50/80 border-b border-slate-200 px-4 py-3">
+                                <div class="flex items-center justify-between gap-3">
+                                    <div class="flex items-center gap-3">
+                                        <div class="text-center w-[86px]">
+                                            <div class="text-[10px] font-black text-slate-500 tracking-wider leading-tight"><?= htmlspecialchars($dateMonth) ?></div>
+                                            <div class="text-2xl font-black text-slate-900 leading-tight"><?= htmlspecialchars($dateDay) ?></div>
+                                            <div class="text-[10px] font-bold text-slate-500 leading-tight"><?= htmlspecialchars($dateYear) ?></div>
+                                        </div>
+                                        <div class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black <?= $countdownClass ?>">
+                                            <?= htmlspecialchars($relativeDate !== '' ? $relativeDate : '未設定') ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- desktop: 左カラム -->
+                            <div class="hidden sm:flex shrink-0 self-stretch -my-4 pr-4 pl-4 py-4 bg-slate-50/80 border-r border-slate-200 items-center">
+                                <div class="text-center w-[92px]">
                                     <div class="text-[10px] font-black text-slate-500 tracking-wider leading-tight"><?= htmlspecialchars($dateMonth) ?></div>
-                                    <div class="text-2xl sm:text-[28px] font-black text-slate-900 leading-tight"><?= htmlspecialchars($dateDay) ?></div>
+                                    <div class="text-[28px] font-black text-slate-900 leading-tight"><?= htmlspecialchars($dateDay) ?></div>
                                     <div class="text-[10px] font-bold text-slate-500 leading-tight"><?= htmlspecialchars($dateYear) ?></div>
                                     <div class="mt-2 inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black <?= $countdownClass ?>">
                                         <?= htmlspecialchars($relativeDate !== '' ? $relativeDate : '未設定') ?>
@@ -207,7 +224,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                             <div class="min-w-0 flex-1">
                                 <h3 class="font-black text-slate-900 truncate"><?= htmlspecialchars($t['title'] ?? $t['event_name'] ?? '（無題の遠征）') ?></h3>
                                 <div class="mt-1 text-sm text-slate-600 truncate">
-                                    <i class="fa-solid fa-location-dot text-slate-400 mr-1"></i><?= htmlspecialchars($placeText) ?>
+                                    <i class="fa-solid fa-location-dot mr-1 text-[#EA4335]"></i><?= htmlspecialchars($placeText) ?>
                                 </div>
                                 <div class="mt-2">
                                     <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black <?= htmlspecialchars($badgeClass) ?>"><?= htmlspecialchars($badgeLabel) ?></span>
@@ -223,11 +240,6 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                                     <div class="text-[11px] font-bold text-slate-500">リスト</div>
                                     <div class="font-black <?= $checkTotal > 0 && $checkChecked >= $checkTotal ? 'text-emerald-700' : 'text-slate-900' ?>"><?= (int)$checkChecked ?> / <?= (int)$checkTotal ?></div>
                                 </div>
-                                <a href="/live_trip/shiori.php?id=<?= (int)$t['id'] ?>"
-                                   class="px-4 py-2 lt-theme-btn text-white rounded-lg text-sm font-bold whitespace-nowrap inline-flex items-center gap-2"
-                                   target="_blank" rel="noopener" onclick="event.stopPropagation();">
-                                    <i class="fa-solid fa-book"></i>しおり
-                                </a>
                                 <i class="fa-solid fa-chevron-right text-slate-300 hidden md:inline-block"></i>
                             </div>
                         </div>

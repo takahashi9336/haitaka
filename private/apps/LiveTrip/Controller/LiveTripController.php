@@ -53,6 +53,10 @@ class LiveTripController {
         $transportTotals = (new TransportLegModel())->getAmountTotalsByTripPlanIds($tripIds);
         $hotelTotals = (new HotelStayModel())->getPriceTotalsByTripPlanIds($tripIds);
         $checklistCounts = (new ChecklistItemModel())->getCountsByTripPlanIds($tripIds);
+        $primaryVisitDates = [];
+        try {
+            $primaryVisitDates = (new DestinationModel())->getPrimaryVisitDatesByTripPlanIds($tripIds);
+        } catch (\Throwable $e) { /* テーブル未作成時 */ }
 
         foreach ($trips as &$t) {
             $tid = (int)$t['id'];
@@ -60,6 +64,12 @@ class LiveTripController {
             $c = $checklistCounts[$tid] ?? ['total' => 0, 'checked' => 0];
             $t['checklist_total'] = $c['total'];
             $t['checklist_checked'] = $c['checked'];
+
+            // イベント未紐付時は「メイン目的地日付」を一覧の基準日として扱う
+            $ed = trim((string)($t['event_date'] ?? ''));
+            if ($ed === '' && !empty($primaryVisitDates[$tid])) {
+                $t['event_date'] = (string)$primaryVisitDates[$tid];
+            }
         }
         unset($t);
         $allTrips = $trips;
