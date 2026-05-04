@@ -18,6 +18,20 @@ TripPlanModel: `id`, `title`, `impression`, `created_at`, `updated_at`
 
 ※ イベント列は過去 DDL から是正され、現状は **`lt_trip_plan_events`** 側にのみ存在する。
 
+### 表示用集約（`TripPlanModel::enrichTripWithEvents`）
+
+イベント配列 `TripPlanEventModel::getByTripPlanId` の結果を `enrichTripWithEvents($trip, $events)` に渡したあとの `$trip` に、一覧用の集約フィールドが付与される（**`lt_trip_plans` の物理列ではない**）。
+
+| キー | ルール（実装準拠） |
+|------|-------------------|
+| `events` | 紐づけイベント行の配列（`sort_order`・日付・id 順） |
+| `event_name` | イベント名の重複除去後、`・` で結合 |
+| `event_date` | 開催日の重複除去後ソート。複数日なら `開始日〜終了日`、1日ならその日付 |
+| `event_place` | **会場名（`event_place`）の重複除去後、出現順を保って `・` で結合**（複数会場の一行表示用） |
+| `hn_event_place` | 先頭イベントの日向坂会場名（後方互換・参照用） |
+
+**一覧 SQL との差**: `TripPlanModel::getMyTrips` の SELECT サブクエリでは、パフォーマンスのため **`event_place` は日付順先頭イベントの会場のみ** を返す場合がある。複数会場の文言は **詳細・編集等で `enrichTripWithEvents` を通した後の `event_place`** を正とする。
+
 ### lt_trip_members
 
 | カラム名 | 論理名 | 備考 |

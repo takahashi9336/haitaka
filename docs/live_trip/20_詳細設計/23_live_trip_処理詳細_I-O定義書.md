@@ -8,7 +8,7 @@
 
 | HTTP | 公開パス (live_trip/ より) | メソッド | 入力 | 出力 |
 |------|---------------------------|----------|------|------|
-| GET | index.php | index | `period`, `sort` | HTML 一覧 |
+| GET | index.php | index | `period`（既定 `upcoming`）, `sort` | HTML 一覧。初回ロードで今後/過去/未設定のデータをまとめて描画し、期間トグルはクライアント側で表示切替（`history.replaceState` で URL のみ同期）する実装あり |
 | GET | show.php | show | `id` | HTML 詳細 |
 | GET | create.php | createForm | — | HTML フォーム |
 | POST | store.php | store | `title` 必須、イベント任意 | リダイレクト |
@@ -59,8 +59,10 @@
 1. **認可**: `requireAccess()`（ログイン＋管理者）。
 2. **入力**: `id`（trip_plan_id）。不正なら `/live_trip/` へ。
 3. **ロード**: `TripPlanModel::findForUser`, イベント・費用・ホテル・交通・目的地・タイムライン・チェックリスト、自宅 `UserPlaceModel`。
-4. **加工**: `mergeTimelineWithTransport` 等で表示用配列をマージ。
+4. **加工**: `TripPlanModel::enrichTripWithEvents`（複数イベントの `event_place` 等の集約）、`mergeTimelineWithTransport` 等で表示用配列をマージ。
 5. **出力**: `Views/show.php` をレンダリング。
+
+**目的地タブ（会場表示）**: 紐づけイベントごとに会場が異なる場合、**会場カードを複数枚**表示する（施設名＋住所の組で重複は1枚にまとめる）。座標が無い会場は Google Geocoding で補完する場合あり（APIキー設定時）。
 
 ### store（store.php）
 

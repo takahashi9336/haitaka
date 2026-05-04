@@ -5,10 +5,10 @@
 | 画面名 (論理名) | 公開パス (www より) | ビュー主ファイル | 概要 |
 |----------------|---------------------|------------------|------|
 | 遠征一覧 | `live_trip/index.php` | `private/apps/LiveTrip/Views/index.php` | 参加 trip の一覧・期間ソート・集計情報 |
-| 遠征詳細・シオリハブ | `live_trip/show.php?id=` | `private/apps/LiveTrip/Views/show.php` | イベント・タイムライン・チェックリスト・費用・ホテル・移動・目的地・マップ等 |
+| 遠征詳細（タブハブ） | `live_trip/show.php?id=` | `private/apps/LiveTrip/Views/show.php` | サマリ／参加情報／費用／宿泊／目的地／移動／タイムライン／チェックリスト・埋め込みマップ等 |
 | 新規作成 | `live_trip/create.php` | `private/apps/LiveTrip/Views/form.php` | `title` 必須で trip 作成（イベント未紐付可） |
 | 編集 | `live_trip/edit.php?id=` | 同上 | タイトル・イベント紐付・感想を更新 |
-| しおり出力 | `live_trip/shiori.php` | （コントローラが View を選択） | 印刷向けレイアウト |
+| しおり（印刷向け） | `live_trip/shiori.php` | `private/apps/LiveTrip/Views/shiori.php` | 当日用コンパクトHTML。一覧・詳細からの導線ボタンはなし（URL指定で表示） |
 | マイリスト（持ち物テンプレート）一覧 | `live_trip/my_list.php` | `private/apps/LiveTrip/Views/my_list_index.php` | ユーザー別テンプレ CRUD |
 | 汎用イベント登録 | `live_trip/lt_event_create.php` | （該当 View） | `lt_events` 向けフォーム |
 
