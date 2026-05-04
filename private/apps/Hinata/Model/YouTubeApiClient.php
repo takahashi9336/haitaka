@@ -47,14 +47,36 @@ class YouTubeApiClient {
      * チャンネルの「アップロード動画」プレイリストIDを取得
      */
     public function getUploadsPlaylistId(string $channelId): ?string {
-        $resolved = $this->resolveChannelId($channelId);
-        if (!$resolved) return null;
+        $ctx = $this->getUploadsPlaylistContext($channelId);
+        return $ctx['playlist_id'] ?? null;
+    }
 
+    /**
+     * 解決済み channelId とアップロード用プレイリスト ID をまとめて取得（resolve を二重に呼ばない用途）
+     *
+     * @return array{channel_id: string, playlist_id: string}|null
+     */
+    public function getUploadsPlaylistContext(string $channelInput): ?array {
+        $resolved = $this->resolveChannelId($channelInput);
+        if (!$resolved) {
+            return null;
+        }
         $data = $this->apiRequest('/channels', [
             'part' => 'contentDetails',
             'id'   => $resolved,
         ]);
-        return $data['items'][0]['contentDetails']['relatedPlaylists']['uploads'] ?? null;
+        if (!$data || empty($data['items'][0])) {
+            return null;
+        }
+        $playlistId = $data['items'][0]['contentDetails']['relatedPlaylists']['uploads'] ?? null;
+        if (!is_string($playlistId) || $playlistId === '') {
+            return null;
+        }
+
+        return [
+            'channel_id' => $resolved,
+            'playlist_id' => $playlistId,
+        ];
     }
 
     /**
@@ -139,13 +161,25 @@ class YouTubeApiClient {
         }
 
         $data = $this->apiRequest('/playlistItems', $params);
-        if (!$data || !isset($data['items'])) return null;
+
+        return $this->formatPlaylistItemsResponse($data);
+    }
+
+    /**
+     * playlistItems.list の生 JSON を getPlaylistItems と同形に整形（並列取得後の解釈用）
+     */
+    public function formatPlaylistItemsResponse(?array $data): ?array {
+        if (!$data || !isset($data['items'])) {
+            return null;
+        }
 
         $videos = [];
         foreach ($data['items'] as $item) {
             $snippet = $item['snippet'] ?? [];
             $videoId = $snippet['resourceId']['videoId'] ?? null;
-            if (!$videoId) continue;
+            if (!$videoId) {
+                continue;
+            }
 
             $videos[] = [
                 'video_id'      => $videoId,
@@ -168,6 +202,146 @@ class YouTubeApiClient {
             'prev_page_token' => $data['prevPageToken'] ?? null,
             'total_results'  => $data['pageInfo']['totalResults'] ?? 0,
         ];
+    }
+
+    /**
+     * 複数リクエストを最大 $maxConcurrency 本まで同時に実行（playlistItems の並列化用）
+     *
+     * @param list<array{endpoint: string, params?: array<string, mixed>}> $requests
+     * @return list<?array> 入力と同じ順の生 JSON（失敗時 null）
+     */
+    public function apiRequestConcurrent(array $requests, int $maxConcurrency = 2): array {
+        $n = count($requests);
+        if ($n === 0) {
+            return [];
+        }
+        if (!$this->isConfigured()) {
+            return array_fill(0, $n, null);
+        }
+        if (!function_exists('curl_multi_init')) {
+            $out = [];
+            foreach ($requests as $req) {
+                $out[] = $this->apiRequest($req['endpoint'], $req['params'] ?? []);
+            }
+
+            return $out;
+        }
+
+        $maxConcurrency = max(1, $maxConcurrency);
+        $results = array_fill(0, $n, null);
+        $mh = curl_multi_init();
+        if ($mh === false) {
+            foreach ($requests as $i => $req) {
+                $results[$i] = $this->apiRequest($req['endpoint'], $req['params'] ?? []);
+            }
+
+            return $results;
+        }
+
+        /** @var array<int, \CurlHandle> $active */
+        $active = [];
+        /** @var array<int, int> $curlIdToIndex */
+        $curlIdToIndex = [];
+        $nextIndex = 0;
+
+        $startNext = function () use (&$active, &$curlIdToIndex, &$nextIndex, &$results, $mh, $requests, $n, $maxConcurrency): void {
+            while (count($active) < $maxConcurrency && $nextIndex < $n) {
+                $i = $nextIndex++;
+                $ch = $this->createCurlHandleForRequest($requests[$i]['endpoint'], $requests[$i]['params'] ?? []);
+                if ($ch === false) {
+                    $results[$i] = null;
+
+                    continue;
+                }
+                $curlId = (int) $ch;
+                $active[$i] = $ch;
+                $curlIdToIndex[$curlId] = $i;
+                curl_multi_add_handle($mh, $ch);
+            }
+        };
+
+        $startNext();
+
+        do {
+            while (($mrc = curl_multi_exec($mh, $running)) === CURLM_CALL_MULTI_PERFORM) {
+            }
+            if ($mrc !== CURLM_OK) {
+                foreach ($active as $chErr) {
+                    curl_multi_remove_handle($mh, $chErr);
+                    curl_close($chErr);
+                }
+                $active = [];
+                $curlIdToIndex = [];
+                break;
+            }
+            if ($running) {
+                curl_multi_select($mh, 1.0);
+            }
+            while ($info = curl_multi_info_read($mh)) {
+                if ($info['msg'] !== CURLMSG_DONE) {
+                    continue;
+                }
+                /** @var \CurlHandle $ch */
+                $ch = $info['handle'];
+                $cid = (int) $ch;
+                $reqIndex = $curlIdToIndex[$cid] ?? null;
+                $body = curl_multi_getcontent($ch);
+                $errno = (int) ($info['result'] ?? CURLE_OK);
+                curl_multi_remove_handle($mh, $ch);
+                curl_close($ch);
+                if ($reqIndex !== null) {
+                    unset($active[$reqIndex], $curlIdToIndex[$cid]);
+                    $results[$reqIndex] = ($errno === 0) ? $this->parseApiJsonBody($body) : null;
+                }
+                $startNext();
+            }
+        } while ($running || $active !== [] || $nextIndex < $n);
+
+        curl_multi_close($mh);
+
+        return $results;
+    }
+
+    /**
+     * @param array<string, mixed> $params
+     */
+    private function createCurlHandleForRequest(string $endpoint, array $params): \CurlHandle|false {
+        if (!$this->isConfigured()) {
+            return false;
+        }
+        $params['key'] = $this->apiKey;
+        $url = $this->baseUrl . $endpoint . '?' . http_build_query($params);
+        $ch = curl_init($url);
+        if ($ch === false) {
+            return false;
+        }
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_TIMEOUT => 15,
+            CURLOPT_HTTPHEADER => ['Accept: application/json'],
+        ]);
+
+        return $ch;
+    }
+
+    private function parseApiJsonBody(?string $response): ?array {
+        if ($response === null || $response === '') {
+            return null;
+        }
+        $data = json_decode($response, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            Logger::error('YouTube API JSON parse error: ' . json_last_error_msg());
+
+            return null;
+        }
+        if (isset($data['error'])) {
+            Logger::error('YouTube API error: ' . json_encode($data['error']));
+
+            return null;
+        }
+
+        return $data;
     }
 
     /**
@@ -395,17 +569,6 @@ class YouTubeApiClient {
             return null;
         }
 
-        $data = json_decode($response, true);
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            Logger::error('YouTube API JSON parse error: ' . json_last_error_msg());
-            return null;
-        }
-
-        if (isset($data['error'])) {
-            Logger::error('YouTube API error: ' . json_encode($data['error']));
-            return null;
-        }
-
-        return $data;
+        return $this->parseApiJsonBody($response);
     }
 }
