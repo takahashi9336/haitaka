@@ -8,6 +8,7 @@ use App\Hinata\Model\MeetGreetReportMessageModel;
 use App\Hinata\Model\MeetGreetReportAvatarModel;
 use App\Hinata\Model\MemberModel;
 use App\Hinata\Model\EventModel;
+use App\Hinata\Model\FavoriteModel;
 use Core\Auth;
 
 class MeetGreetController {
@@ -40,7 +41,59 @@ class MeetGreetController {
         }
         $reportModel = new MeetGreetReportModel();
         $reportCounts = $reportModel->countBySlotIds($allSlotIds);
-        $ticketUsedSums = $reportModel->sumTicketUsedBySlotIds($allSlotIds);
+
+        $todayYmd = date('Y-m-d');
+        $mgKpiNearestDate = null;
+        $mgKpiTotalFutureTickets = 0;
+        $mgKpiTicketsByMember = [];
+        foreach ($groupedSlots as $date => $slots) {
+            if ($date < $todayYmd) {
+                continue;
+            }
+            if ($mgKpiNearestDate === null || $date < $mgKpiNearestDate) {
+                $mgKpiNearestDate = $date;
+            }
+            foreach ($slots as $s) {
+                // KPI の保有枚数・推し枚数は「日付がまだ過ぎていない」スロットの ticket_count のみ（レポ消化は見ない）
+                $tc = (int)($s['ticket_count'] ?? 0);
+                $mgKpiTotalFutureTickets += $tc;
+                $mid = (int)($s['member_id'] ?? 0);
+                if ($mid > 0) {
+                    $mgKpiTicketsByMember[$mid] = ($mgKpiTicketsByMember[$mid] ?? 0) + $tc;
+                }
+            }
+        }
+
+        $mgKpiNearestDays = null;
+        $mgKpiNearestProgressPct = null;
+        if ($mgKpiNearestDate) {
+            $t0 = new \DateTime($todayYmd);
+            $t1 = new \DateTime($mgKpiNearestDate);
+            $mgKpiNearestDays = (int)floor(($t1->getTimestamp() - $t0->getTimestamp()) / 86400);
+            if ($mgKpiNearestDays < 0) {
+                $mgKpiNearestDays = 0;
+            }
+            $mgKpiNearestProgressPct = (int)round(max(8, min(100, 100 - (min($mgKpiNearestDays, 14) / 14) * 80)));
+        }
+
+        $favoriteModel = new FavoriteModel();
+        $oshiRows = $favoriteModel->getOshiMembers();
+        $meetGreetOshiMemberIds = array_map(static fn(array $r): int => (int)$r['member_id'], $oshiRows);
+        $mgKpiOshiBoxes = [];
+        foreach ($oshiRows as $om) {
+            $mid = (int)$om['member_id'];
+            $tc = (int)($mgKpiTicketsByMember[$mid] ?? 0);
+            if ($tc <= 0) {
+                continue;
+            }
+            $mgKpiOshiBoxes[] = [
+                'level'     => (int)($om['level'] ?? 0),
+                'member_id' => $mid,
+                'name'      => (string)($om['name'] ?? ''),
+                'tickets'   => $tc,
+                'color1'    => $om['color1'] ?? null,
+            ];
+        }
 
         require_once __DIR__ . '/../Views/meetgreet.php';
     }

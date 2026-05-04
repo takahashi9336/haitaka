@@ -4,9 +4,32 @@
  */
 $appKey = 'hinata';
 require_once __DIR__ . '/../../../components/theme_from_session.php';
+require_once __DIR__ . '/inc/meetgreet_member_pill_style.inc.php';
 
 $today = date('Y-m-d');
 $dayNames = ['日','月','火','水','木','金','土'];
+
+$groupedFuture = [];
+$groupedPast = [];
+if (!empty($groupedSlots)) {
+    foreach ($groupedSlots as $date => $slots) {
+        if ($date >= $today) {
+            $groupedFuture[$date] = $slots;
+        } else {
+            $groupedPast[$date] = $slots;
+        }
+    }
+}
+$firstFutureDate = null;
+foreach ($groupedFuture as $d => $_) {
+    $firstFutureDate = $d;
+    break;
+}
+$lastPastDate = null;
+if (!empty($groupedPast)) {
+    $pk = array_keys($groupedPast);
+    $lastPastDate = end($pk);
+}
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -35,6 +58,8 @@ $dayNames = ['日','月','火','水','木','金','土'];
         .slot-row:hover { background-color: rgb(248 250 252); }
         .modal-backdrop { background: rgba(0,0,0,0.4); backdrop-filter: blur(2px); }
         .preview-table th { white-space: nowrap; }
+        /* 遠征管理（live_trip/index）の期間トグルと同じ見た目 */
+        .mg-period-toggle.is-active { background: #fff; color: #0f172a; box-shadow: 0 1px 2px rgba(15,23,42,0.08); }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden text-slate-800 <?= $bodyBgClass ?>"<?= $bodyStyle ? ' style="' . htmlspecialchars($bodyStyle) . '"' : '' ?>>
@@ -56,134 +81,95 @@ $dayNames = ['日','月','火','水','木','金','土'];
 
         <div id="scrollContainer" class="flex-1 overflow-y-auto p-4 pb-24">
             <div class="max-w-3xl mx-auto w-full space-y-3">
+                <?php
+                $mgKpiOshiBoxes = $mgKpiOshiBoxes ?? [];
+                $mgKpiShowOshi = !empty($mgKpiOshiBoxes);
+                $mgKpiGridClass = $mgKpiShowOshi
+                    ? 'grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2 sm:gap-3'
+                    : 'grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2 sm:gap-3';
+                ?>
+                <section class="<?= htmlspecialchars($mgKpiGridClass) ?>" aria-label="ミーグリ予定サマリー">
+                    <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-sm flex flex-col min-h-0 sm:min-h-[120px] sm:p-4">
+                        <div class="text-xs font-bold text-slate-500">直近の予定</div>
+                        <?php if (($mgKpiNearestDate ?? null) !== null && ($mgKpiNearestDays ?? null) !== null): ?>
+                        <div class="mt-1 flex flex-wrap items-baseline">
+                            <?php if ((int)$mgKpiNearestDays === 0): ?>
+                                <span class="text-2xl font-black text-slate-900">本日</span>
+                            <?php else: ?>
+                                <span class="text-sm font-bold text-slate-500">あと</span><span class="text-2xl font-black text-slate-900 tabular-nums mx-0.5"><?= (int)$mgKpiNearestDays ?></span><span class="text-sm font-bold text-slate-500 ml-1">日後</span>
+                            <?php endif; ?>
+                        </div>
+                        <?php else: ?>
+                        <div class="mt-1 text-2xl font-black text-slate-400">予定なし</div>
+                        <?php endif; ?>
+                        <?php if (($mgKpiNearestProgressPct ?? null) !== null): ?>
+                        <div class="mt-auto pt-2 sm:pt-3">
+                            <div class="h-1.5 w-full rounded-full bg-sky-100 overflow-hidden" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="<?= (int)$mgKpiNearestProgressPct ?>">
+                                <div class="h-full rounded-full bg-sky-500 transition-all duration-500" style="width: <?= (int)$mgKpiNearestProgressPct ?>%;"></div>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                    <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-sm flex flex-col min-h-0 sm:min-h-[120px] sm:p-4">
+                        <div class="text-xs font-bold text-slate-500">保有チケット枚数</div>
+                        <div class="mt-1 text-2xl font-black text-slate-900"><?= number_format((int)($mgKpiTotalFutureTickets ?? 0)) ?><span class="text-sm font-bold text-slate-500 ml-1">枚</span></div>
+                    </div>
+                    <?php if ($mgKpiShowOshi): ?>
+                    <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-sm flex flex-col min-h-0 sm:min-h-[120px] sm:p-4">
+                        <div class="text-xs font-bold text-slate-500">推しの枚数</div>
+                        <div class="mt-2 flex flex-wrap items-start justify-start gap-3 sm:mt-3 sm:gap-5">
+                            <?php foreach ($mgKpiOshiBoxes as $box):
+                                $oshiColor = hinata_meetgreet_member_text_color(
+                                    !empty($box['color1']) ? (string)$box['color1'] : null,
+                                    '#334155'
+                                );
+                                $oshiColorEsc = htmlspecialchars($oshiColor, ENT_QUOTES, 'UTF-8');
+                            ?>
+                            <div class="flex flex-col items-center gap-1.5 min-w-[5rem] max-w-[9rem] shrink-0 text-center sm:min-w-[4.5rem] sm:max-w-[7rem]">
+                                <div class="text-sm font-bold leading-snug line-clamp-2 sm:text-xs" style="color: <?= $oshiColorEsc ?>;"><?= htmlspecialchars((string)$box['name']) ?></div>
+                                <div class="text-base font-black tabular-nums sm:text-sm" style="color: <?= $oshiColorEsc ?>;"><?= (int)$box['tickets'] ?><span class="ml-0.5 text-xs font-bold opacity-80 sm:text-[10px]">枚</span></div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                </section>
+
                 <?php if (empty($groupedSlots)): ?>
                     <p class="text-center text-slate-400 text-xs py-16 tracking-wider">ミーグリ予定がありません</p>
                 <?php else: ?>
-                    <?php
-                    $firstFuture = null;
-                    foreach ($groupedSlots as $date => $slots) {
-                        if ($date >= $today && $firstFuture === null) $firstFuture = $date;
-                    }
-                    if ($firstFuture === null) {
-                        $dates = array_keys($groupedSlots);
-                        $firstFuture = end($dates);
-                    }
-                    ?>
-                    <?php foreach ($groupedSlots as $date => $slots):
-                        $dt = new DateTime($date);
-                        $dow = $dayNames[(int)$dt->format('w')];
-                        $dateLabel = $dt->format('Y年n月j日') . "（{$dow}）";
-                        $isPast = $date < $today;
-                        $isOpen = ($date === $firstFuture);
-                        $totalTickets = 0;
-                        foreach ($slots as $_s) {
-                            $totalTickets += (int)($_s['ticket_count'] ?? 0);
-                        }
-                        $hasReport = false;
-                        $linkedEventName = null;
-                        foreach ($slots as $s) {
-                            if (!empty($s['report'])) $hasReport = true;
-                            if (!empty($s['linked_event_name'])) $linkedEventName = $s['linked_event_name'];
-                        }
-                    ?>
-                    <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm" data-date-group="<?= $date ?>">
-                        <div class="accordion-trigger flex items-center justify-between px-5 py-4 <?= $isPast ? 'opacity-60' : '' ?>"
-                             onclick="MG.toggleDate('<?= $date ?>')">
-                            <div class="flex items-center gap-3">
-                                <span class="font-bold text-slate-700"><?= $dateLabel ?></span>
-                                <span class="text-[10px] text-slate-400 font-bold px-2 py-0.5 bg-slate-100 rounded-full"><?= count($slots) ?>部</span>
-                                <?php if ($totalTickets > 0): ?>
-                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" style="background: color-mix(in srgb, var(--mg-theme) 10%, white); color: var(--mg-theme);"><?= $totalTickets ?>枚</span>
-                                <?php endif; ?>
-                                <?php if ($linkedEventName): ?>
-                                    <span class="text-[10px] font-bold text-emerald-600 px-2 py-0.5 bg-emerald-50 rounded-full"><i class="fa-solid fa-link mr-0.5"></i><?= htmlspecialchars($linkedEventName) ?></span>
-                                <?php endif; ?>
-                                <?php if ($hasReport): ?>
-                                    <i class="fa-solid fa-pen-to-square text-xs" style="color: var(--mg-theme);"></i>
-                                <?php endif; ?>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <i id="icon-<?= $date ?>" class="fa-solid fa-chevron-down text-slate-300 text-xs transition-transform duration-300 <?= $isOpen ? 'rotate-180' : '' ?>"></i>
-                            </div>
-                        </div>
-
-                        <div id="content-<?= $date ?>" class="border-t border-slate-100 <?= $isOpen ? '' : 'hidden' ?>">
-                            <?php if (!$linkedEventName): ?>
-                            <div class="px-5 py-2 bg-amber-50 border-b border-amber-100 flex items-center gap-2" id="link-bar-<?= $date ?>">
-                                <button onclick="MG.showLinkSelect('<?= $date ?>')" class="text-[11px] font-bold text-amber-600 hover:text-amber-800 transition" id="link-btn-<?= $date ?>">
-                                    <i class="fa-solid fa-link mr-1"></i>イベントを紐づける
-                                </button>
-                                <div id="link-select-wrap-<?= $date ?>" class="hidden flex-1 flex items-center gap-2">
-                                    <select id="link-select-<?= $date ?>" class="flex-1 text-xs border border-amber-300 rounded px-2 py-1 bg-white">
-                                        <option value="">-- イベント選択 --</option>
-                                    </select>
-                                    <button onclick="MG.submitLink('<?= $date ?>')" class="text-[10px] font-bold text-white bg-emerald-500 hover:bg-emerald-600 rounded px-3 py-1 transition">紐づけ</button>
-                                    <button onclick="MG.cancelLink('<?= $date ?>')" class="text-[10px] text-slate-400 hover:text-slate-600 transition">キャンセル</button>
-                                </div>
-                            </div>
-                            <?php endif; ?>
-                            <!-- テーブルヘッダ -->
-                            <div class="grid grid-cols-12 gap-2 px-5 py-2 bg-slate-50 text-[10px] font-bold text-slate-400 tracking-wider">
-                                <div class="col-span-3">時間帯</div>
-                                <div class="col-span-4">メンバー</div>
-                                <div class="col-span-2 text-center">枚数</div>
-                                <div class="col-span-3 text-right">操作</div>
-                            </div>
-
-                            <?php foreach ($slots as $slot): ?>
-                            <div class="slot-row border-t border-slate-50" data-slot-id="<?= $slot['id'] ?>">
-                                <div class="grid grid-cols-12 gap-2 px-5 py-3 items-center">
-                                    <div class="col-span-3">
-                                        <div class="text-xs font-bold text-slate-700"><?= htmlspecialchars($slot['slot_name']) ?></div>
-                                        <?php if ($slot['start_time'] && $slot['end_time']): ?>
-                                            <div class="text-[10px] text-slate-400"><?= substr($slot['start_time'], 0, 5) ?>～<?= substr($slot['end_time'], 0, 5) ?></div>
-                                        <?php endif; ?>
-                                    </div>
-                                    <div class="col-span-4">
-                                        <?php
-                                        $displayName = $slot['member_name'] ?? $slot['member_name_raw'] ?? '不明';
-                                        $color1 = $slot['color1'] ?? '#94a3b8';
-                                        ?>
-                                        <span class="text-sm font-bold" style="color: <?= htmlspecialchars($color1) ?>;"><?= htmlspecialchars($displayName) ?></span>
-                                        <?php if (!$slot['member_id'] && $slot['member_name_raw']): ?>
-                                            <span class="text-[9px] text-amber-500 font-bold ml-1">未マッチ</span>
-                                        <?php endif; ?>
-                                    </div>
-                                    <div class="col-span-2 text-center">
-                                        <span class="text-sm font-bold text-slate-600"><?= (int)($slot['ticket_count'] ?? 0) ?><span class="text-[10px] text-slate-400">枚</span></span>
-                                    </div>
-                                    <div class="col-span-3 flex items-center justify-end gap-2">
-                                        <?php
-                                            $rc = $reportCounts[(int)$slot['id']] ?? 0;
-                                            $hasMemo = !empty($slot['report']);
-                                            $hasAny = $rc > 0 || $hasMemo;
-                                            $label = '';
-                                            if ($rc > 0 && $hasMemo) $label = "レポ {$rc}件+メモ";
-                                            elseif ($rc > 0) $label = "レポ {$rc}件";
-                                            elseif ($hasMemo) $label = 'メモあり';
-                                            else $label = 'レポを書く';
-                                        ?>
-                                        <a href="/hinata/meetgreet_report.php?slot_id=<?= $slot['id'] ?>" class="text-[10px] font-bold px-2 py-1 rounded-md transition <?= $hasAny ? 'text-white' : 'text-slate-500 bg-slate-100 hover:bg-slate-200' ?>"
-                                           <?= $hasAny ? 'style="background: var(--mg-theme);"' : '' ?>>
-                                            <i class="fa-solid fa-<?= $hasAny ? 'pen-to-square' : 'comments' ?> mr-0.5"></i><?= $label ?>
-                                        </a>
-                                        <button onclick="MG.deleteSlot(<?= $slot['id'] ?>)" class="text-slate-300 hover:text-red-400 p-1 transition" title="削除">
-                                            <i class="fa-solid fa-trash-can text-xs"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                            <?php endforeach; ?>
-
-                            <!-- 日付一括削除 -->
-                            <div class="px-5 py-2 border-t border-slate-50 flex justify-end">
-                                <button onclick="MG.deleteDate('<?= $date ?>')" class="text-[10px] text-slate-300 hover:text-red-400 font-bold transition">
-                                    <i class="fa-solid fa-trash-can mr-1"></i>この日の予定を全て削除
-                                </button>
-                            </div>
+                    <div class="flex flex-wrap gap-3 mb-4 items-start">
+                        <div id="mgFilterBar" class="inline-flex items-center gap-2 flex-wrap w-fit max-w-full p-1 rounded-xl bg-slate-100 border border-slate-200" role="group" aria-label="予定の表示範囲">
+                            <button type="button" class="mg-period-toggle px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-white whitespace-nowrap is-active" data-mg-filter="future" aria-pressed="true">今後の予定</button>
+                            <button type="button" class="mg-period-toggle px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-white whitespace-nowrap" data-mg-filter="past" aria-pressed="false">過去の予定</button>
+                            <button type="button" class="mg-period-toggle px-3 py-2 rounded-lg text-xs font-black text-slate-600 hover:bg-white whitespace-nowrap" data-mg-filter="all" aria-pressed="false">すべて</button>
                         </div>
                     </div>
-                    <?php endforeach; ?>
+
+                    <div id="mgSectionFuture" class="space-y-3">
+                        <?php if (empty($groupedFuture)): ?>
+                            <p id="mgEmptyFuture" class="text-center text-slate-400 text-xs py-10 tracking-wider">今後の予定はありません</p>
+                        <?php else: ?>
+                            <?php foreach ($groupedFuture as $date => $slots):
+                                $isOpen = ($date === $firstFutureDate);
+                                require __DIR__ . '/partials/meetgreet_slot_day_card.php';
+                            endforeach; ?>
+                        <?php endif; ?>
+                    </div>
+
+                    <div id="mgPastSubheader" class="hidden pt-4 border-t border-slate-200/80">
+                        <h2 class="text-[11px] font-black text-slate-500 tracking-wider">過去の予定</h2>
+                    </div>
+                    <div id="mgSectionPast" class="space-y-3 hidden">
+                        <?php if (empty($groupedPast)): ?>
+                            <p id="mgEmptyPast" class="text-center text-slate-400 text-xs py-10 tracking-wider">過去の予定はありません</p>
+                        <?php else: ?>
+                            <?php foreach ($groupedPast as $date => $slots):
+                                $isOpen = false;
+                                require __DIR__ . '/partials/meetgreet_slot_day_card.php';
+                            endforeach; ?>
+                        <?php endif; ?>
+                    </div>
                 <?php endif; ?>
             </div>
         </div>
@@ -211,6 +197,13 @@ $dayNames = ['日','月','火','水','木','金','土'];
                     <!-- 手動追加フォーム -->
                     <div id="manualAddForm" class="hidden space-y-4">
                         <div>
+                            <label class="block text-[10px] font-bold text-slate-400 tracking-wider mb-1">イベント（任意）</label>
+                            <select id="manualEvent" class="w-full h-10 border border-slate-200 rounded-lg px-3 text-sm outline-none focus:ring-2" style="focus:ring-color: var(--mg-theme);">
+                                <option value="">選択しない</option>
+                            </select>
+                            <div class="mt-1 text-[10px] text-slate-400">イベントを先に選ぶと日付が自動入力されます</div>
+                        </div>
+                        <div>
                             <label class="block text-[10px] font-bold text-slate-400 tracking-wider mb-1">日付 <span class="text-red-500">*</span></label>
                             <input type="date" id="manualDate" class="w-full h-10 border border-slate-200 rounded-lg px-3 text-sm outline-none focus:ring-2" style="focus:ring-color: var(--mg-theme);" required>
                         </div>
@@ -234,7 +227,7 @@ $dayNames = ['日','月','火','水','木','金','土'];
                                 <?php require __DIR__ . '/partials/member_select_options.php'; ?>
                             </select>
                         </div>
-                        <div class="grid grid-cols-2 gap-3">
+                        <div id="manualTimeGrid" class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-400 tracking-wider mb-1">開始時刻</label>
                                 <input type="time" id="manualStartTime" class="w-full h-10 border border-slate-200 rounded-lg px-3 text-sm outline-none focus:ring-2" style="focus:ring-color: var(--mg-theme);">
@@ -244,9 +237,14 @@ $dayNames = ['日','月','火','水','木','金','土'];
                                 <input type="time" id="manualEndTime" class="w-full h-10 border border-slate-200 rounded-lg px-3 text-sm outline-none focus:ring-2" style="focus:ring-color: var(--mg-theme);">
                             </div>
                         </div>
-                        <div>
+                        <div id="manualSingleTickets">
                             <label class="block text-[10px] font-bold text-slate-400 tracking-wider mb-1">枚数</label>
                             <input type="number" id="manualTickets" min="0" value="0" class="w-full h-10 border border-slate-200 rounded-lg px-3 text-sm outline-none focus:ring-2" style="focus:ring-color: var(--mg-theme);">
+                        </div>
+                        <div id="manualRoundTickets" class="hidden">
+                            <label class="block text-[10px] font-bold text-slate-400 tracking-wider mb-2">部ごとの枚数</label>
+                            <div id="manualRoundTicketList" class="space-y-2"></div>
+                            <div class="mt-1 text-[10px] text-slate-400">0枚の部は登録しません</div>
                         </div>
                         <button onclick="MG.submitManualAdd()" class="w-full h-11 rounded-lg font-bold text-white mt-3 transition active:scale-95" style="background: var(--mg-theme);">
                             <i class="fa-solid fa-plus mr-1"></i>登録する
@@ -312,11 +310,73 @@ $dayNames = ['日','月','火','水','木','金','土'];
     <script src="/assets/js/core.js?v=2"></script>
     <script>
     const memberList = <?= json_encode(array_map(fn($m) => ['id' => $m['id'], 'name' => $m['name']], $members), JSON_UNESCAPED_UNICODE) ?>;
-    const mgEvents = <?= json_encode(array_map(fn($e) => ['id' => $e['id'], 'event_name' => $e['event_name'], 'event_date' => $e['event_date'], 'category' => (int)$e['category']], $mgEvents), JSON_UNESCAPED_UNICODE) ?>;
+    const mgEvents = <?= json_encode(array_map(fn($e) => [
+        'id' => $e['id'],
+        'event_name' => $e['event_name'],
+        'event_date' => $e['event_date'],
+        'category' => (int)$e['category'],
+        'mg_rounds' => (int)($e['mg_rounds'] ?? 0),
+    ], $mgEvents), JSON_UNESCAPED_UNICODE) ?>;
+    const mgToday = <?= json_encode($today, JSON_UNESCAPED_UNICODE) ?>;
+    const mgHasFuture = <?= !empty($groupedFuture) ? 'true' : 'false' ?>;
+    const mgHasPast = <?= !empty($groupedPast) ? 'true' : 'false' ?>;
+    const mgLastPastDate = <?= json_encode($lastPastDate, JSON_UNESCAPED_UNICODE) ?>;
 
     const MG = {
         parsedSlots: [],
         matchedEventId: null,
+        mgFilter: 'future',
+
+        setFilter(mode) {
+            const secF = document.getElementById('mgSectionFuture');
+            const secP = document.getElementById('mgSectionPast');
+            const sub = document.getElementById('mgPastSubheader');
+            if (!secF || !secP) return;
+
+            this.mgFilter = mode;
+            document.querySelectorAll('#mgFilterBar [data-mg-filter]').forEach(btn => {
+                const on = btn.getAttribute('data-mg-filter') === mode;
+                btn.classList.toggle('is-active', on);
+                btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+            });
+
+            if (mode === 'future') {
+                secF.classList.remove('hidden');
+                secP.classList.add('hidden');
+                if (sub) sub.classList.add('hidden');
+                this._collapsePastAccordions();
+            } else if (mode === 'past') {
+                secF.classList.add('hidden');
+                secP.classList.remove('hidden');
+                if (sub) sub.classList.add('hidden');
+                if (mgLastPastDate) {
+                    mgOpenDateAccordion(mgLastPastDate);
+                }
+            } else {
+                secF.classList.remove('hidden');
+                if (mgHasPast) {
+                    secP.classList.remove('hidden');
+                    if (sub) sub.classList.remove('hidden');
+                } else {
+                    secP.classList.add('hidden');
+                    if (sub) sub.classList.add('hidden');
+                }
+                this._collapsePastAccordions();
+            }
+        },
+
+        _collapsePastAccordions() {
+            document.querySelectorAll('#mgSectionPast [data-date-group]').forEach(grp => {
+                const d = grp.getAttribute('data-date-group');
+                if (!d || d >= mgToday) return;
+                const el = document.getElementById('content-' + d);
+                const icon = document.getElementById('icon-' + d);
+                if (el && !el.classList.contains('hidden')) {
+                    el.classList.add('hidden');
+                    if (icon) icon.classList.remove('rotate-180');
+                }
+            });
+        },
 
         // --- アコーディオン ---
         toggleDate(date) {
@@ -705,6 +765,7 @@ $dayNames = ['日','月','火','水','木','金','土'];
 
         async submitManualAdd() {
             const dateVal = document.getElementById('manualDate').value;
+            const manualEventSel = document.getElementById('manualEvent');
             const slotSel = document.getElementById('manualSlot').value;
             const slotOther = document.getElementById('manualSlotOther').value.trim();
             const memberId = document.getElementById('manualMember').value;
@@ -713,22 +774,51 @@ $dayNames = ['日','月','火','水','木','金','土'];
             const ticketCount = parseInt(document.getElementById('manualTickets').value || '0', 10);
 
             if (!dateVal) { App.toast('日付を選択してください'); return; }
-            let slotName = slotSel === 'other' ? slotOther : slotSel;
-            if (!slotName) { App.toast('部を選択または入力してください'); return; }
             if (!memberId) { App.toast('メンバーを選択してください'); return; }
 
             const member = memberList.find(m => String(m.id) === memberId);
-            const slots = [{
-                slot_name: slotName,
-                start_time: startTime || null,
-                end_time: endTime || null,
-                member_id: parseInt(memberId, 10),
-                member_name_raw: member ? member.name : null,
-                ticket_count: isNaN(ticketCount) ? 0 : ticketCount,
-            }];
 
-            const matchedEvent = mgEvents.find(e => e.event_date === dateVal);
-            const eventId = matchedEvent ? matchedEvent.id : null;
+            let eventId = null;
+            if (manualEventSel && manualEventSel.value) {
+                eventId = parseInt(manualEventSel.value, 10);
+                if (isNaN(eventId)) eventId = null;
+            } else {
+                const matchedEvent = mgEvents.find(e => e.event_date === dateVal);
+                eventId = matchedEvent ? matchedEvent.id : null;
+            }
+
+            let slots = [];
+            if (manualEventSel && manualEventSel.value) {
+                // イベント選択時: 部ごとの枚数入力（時刻は不要）
+                const inputs = Array.from(document.querySelectorAll('#manualRoundTicketList input[data-mg-round-slot]'));
+                for (const inp of inputs) {
+                    const sn = inp.getAttribute('data-mg-round-slot') || '';
+                    const c = parseInt(inp.value || '0', 10);
+                    if (!sn) continue;
+                    if (isNaN(c) || c <= 0) continue;
+                    slots.push({
+                        slot_name: sn,
+                        start_time: null,
+                        end_time: null,
+                        member_id: parseInt(memberId, 10),
+                        member_name_raw: member ? member.name : null,
+                        ticket_count: c,
+                    });
+                }
+                if (slots.length === 0) { App.toast('部ごとの枚数を入力してください'); return; }
+            } else {
+                // イベント未選択時: 従来どおり 1件
+                let slotName = slotSel === 'other' ? slotOther : slotSel;
+                if (!slotName) { App.toast('部を選択または入力してください'); return; }
+                slots = [{
+                    slot_name: slotName,
+                    start_time: startTime || null,
+                    end_time: endTime || null,
+                    member_id: parseInt(memberId, 10),
+                    member_name_raw: member ? member.name : null,
+                    ticket_count: isNaN(ticketCount) ? 0 : ticketCount,
+                }];
+            }
 
             const res = await App.post('/hinata/api/meetgreet_import.php', {
                 event_date: dateVal,
@@ -751,6 +841,10 @@ $dayNames = ['日','月','火','水','木','金','土'];
         },
     };
 
+    document.querySelectorAll('#mgFilterBar [data-mg-filter]').forEach(btn => {
+        btn.addEventListener('click', () => MG.setFilter(btn.getAttribute('data-mg-filter')));
+    });
+
     document.getElementById('openImportBtn').onclick = () => MG.openImport();
     document.getElementById('mobileMenuBtn').onclick = () => document.getElementById('sidebar').classList.add('mobile-open');
     document.getElementById('manualSlot').onchange = function() {
@@ -758,6 +852,96 @@ $dayNames = ['日','月','火','水','木','金','土'];
         otherEl.classList.toggle('hidden', this.value !== 'other');
         if (this.value !== 'other') otherEl.value = '';
     };
+    // 手動追加：イベント先行（イベント選択→日付自動入力）
+    (function initManualEventSelect() {
+        const sel = document.getElementById('manualEvent');
+        if (!sel) return;
+        const dateEl = document.getElementById('manualDate');
+        const slotWrap = document.getElementById('manualSlot')?.closest('div');
+        const timeGrid = document.getElementById('manualTimeGrid');
+        const singleTickets = document.getElementById('manualSingleTickets');
+        const roundTickets = document.getElementById('manualRoundTickets');
+        const roundList = document.getElementById('manualRoundTicketList');
+
+        const fmt = (e) => {
+            const catLabel = e.category === 3 ? 'リアルミーグリ' : (e.category === 2 ? 'オンラインミーグリ' : 'ミーグリ');
+            const d = e.event_date ? ` ${e.event_date}` : '';
+            return `${catLabel}: ${e.event_name}${d}`;
+        };
+        // 一覧を日付降順（新しい→古い）に寄せる
+        const sorted = mgEvents.slice().sort((a, b) => String(b.event_date || '').localeCompare(String(a.event_date || '')));
+        for (const e of sorted) {
+            const opt = document.createElement('option');
+            opt.value = String(e.id);
+            opt.textContent = fmt(e);
+            sel.appendChild(opt);
+        }
+
+        const buildRoundInputs = (slotNames) => {
+            if (!roundList) return;
+            roundList.innerHTML = '';
+            for (const sn of slotNames) {
+                const row = document.createElement('div');
+                row.className = 'flex items-center gap-3';
+                row.innerHTML = `
+                    <div class="w-20 shrink-0 text-sm font-bold text-slate-700">${MG._esc(sn)}</div>
+                    <div class="flex-1">
+                        <input type="number" min="0" value="0" data-mg-round-slot="${MG._esc(sn)}"
+                               class="w-full h-10 border border-slate-200 rounded-lg px-3 text-sm outline-none focus:ring-2"
+                               style="focus:ring-color: var(--mg-theme);" placeholder="枚数">
+                    </div>
+                `;
+                roundList.appendChild(row);
+            }
+        };
+
+        const setEventMode = async (eventId) => {
+            const isOn = !!eventId;
+            if (dateEl) {
+                dateEl.disabled = isOn;
+                dateEl.classList.toggle('bg-slate-100', isOn);
+                dateEl.classList.toggle('cursor-not-allowed', isOn);
+            }
+            if (slotWrap) slotWrap.classList.toggle('hidden', isOn);
+            if (timeGrid) timeGrid.classList.toggle('hidden', isOn); // 要望: イベント選択時は時刻不要
+            if (singleTickets) singleTickets.classList.toggle('hidden', isOn);
+            if (roundTickets) roundTickets.classList.toggle('hidden', !isOn);
+
+            if (!isOn) return;
+            const ev = mgEvents.find(e => String(e.id) === String(eventId));
+            if (ev && ev.event_date && dateEl) {
+                dateEl.value = ev.event_date;
+            }
+
+            // 部の候補: mg_rounds があれば第1部..第N部、なければイベントに紐づく既存スロットから推測
+            let slotNames = [];
+            const rounds = ev ? (parseInt(ev.mg_rounds, 10) || 0) : 0;
+            if (rounds > 0) {
+                slotNames = Array.from({ length: rounds }, (_, i) => `第${i + 1}部`);
+            } else {
+                try {
+                    const resp = await fetch('/hinata/api/meetgreet_event_slots.php?event_id=' + encodeURIComponent(String(eventId)));
+                    const res = await resp.json();
+                    if (res && res.status === 'success' && Array.isArray(res.slots)) {
+                        const set = new Set();
+                        res.slots.forEach(s => { if (s && s.slot_name) set.add(String(s.slot_name)); });
+                        slotNames = Array.from(set);
+                    }
+                } catch (e) { /* ignore */ }
+                if (slotNames.length === 0) {
+                    slotNames = ['第1部','第2部','第3部','第4部','第5部','第6部'];
+                }
+            }
+            buildRoundInputs(slotNames);
+        };
+
+        sel.onchange = function() {
+            setEventMode(this.value || '');
+        };
+
+        // 初期状態
+        setEventMode('');
+    })();
 
     // 保存済みのアコーディオン状態を復元 + ダッシュボード等からのフォーカス
     function mgOpenDateAccordion(dateStr) {
@@ -772,6 +956,8 @@ $dayNames = ['日','月','火','水','木','金','土'];
     window.onload = () => {
         const opened = JSON.parse(localStorage.getItem('mg_opened_dates') || '[]');
         opened.forEach(date => {
+            if (MG.mgFilter === 'future' && date < mgToday) return;
+            if (MG.mgFilter === 'past' && date >= mgToday) return;
             mgOpenDateAccordion(date);
         });
 
@@ -783,6 +969,13 @@ $dayNames = ['日','月','火','水','木','金','土'];
                 const row = document.querySelector('.slot-row[data-slot-id="' + focusSlot + '"]');
                 if (row) {
                     const grp = row.closest('[data-date-group]');
+                    const d = grp ? grp.getAttribute('data-date-group') : '';
+                    if (d && d < mgToday) {
+                        if (mgHasFuture && mgHasPast) MG.setFilter('all');
+                        else if (mgHasPast) MG.setFilter('past');
+                    } else if (d) {
+                        MG.setFilter('future');
+                    }
                     if (grp) mgOpenDateAccordion(grp.getAttribute('data-date-group'));
                     row.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     row.classList.add('ring-2', 'ring-sky-400', 'bg-sky-50/70');
@@ -792,6 +985,12 @@ $dayNames = ['日','月','火','水','木','金','土'];
             }, 400);
         } else if (/^\d{4}-\d{2}-\d{2}$/.test(focusDate)) {
             setTimeout(() => {
+                if (focusDate < mgToday) {
+                    if (mgHasFuture && mgHasPast) MG.setFilter('all');
+                    else if (mgHasPast) MG.setFilter('past');
+                } else {
+                    MG.setFilter('future');
+                }
                 mgOpenDateAccordion(focusDate);
                 const grp = document.querySelector('[data-date-group="' + focusDate + '"]');
                 if (grp) grp.scrollIntoView({ behavior: 'smooth', block: 'start' });

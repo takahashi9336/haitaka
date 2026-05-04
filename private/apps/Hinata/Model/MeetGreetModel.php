@@ -20,7 +20,8 @@ class MeetGreetModel extends BaseModel {
     public function getGroupedByDate(): array {
         $sql = "SELECT s.*, m.name as member_name,
                        c1.color_code as color1, c2.color_code as color2,
-                       ev.event_name as linked_event_name
+                       ev.event_name as linked_event_name,
+                       ev.category as linked_event_category
                 FROM {$this->table} s
                 LEFT JOIN hn_members m ON s.member_id = m.id
                 LEFT JOIN hn_colors c1 ON m.color_id1 = c1.id
