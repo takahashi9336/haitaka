@@ -212,6 +212,13 @@ $allCategories = [
                                 <div class="flex-1 min-w-0">
                                     <div class="text-[10px] font-bold text-white/70 tracking-wider mb-0.5">NEXT EVENT</div>
                                     <h3 class="font-black text-white text-sm md:text-base truncate"><?= htmlspecialchars($nextEvent['event_name']) ?></h3>
+                                    <?php if (!empty($nextEvent['series_name'])): ?>
+                                    <div class="mt-1">
+                                        <span class="inline-flex items-center rounded-full border border-white/30 bg-white/15 px-2 py-0.5 text-[9px] font-black text-white/95 max-w-[20rem] truncate" title="<?= htmlspecialchars((string)$nextEvent['series_name'], ENT_QUOTES, 'UTF-8') ?>">
+                                            <?= htmlspecialchars((string)$nextEvent['series_name'], ENT_QUOTES, 'UTF-8') ?>
+                                        </span>
+                                    </div>
+                                    <?php endif; ?>
                                     <div class="flex items-center gap-2 mt-1">
                                         <span class="text-[10px] text-white/80"><?= $neDate ?>（<?= $neDow ?>）</span>
                                         <?php if (!empty($nextEvent['event_place'])): ?>
@@ -272,6 +279,11 @@ $allCategories = [
                                         <div class="flex items-center gap-2 mb-1">
                                             <i class="fa-solid <?= $cat['icon'] ?> text-[8px]" style="color: <?= $cat['color'] ?>;"></i>
                                             <span class="text-[9px] font-black text-slate-400 tracking-wider"><?= htmlspecialchars($cat['name']) ?></span>
+                                            <?php if (!empty($e['series_name'])): ?>
+                                            <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[9px] font-black text-slate-600 max-w-[16rem] truncate" title="<?= htmlspecialchars((string)$e['series_name'], ENT_QUOTES, 'UTF-8') ?>">
+                                                <?= htmlspecialchars((string)$e['series_name'], ENT_QUOTES, 'UTF-8') ?>
+                                            </span>
+                                            <?php endif; ?>
                                             <span class="text-[10px] font-bold text-slate-400"><?= $time ?></span>
                                         </div>
                                         <h3 class="font-black text-slate-800 text-sm md:text-base truncate"><?= htmlspecialchars($e['event_name']) ?></h3>
@@ -538,7 +550,9 @@ $allCategories = [
             h += '<div class="flex items-center gap-3 mb-4">';
             h += '<div class="w-10 h-10 rounded-lg flex items-center justify-center text-white shadow-md" style="background:' + color + '"><i class="fa-solid ' + icon + '"></i></div>';
             h += '<div class="flex-1 min-w-0">';
-            h += '<div class="flex items-center gap-2 mb-0.5"><span class="text-[9px] font-black text-slate-400 tracking-wider">' + _esc(catName) + '</span></div>';
+            h += '<div class="flex items-center gap-2 mb-0.5"><span class="text-[9px] font-black text-slate-400 tracking-wider">' + _esc(catName) + '</span>';
+            if (e.series_name) h += '<span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[9px] font-black text-slate-600 max-w-[18rem] truncate" title="' + _esc(e.series_name) + '">' + _esc(e.series_name) + '</span>';
+            h += '</div>';
             h += '<h2 class="font-black text-slate-800 text-base">' + _esc(e.event_name) + '</h2>';
             h += '</div></div>';
             h += '<div class="flex items-center gap-3 text-xs text-slate-500 mb-4">';
@@ -736,7 +750,9 @@ $allCategories = [
                     html += '<div class="tl-item ' + cls + '" onclick="openSlidePanel(' + e.id + ')">';
                     html += '<div class="tl-node" style="background:' + color + ';box-shadow:0 0 0 2px ' + color + '33;"></div>';
                     html += '<div class="bg-white rounded-xl border border-slate-100 shadow-sm p-4 hover:shadow-md transition cursor-pointer' + (isPast ? ' opacity-50' : '') + '">';
-                    html += '<div class="flex items-center gap-2 mb-1.5"><i class="fa-solid ' + icon + ' text-[10px]" style="color:' + color + '"></i><span class="text-[9px] font-black text-slate-400 tracking-wider">' + _esc(catNames[e.category] || 'その他') + '</span></div>';
+                    html += '<div class="flex items-center gap-2 mb-1.5"><i class="fa-solid ' + icon + ' text-[10px]" style="color:' + color + '"></i><span class="text-[9px] font-black text-slate-400 tracking-wider">' + _esc(catNames[e.category] || 'その他') + '</span>';
+                    if (e.series_name) html += '<span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[9px] font-black text-slate-600 max-w-[16rem] truncate" title="' + _esc(e.series_name) + '">' + _esc(e.series_name) + '</span>';
+                    html += '</div>';
                     html += '<h3 class="font-black text-slate-800 text-sm mb-1">' + _esc(e.event_name) + '</h3>';
                     html += '<div class="text-[10px] text-slate-400"><i class="fa-regular fa-calendar mr-1"></i>' + di.full + '（' + di.dow + '）</div>';
                     if (e.event_place) html += '<div class="text-[10px] text-slate-400 mt-0.5"><i class="fa-solid fa-location-dot mr-1 text-sky-300"></i>' + _esc(e.event_place) + '</div>';
@@ -781,6 +797,7 @@ $allCategories = [
                     html += '<div class="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center shrink-0"><i class="fa-solid ' + ni + ' text-white text-2xl"></i></div>';
                     html += '<div class="flex-1 min-w-0"><div class="text-[10px] font-bold text-white/70 tracking-wider mb-1">NEXT EVENT</div>';
                     html += '<h2 class="font-black text-white text-lg md:text-xl truncate">' + _esc(nextEvt.event_name) + '</h2>';
+                    if (nextEvt.series_name) html += '<div class="mt-1"><span class="inline-flex items-center rounded-full border border-white/30 bg-white/15 px-2 py-0.5 text-[9px] font-black text-white/95 max-w-[20rem] truncate" title="' + _esc(nextEvt.series_name) + '">' + _esc(nextEvt.series_name) + '</span></div>';
                     html += '<div class="flex items-center gap-3 mt-1.5"><span class="text-xs text-white/80">' + nd.full + '（' + nd.dow + '）</span>';
                     if (nextEvt.event_place) html += '<span class="text-xs text-white/60"><i class="fa-solid fa-location-dot mr-0.5"></i>' + _esc(nextEvt.event_place) + '</span>';
                     html += '</div></div>';
@@ -827,7 +844,9 @@ $allCategories = [
                     var isPast = e.event_date.substring(0, 10) < today;
                     html += '<div class="dash-card bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden' + (isPast ? ' opacity-50' : '') + '" onclick="openSlidePanel(' + e.id + ')">';
                     html += '<div class="h-1.5" style="background:' + color + '"></div>';
-                    html += '<div class="p-4"><div class="flex items-center gap-2 mb-2"><i class="fa-solid ' + icon + ' text-[10px]" style="color:' + color + '"></i><span class="text-[9px] font-black text-slate-400 tracking-wider">' + _esc(catNames[e.category] || '') + '</span></div>';
+                    html += '<div class="p-4"><div class="flex items-center gap-2 mb-2"><i class="fa-solid ' + icon + ' text-[10px]" style="color:' + color + '"></i><span class="text-[9px] font-black text-slate-400 tracking-wider">' + _esc(catNames[e.category] || '') + '</span>';
+                    if (e.series_name) html += '<span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[9px] font-black text-slate-600 max-w-[16rem] truncate" title="' + _esc(e.series_name) + '">' + _esc(e.series_name) + '</span>';
+                    html += '</div>';
                     html += '<h4 class="font-black text-slate-800 text-sm truncate mb-1">' + _esc(e.event_name) + '</h4>';
                     html += '<div class="text-[10px] text-slate-400">' + di.m + '/' + di.day + '（' + di.dow + '）</div>';
                     if (e.event_place) html += '<div class="text-[10px] text-slate-400 mt-0.5 truncate"><i class="fa-solid fa-location-dot mr-0.5 text-sky-300"></i>' + _esc(e.event_place) + '</div>';
@@ -845,7 +864,9 @@ $allCategories = [
                 var h = '<div class="flex items-center gap-3 bg-white rounded-lg border border-slate-100 shadow-sm p-3 cursor-pointer hover:shadow-md transition' + (isPast ? ' opacity-50' : '') + '" onclick="openSlidePanel(' + e.id + ')">';
                 h += '<div class="w-1.5 h-10 rounded-full shrink-0" style="background:' + color + '"></div>';
                 h += '<div class="w-12 text-center shrink-0"><div class="text-xs font-black text-slate-700">' + di.m + '/' + di.day + '</div><div class="text-[10px] text-slate-400">' + di.dow + '</div></div>';
-                h += '<div class="flex-1 min-w-0"><h4 class="font-bold text-slate-800 text-xs truncate">' + _esc(e.event_name) + '</h4>';
+                h += '<div class="flex-1 min-w-0"><div class="flex items-center gap-2"><h4 class="font-bold text-slate-800 text-xs truncate">' + _esc(e.event_name) + '</h4>';
+                if (e.series_name) h += '<span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[9px] font-black text-slate-600 max-w-[14rem] truncate" title="' + _esc(e.series_name) + '">' + _esc(e.series_name) + '</span>';
+                h += '</div>';
                 if (e.event_place) h += '<div class="text-[10px] text-slate-400 truncate">' + _esc(e.event_place) + '</div>';
                 h += '</div>';
                 h += '<i class="fa-solid ' + icon + ' text-[10px] shrink-0" style="color:' + color + '"></i>';
@@ -902,7 +923,11 @@ $allCategories = [
                     html += '<div class="text-xs font-black ' + (isToday ? 'text-sky-600' : 'text-slate-700') + '">' + di.m + '/' + di.day + '</div>';
                     html += '<div class="text-[9px] ' + (isToday ? 'text-sky-400' : 'text-slate-400') + '">' + di.dow + '</div>';
                     html += '</div>';
-                    html += '<div class="flex-1 min-w-0"><h4 class="font-bold text-slate-800 text-xs truncate">' + _esc(e.event_name) + '</h4>';
+                    html += '<div class="flex-1 min-w-0">';
+                    html += '<div class="flex items-center gap-2">';
+                    html += '<h4 class="font-bold text-slate-800 text-xs truncate">' + _esc(e.event_name) + '</h4>';
+                    if (e.series_name) html += '<span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[9px] font-black text-slate-600 max-w-[12rem] truncate" title="' + _esc(e.series_name) + '">' + _esc(e.series_name) + '</span>';
+                    html += '</div>';
                     html += '<div class="text-[9px] text-slate-400 flex items-center gap-1"><i class="fa-solid ' + icon + ' text-[7px]" style="color:' + color + '"></i>' + _esc(catNames[e.category] || '') + '</div>';
                     html += '</div></div>';
                 }
