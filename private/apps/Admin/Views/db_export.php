@@ -55,7 +55,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             <div class="max-w-4xl mx-auto w-full">
                 <div class="mb-8">
                     <h2 class="text-2xl font-black text-slate-800 tracking-tight mb-2">一括出力</h2>
-                    <p class="text-slate-500 font-medium">全テーブルのスキーマを、CREATE文・Markdown概要・JSON のいずれかでダウンロードできます。AI共有やドキュメント用にご利用ください。</p>
+                    <p class="text-slate-500 font-medium">全テーブルのスキーマ（CREATE文・Markdown・JSON）や、全テーブルの行データ（CSV・ZIP）をダウンロードできます。AI共有・ドキュメント・バックアップ用途にご利用ください。</p>
                 </div>
 
                 <div class="grid gap-4 md:grid-cols-1">
@@ -85,6 +85,23 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                             <div class="min-w-0 flex-1">
                                 <h3 class="text-lg font-bold text-slate-800 mb-1">スキーマ概要（.md）</h3>
                                 <p class="text-sm text-slate-500 mb-3">全テーブル・カラムをMarkdownの表形式でまとめたドキュメント。READMEや設計書への貼り付けに便利。</p>
+                                <span class="inline-flex items-center gap-2 text-sm font-bold <?= $isThemeHex ? '' : 'text-' . $themeTailwind . '-600' ?>"<?= $isThemeHex ? ' style="color: var(--admin-theme)"' : '' ?>>
+                                    <i class="fa-solid fa-download text-xs"></i>
+                                    ダウンロード
+                                </span>
+                            </div>
+                        </div>
+                    </a>
+
+                    <!-- 全テーブルデータ CSV（ZIP） -->
+                    <a href="/admin/db_export.php?download=all_data_csv_zip" class="export-card block bg-white rounded-xl border border-slate-200 shadow-sm p-6 transition-all hover:border-slate-300">
+                        <div class="flex items-start gap-4">
+                            <div class="w-12 h-12 rounded-lg flex items-center justify-center shrink-0 <?= $cardIconBg ?> <?= $cardIconText ?>"<?= $cardIconStyle ? ' style="' . htmlspecialchars($cardIconStyle) . '"' : '' ?>>
+                                <i class="fa-solid fa-file-zipper text-lg"></i>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <h3 class="text-lg font-bold text-slate-800 mb-1">全テーブルデータ（.zip）</h3>
+                                <p class="text-sm text-slate-500 mb-3">テーブルごとに UTF-8（BOM 付き）の CSV を生成し、1 つの ZIP にまとめて取得。行データの一括バックアップ向け。<span class="text-slate-400">（サーバに PHP の zip 拡張が必要です）</span></p>
                                 <span class="inline-flex items-center gap-2 text-sm font-bold <?= $isThemeHex ? '' : 'text-' . $themeTailwind . '-600' ?>"<?= $isThemeHex ? ' style="color: var(--admin-theme)"' : '' ?>>
                                     <i class="fa-solid fa-download text-xs"></i>
                                     ダウンロード

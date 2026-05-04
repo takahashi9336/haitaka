@@ -4,10 +4,11 @@ namespace App\Admin\Controller;
 
 use Core\Auth;
 use Core\Database;
+use Core\Utils\StringUtil;
 
 /**
  * DB一括抽出（管理画面の子画面）
- * 全CREATE文・スキーマ概要（Markdown）・JSON の3形式でダウンロードを提供する。
+ * 全CREATE文・スキーマ概要（Markdown）・JSON・全テーブルデータ（CSV/ZIP）のダウンロードを提供する。
  */
 class DbExportController {
     use DbSchemaTrait;
@@ -31,6 +32,10 @@ class DbExportController {
         }
         if ($download === 'schema_json') {
             $this->downloadSchemaJson();
+            return;
+        }
+        if ($download === 'all_data_csv_zip') {
+            $this->downloadAllDataCsvZip();
             return;
         }
 
@@ -161,5 +166,121 @@ class DbExportController {
         header('Content-Length: ' . strlen($body));
         echo $body;
         exit;
+    }
+
+    /**
+     * 全テーブルの行データをテーブルごとに CSV にし、1 つの ZIP でダウンロード
+     * （PHP zip 拡張が必要）
+     */
+    public function downloadAllDataCsvZip(): void {
+        if (!class_exists(\ZipArchive::class)) {
+            http_response_code(500);
+            header('Content-Type: text/plain; charset=utf-8');
+            echo 'ZipArchive が利用できません。php.ini で zip 拡張を有効にしてください。';
+            exit;
+        }
+
+        $pdo = Database::connect();
+        $tables = $this->getTableList($pdo);
+        $zipPath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'db_data_' . bin2hex(random_bytes(8)) . '.zip';
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            http_response_code(500);
+            header('Content-Type: text/plain; charset=utf-8');
+            echo 'ZIP ファイルの作成に失敗しました。';
+            exit;
+        }
+
+        $tempCsvPaths = [];
+        try {
+            foreach ($tables as $table) {
+                $csvPath = $this->writeTableDataCsvToTemp($pdo, $table);
+                if ($csvPath === null) {
+                    continue;
+                }
+                $tempCsvPaths[] = $csvPath;
+                $entryName = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', $table) . '.csv';
+                $zip->addFile($csvPath, $entryName);
+            }
+            $zip->close();
+
+            if ($tempCsvPaths === [] && $tables !== []) {
+                @unlink($zipPath);
+                http_response_code(500);
+                header('Content-Type: text/plain; charset=utf-8');
+                echo 'どのテーブルも CSV 化できませんでした。権限または DB の状態を確認してください。';
+                exit;
+            }
+
+            $filename = 'db_all_tables_data_' . date('Ymd_His') . '.zip';
+            header('Content-Type: application/zip');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            header('Content-Length: ' . (string) filesize($zipPath));
+            readfile($zipPath);
+        } finally {
+            foreach ($tempCsvPaths as $p) {
+                @unlink($p);
+            }
+            @unlink($zipPath);
+        }
+        exit;
+    }
+
+    /**
+     * 1 テーブル分を UTF-8（BOM 付き）CSV として一時ファイルに書き出す
+     */
+    private function writeTableDataCsvToTemp(\PDO $pdo, string $table): ?string {
+        $san = StringUtil::sanitizeIdentifier($table);
+        if ($san === '') {
+            return null;
+        }
+        $safeTable = '`' . str_replace('`', '``', $san) . '`';
+        $struct = $this->getTableStructure($pdo, $san);
+        $headers = [];
+        foreach ($struct as $col) {
+            $name = $col['COLUMN_NAME'] ?? '';
+            if ($name !== '') {
+                $headers[] = $name;
+            }
+        }
+
+        $tmp = tempnam(sys_get_temp_dir(), 'dbcsv_');
+        if ($tmp === false) {
+            return null;
+        }
+        $fh = fopen($tmp, 'wb');
+        if ($fh === false) {
+            @unlink($tmp);
+            return null;
+        }
+
+        fprintf($fh, "\xEF\xBB\xBF");
+        if ($headers !== []) {
+            fputcsv($fh, $headers);
+        }
+
+        try {
+            $stmt = $pdo->query('SELECT * FROM ' . $safeTable);
+            if ($stmt !== false) {
+                while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+                    if ($headers === []) {
+                        $headers = array_keys($row);
+                        fputcsv($fh, $headers);
+                    }
+                    $line = [];
+                    foreach ($headers as $h) {
+                        $line[] = $row[$h] ?? null;
+                    }
+                    fputcsv($fh, $line);
+                }
+            }
+        } catch (\Throwable $e) {
+            fclose($fh);
+            @unlink($tmp);
+            return null;
+        }
+
+        fclose($fh);
+        return $tmp;
     }
 }
