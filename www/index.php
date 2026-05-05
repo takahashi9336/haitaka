@@ -587,6 +587,8 @@ foreach ($dashboardPaleoItems as $_paleoRow) {
                     if (($user['role'] ?? '') === 'admin') {
                         $navCards[] = ['href' => '/dashboard/youtube_focus.php', 'icon' => 'fa-brands fa-youtube', 'label' => 'YouTube 集中', 'sub' => '指定チャンネルのみ', 'theme' => $adminTheme,
                                        'value' => -1, 'empty_icon' => null, 'empty_text' => null];
+                        $navCards[] = ['href' => '/admin/text_files.php', 'icon' => 'fa-file-lines', 'label' => 'テキスト管理', 'sub' => 'txt / Markdown', 'theme' => $adminTheme,
+                                       'value' => -1, 'empty_icon' => null, 'empty_text' => null];
                         $navCards[] = ['href' => '/admin/', 'icon' => 'fa-shield-halved', 'label' => '管理画面', 'sub' => '管理', 'theme' => $adminTheme,
                                        'value' => -1, 'empty_icon' => null, 'empty_text' => null];
                     }

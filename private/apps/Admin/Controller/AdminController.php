@@ -292,4 +292,11 @@ class AdminController {
         }
         require_once __DIR__ . '/../Views/friend_groups.php';
     }
+
+    public function textFiles(): void {
+        $this->auth->requireAdmin();
+
+        $user = $_SESSION['user'];
+        require_once __DIR__ . '/../Views/text_files.php';
+    }
 }
