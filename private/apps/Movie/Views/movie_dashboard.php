@@ -115,71 +115,61 @@ try {
         <div class="flex-1 overflow-y-auto p-4 md:p-6 lg:p-10">
             <div class="max-w-6xl mx-auto">
 
-                <!-- ① スタッツカード -->
-                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
-                    <a href="/movie/list.php?tab=watched" class="stat-card bg-white rounded-xl border border-slate-100 shadow-sm p-3 md:p-5 hover:shadow-md hover:border-green-200 transition-all group block">
-                        <div class="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
-                            <div class="w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center bg-green-50 text-green-500">
-                                <i class="fa-solid fa-eye text-sm md:text-lg"></i>
+                <!-- ① スタッツ（統合カード） -->
+                <div class="bg-white rounded-xl border border-slate-100 shadow-sm mb-4 md:mb-6 overflow-hidden">
+                    <div class="grid grid-cols-2 lg:grid-cols-4">
+                        <a href="/movie/list.php?tab=watched" class="p-3 md:p-5 hover:bg-slate-50 transition-all group block border-b border-slate-100 lg:border-b-0 lg:border-r">
+                            <div class="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
+                                <span class="text-[11px] md:text-xs font-bold text-slate-400">👀 総鑑賞本数</span>
+                                <i class="fa-solid fa-chevron-right text-slate-300 ml-auto text-xs opacity-0 group-hover:opacity-100 transition-opacity"></i>
                             </div>
-                            <span class="text-[11px] md:text-xs font-bold text-slate-400">総鑑賞本数</span>
-                            <i class="fa-solid fa-chevron-right text-slate-300 ml-auto text-xs opacity-0 group-hover:opacity-100 transition-opacity"></i>
-                        </div>
-                        <div class="flex items-end gap-1">
-                            <span class="text-2xl md:text-3xl font-black text-slate-800"><?= $watchedCount ?></span>
-                            <span class="text-xs md:text-sm font-bold text-slate-400 mb-0.5">本</span>
-                        </div>
-                    </a>
+                            <div class="flex items-end gap-1">
+                                <span class="text-2xl md:text-3xl font-black text-slate-800"><?= $watchedCount ?></span>
+                                <span class="text-xs md:text-sm font-bold text-slate-400 mb-0.5">本</span>
+                            </div>
+                        </a>
 
-                    <a href="/movie/list.php?tab=watched&filter=this_month" class="stat-card bg-white rounded-xl border border-slate-100 shadow-sm p-3 md:p-5 hover:shadow-md hover:border-blue-200 transition-all group block">
-                        <div class="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
-                            <div class="w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center bg-blue-50 text-blue-500">
-                                <i class="fa-solid fa-calendar-check text-sm md:text-lg"></i>
+                        <a href="/movie/list.php?tab=watched&filter=this_month" class="p-3 md:p-5 hover:bg-slate-50 transition-all group block border-b border-slate-100 lg:border-b-0 lg:border-r">
+                            <div class="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
+                                <span class="text-[11px] md:text-xs font-bold text-slate-400">📅 今月の鑑賞数</span>
+                                <i class="fa-solid fa-chevron-right text-slate-300 ml-auto text-xs opacity-0 group-hover:opacity-100 transition-opacity"></i>
                             </div>
-                            <span class="text-[11px] md:text-xs font-bold text-slate-400">今月の鑑賞数</span>
-                            <i class="fa-solid fa-chevron-right text-slate-300 ml-auto text-xs opacity-0 group-hover:opacity-100 transition-opacity"></i>
-                        </div>
-                        <div class="flex items-end gap-1">
-                            <span class="text-2xl md:text-3xl font-black text-slate-800"><?= $thisMonthCount ?></span>
-                            <span class="text-xs md:text-sm font-bold text-slate-400 mb-0.5">本</span>
-                        </div>
-                    </a>
+                            <div class="flex items-end gap-1">
+                                <span class="text-2xl md:text-3xl font-black text-slate-800"><?= $thisMonthCount ?></span>
+                                <span class="text-xs md:text-sm font-bold text-slate-400 mb-0.5">本</span>
+                            </div>
+                        </a>
 
-                    <a href="/movie/list.php?tab=watchlist" class="stat-card bg-white rounded-xl border border-slate-100 shadow-sm p-3 md:p-5 hover:shadow-md hover:border-amber-200 transition-all group block">
-                        <div class="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
-                            <div class="w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center bg-amber-50 text-amber-500">
-                                <i class="fa-solid fa-bookmark text-sm md:text-lg"></i>
+                        <a href="/movie/list.php?tab=watchlist" class="p-3 md:p-5 hover:bg-slate-50 transition-all group block lg:border-r">
+                            <div class="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
+                                <span class="text-[11px] md:text-xs font-bold text-slate-400">🔖 見たいリスト</span>
+                                <i class="fa-solid fa-chevron-right text-slate-300 ml-auto text-xs opacity-0 group-hover:opacity-100 transition-opacity"></i>
                             </div>
-                            <span class="text-[11px] md:text-xs font-bold text-slate-400">見たいリスト</span>
-                            <i class="fa-solid fa-chevron-right text-slate-300 ml-auto text-xs opacity-0 group-hover:opacity-100 transition-opacity"></i>
-                        </div>
-                        <div class="flex items-end gap-1">
-                            <span class="text-2xl md:text-3xl font-black text-slate-800"><?= $watchlistCount ?></span>
-                            <span class="text-xs md:text-sm font-bold text-slate-400 mb-0.5">本</span>
-                        </div>
-                    </a>
+                            <div class="flex items-end gap-1">
+                                <span class="text-2xl md:text-3xl font-black text-slate-800"><?= $watchlistCount ?></span>
+                                <span class="text-xs md:text-sm font-bold text-slate-400 mb-0.5">本</span>
+                            </div>
+                        </a>
 
-                    <div class="stat-card bg-white rounded-xl border border-slate-100 shadow-sm p-3 md:p-5">
-                        <div class="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
-                            <div class="w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center bg-purple-50 text-purple-500">
-                                <i class="fa-solid fa-clock text-sm md:text-lg"></i>
+                        <div class="p-3 md:p-5">
+                            <div class="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
+                                <span class="text-[11px] md:text-xs font-bold text-slate-400">⏱️ 総視聴時間</span>
                             </div>
-                            <span class="text-[11px] md:text-xs font-bold text-slate-400">総視聴時間</span>
-                        </div>
-                        <div class="flex items-end gap-1">
-                            <span class="text-2xl md:text-3xl font-black text-slate-800"><?= $totalHours ?></span>
-                            <span class="text-xs md:text-sm font-bold text-slate-400 mb-0.5">時間</span>
-                            <?php if ($totalMins > 0): ?>
-                            <span class="text-base md:text-lg font-black text-slate-500"><?= $totalMins ?></span>
-                            <span class="text-[10px] md:text-xs font-bold text-slate-400 mb-0.5">分</span>
-                            <?php endif; ?>
+                            <div class="flex items-end gap-1">
+                                <span class="text-2xl md:text-3xl font-black text-slate-800"><?= $totalHours ?></span>
+                                <span class="text-xs md:text-sm font-bold text-slate-400 mb-0.5">時間</span>
+                                <?php if ($totalMins > 0): ?>
+                                <span class="text-base md:text-lg font-black text-slate-500"><?= $totalMins ?></span>
+                                <span class="text-[10px] md:text-xs font-bold text-slate-400 mb-0.5">分</span>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- TMDB検索ボックス -->
                 <?php if ($tmdbConfigured): ?>
-                <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-4 md:p-5 mb-6 md:mb-8">
+                <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-4 md:p-5 mb-4 md:mb-6">
                     <div class="flex items-center gap-2 mb-2 md:mb-3">
                         <div class="w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center bg-indigo-50 text-indigo-500">
                             <i class="fa-solid fa-magnifying-glass text-xs md:text-sm"></i>
@@ -206,7 +196,7 @@ try {
                 <?php endif; ?>
 
                 <!-- ② ガチャ -->
-                <div class="mb-6 md:mb-8">
+                <div class="mb-4 md:mb-6">
                     <div class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-4 md:p-6 lg:p-8 shadow-xl relative overflow-hidden">
                         <div class="absolute top-0 right-0 w-48 h-48 bg-gradient-to-bl from-white/5 to-transparent rounded-bl-full"></div>
                         <div class="relative z-10">
@@ -220,7 +210,7 @@ try {
                             <?php if ($watchlistCount > 0): ?>
                             <!-- 未ガチャ状態 -->
                             <div id="gachaIdle" class="flex flex-col items-center py-4">
-                                <button onclick="Gacha.spin()" class="gacha-idle gacha-box-shine relative w-32 h-32 md:w-40 md:h-40 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl flex flex-col items-center justify-center shadow-2xl cursor-pointer hover:scale-105 transition-transform overflow-hidden mb-4 md:mb-5">
+                                <button type="button" onclick="Gacha.spin()" class="gacha-idle gacha-box-shine relative w-32 h-32 md:w-40 md:h-40 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl flex flex-col items-center justify-center shadow-2xl cursor-pointer hover:scale-105 transition-transform overflow-hidden mb-4 md:mb-5">
                                     <i class="fa-solid fa-dice text-4xl md:text-5xl text-white/90 mb-1.5 md:mb-2 drop-shadow"></i>
                                     <span class="text-white font-black text-xs md:text-sm tracking-wide drop-shadow">タップでガチャ</span>
                                 </button>
@@ -242,7 +232,7 @@ try {
                                             <a id="gachaDetailLink" href="#" onclick="sessionStorage.setItem('mv_back_to','dashboard')" class="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-bold rounded-lg transition backdrop-blur-sm">
                                                 <i class="fa-solid fa-info-circle mr-1.5"></i>詳細を見る
                                             </a>
-                                            <button onclick="Gacha.markWatched()" class="px-4 py-2 bg-green-500/80 hover:bg-green-500 text-white text-sm font-bold rounded-lg transition">
+                                            <button type="button" onclick="Gacha.markWatched()" class="px-4 py-2 bg-green-500/80 hover:bg-green-500 text-white text-sm font-bold rounded-lg transition">
                                                 <i class="fa-solid fa-check mr-1.5"></i>見た！
                                             </button>
                                             <a id="gachaGoogleLink" href="#" target="_blank" rel="noopener" class="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-bold rounded-lg transition backdrop-blur-sm inline-flex items-center gap-1.5" title="Googleで検索">
@@ -251,7 +241,7 @@ try {
                                         </div>
                                         <!-- もう1回ボタン（2回目がまだ残っているとき表示） -->
                                         <div id="gachaRetry" class="hidden mt-4 pt-3 border-t border-slate-700">
-                                            <button onclick="Gacha.spin()" class="text-xs text-amber-400/80 hover:text-amber-400 transition flex items-center gap-1.5">
+                                            <button type="button" onclick="Gacha.spin()" class="text-xs text-amber-400/80 hover:text-amber-400 transition flex items-center gap-1.5">
                                                 <i class="fa-solid fa-rotate"></i>
                                                 <span>どうしてももう1回だけ引く...</span>
                                             </button>
@@ -287,199 +277,370 @@ try {
 
                 </div>
 
-                <!-- 友人が視聴した映画 -->
-                <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-6 mb-6 md:mb-8">
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-sm font-bold text-slate-700"><i class="fa-solid fa-user-group mv-theme-text mr-2"></i>友人が視聴した映画</h2>
-                        <a href="/friends_activity.php?filter=movie" class="text-xs font-bold mv-theme-text hover:opacity-80 transition">もっと見る <i class="fa-solid fa-chevron-right text-[10px]"></i></a>
+                <!-- 出演者ランキング（俳優/監督/脚本） -->
+                <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-5 mb-4 md:mb-6">
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-50 text-slate-500">
+                            <i class="fa-solid fa-ranking-star"></i>
+                        </div>
+                        <h2 class="text-sm font-black text-slate-800">出演者ランキング</h2>
+                        <span class="text-[10px] text-slate-400 ml-auto">見た本数</span>
                     </div>
-                    <?php if (!$friendsActivityHasViewable): ?>
-                    <p class="text-sm text-slate-500 py-4">友達またはグループに<strong>自分もメンバーとして</strong>参加すると、友人の視聴履歴がここに表示されます。管理画面で友達登録・グループへの追加を行ってください。</p>
-                    <?php elseif (empty($friendsActivityItems)): ?>
-                    <p class="text-sm text-slate-500 py-4">まだ視聴履歴はありません</p>
-                    <?php else: ?>
-                    <div class="rec-scroll-wrap">
-                        <button type="button" class="rec-arrow left" onclick="document.getElementById('friendsMovieScroll').scrollBy({left:-180,behavior:'smooth'})" aria-label="左にスクロール"><i class="fa-solid fa-chevron-left text-sm"></i></button>
-                        <div id="friendsMovieScroll" class="rec-scroll">
-                            <?php foreach ($friendsActivityItems as $fa): ?>
-                            <?php
-                            $canPreview = !empty($fa['tmdb_id']);
-                            $movieData = $canPreview ? json_encode([
-                                'id' => $fa['tmdb_id'],
-                                'title' => $fa['title'],
-                                'original_title' => $fa['original_title'] ?? null,
-                                'poster_path' => $fa['poster_path'] ?? null,
-                                'release_date' => $fa['release_date'] ?? null,
-                                'overview' => $fa['overview'] ?? null,
-                                'user_status' => $fa['user_status'] ?? null,
-                                'user_movie_id' => $fa['user_movie_id'] ?? null,
-                            ]) : 'null';
-                            ?>
-                            <?php
-                            $faReg = !empty($fa['_registered']);
-                            ?>
-                            <?php if ($canPreview): ?>
-                            <div class="rec-card shrink-0 group cursor-pointer" role="button" tabindex="0" onclick="MoviePreview.open(<?= htmlspecialchars($movieData) ?>)">
-                            <?php else: ?>
-                            <a href="<?= htmlspecialchars($fa['detail_url']) ?>" class="rec-card block shrink-0 group">
-                            <?php endif; ?>
-                                <div class="aspect-[2/3] rounded-xl overflow-hidden bg-slate-100 mb-2 relative">
-                                    <?php if (!empty($fa['image_url'])): ?>
-                                    <img src="<?= htmlspecialchars($fa['image_url']) ?>" alt="" class="w-full h-full object-cover group-hover:scale-105 transition" loading="lazy">
-                                    <?php else: ?>
-                                    <div class="w-full h-full flex items-center justify-center"><i class="fa-solid fa-film text-3xl text-slate-300"></i></div>
-                                    <?php endif; ?>
-                                    <?php if ($canPreview): ?>
-                                    <?php if ($faReg): ?>
-                                    <div class="absolute top-1.5 right-1.5 w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-[10px] shadow"><i class="fa-solid fa-check"></i></div>
-                                    <?php else: ?>
-                                    <div class="absolute top-1.5 right-1.5 flex flex-col gap-1" onclick="event.stopPropagation()">
-                                        <button onclick="FriendsMovieRec.addToList(<?= (int)$fa['tmdb_id'] ?>, 'watchlist', this)" class="w-6 h-6 bg-white/90 hover:bg-amber-400 hover:text-white text-slate-500 rounded-full flex items-center justify-center text-[10px] shadow transition backdrop-blur-sm" title="見たいリストに追加"><i class="fa-solid fa-bookmark"></i></button>
-                                        <button onclick="FriendsMovieRec.addToList(<?= (int)$fa['tmdb_id'] ?>, 'watched', this)" class="w-6 h-6 bg-white/90 hover:bg-green-500 hover:text-white text-slate-500 rounded-full flex items-center justify-center text-[10px] shadow transition backdrop-blur-sm" title="見たリストに追加"><i class="fa-solid fa-eye"></i></button>
-                                    </div>
-                                    <?php endif; ?>
-                                    <?php endif; ?>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- 俳優 -->
+                        <div class="border border-slate-100 rounded-xl p-4">
+                            <div class="flex items-center gap-2 mb-3">
+                                <div class="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-50 text-blue-500">
+                                    <i class="fa-solid fa-user"></i>
                                 </div>
-                                <p class="text-xs font-bold text-slate-700 line-clamp-2"><?= htmlspecialchars($fa['title']) ?></p>
-                                <p class="text-[10px] text-slate-400"><?= htmlspecialchars($fa['id_name']) ?><?= !empty($fa['watched_date']) ? '・' . htmlspecialchars($fa['watched_date']) : '' ?></p>
-                            <?php echo $canPreview ? '</div>' : '</a>'; ?>
-                            <?php endforeach; ?>
+                                <h3 class="text-sm font-black text-slate-800">俳優</h3>
+                            </div>
+                            <?php if (!empty($castRanking)): ?>
+                            <div class="space-y-2">
+                                <?php foreach ($castRanking as $i => $row): ?>
+                                <?php $pname = (string)($row['person_name'] ?? ''); ?>
+                                <div class="flex items-center gap-3">
+                                    <span class="w-6 text-xs font-black text-slate-400"><?= (int)$i + 1 ?></span>
+                                    <span class="text-sm font-bold text-slate-700 truncate flex-1"><?= htmlspecialchars($pname) ?></span>
+                                    <span class="text-xs font-black text-slate-500"><?= (int)($row['movie_count'] ?? 0) ?>本</span>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <?php
+                                $castIds = array_values(array_filter(array_map(fn($r) => (int)($r['person_tmdb_id'] ?? 0), $castRanking)));
+                                $castNameArr = array_values(array_filter(array_map(fn($r) => (string)($r['person_name'] ?? ''), $castRanking)));
+                                $castNames = implode(' / ', $castNameArr);
+                                $castNamesCsv = implode(',', $castNameArr);
+                            ?>
+                            <div class="mt-3 pt-3 border-t border-slate-100 flex gap-2">
+                                <a href="/movie/list.php?tab=watched&credit_role=cast&person_ids=<?= urlencode(implode(',', $castIds)) ?>&person_names=<?= urlencode($castNames) ?>"
+                                   class="flex-1 text-[11px] font-bold text-slate-500 hover:text-slate-700 px-2 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 transition text-center">
+                                    見たリスト表示
+                                </a>
+                                <a href="/movie/pickup.php?role_kind=cast&person_ids=<?= urlencode(implode(',', $castIds)) ?>&person_names=<?= urlencode($castNames) ?>&person_names_csv=<?= urlencode($castNamesCsv) ?>"
+                                   class="flex-1 text-[11px] font-bold text-white px-2 py-2 rounded-lg mv-theme-btn transition text-center">
+                                    見てない映画を探す
+                                </a>
+                            </div>
+                            <?php else: ?>
+                            <p class="text-sm text-slate-400 py-4">まだ集計できるデータがありません</p>
+                            <?php endif; ?>
                         </div>
-                        <button type="button" class="rec-arrow right" onclick="document.getElementById('friendsMovieScroll').scrollBy({left:180,behavior:'smooth'})" aria-label="右にスクロール"><i class="fa-solid fa-chevron-right text-sm"></i></button>
+
+                        <!-- 監督 -->
+                        <div class="border border-slate-100 rounded-xl p-4">
+                            <div class="flex items-center gap-2 mb-3">
+                                <div class="w-8 h-8 rounded-lg flex items-center justify-center bg-violet-50 text-violet-500">
+                                    <i class="fa-solid fa-video"></i>
+                                </div>
+                                <h3 class="text-sm font-black text-slate-800">監督</h3>
+                            </div>
+                            <?php if (!empty($directorRanking)): ?>
+                            <div class="space-y-2">
+                                <?php foreach ($directorRanking as $i => $row): ?>
+                                <?php $pname = (string)($row['person_name'] ?? ''); ?>
+                                <div class="flex items-center gap-3">
+                                    <span class="w-6 text-xs font-black text-slate-400"><?= (int)$i + 1 ?></span>
+                                    <span class="text-sm font-bold text-slate-700 truncate flex-1"><?= htmlspecialchars($pname) ?></span>
+                                    <span class="text-xs font-black text-slate-500"><?= (int)($row['movie_count'] ?? 0) ?>本</span>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <?php
+                                $directorIds = array_values(array_filter(array_map(fn($r) => (int)($r['person_tmdb_id'] ?? 0), $directorRanking)));
+                                $directorNameArr = array_values(array_filter(array_map(fn($r) => (string)($r['person_name'] ?? ''), $directorRanking)));
+                                $directorNames = implode(' / ', $directorNameArr);
+                                $directorNamesCsv = implode(',', $directorNameArr);
+                            ?>
+                            <div class="mt-3 pt-3 border-t border-slate-100 flex gap-2">
+                                <a href="/movie/list.php?tab=watched&credit_role=director&person_ids=<?= urlencode(implode(',', $directorIds)) ?>&person_names=<?= urlencode($directorNames) ?>"
+                                   class="flex-1 text-[11px] font-bold text-slate-500 hover:text-slate-700 px-2 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 transition text-center">
+                                    見たリスト表示
+                                </a>
+                                <a href="/movie/pickup.php?role_kind=director&person_ids=<?= urlencode(implode(',', $directorIds)) ?>&person_names=<?= urlencode($directorNames) ?>&person_names_csv=<?= urlencode($directorNamesCsv) ?>"
+                                   class="flex-1 text-[11px] font-bold text-white px-2 py-2 rounded-lg mv-theme-btn transition text-center">
+                                    見てない映画を探す
+                                </a>
+                            </div>
+                            <?php else: ?>
+                            <p class="text-sm text-slate-400 py-4">まだ集計できるデータがありません</p>
+                            <?php endif; ?>
+                        </div>
+
+                        <!-- 脚本 -->
+                        <div class="border border-slate-100 rounded-xl p-4">
+                            <div class="flex items-center gap-2 mb-3">
+                                <div class="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-50 text-amber-500">
+                                    <i class="fa-solid fa-pen-nib"></i>
+                                </div>
+                                <h3 class="text-sm font-black text-slate-800">脚本</h3>
+                            </div>
+                            <?php if (!empty($writerRanking)): ?>
+                            <div class="space-y-2">
+                                <?php foreach ($writerRanking as $i => $row): ?>
+                                <?php $pname = (string)($row['person_name'] ?? ''); ?>
+                                <div class="flex items-center gap-3">
+                                    <span class="w-6 text-xs font-black text-slate-400"><?= (int)$i + 1 ?></span>
+                                    <span class="text-sm font-bold text-slate-700 truncate flex-1"><?= htmlspecialchars($pname) ?></span>
+                                    <span class="text-xs font-black text-slate-500"><?= (int)($row['movie_count'] ?? 0) ?>本</span>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <?php
+                                $writerIds = array_values(array_filter(array_map(fn($r) => (int)($r['person_tmdb_id'] ?? 0), $writerRanking)));
+                                $writerNameArr = array_values(array_filter(array_map(fn($r) => (string)($r['person_name'] ?? ''), $writerRanking)));
+                                $writerNames = implode(' / ', $writerNameArr);
+                                $writerNamesCsv = implode(',', $writerNameArr);
+                            ?>
+                            <div class="mt-3 pt-3 border-t border-slate-100 flex gap-2">
+                                <a href="/movie/list.php?tab=watched&credit_role=writer&person_ids=<?= urlencode(implode(',', $writerIds)) ?>&person_names=<?= urlencode($writerNames) ?>"
+                                   class="flex-1 text-[11px] font-bold text-slate-500 hover:text-slate-700 px-2 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 transition text-center">
+                                    見たリスト表示
+                                </a>
+                                <a href="/movie/pickup.php?role_kind=writer&person_ids=<?= urlencode(implode(',', $writerIds)) ?>&person_names=<?= urlencode($writerNames) ?>&person_names_csv=<?= urlencode($writerNamesCsv) ?>"
+                                   class="flex-1 text-[11px] font-bold text-white px-2 py-2 rounded-lg mv-theme-btn transition text-center">
+                                    見てない映画を探す
+                                </a>
+                            </div>
+                            <?php else: ?>
+                            <p class="text-sm text-slate-400 py-4">まだ集計できるデータがありません</p>
+                            <?php endif; ?>
+                        </div>
                     </div>
-                    <?php endif; ?>
                 </div>
 
-                <!-- おすすめセクション -->
-                <?php if ($tmdbConfigured): ?>
-
-                <!-- 案A: あなたへのおすすめ -->
-                <div id="recPersonalSection" class="mb-8 hidden rec-section">
-                    <div class="flex items-center gap-2 mb-4">
-                        <i class="fa-solid fa-heart mv-theme-text"></i>
-                        <h2 class="text-sm font-bold text-slate-700">あなたへのおすすめ</h2>
-                        <span class="text-[10px] text-slate-400 ml-auto">高評価映画に基づくレコメンド</span>
-                    </div>
-                    <div class="rec-scroll-wrap">
-                        <button class="rec-arrow left hidden" onclick="Rec.scroll('recPersonalCards', -1)"><i class="fa-solid fa-chevron-left text-sm"></i></button>
-                        <div id="recPersonalLoading" class="rec-scroll">
-                            <?php for ($i = 0; $i < 6; $i++): ?>
-                            <div class="rec-card skeleton-card">
-                                <div class="aspect-[2/3] bg-slate-200 rounded-xl mb-2"></div>
-                                <div class="h-3 bg-slate-200 rounded w-3/4 mb-1"></div>
-                                <div class="h-2.5 bg-slate-100 rounded w-1/2"></div>
-                            </div>
-                            <?php endfor; ?>
+                <!-- おすすめ（統合カード：トグル切り替え） -->
+                <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-6 mb-4 md:mb-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-wand-magic-sparkles mv-theme-text"></i>
+                            <h2 class="text-sm font-bold text-slate-700">あなたへのおすすめ</h2>
                         </div>
-                        <div id="recPersonalCards" class="rec-scroll hidden"></div>
-                        <button class="rec-arrow right" onclick="Rec.scroll('recPersonalCards', 1)"><i class="fa-solid fa-chevron-right text-sm"></i></button>
-                    </div>
-                </div>
-
-                <!-- 案B: 好みのジャンルから -->
-                <div id="recGenreSection" class="mb-8 hidden rec-section">
-                    <div class="flex items-center gap-2 mb-4">
-                        <i class="fa-solid fa-masks-theater mv-theme-text"></i>
-                        <h2 class="text-sm font-bold text-slate-700">好みのジャンルから</h2>
-                        <div id="recGenreTags" class="flex gap-1 ml-2"></div>
-                    </div>
-                    <div class="rec-scroll-wrap">
-                        <button class="rec-arrow left hidden" onclick="Rec.scroll('recGenreCards', -1)"><i class="fa-solid fa-chevron-left text-sm"></i></button>
-                        <div id="recGenreLoading" class="rec-scroll">
-                            <?php for ($i = 0; $i < 6; $i++): ?>
-                            <div class="rec-card skeleton-card">
-                                <div class="aspect-[2/3] bg-slate-200 rounded-xl mb-2"></div>
-                                <div class="h-3 bg-slate-200 rounded w-3/4 mb-1"></div>
-                                <div class="h-2.5 bg-slate-100 rounded w-1/2"></div>
-                            </div>
-                            <?php endfor; ?>
-                        </div>
-                        <div id="recGenreCards" class="rec-scroll hidden"></div>
-                        <button class="rec-arrow right" onclick="Rec.scroll('recGenreCards', 1)"><i class="fa-solid fa-chevron-right text-sm"></i></button>
-                    </div>
-                </div>
-
-                <!-- 案C: 今週のトレンド -->
-                <div id="recTrendingSection" class="mb-8 rec-section">
-                    <div class="flex items-center gap-2 mb-4">
-                        <i class="fa-solid fa-fire mv-theme-text"></i>
-                        <h2 class="text-sm font-bold text-slate-700">今週のトレンド</h2>
-                        <span class="text-[10px] text-slate-400 ml-auto">世界で話題の映画</span>
-                    </div>
-                    <div class="rec-scroll-wrap">
-                        <button class="rec-arrow left hidden" onclick="Rec.scroll('recTrendingCards', -1)"><i class="fa-solid fa-chevron-left text-sm"></i></button>
-                        <div id="recTrendingLoading" class="rec-scroll">
-                            <?php for ($i = 0; $i < 6; $i++): ?>
-                            <div class="rec-card skeleton-card">
-                                <div class="aspect-[2/3] bg-slate-200 rounded-xl mb-2"></div>
-                                <div class="h-3 bg-slate-200 rounded w-3/4 mb-1"></div>
-                                <div class="h-2.5 bg-slate-100 rounded w-1/2"></div>
-                            </div>
-                            <?php endfor; ?>
-                        </div>
-                        <div id="recTrendingCards" class="rec-scroll hidden"></div>
-                        <button class="rec-arrow right" onclick="Rec.scroll('recTrendingCards', 1)"><i class="fa-solid fa-chevron-right text-sm"></i></button>
-                    </div>
-                </div>
-
-                <?php endif; ?>
-
-                <!-- ③ グラフエリア -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                    <!-- 月別鑑賞本数 -->
-                    <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-6">
-                        <div class="flex items-center gap-2 mb-4">
-                            <i class="fa-solid fa-chart-bar mv-theme-text"></i>
-                            <h2 class="text-sm font-bold text-slate-700">月別鑑賞本数</h2>
-                            <span class="text-[10px] text-slate-400 ml-auto">過去12ヶ月</span>
-                        </div>
-                        <div class="relative" style="height: 220px;">
-                            <canvas id="monthlyChart"></canvas>
+                        <div class="flex flex-wrap gap-2 sm:ml-auto">
+                            <button type="button" class="rec-tab text-[11px] font-black px-3 py-1.5 rounded-full border transition"
+                                    data-target="recPanelPersonal">
+                                高評価ベース
+                            </button>
+                            <button type="button" class="rec-tab text-[11px] font-black px-3 py-1.5 rounded-full border transition"
+                                    data-target="recPanelFriends">
+                                友人が視聴
+                            </button>
+                            <button type="button" class="rec-tab text-[11px] font-black px-3 py-1.5 rounded-full border transition"
+                                    data-target="recPanelGenre">
+                                未開拓ジャンル
+                            </button>
+                            <button type="button" class="rec-tab text-[11px] font-black px-3 py-1.5 rounded-full border transition"
+                                    data-target="recPanelTrending">
+                                今週のトレンド
+                            </button>
                         </div>
                     </div>
 
-                    <!-- ジャンル分布 -->
-                    <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-6">
-                        <div class="flex items-center gap-2 mb-4">
-                            <i class="fa-solid fa-chart-pie mv-theme-text"></i>
-                            <h2 class="text-sm font-bold text-slate-700">ジャンル分布</h2>
-                        </div>
-                        <?php if (!empty($genreDistribution)): ?>
-                        <div class="flex items-center gap-4">
-                            <div class="relative shrink-0" style="width: 180px; height: 180px;">
-                                <canvas id="genreChart"></canvas>
-                            </div>
-                            <div class="flex-1 min-w-0 space-y-1.5 max-h-[180px] overflow-y-auto" id="genreLegend">
+                    <div id="recPanelPersonal" class="rec-panel">
+                        <?php if ($tmdbConfigured): ?>
+                        <p class="text-[11px] text-slate-400 mb-3">高評価映画に基づくレコメンド</p>
+                        <div id="recPersonalSection" class="rec-section">
+                            <div class="rec-scroll-wrap">
+                                <button class="rec-arrow left hidden" onclick="Rec.scroll('recPersonalCards', -1)"><i class="fa-solid fa-chevron-left text-sm"></i></button>
+                                <div id="recPersonalLoading" class="rec-scroll">
+                                    <?php for ($i = 0; $i < 6; $i++): ?>
+                                    <div class="rec-card skeleton-card">
+                                        <div class="aspect-[2/3] bg-slate-200 rounded-xl mb-2"></div>
+                                        <div class="h-3 bg-slate-200 rounded w-3/4 mb-1"></div>
+                                        <div class="h-2.5 bg-slate-100 rounded w-1/2"></div>
+                                    </div>
+                                    <?php endfor; ?>
+                                </div>
+                                <div id="recPersonalCards" class="rec-scroll hidden"></div>
+                                <button class="rec-arrow right" onclick="Rec.scroll('recPersonalCards', 1)"><i class="fa-solid fa-chevron-right text-sm"></i></button>
                             </div>
                         </div>
                         <?php else: ?>
-                        <div class="text-center py-10 text-slate-400">
-                            <i class="fa-solid fa-chart-pie text-3xl mb-2"></i>
-                            <p class="text-sm">鑑賞データがたまるとジャンル分布が表示されます</p>
+                        <p class="text-sm text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
+                            <i class="fa-solid fa-triangle-exclamation mr-1.5"></i>TMDB APIキーが設定されていません
+                        </p>
+                        <?php endif; ?>
+                    </div>
+
+                    <div id="recPanelFriends" class="rec-panel hidden">
+                        <div class="flex items-center justify-between mb-3">
+                            <p class="text-[11px] text-slate-400">友人の視聴履歴からピックアップ</p>
+                            <a href="/friends_activity.php?filter=movie" class="text-xs font-bold mv-theme-text hover:opacity-80 transition">もっと見る <i class="fa-solid fa-chevron-right text-[10px]"></i></a>
                         </div>
+                        <?php if (!$friendsActivityHasViewable): ?>
+                        <p class="text-sm text-slate-500 py-4">友達またはグループに<strong>自分もメンバーとして</strong>参加すると、友人の視聴履歴がここに表示されます。管理画面で友達登録・グループへの追加を行ってください。</p>
+                        <?php elseif (empty($friendsActivityItems)): ?>
+                        <p class="text-sm text-slate-500 py-4">まだ視聴履歴はありません</p>
+                        <?php else: ?>
+                        <div class="rec-scroll-wrap">
+                            <button type="button" class="rec-arrow left" onclick="document.getElementById('friendsMovieScroll').scrollBy({left:-180,behavior:'smooth'})" aria-label="左にスクロール"><i class="fa-solid fa-chevron-left text-sm"></i></button>
+                            <div id="friendsMovieScroll" class="rec-scroll">
+                                <?php foreach ($friendsActivityItems as $fa): ?>
+                                <?php
+                                $canPreview = !empty($fa['tmdb_id']);
+                                $movieData = $canPreview ? json_encode([
+                                    'id' => $fa['tmdb_id'],
+                                    'title' => $fa['title'],
+                                    'original_title' => $fa['original_title'] ?? null,
+                                    'poster_path' => $fa['poster_path'] ?? null,
+                                    'release_date' => $fa['release_date'] ?? null,
+                                    'overview' => $fa['overview'] ?? null,
+                                    'user_status' => $fa['user_status'] ?? null,
+                                    'user_movie_id' => $fa['user_movie_id'] ?? null,
+                                ]) : 'null';
+                                $faReg = !empty($fa['_registered']);
+                                ?>
+                                <?php if ($canPreview): ?>
+                                <div class="rec-card shrink-0 group cursor-pointer" role="button" tabindex="0" onclick="MoviePreview.open(<?= htmlspecialchars($movieData) ?>)">
+                                <?php else: ?>
+                                <a href="<?= htmlspecialchars($fa['detail_url']) ?>" class="rec-card block shrink-0 group">
+                                <?php endif; ?>
+                                    <div class="aspect-[2/3] rounded-xl overflow-hidden bg-slate-100 mb-2 relative">
+                                        <?php if (!empty($fa['image_url'])): ?>
+                                        <img src="<?= htmlspecialchars($fa['image_url']) ?>" alt="" class="w-full h-full object-cover group-hover:scale-105 transition" loading="lazy">
+                                        <?php else: ?>
+                                        <div class="w-full h-full flex items-center justify-center"><i class="fa-solid fa-film text-3xl text-slate-300"></i></div>
+                                        <?php endif; ?>
+                                        <?php if ($canPreview): ?>
+                                        <?php if ($faReg): ?>
+                                        <div class="absolute top-1.5 right-1.5 w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-[10px] shadow"><i class="fa-solid fa-check"></i></div>
+                                        <?php else: ?>
+                                        <div class="absolute top-1.5 right-1.5 flex flex-col gap-1" onclick="event.stopPropagation()">
+                                            <button onclick="FriendsMovieRec.addToList(<?= (int)$fa['tmdb_id'] ?>, 'watchlist', this)" class="w-6 h-6 bg-white/90 hover:bg-amber-400 hover:text-white text-slate-500 rounded-full flex items-center justify-center text-[10px] shadow transition backdrop-blur-sm" title="見たいリストに追加"><i class="fa-solid fa-bookmark"></i></button>
+                                            <button onclick="FriendsMovieRec.addToList(<?= (int)$fa['tmdb_id'] ?>, 'watched', this)" class="w-6 h-6 bg-white/90 hover:bg-green-500 hover:text-white text-slate-500 rounded-full flex items-center justify-center text-[10px] shadow transition backdrop-blur-sm" title="見たリストに追加"><i class="fa-solid fa-eye"></i></button>
+                                        </div>
+                                        <?php endif; ?>
+                                        <?php endif; ?>
+                                    </div>
+                                    <p class="text-xs font-bold text-slate-700 line-clamp-2"><?= htmlspecialchars($fa['title']) ?></p>
+                                    <p class="text-[10px] text-slate-400"><?= htmlspecialchars($fa['id_name']) ?><?= !empty($fa['watched_date']) ? '・' . htmlspecialchars($fa['watched_date']) : '' ?></p>
+                                <?php echo $canPreview ? '</div>' : '</a>'; ?>
+                                <?php endforeach; ?>
+                            </div>
+                            <button type="button" class="rec-arrow right" onclick="document.getElementById('friendsMovieScroll').scrollBy({left:180,behavior:'smooth'})" aria-label="右にスクロール"><i class="fa-solid fa-chevron-right text-sm"></i></button>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <div id="recPanelGenre" class="rec-panel hidden">
+                        <?php if ($tmdbConfigured): ?>
+                        <div class="flex items-center gap-2 mb-3">
+                            <p class="text-[11px] text-slate-400">好みのジャンルから</p>
+                            <div id="recGenreTags" class="flex gap-1 ml-1"></div>
+                        </div>
+                        <div id="recGenreSection" class="rec-section">
+                            <div class="rec-scroll-wrap">
+                                <button class="rec-arrow left hidden" onclick="Rec.scroll('recGenreCards', -1)"><i class="fa-solid fa-chevron-left text-sm"></i></button>
+                                <div id="recGenreLoading" class="rec-scroll">
+                                    <?php for ($i = 0; $i < 6; $i++): ?>
+                                    <div class="rec-card skeleton-card">
+                                        <div class="aspect-[2/3] bg-slate-200 rounded-xl mb-2"></div>
+                                        <div class="h-3 bg-slate-200 rounded w-3/4 mb-1"></div>
+                                        <div class="h-2.5 bg-slate-100 rounded w-1/2"></div>
+                                    </div>
+                                    <?php endfor; ?>
+                                </div>
+                                <div id="recGenreCards" class="rec-scroll hidden"></div>
+                                <button class="rec-arrow right" onclick="Rec.scroll('recGenreCards', 1)"><i class="fa-solid fa-chevron-right text-sm"></i></button>
+                            </div>
+                        </div>
+                        <?php else: ?>
+                        <p class="text-sm text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
+                            <i class="fa-solid fa-triangle-exclamation mr-1.5"></i>TMDB APIキーが設定されていません
+                        </p>
+                        <?php endif; ?>
+                    </div>
+
+                    <div id="recPanelTrending" class="rec-panel hidden">
+                        <?php if ($tmdbConfigured): ?>
+                        <p class="text-[11px] text-slate-400 mb-3">世界で話題の映画</p>
+                        <div id="recTrendingSection" class="rec-section">
+                            <div class="rec-scroll-wrap">
+                                <button class="rec-arrow left hidden" onclick="Rec.scroll('recTrendingCards', -1)"><i class="fa-solid fa-chevron-left text-sm"></i></button>
+                                <div id="recTrendingLoading" class="rec-scroll">
+                                    <?php for ($i = 0; $i < 6; $i++): ?>
+                                    <div class="rec-card skeleton-card">
+                                        <div class="aspect-[2/3] bg-slate-200 rounded-xl mb-2"></div>
+                                        <div class="h-3 bg-slate-200 rounded w-3/4 mb-1"></div>
+                                        <div class="h-2.5 bg-slate-100 rounded w-1/2"></div>
+                                    </div>
+                                    <?php endfor; ?>
+                                </div>
+                                <div id="recTrendingCards" class="rec-scroll hidden"></div>
+                                <button class="rec-arrow right" onclick="Rec.scroll('recTrendingCards', 1)"><i class="fa-solid fa-chevron-right text-sm"></i></button>
+                            </div>
+                        </div>
+                        <?php else: ?>
+                        <p class="text-sm text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
+                            <i class="fa-solid fa-triangle-exclamation mr-1.5"></i>TMDB APIキーが設定されていません
+                        </p>
                         <?php endif; ?>
                     </div>
                 </div>
 
-                <!-- 評価スコア分布 -->
-                <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-6 mb-8">
+                <!-- ③ 視聴分析（統合カード） -->
+                <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-6 mb-6">
                     <div class="flex items-center gap-2 mb-4">
-                        <i class="fa-solid fa-star-half-stroke mv-theme-text"></i>
-                        <h2 class="text-sm font-bold text-slate-700">評価スコア分布</h2>
-                        <?php if ($ratedCount > 0): ?>
-                        <span class="text-[10px] text-slate-400 ml-auto"><?= $ratedCount ?>本評価済み</span>
-                        <?php endif; ?>
+                        <i class="fa-solid fa-chart-simple mv-theme-text"></i>
+                        <h2 class="text-sm font-bold text-slate-700">視聴分析</h2>
+                        <span class="text-[10px] text-slate-400 ml-auto">月間／ジャンル／評価</span>
                     </div>
-                    <?php if ($ratedCount > 0): ?>
-                    <div class="relative" style="height: 200px;">
-                        <canvas id="ratingChart"></canvas>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- 月別鑑賞本数 -->
+                        <div>
+                            <div class="flex items-center gap-2 mb-3">
+                                <h3 class="text-xs font-black text-slate-700"><i class="fa-solid fa-chart-column mv-theme-text mr-1"></i>月別鑑賞本数</h3>
+                                <span class="text-[10px] text-slate-400 ml-auto">過去12ヶ月</span>
+                            </div>
+                            <div class="relative" style="height: 190px;">
+                                <canvas id="monthlyChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- ジャンル分布 -->
+                        <div>
+                            <div class="flex items-center gap-2 mb-3">
+                                <h3 class="text-xs font-black text-slate-700"><i class="fa-solid fa-chart-pie mv-theme-text mr-1"></i>ジャンル分布</h3>
+                                <span class="text-[10px] text-slate-400 ml-auto">偏り検出</span>
+                            </div>
+                            <?php if (!empty($genreDistribution)): ?>
+                            <div class="flex items-center gap-4">
+                                <div class="relative shrink-0" style="width: 150px; height: 150px;">
+                                    <canvas id="genreChart"></canvas>
+                                </div>
+                                <div class="flex-1 min-w-0 space-y-1.5 max-h-[150px] overflow-y-auto" id="genreLegend">
+                                </div>
+                            </div>
+                            <?php else: ?>
+                            <div class="text-center py-10 text-slate-400">
+                                <i class="fa-solid fa-chart-pie text-3xl mb-2"></i>
+                                <p class="text-sm">鑑賞データがたまるとジャンル分布が表示されます</p>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+
+                        <!-- 評価スコア分布 -->
+                        <div>
+                            <div class="flex items-center gap-2 mb-3">
+                                <h3 class="text-xs font-black text-slate-700"><i class="fa-solid fa-star-half-stroke mv-theme-text mr-1"></i>評価スコア分布</h3>
+                                <?php if ($ratedCount > 0): ?>
+                                <span class="text-[10px] text-slate-400 ml-auto"><?= $ratedCount ?>本評価済み</span>
+                                <?php endif; ?>
+                            </div>
+                            <?php if ($ratedCount > 0): ?>
+                            <div class="relative" style="height: 190px;">
+                                <canvas id="ratingChart"></canvas>
+                            </div>
+                            <?php else: ?>
+                            <div class="text-center py-10 text-slate-400">
+                                <i class="fa-solid fa-star text-3xl mb-2"></i>
+                                <p class="text-sm">映画に評価をつけるとスコア分布が表示されます</p>
+                            </div>
+                            <?php endif; ?>
+                        </div>
                     </div>
-                    <?php else: ?>
-                    <div class="text-center py-10 text-slate-400">
-                        <i class="fa-solid fa-star text-3xl mb-2"></i>
-                        <p class="text-sm">映画に評価をつけるとスコア分布が表示されます</p>
-                    </div>
-                    <?php endif; ?>
                 </div>
 
                 <?php require_once __DIR__ . '/_tmdb_attribution.php'; ?>
@@ -496,47 +657,33 @@ try {
 
         const Gacha = {
             currentId: null,
-            storageKey: 'mv_gacha',
+            _opToken: 0,
+            _spinning: false,
 
-            getState() {
+            async init() {
+                const token = ++this._opToken;
                 try {
-                    const raw = localStorage.getItem(this.storageKey);
-                    if (!raw) return null;
-                    const s = JSON.parse(raw);
-                    if (s.date !== new Date().toISOString().slice(0, 10)) return null;
-                    return s;
-                } catch { return null; }
-            },
-
-            saveState(spins, movie) {
-                localStorage.setItem(this.storageKey, JSON.stringify({
-                    date: new Date().toISOString().slice(0, 10),
-                    spins: spins,
-                    movie: movie || null,
-                }));
-            },
-
-            init() {
-                const state = this.getState();
-                const limitEl = document.getElementById('gachaLimit');
-
-                if (!state || state.spins === 0) {
-                    this.showIdle();
-                    if (limitEl) limitEl.textContent = '残り 2/2 回';
-                } else if (state.spins < MAX_SPINS) {
-                    if (state.movie) {
-                        this.showResult(state.movie, state.spins);
-                    } else {
+                    const res = await fetch('/movie/api/gacha.php?action=status');
+                    const json = await res.json();
+                    if (token !== this._opToken) return;
+                    if (json.status !== 'success') {
                         this.showIdle();
+                        this.updateLimit(0);
+                        return;
                     }
-                    if (limitEl) limitEl.textContent = `残り ${MAX_SPINS - state.spins}/${MAX_SPINS} 回`;
-                } else {
-                    if (state.movie) {
-                        this.showResult(state.movie, state.spins);
-                    } else {
-                        this.showDone();
+                    const spins = Number(json.data?.spins || 0);
+                    const movie = json.data?.movie || null;
+                    this.updateLimit(spins);
+                    if (!movie) {
+                        if (spins >= MAX_SPINS) this.showDone();
+                        else this.showIdle();
+                        return;
                     }
-                    if (limitEl) limitEl.textContent = '残り 0/2 回';
+                    this.showResult(movie, spins);
+                } catch (e) {
+                    console.error(e);
+                    this.showIdle();
+                    this.updateLimit(0);
                 }
             },
 
@@ -580,13 +727,8 @@ try {
             },
 
             async spin() {
-                const state = this.getState();
-                const currentSpins = state ? state.spins : 0;
-                if (currentSpins >= MAX_SPINS) {
-                    App.toast('本日のガチャは終了です');
-                    return;
-                }
-
+                if (this._spinning) return;
+                const token = ++this._opToken;
                 const idle = document.getElementById('gachaIdle');
                 const result = document.getElementById('gachaResult');
                 if (idle) idle.classList.add('hidden');
@@ -594,41 +736,41 @@ try {
 
                 const card = document.getElementById('gachaCard');
                 if (card) card.classList.add('spinning');
+                this._spinning = true;
 
                 try {
                     const res = await fetch('/movie/api/gacha.php');
                     const json = await res.json();
-
                     setTimeout(() => {
+                        if (token !== this._opToken) return;
                         if (card) card.classList.remove('spinning');
+                        this._spinning = false;
 
-                        if (json.status === 'success' && json.data) {
-                            const newSpins = currentSpins + 1;
-                            const movieData = {
-                                id: json.data.id,
-                                title: json.data.title,
-                                poster_path: json.data.poster_path || null,
-                                release_date: json.data.release_date || null,
-                                vote_average: json.data.vote_average || null,
-                                runtime: json.data.runtime || null,
-                            };
-                            this.saveState(newSpins, movieData);
-
+                        if (json.status === 'success' && json.data?.movie) {
+                            const spins = Number(json.data.spins || 0);
+                            const movie = json.data.movie;
+                            this.updateLimit(spins);
                             const posterEl = document.getElementById('gachaPoster');
                             if (posterEl) posterEl.closest('.gacha-card')?.classList.add('gacha-reveal');
-
-                            this.showResult(movieData, newSpins);
-
-                            const limitEl = document.getElementById('gachaLimit');
-                            if (limitEl) limitEl.textContent = `残り ${MAX_SPINS - newSpins}/${MAX_SPINS} 回`;
+                            this.showResult(movie, spins);
+                        } else if (json.status === 'done') {
+                            this.updateLimit(MAX_SPINS);
+                            this.showDone();
+                            App.toast('本日のガチャは終了です');
                         } else if (json.status === 'empty') {
                             App.toast('見たいリストが空です');
+                            this.showIdle();
+                        } else {
+                            App.toast(json.message || 'エラーが発生しました');
+                            this.showIdle();
                         }
                     }, 700);
                 } catch (e) {
                     if (card) card.classList.remove('spinning');
+                    this._spinning = false;
                     console.error(e);
                     App.toast('エラーが発生しました');
+                    this.showIdle();
                 }
             },
 
@@ -676,13 +818,10 @@ try {
                     });
                     if (result.status === 'success') {
                         App.toast('見たリストに移動しました！');
-                        const state = this.getState();
-                        if (state) {
-                            const refunded = Math.max(0, state.spins - 1);
-                            this.saveState(refunded, null);
-                        }
+                        await App.post('/movie/api/gacha.php', { action: 'refund' });
+                        this.currentId = null;
                         this.showIdle();
-                        this.updateLimit();
+                        await this.init();
                     } else {
                         App.toast(result.message || '更新に失敗しました');
                     }
@@ -692,11 +831,9 @@ try {
                 }
             },
 
-            updateLimit() {
-                const state = this.getState();
-                const spins = state ? state.spins : 0;
+            updateLimit(spins) {
                 const el = document.getElementById('gachaLimit');
-                if (el) el.textContent = `残り ${MAX_SPINS - spins}/${MAX_SPINS} 回`;
+                if (el) el.textContent = `残り ${MAX_SPINS - Number(spins || 0)}/${MAX_SPINS} 回`;
             },
 
             esc(str) {
@@ -1016,6 +1153,30 @@ try {
         };
 
         Rec.init();
+
+        // ─── おすすめ（統合カード）タブ切り替え ───
+        (() => {
+            const tabs = Array.from(document.querySelectorAll('.rec-tab'));
+            const panels = Array.from(document.querySelectorAll('.rec-panel'));
+            if (tabs.length === 0 || panels.length === 0) return;
+
+            const setActive = (targetId) => {
+                panels.forEach(p => p.classList.toggle('hidden', p.id !== targetId));
+                tabs.forEach(t => {
+                    const on = t.dataset.target === targetId;
+                    t.classList.toggle('mv-theme-btn', on);
+                    t.classList.toggle('text-white', on);
+                    t.classList.toggle('border-transparent', on);
+                    t.classList.toggle('bg-white', !on);
+                    t.classList.toggle('text-slate-600', !on);
+                    t.classList.toggle('border-slate-200', !on);
+                    t.classList.toggle('hover:bg-slate-50', !on);
+                });
+            };
+
+            tabs.forEach(t => t.addEventListener('click', () => setActive(t.dataset.target)));
+            setActive('recPanelPersonal');
+        })();
 
         MovieSearch.init({
             inputId: 'dashSearchInput',

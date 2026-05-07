@@ -174,13 +174,20 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
             </div>
         </div>
 
-        <?php if (!empty($filter)): ?>
+        <?php if (!empty($filter) || (!empty($creditRole) && (!empty($creditPersonId) || !empty($creditPersonIdsRaw)))): ?>
         <div class="bg-blue-50 border-b border-blue-100 px-6 md:px-12 py-2 shrink-0">
             <div class="max-w-7xl mx-auto flex items-center gap-3">
                 <i class="fa-solid fa-filter text-blue-400 text-xs"></i>
                 <span class="text-xs font-bold text-blue-600">
                     <?php if ($filter === 'this_month'): ?>
                     <?= date('Y年n月') ?>の鑑賞映画を表示中（<?= count($movies) ?>本）
+                    <?php endif; ?>
+                    <?php if (!empty($creditRole) && (!empty($creditPersonId) || !empty($creditPersonIdsRaw))): ?>
+                    <?php
+                        $roleLabel = $creditRole === 'cast' ? '俳優' : ($creditRole === 'director' ? '監督' : '脚本');
+                        $pn = $creditPersonNames ?? ($creditPersonName ?? '');
+                    ?>
+                    <?= htmlspecialchars($roleLabel) ?>: <?= htmlspecialchars($pn !== '' ? $pn : ('ID=' . (int)$creditPersonId)) ?> で絞り込み中（<?= count($movies) ?>本）
                     <?php endif; ?>
                 </span>
                 <a href="?tab=<?= htmlspecialchars($tab) ?>" class="ml-auto text-xs text-blue-500 hover:text-blue-700 font-bold transition">
@@ -189,6 +196,12 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
             </div>
         </div>
         <?php endif; ?>
+
+        <?php
+            // ランキング経由の場合、各作品カードでは「該当する人のみ」表示したいので
+            // 作品ごとの `matched_person_names` を参照する（固定のTOP5文字列は使わない）
+            $rankingNamesText = '';
+        ?>
 
         <!-- コンテンツ（スクロール領域）-->
         <div class="flex-1 overflow-y-auto" data-scroll-persist="movie-list">
@@ -329,6 +342,8 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                                 </div>
                                 <?php endif; ?>
 
+                                <?php /* ランキング経由の名前表示は下部へ */ ?>
+
                                 <?php if ($tab === 'watched' && $mv['rating']): ?>
                                 <div class="absolute top-2 right-2 bg-black/70 text-amber-400 text-xs font-bold px-2 py-1 rounded-lg flex items-center gap-1">
                                     <i class="fa-solid fa-star text-[10px]"></i> <?= $mv['rating'] ?>
@@ -354,6 +369,13 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                                 <div class="flex items-center gap-1.5 flex-wrap">
                                     <?php if (!empty($mv['release_date'])): ?>
                                     <span class="text-[11px] text-slate-400"><?= date('Y年', strtotime($mv['release_date'])) ?></span>
+                                    <?php endif; ?>
+                                    <?php if (!empty($mv['matched_person_names'])): ?>
+                                    <span class="w-full mt-1">
+                                        <span class="inline-flex items-center text-[10px] font-black bg-slate-50 text-slate-600 border border-slate-200 px-2 py-0.5 rounded-full max-w-full truncate">
+                                            <?= htmlspecialchars((string)$mv['matched_person_names']) ?>
+                                        </span>
+                                    </span>
                                     <?php endif; ?>
                                     <?php
                                         $cardWp = !empty($mv['watch_providers']) ? json_decode($mv['watch_providers'], true) : null;
@@ -431,6 +453,11 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
                                 <div class="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
                                     <?php if (!empty($mv['release_date'])): ?>
                                     <span><?= date('Y年', strtotime($mv['release_date'])) ?></span>
+                                    <?php endif; ?>
+                                    <?php if (!empty($mv['matched_person_names'])): ?>
+                                    <span class="inline-flex items-center text-[10px] font-black bg-slate-50 text-slate-600 border border-slate-200 px-2 py-0.5 rounded-full max-w-[18rem] truncate">
+                                        <?= htmlspecialchars((string)$mv['matched_person_names']) ?>
+                                    </span>
                                     <?php endif; ?>
                                     <?php if ($mv['vote_average'] && $mv['vote_average'] > 0): ?>
                                     <span class="text-amber-500"><i class="fa-solid fa-star text-[9px]"></i> <?= number_format($mv['vote_average'], 1) ?></span>

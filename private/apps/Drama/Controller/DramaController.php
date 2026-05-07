@@ -7,6 +7,7 @@ use App\Drama\Model\UserDramaModel;
 use App\Drama\Model\TmdbTvApiClient;
 use App\Movie\Model\TmdbApiClient as MovieTmdbApiClient;
 use Core\Auth;
+use Core\GachaState;
 use Core\Logger;
 
 class DramaController {
@@ -88,16 +89,99 @@ class DramaController {
      */
     public function gachaApi(): void {
         header('Content-Type: application/json');
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        if ($userId <= 0) {
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        $maxSpins = 2;
+        $action = $_GET['action'] ?? '';
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $input = json_decode(file_get_contents('php://input'), true) ?: [];
+            $postAction = (string)($input['action'] ?? '');
+            if ($postAction === 'refund') {
+                $st = GachaState::read('drama_gacha', $userId);
+                $spins = (int)($st['spins'] ?? 0);
+                $spins = max(0, $spins - 1);
+                $st['date'] = date('Y-m-d');
+                $st['spins'] = $spins;
+                $st['item'] = null;
+                $st['updated_at'] = date('c');
+                GachaState::write('drama_gacha', $userId, $st);
+                echo json_encode(['status' => 'success', 'data' => ['spins' => $spins, 'max_spins' => $maxSpins]], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+        }
+
         try {
+            $st = GachaState::read('drama_gacha', $userId);
+            $today = date('Y-m-d');
+            if (($st['date'] ?? '') !== $today) {
+                $st = ['date' => $today, 'spins' => 0, 'item' => null];
+            }
+
+            if ($action === 'status') {
+                echo json_encode([
+                    'status' => 'success',
+                    'data' => [
+                        'spins' => (int)($st['spins'] ?? 0),
+                        'max_spins' => $maxSpins,
+                        'item' => $st['item'] ?? null,
+                    ],
+                ], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+
+            $spins = (int)($st['spins'] ?? 0);
+            if ($spins >= $maxSpins) {
+                echo json_encode([
+                    'status' => 'done',
+                    'data' => [
+                        'spins' => $spins,
+                        'max_spins' => $maxSpins,
+                        'item' => $st['item'] ?? null,
+                    ],
+                ], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+
             $userDramaModel = new UserDramaModel();
-            $item = $userDramaModel->getRandomWannaWatchItem();
-            if (!$item) {
+            $d = $userDramaModel->getRandomWannaWatchItem();
+            if (!$d) {
                 echo json_encode(['status' => 'empty', 'message' => '見たいリストが空です'], JSON_UNESCAPED_UNICODE);
                 return;
             }
-            echo json_encode(['status' => 'success', 'data' => $item], JSON_UNESCAPED_UNICODE);
-        } catch (\Exception $e) {
-            echo json_encode(['status' => 'error', 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+
+            $item = [
+                'id' => (int)($d['id'] ?? 0),
+                'title' => (string)($d['title'] ?? ''),
+                'name' => (string)($d['title'] ?? ''),
+                'poster_path' => $d['poster_path'] ?? null,
+                'first_air_date' => $d['first_air_date'] ?? null,
+                'vote_average' => $d['vote_average'] ?? null,
+                'runtime_avg' => $d['runtime_avg'] ?? null,
+            ];
+
+            $spins++;
+            $st['date'] = $today;
+            $st['spins'] = $spins;
+            $st['item'] = $item;
+            $st['updated_at'] = date('c');
+            GachaState::write('drama_gacha', $userId, $st);
+
+            echo json_encode([
+                'status' => 'success',
+                'data' => [
+                    'spins' => $spins,
+                    'max_spins' => $maxSpins,
+                    'item' => $item,
+                ],
+            ], JSON_UNESCAPED_UNICODE);
+        } catch (\Throwable $e) {
+            Logger::errorWithContext('Drama gacha error', $e);
+            echo json_encode(['status' => 'error', 'message' => 'エラーが発生しました'], JSON_UNESCAPED_UNICODE);
         }
     }
 

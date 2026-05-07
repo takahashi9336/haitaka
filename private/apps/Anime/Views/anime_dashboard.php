@@ -131,7 +131,7 @@ try {
                 <?php else: ?>
 
                 <!-- スタッツカード -->
-                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3 md:gap-4 mb-4 md:mb-6">
                     <a href="/anime/list.php?tab=watched" class="stat-card bg-white rounded-xl border border-slate-100 shadow-sm p-3 md:p-5 hover:shadow-md hover:border-green-200 transition-all group block">
                         <div class="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
                             <div class="w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center bg-green-50 text-green-500">
@@ -174,7 +174,7 @@ try {
                 </div>
 
                 <!-- アニメを探す -->
-                <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-4 md:p-5 mb-6 md:mb-8">
+                <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-4 md:p-5 mb-4 md:mb-6">
                     <div class="flex items-center gap-2 mb-2 md:mb-3">
                         <div class="w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center bg-sky-50 text-sky-500">
                             <i class="fa-solid fa-magnifying-glass text-xs md:text-sm"></i>
@@ -200,15 +200,16 @@ try {
                 </div>
 
                 <!-- ガチャ -->
-                <div class="mb-6 md:mb-8">
+                <div class="mb-4 md:mb-6">
                     <div class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-4 md:p-6 lg:p-8 shadow-xl relative overflow-hidden">
                         <div class="absolute top-0 right-0 w-48 h-48 bg-gradient-to-bl from-white/5 to-transparent rounded-bl-full"></div>
                         <div class="relative z-10">
                             <div class="flex items-center gap-2 mb-1">
                                 <i class="fa-solid fa-dice text-sky-400 text-lg"></i>
                                 <h2 class="text-white font-black text-lg tracking-tight">見たいリストガチャ</h2>
+                                <span id="animeGachaLimit" class="ml-auto text-[10px] font-bold text-slate-500 bg-slate-700/80 px-2 py-0.5 rounded-full"></span>
                             </div>
-                            <p class="text-slate-400 text-xs mb-4 md:mb-6">見たいリストからランダムに1作品をピックアップ！</p>
+                            <p class="text-slate-400 text-xs mb-4 md:mb-6">見たいリストからランダムに1作品をピックアップ！<span class="text-sky-400/70">（1日2回まで）</span></p>
 
                             <?php if (($stats['wanna_watch'] ?? 0) > 0): ?>
                             <div id="animeGachaIdle" class="flex flex-col items-center py-4">
@@ -232,12 +233,30 @@ try {
                                             <a id="animeGachaDetailLink" href="#" class="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-bold rounded-lg transition backdrop-blur-sm">
                                                 <i class="fa-solid fa-info-circle mr-1.5"></i>詳細を見る
                                             </a>
-                                            <button type="button" onclick="AnimeGacha.spin()" class="px-4 py-2 bg-sky-500/80 hover:bg-sky-500 text-white text-sm font-bold rounded-lg transition">
-                                                <i class="fa-solid fa-rotate mr-1.5"></i>もう一度引く
+                                            <button type="button" onclick="AnimeGacha.markWatched()" class="px-4 py-2 bg-green-500/80 hover:bg-green-500 text-white text-sm font-bold rounded-lg transition">
+                                                <i class="fa-solid fa-check mr-1.5"></i>見た！
                                             </button>
+                                        </div>
+                                        <div id="animeGachaRetry" class="hidden mt-4 pt-3 border-t border-slate-700">
+                                            <button type="button" onclick="AnimeGacha.spin()" class="text-xs text-sky-400/80 hover:text-sky-400 transition flex items-center gap-1.5">
+                                                <i class="fa-solid fa-rotate"></i>
+                                                <span>どうしてももう1回だけ引く...</span>
+                                            </button>
+                                            <p class="text-[10px] text-slate-600 mt-1">※ 本日最後の1回です</p>
+                                        </div>
+                                        <div id="animeGachaExhausted" class="hidden mt-4 pt-3 border-t border-slate-700">
+                                            <p class="text-[10px] text-slate-600"><i class="fa-solid fa-moon mr-1"></i>本日のガチャは終了しました。明日またお楽しみに！</p>
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+
+                            <div id="animeGachaDone" class="hidden text-center py-6">
+                                <div class="w-20 h-20 bg-slate-700/50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                    <i class="fa-solid fa-moon text-3xl text-slate-500"></i>
+                                </div>
+                                <p class="text-slate-400 text-sm font-bold mb-1">本日のガチャは終了</p>
+                                <p class="text-slate-600 text-xs">明日また運命の1本を引きましょう</p>
                             </div>
                             <?php else: ?>
                             <div class="text-center py-8">
@@ -253,7 +272,7 @@ try {
                 </div>
 
                 <!-- 今期アニメ（Annict API から取得） -->
-                <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-6 mb-6">
+                <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-6 mb-4">
                     <div class="flex items-center gap-2 mb-2">
                         <i class="fa-solid fa-calendar text-sky-500"></i>
                         <h2 class="text-sm font-bold text-slate-700">今期のアニメ</h2>
@@ -278,7 +297,7 @@ try {
 
                 <!-- 視聴中 -->
                 <?php if (!empty($watchingWorks)): ?>
-                <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-6 mb-6 rec-section">
+                <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-6 mb-4 rec-section">
                     <div class="flex items-center justify-between mb-4">
                         <h2 class="text-sm font-bold text-slate-700"><i class="fa-solid fa-play text-sky-500 mr-2"></i>視聴中</h2>
                         <a href="/anime/list.php?tab=watching" class="text-xs font-bold text-sky-500 hover:text-sky-600 transition">もっと見る <i class="fa-solid fa-chevron-right text-[10px]"></i></a>
@@ -308,7 +327,7 @@ try {
                 <?php endif; ?>
 
                 <!-- 友人が視聴したアニメ -->
-                <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-6 mb-6">
+                <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-6 mb-4">
                     <div class="flex items-center justify-between mb-4">
                         <h2 class="text-sm font-bold text-slate-700"><i class="fa-solid fa-user-group text-sky-500 mr-2"></i>友人が視聴したアニメ</h2>
                         <a href="/friends_activity.php?filter=anime" class="text-xs font-bold text-sky-500 hover:text-sky-600 transition">もっと見る <i class="fa-solid fa-chevron-right text-[10px]"></i></a>
@@ -357,7 +376,7 @@ try {
                 $hasCharts = !empty($mediaDistribution) || $hasAnyStatus || !empty($seasonDistribution);
                 ?>
                 <?php if ($hasCharts): ?>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                     <?php if (!empty($mediaDistribution)): ?>
                     <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-6">
                         <h2 class="text-sm font-bold text-slate-700 mb-4"><i class="fa-solid fa-chart-pie text-sky-500 mr-2"></i>媒体分布</h2>
@@ -430,50 +449,175 @@ try {
                 }
             }
         };
+        const ANIME_MAX_SPINS = 2;
         const AnimeGacha = {
-            async spin() {
+            currentId: null,
+            _opToken: 0,
+            _spinning: false,
+
+            async init() {
+                const token = ++this._opToken;
+                try {
+                    const res = await fetch('/anime/api/gacha.php?action=status');
+                    const json = await res.json();
+                    if (token !== this._opToken) return;
+                    if (json.status !== 'success') {
+                        this.showIdle();
+                        this.updateLimit(0);
+                        return;
+                    }
+                    const spins = Number(json.data?.spins || 0);
+                    const work = json.data?.work || null;
+                    this.updateLimit(spins);
+                    if (!work) {
+                        if (spins >= ANIME_MAX_SPINS) this.showDone();
+                        else this.showIdle();
+                        return;
+                    }
+                    this.showResult(work, spins);
+                } catch (e) {
+                    console.error(e);
+                    this.showIdle();
+                    this.updateLimit(0);
+                }
+            },
+
+            showIdle() {
                 const idle = document.getElementById('animeGachaIdle');
                 const result = document.getElementById('animeGachaResult');
-                const card = document.getElementById('animeGachaCard');
+                const done = document.getElementById('animeGachaDone');
+                if (idle) idle.classList.remove('hidden');
+                if (result) result.classList.add('hidden');
+                if (done) done.classList.add('hidden');
+            },
+
+            showResult(work, spins) {
+                const idle = document.getElementById('animeGachaIdle');
+                const result = document.getElementById('animeGachaResult');
+                const done = document.getElementById('animeGachaDone');
                 if (idle) idle.classList.add('hidden');
                 if (result) result.classList.remove('hidden');
+                if (done) done.classList.add('hidden');
+
+                if (work) this.updateUI(work);
+
+                const retry = document.getElementById('animeGachaRetry');
+                const exhausted = document.getElementById('animeGachaExhausted');
+                if (spins < ANIME_MAX_SPINS) {
+                    if (retry) retry.classList.remove('hidden');
+                    if (exhausted) exhausted.classList.add('hidden');
+                } else {
+                    if (retry) retry.classList.add('hidden');
+                    if (exhausted) exhausted.classList.remove('hidden');
+                }
+            },
+
+            showDone() {
+                const idle = document.getElementById('animeGachaIdle');
+                const result = document.getElementById('animeGachaResult');
+                const done = document.getElementById('animeGachaDone');
+                if (idle) idle.classList.add('hidden');
+                if (result) result.classList.add('hidden');
+                if (done) done.classList.remove('hidden');
+            },
+
+            async spin() {
+                if (this._spinning) return;
+                const token = ++this._opToken;
+                const idle = document.getElementById('animeGachaIdle');
+                const result = document.getElementById('animeGachaResult');
+                if (idle) idle.classList.add('hidden');
+                if (result) result.classList.remove('hidden');
+
+                const card = document.getElementById('animeGachaCard');
                 if (card) card.classList.add('spinning');
+                this._spinning = true;
+
                 try {
                     const res = await fetch('/anime/api/gacha.php');
                     const json = await res.json();
                     setTimeout(() => {
+                        if (token !== this._opToken) return;
                         if (card) card.classList.remove('spinning');
-                        if (json.status === 'success' && json.data) {
-                            const w = json.data;
-                            const posterEl = document.getElementById('animeGachaPoster');
-                            const imgUrl = w.images?.recommended_url || w.images?.facebook?.og_image_url || '';
-                            if (posterEl) {
-                                if (imgUrl) {
-                                    posterEl.outerHTML = '<img id="animeGachaPoster" src="' +
-                                        imgUrl.replace(/^http:\/\//i, 'https://') +
-                                        '" alt="" class="w-64 md:w-80 aspect-[16/9] object-cover rounded-xl shadow-2xl ring-2 ring-white/20">';
-                                }
-                                document.getElementById('animeGachaCard')?.classList.add('gacha-reveal');
-                            }
-                            const titleEl = document.getElementById('animeGachaTitle');
-                            if (titleEl) titleEl.textContent = w.title || '';
-                            const metaEl = document.getElementById('animeGachaMeta');
-                            if (metaEl) {
-                                let html = '';
-                                if (w.season_name_text || w.season_name) html += '<span>' + (w.season_name_text || w.season_name) + '</span>';
-                                if (w.episodes_count) html += '<span>' + w.episodes_count + '話</span>';
-                                metaEl.innerHTML = html;
-                            }
-                            const detailLink = document.getElementById('animeGachaDetailLink');
-                            if (detailLink) detailLink.href = '/anime/detail.php?id=' + (w.id || 0);
+                        this._spinning = false;
+                        if (json.status === 'success' && json.data?.work) {
+                            const spins = Number(json.data.spins || 0);
+                            const w = json.data.work;
+                            this.updateLimit(spins);
+                            this.showResult(w, spins);
+                        } else if (json.status === 'done') {
+                            this.updateLimit(ANIME_MAX_SPINS);
+                            this.showDone();
+                            App.toast('本日のガチャは終了です');
                         } else if (json.status === 'empty') {
-                            if (typeof App !== 'undefined' && App.toast) App.toast('見たいリストが空です');
+                            App.toast('見たいリストが空です');
+                            this.showIdle();
+                        } else {
+                            App.toast(json.message || '取得に失敗しました');
+                            this.showIdle();
                         }
                     }, 700);
                 } catch (e) {
                     if (card) card.classList.remove('spinning');
-                    if (typeof App !== 'undefined' && App.toast) App.toast('エラーが発生しました');
+                    this._spinning = false;
+                    App.toast('エラーが発生しました');
+                    this.showIdle();
                 }
+            },
+
+            updateUI(w) {
+                this.currentId = w.id || null;
+
+                const posterEl = document.getElementById('animeGachaPoster');
+                const imgUrl = w.images?.recommended_url || w.images?.facebook?.og_image_url || '';
+                if (posterEl) {
+                    if (imgUrl) {
+                        posterEl.outerHTML = '<img id="animeGachaPoster" src="' +
+                            String(imgUrl).replace(/^http:\/\//i, 'https://') +
+                            '" alt="" class="w-64 md:w-80 aspect-[16/9] object-cover rounded-xl shadow-2xl ring-2 ring-white/20">';
+                    } else if (posterEl.tagName === 'IMG') {
+                        posterEl.outerHTML = '<div id="animeGachaPoster" class="w-64 md:w-80 aspect-[16/9] bg-slate-700 rounded-xl flex items-center justify-center shadow-2xl ring-2 ring-white/20"><i class="fa-solid fa-tv text-4xl text-slate-500"></i></div>';
+                    }
+                    document.getElementById('animeGachaCard')?.classList.add('gacha-reveal');
+                }
+
+                const titleEl = document.getElementById('animeGachaTitle');
+                if (titleEl) titleEl.textContent = w.title || '';
+
+                const metaEl = document.getElementById('animeGachaMeta');
+                if (metaEl) {
+                    let html = '';
+                    if (w.season_name_text || w.season_name) html += '<span>' + (w.season_name_text || w.season_name) + '</span>';
+                    if (w.episodes_count) html += '<span>' + w.episodes_count + '話</span>';
+                    metaEl.innerHTML = html;
+                }
+
+                const detailLink = document.getElementById('animeGachaDetailLink');
+                if (detailLink) detailLink.href = '/anime/detail.php?id=' + (w.id || 0);
+            },
+
+            async markWatched() {
+                if (!this.currentId) return;
+                try {
+                    const res = await App.post('/anime/api/set_status.php', { work_id: this.currentId, kind: 'watched' });
+                    if (res.status === 'success') {
+                        App.toast('「見た」に移動しました！');
+                        await App.post('/anime/api/gacha.php', { action: 'refund' });
+                        this.currentId = null;
+                        this.showIdle();
+                        await this.init();
+                    } else {
+                        App.toast(res.message || '更新に失敗しました');
+                    }
+                } catch (e) {
+                    console.error(e);
+                    App.toast('エラーが発生しました');
+                }
+            },
+
+            updateLimit(spins) {
+                const el = document.getElementById('animeGachaLimit');
+                if (el) el.textContent = `残り ${ANIME_MAX_SPINS - Number(spins || 0)}/${ANIME_MAX_SPINS} 回`;
             }
         };
         const AnimeCurrentSeason = {
@@ -579,6 +723,8 @@ try {
         };
 
         AnimeCurrentSeason.init();
+
+        AnimeGacha.init();
 
         // 視聴中カード用モーダルフック
         (function() {

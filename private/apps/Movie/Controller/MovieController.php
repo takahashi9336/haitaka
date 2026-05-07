@@ -5,7 +5,9 @@ namespace App\Movie\Controller;
 use App\Movie\Model\MovieModel;
 use App\Movie\Model\UserMovieModel;
 use App\Movie\Model\TmdbApiClient;
+use App\Movie\Service\MovieCreditsService;
 use Core\Auth;
+use Core\GachaState;
 use Core\Logger;
 
 /**
@@ -37,6 +39,9 @@ class MovieController {
             $monthlyWatchCounts = $userMovieModel->getMonthlyWatchCounts(12);
             $genreDistribution = $userMovieModel->getGenreDistribution();
             $ratingDistribution = $userMovieModel->getRatingDistribution();
+            $castRanking = $userMovieModel->getCreditsRankingByRole('cast', 5);
+            $directorRanking = $userMovieModel->getCreditsRankingByRole('director', 5);
+            $writerRanking = $userMovieModel->getCreditsRankingByRole('writer', 5);
 
             $avgRating = 0;
             $ratedCount = array_sum($ratingDistribution);
@@ -52,6 +57,7 @@ class MovieController {
             $watchlistCount = $watchedCount = $thisMonthCount = $totalRuntime = $avgRating = $ratedCount = 0;
             $monthlyWatchCounts = [];
             $genreDistribution = $ratingDistribution = [];
+            $castRanking = $directorRanking = $writerRanking = [];
         }
 
         $tmdb = new TmdbApiClient();
@@ -65,16 +71,100 @@ class MovieController {
      */
     public function gachaApi(): void {
         header('Content-Type: application/json');
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        if ($userId <= 0) {
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        $maxSpins = 2;
+        $action = $_GET['action'] ?? '';
+
+        // refund は POST（見た登録後に回数を戻して同一日でもう一度引ける）
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $input = json_decode(file_get_contents('php://input'), true) ?: [];
+            $postAction = (string)($input['action'] ?? '');
+            if ($postAction === 'refund') {
+                $st = GachaState::read('movie_gacha', $userId);
+                $spins = (int)($st['spins'] ?? 0);
+                $spins = max(0, $spins - 1);
+                $st['date'] = date('Y-m-d');
+                $st['spins'] = $spins;
+                $st['movie'] = null;
+                $st['updated_at'] = date('c');
+                GachaState::write('movie_gacha', $userId, $st);
+                echo json_encode(['status' => 'success', 'data' => ['spins' => $spins, 'max_spins' => $maxSpins]], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+        }
+
         try {
+            $st = GachaState::read('movie_gacha', $userId);
+            $today = date('Y-m-d');
+            if (($st['date'] ?? '') !== $today) {
+                $st = ['date' => $today, 'spins' => 0, 'movie' => null];
+            }
+
+            if ($action === 'status') {
+                echo json_encode([
+                    'status' => 'success',
+                    'data' => [
+                        'spins' => (int)($st['spins'] ?? 0),
+                        'max_spins' => $maxSpins,
+                        'movie' => $st['movie'] ?? null,
+                    ],
+                ], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+
+            // 既定は spin
+            $spins = (int)($st['spins'] ?? 0);
+            if ($spins >= $maxSpins) {
+                echo json_encode([
+                    'status' => 'done',
+                    'data' => [
+                        'spins' => $spins,
+                        'max_spins' => $maxSpins,
+                        'movie' => $st['movie'] ?? null,
+                    ],
+                ], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+
             $userMovieModel = new UserMovieModel();
             $movie = $userMovieModel->getRandomWatchlistItem();
             if (!$movie) {
                 echo json_encode(['status' => 'empty', 'message' => '見たいリストが空です'], JSON_UNESCAPED_UNICODE);
                 return;
             }
-            echo json_encode(['status' => 'success', 'data' => $movie], JSON_UNESCAPED_UNICODE);
-        } catch (\Exception $e) {
-            echo json_encode(['status' => 'error', 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+
+            $movieData = [
+                'id' => (int)($movie['id'] ?? 0),
+                'title' => (string)($movie['title'] ?? ''),
+                'poster_path' => $movie['poster_path'] ?? null,
+                'release_date' => $movie['release_date'] ?? null,
+                'vote_average' => $movie['vote_average'] ?? null,
+                'runtime' => $movie['runtime'] ?? null,
+            ];
+
+            $spins++;
+            $st['date'] = $today;
+            $st['spins'] = $spins;
+            $st['movie'] = $movieData;
+            $st['updated_at'] = date('c');
+            GachaState::write('movie_gacha', $userId, $st);
+
+            echo json_encode([
+                'status' => 'success',
+                'data' => [
+                    'spins' => $spins,
+                    'max_spins' => $maxSpins,
+                    'movie' => $movieData,
+                ],
+            ], JSON_UNESCAPED_UNICODE);
+        } catch (\Throwable $e) {
+            Logger::errorWithContext('Movie gacha error', $e);
+            echo json_encode(['status' => 'error', 'message' => 'エラーが発生しました'], JSON_UNESCAPED_UNICODE);
         }
     }
 
@@ -233,6 +323,150 @@ class MovieController {
     }
 
     /**
+     * 人物別：未登録映画ピックアップページ
+     */
+    public function personPickupPage(): void {
+        $this->auth->requireLogin();
+
+        $roleKind = isset($_GET['role_kind']) ? trim((string)$_GET['role_kind']) : 'cast';
+        $personId = isset($_GET['person_id']) ? (int)$_GET['person_id'] : 0;
+        $personIdsRaw = isset($_GET['person_ids']) ? trim((string)$_GET['person_ids']) : '';
+        $personIds = [];
+        if ($personIdsRaw !== '') {
+            foreach (preg_split('/[,\s]+/', $personIdsRaw) as $v) {
+                $iv = (int)$v;
+                if ($iv > 0) $personIds[] = $iv;
+            }
+            $personIds = array_values(array_unique($personIds));
+        }
+        $personName = isset($_GET['person_name']) ? trim((string)$_GET['person_name']) : '';
+        $personNames = isset($_GET['person_names']) ? trim((string)$_GET['person_names']) : '';
+        $personNamesCsv = isset($_GET['person_names_csv']) ? trim((string)$_GET['person_names_csv']) : '';
+
+        $tmdb = new TmdbApiClient();
+        $tmdbConfigured = $tmdb->isConfigured();
+
+        require_once __DIR__ . '/../Views/movie_person_pickup.php';
+    }
+
+    /**
+     * 人物別：未登録映画ピックアップ API
+     */
+    public function personPickupApi(): void {
+        header('Content-Type: application/json');
+        $this->auth->requireLogin();
+
+        $roleKind = isset($_GET['role_kind']) ? trim((string)$_GET['role_kind']) : 'cast';
+        $personId = isset($_GET['person_id']) ? (int)$_GET['person_id'] : 0;
+        $personIdsRaw = isset($_GET['person_ids']) ? trim((string)$_GET['person_ids']) : '';
+        $personIds = [];
+        if ($personIdsRaw !== '') {
+            foreach (preg_split('/[,\s]+/', $personIdsRaw) as $v) {
+                $iv = (int)$v;
+                if ($iv > 0) $personIds[] = $iv;
+            }
+            $personIds = array_values(array_unique($personIds));
+        }
+        $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 20;
+        $limit = max(1, min(50, $limit));
+        $personNamesCsv = isset($_GET['person_names_csv']) ? trim((string)$_GET['person_names_csv']) : '';
+        $idToName = [];
+        if ($personNamesCsv !== '') {
+            $nameParts = array_values(array_filter(array_map('trim', explode(',', $personNamesCsv)), fn($s) => $s !== ''));
+            // person_ids の順序と揃っている前提（ダッシュボードから渡す）
+            foreach ($personIds as $idx => $pid) {
+                if (isset($nameParts[$idx])) {
+                    $idToName[(int)$pid] = (string)$nameParts[$idx];
+                }
+            }
+        }
+
+        $allowed = ['cast', 'director', 'writer'];
+        $ids = !empty($personIds) ? $personIds : ($personId > 0 ? [$personId] : []);
+        if (!in_array($roleKind, $allowed, true) || empty($ids)) {
+            echo json_encode(['status' => 'error', 'message' => 'Invalid params']);
+            return;
+        }
+
+        try {
+            $tmdb = new TmdbApiClient();
+            if (!$tmdb->isConfigured()) {
+                echo json_encode(['status' => 'error', 'message' => 'TMDB APIキーが設定されていません']);
+                return;
+            }
+
+            $userMovieModel = new UserMovieModel();
+            $registered = array_fill_keys(array_map('intval', $userMovieModel->getAllTmdbIds()), true);
+
+            $movieMap = [];
+            foreach ($ids as $pid) {
+                $credits = $tmdb->getPersonMovieCredits((int)$pid);
+                if (!$credits) continue;
+                if ($roleKind === 'cast') {
+                    foreach (($credits['cast'] ?? []) as $m) {
+                        $mid = (int)($m['id'] ?? 0);
+                        if ($mid <= 0) continue;
+                        if (!isset($movieMap[$mid])) $movieMap[$mid] = ['movie' => $m, 'pids' => []];
+                        $movieMap[$mid]['pids'][(int)$pid] = true;
+                    }
+                } else {
+                    $crew = $credits['crew'] ?? [];
+                    $jobs = $roleKind === 'director'
+                        ? ['Director']
+                        : ['Writer', 'Screenplay', 'Story'];
+                    foreach ($crew as $c) {
+                        $job = (string)($c['job'] ?? '');
+                        if (!in_array($job, $jobs, true)) continue;
+                        $mid = (int)($c['id'] ?? 0);
+                        if ($mid <= 0) continue;
+                        if (!isset($movieMap[$mid])) $movieMap[$mid] = ['movie' => $c, 'pids' => []];
+                        $movieMap[$mid]['pids'][(int)$pid] = true;
+                    }
+                }
+                // 軽いウェイト（人物数が多いケースの保険）
+                usleep(120000 + random_int(0, 80000));
+            }
+
+            // 未登録のみ、最低限の表示情報があるものだけ
+            $picked = [];
+            foreach ($movieMap as $mid => $bundle) {
+                $m = $bundle['movie'] ?? null;
+                if (!is_array($m)) continue;
+                if (isset($registered[$mid])) continue;
+                $title = (string)($m['title'] ?? '');
+                if ($title === '') continue;
+                $matchedNames = [];
+                foreach (array_keys($bundle['pids'] ?? []) as $pidKey) {
+                    $pidKey = (int)$pidKey;
+                    $matchedNames[] = $idToName[$pidKey] ?? ('ID=' . $pidKey);
+                }
+                $picked[] = [
+                    'id' => $mid,
+                    'title' => $title,
+                    'release_date' => (string)($m['release_date'] ?? ''),
+                    'poster_path' => (string)($m['poster_path'] ?? ''),
+                    'popularity' => (float)($m['popularity'] ?? 0),
+                    'vote_average' => (float)($m['vote_average'] ?? 0),
+                    'vote_count' => (int)($m['vote_count'] ?? 0),
+                    'matched_person_names' => implode(' / ', $matchedNames),
+                ];
+            }
+
+            usort($picked, function($a, $b) {
+                $p = ($b['popularity'] <=> $a['popularity']);
+                if ($p !== 0) return $p;
+                return strcmp((string)($b['release_date'] ?? ''), (string)($a['release_date'] ?? ''));
+            });
+
+            $picked = array_slice($picked, 0, $limit);
+            echo json_encode(['status' => 'success', 'data' => ['results' => $picked]], JSON_UNESCAPED_UNICODE);
+        } catch (\Throwable $e) {
+            Logger::errorWithContext('Person pickup error', $e);
+            echo json_encode(['status' => 'error', 'message' => '処理中にエラーが発生しました']);
+        }
+    }
+
+    /**
      * 映画一覧画面
      */
     public function index(): void {
@@ -243,17 +477,40 @@ class MovieController {
         $sort = $_GET['sort'] ?? 'created_at';
         $order = $_GET['order'] ?? 'DESC';
         $filter = $_GET['filter'] ?? '';
+        $creditRole = isset($_GET['credit_role']) ? trim((string)$_GET['credit_role']) : null;
+        $creditPersonId = isset($_GET['person_id']) ? (int)$_GET['person_id'] : null;
+        $creditPersonIdsRaw = isset($_GET['person_ids']) ? trim((string)$_GET['person_ids']) : '';
+        $creditPersonIds = [];
+        if ($creditPersonIdsRaw !== '') {
+            foreach (preg_split('/[,\s]+/', $creditPersonIdsRaw) as $v) {
+                $iv = (int)$v;
+                if ($iv > 0) $creditPersonIds[] = $iv;
+            }
+            $creditPersonIds = array_values(array_unique($creditPersonIds));
+        }
+        $creditPersonName = isset($_GET['person_name']) ? trim((string)$_GET['person_name']) : null;
+        $creditPersonNames = isset($_GET['person_names']) ? trim((string)$_GET['person_names']) : null;
 
         try {
             $userMovieModel = new UserMovieModel();
             $watchlistCount = $userMovieModel->countByStatus('watchlist');
             $watchedCount = $userMovieModel->countByStatus('watched');
-            $movies = $userMovieModel->getListByStatus($tab, $sort, $order, $filter);
+            $movies = $userMovieModel->getListByStatus(
+                $tab,
+                $sort,
+                $order,
+                $filter,
+                $creditRole,
+                $creditPersonId,
+                !empty($creditPersonIds) ? $creditPersonIds : null
+            );
         } catch (\Exception $e) {
             Logger::errorWithContext('Movie list error', $e);
             $watchlistCount = 0;
             $watchedCount = 0;
             $movies = [];
+            $creditRole = $creditPersonId = $creditPersonName = $creditPersonNames = null;
+            $creditPersonIds = [];
         }
 
         $tmdb = new TmdbApiClient();
@@ -586,12 +843,25 @@ class MovieController {
                 throw new \Exception('Invalid JSON');
             }
 
+            $userMovieModel = new UserMovieModel();
             $id = (int)($input['id'] ?? 0);
             if ($id <= 0) {
                 throw new \Exception('IDが指定されていません');
             }
 
-            $userMovieModel = new UserMovieModel();
+            // 互換: フロントから mv_movies.id が渡ってくるケースがあるため、
+            // まず mv_user_movies.id として解釈し、見つからなければ movie_id として引き直す。
+            $entryRow = $userMovieModel->getDetailWithMovie($id);
+            if (!$entryRow) {
+                $byMovie = $userMovieModel->findByMovieId($id);
+                if ($byMovie) {
+                    $id = (int)$byMovie['id'];
+                    $entryRow = $userMovieModel->getDetailWithMovie($id);
+                }
+            }
+            if (!$entryRow) {
+                throw new \Exception('映画エントリが見つかりません');
+            }
 
             if (isset($input['status'])) {
                 if ($input['status'] === 'watched') {
@@ -601,6 +871,21 @@ class MovieController {
                         isset($input['rating']) ? (int)$input['rating'] : null,
                         $input['memo'] ?? null
                     );
+                    // 見た登録のタイミングで credits を保存（TMDB連携済みの場合のみ）
+                    if ($result) {
+                        try {
+                            // $entryRow は watched 更新前後で movie_id/tmdb_id は不変のため再利用
+                            $movieId = (int)($entryRow['movie_id'] ?? 0);
+                            $tmdbMovieId = (int)($entryRow['tmdb_id'] ?? 0);
+                            if ($movieId > 0 && $tmdbMovieId > 0) {
+                                $pdo = \Core\Database::connect();
+                                MovieCreditsService::ensureCreditsByTmdbId($pdo, $movieId, $tmdbMovieId, true);
+                            }
+                        } catch (\Throwable $e) {
+                            // 更新自体は成功扱いのまま（credits保存は後追い可能）
+                            Logger::errorWithContext('Credits ensure on watched update failed', $e);
+                        }
+                    }
                 } elseif ($input['status'] === 'watchlist') {
                     $result = $userMovieModel->moveToWatchlist($id);
                 } else {

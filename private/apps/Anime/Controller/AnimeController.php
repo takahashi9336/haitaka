@@ -7,6 +7,7 @@ use App\Anime\Model\UserWorkModel;
 use App\Anime\Model\WorkModel;
 use App\Anime\Service\AnnictOAuthService;
 use Core\Auth;
+use Core\GachaState;
 use Core\Logger;
 
 /**
@@ -259,6 +260,56 @@ class AnimeController {
             return;
         }
 
+        $maxSpins = 2;
+        $action = $_GET['action'] ?? '';
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $input = json_decode(file_get_contents('php://input'), true) ?: [];
+            if (($input['action'] ?? '') === 'refund') {
+                $st = GachaState::read('anime_gacha', $userId);
+                $spins = (int)($st['spins'] ?? 0);
+                $spins = max(0, $spins - 1);
+                $st['date'] = date('Y-m-d');
+                $st['spins'] = $spins;
+                $st['work'] = null;
+                $st['updated_at'] = date('c');
+                GachaState::write('anime_gacha', $userId, $st);
+                echo json_encode(['status' => 'success', 'data' => ['spins' => $spins, 'max_spins' => $maxSpins]], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+        }
+
+        $st = GachaState::read('anime_gacha', $userId);
+        $today = date('Y-m-d');
+        if (($st['date'] ?? '') !== $today) {
+            $st = ['date' => $today, 'spins' => 0, 'work' => null];
+        }
+
+        if ($action === 'status') {
+            echo json_encode([
+                'status' => 'success',
+                'data' => [
+                    'spins' => (int)($st['spins'] ?? 0),
+                    'max_spins' => $maxSpins,
+                    'work' => $st['work'] ?? null,
+                ],
+            ], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        $spins = (int)($st['spins'] ?? 0);
+        if ($spins >= $maxSpins) {
+            echo json_encode([
+                'status' => 'done',
+                'data' => [
+                    'spins' => $spins,
+                    'max_spins' => $maxSpins,
+                    'work' => $st['work'] ?? null,
+                ],
+            ], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
         $userWorkModel = new UserWorkModel();
         $works = $userWorkModel->getByUserAndStatus($userId, 'wanna_watch');
         if (empty($works)) {
@@ -267,7 +318,22 @@ class AnimeController {
         }
 
         $idx = array_rand($works);
-        echo json_encode(['status' => 'success', 'data' => $works[$idx]], JSON_UNESCAPED_UNICODE);
+        $work = $works[$idx];
+        $spins++;
+        $st['date'] = $today;
+        $st['spins'] = $spins;
+        $st['work'] = $work;
+        $st['updated_at'] = date('c');
+        GachaState::write('anime_gacha', $userId, $st);
+
+        echo json_encode([
+            'status' => 'success',
+            'data' => [
+                'spins' => $spins,
+                'max_spins' => $maxSpins,
+                'work' => $work,
+            ],
+        ], JSON_UNESCAPED_UNICODE);
     }
 
     /**

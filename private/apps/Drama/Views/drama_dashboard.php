@@ -93,7 +93,7 @@ try {
             <div class="max-w-6xl mx-auto">
 
                 <!-- スタッツカード -->
-                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-6">
                     <a href="/drama/list.php?tab=watched" class="stat-card bg-white rounded-xl border border-slate-100 shadow-sm p-3 md:p-5 hover:shadow-md hover:border-emerald-200 transition-all group block">
                         <div class="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
                             <div class="w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center bg-emerald-50 text-emerald-500">
@@ -156,7 +156,7 @@ try {
 
                 <!-- TMDB 検索ボックス -->
                 <?php if ($tmdbConfigured): ?>
-                <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-4 md:p-5 mb-6 md:mb-8">
+                <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-4 md:p-5 mb-4 md:mb-6">
                     <div class="flex items-center gap-2 mb-2 md:mb-3">
                         <div class="w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center bg-violet-50 text-violet-500">
                             <i class="fa-solid fa-magnifying-glass text-xs md:text-sm"></i>
@@ -183,7 +183,7 @@ try {
                 <?php endif; ?>
 
                 <!-- ドラマガチャ -->
-                <div class="mb-6 md:mb-8">
+                <div class="mb-4 md:mb-6">
                     <div class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-4 md:p-6 lg:p-8 shadow-xl relative overflow-hidden">
                         <div class="absolute top-0 right-0 w-48 h-48 bg-gradient-to-bl from-white/5 to-transparent rounded-bl-full"></div>
                         <div class="relative z-10">
@@ -197,7 +197,7 @@ try {
                             <?php if ($wannaWatchCount > 0): ?>
                             <!-- 未ガチャ状態 -->
                             <div id="drGachaIdle" class="flex flex-col items-center py-4">
-                                <button onclick="DrGacha.spin()" class="gacha-idle gacha-box-shine relative w-32 h-32 md:w-40 md:h-40 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl flex flex-col items-center justify-center shadow-2xl cursor-pointer hover:scale-105 transition-transform overflow-hidden mb-4 md:mb-5">
+                                <button type="button" onclick="DrGacha.spin()" class="gacha-idle gacha-box-shine relative w-32 h-32 md:w-40 md:h-40 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl flex flex-col items-center justify-center shadow-2xl cursor-pointer hover:scale-105 transition-transform overflow-hidden mb-4 md:mb-5">
                                     <i class="fa-solid fa-dice text-4xl md:text-5xl text-white/90 mb-1.5 md:mb-2 drop-shadow"></i>
                                     <span class="text-white font-black text-xs md:text-sm tracking-wide drop-shadow">タップでガチャ</span>
                                 </button>
@@ -216,10 +216,10 @@ try {
                                         <h3 id="drGachaTitle" class="text-white font-black text-xl md:text-2xl leading-tight mb-2"></h3>
                                         <div id="drGachaMeta" class="flex items-center gap-3 justify-center sm:justify-start text-slate-400 text-sm mb-4"></div>
                                         <div id="drGachaActions" class="flex flex-wrap gap-2 justify-center sm:justify-start">
-                                            <a id="drGachaDetailLink" href="#" onclick="sessionStorage.setItem('dr_back_to','dashboard')" class="px-4 py-2 bg-white/10 hover:bg白/20 text-white text-sm font-bold rounded-lg transition backdrop-blur-sm">
+                                            <a id="drGachaDetailLink" href="#" onclick="sessionStorage.setItem('dr_back_to','dashboard')" class="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-bold rounded-lg transition backdrop-blur-sm">
                                                 <i class="fa-solid fa-info-circle mr-1.5"></i>詳細を見る
                                             </a>
-                                            <button onclick="DrGacha.markWatched()" class="px-4 py-2 bg-green-500/80 hover:bg-green-500 text-white text-sm font-bold rounded-lg transition">
+                                            <button type="button" onclick="DrGacha.markWatched()" class="px-4 py-2 bg-green-500/80 hover:bg-green-500 text-white text-sm font-bold rounded-lg transition">
                                                 <i class="fa-solid fa-check mr-1.5"></i>見た！
                                             </button>
                                             <a id="drGachaGoogleLink" href="#" target="_blank" rel="noopener" class="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-bold rounded-lg transition backdrop-blur-sm inline-flex items-center gap-1.5" title="Googleで検索">
@@ -227,7 +227,7 @@ try {
                                             </a>
                                         </div>
                                         <div id="drGachaRetry" class="hidden mt-4 pt-3 border-t border-slate-700">
-                                            <button onclick="DrGacha.spin()" class="text-xs text-amber-400/80 hover:text-amber-400 transition flex items-center gap-1.5">
+                                            <button type="button" onclick="DrGacha.spin()" class="text-xs text-amber-400/80 hover:text-amber-400 transition flex items-center gap-1.5">
                                                 <i class="fa-solid fa-rotate"></i>
                                                 <span>どうしてももう1回だけ引く...</span>
                                             </button>
@@ -261,7 +261,7 @@ try {
                 </div>
 
                 <!-- 友人が視聴したドラマ -->
-                <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-6 mb-6 md:mb-8">
+                <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-6 mb-4 md:mb-6">
                     <div class="flex items-center justify-between mb-4">
                         <h2 class="text-sm font-bold text-slate-700"><i class="fa-solid fa-user-group dr-theme-text mr-2"></i>友人が視聴したドラマ</h2>
                         <a href="/friends_activity.php?filter=drama" class="text-xs font-bold dr-theme-text hover:opacity-80 transition">もっと見る <i class="fa-solid fa-chevron-right text-[10px]"></i></a>
@@ -329,7 +329,7 @@ try {
 
                 <!-- おすすめドラマ（TMDB） -->
                 <?php if ($tmdbConfigured): ?>
-                <div class="mb-8">
+                <div class="mb-6">
                     <div class="flex items-center gap-3 mb-4">
                         <i class="fa-solid fa-wand-magic-sparkles dr-theme-text"></i>
                         <h2 class="text-sm font-bold text-slate-700">おすすめドラマ</h2>
@@ -415,7 +415,7 @@ try {
                 <?php endif; ?>
 
                 <!-- グラフエリア -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
                     <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-6">
                         <div class="flex items-center gap-2 mb-4">
                             <i class="fa-solid fa-chart-bar dr-theme-text"></i>
@@ -449,7 +449,7 @@ try {
                 </div>
 
                 <!-- ジャンル分布 -->
-                <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-6 mb-8">
+                <div class="bg-white rounded-xl border border-slate-100 shadow-sm p-6 mb-6">
                     <div class="flex items-center gap-2 mb-4">
                         <i class="fa-solid fa-chart-pie dr-theme-text"></i>
                         <h2 class="text-sm font-bold text-slate-700">ジャンル分布</h2>
@@ -627,45 +627,33 @@ try {
 
         const DrGacha = {
             currentId: null,
-            storageKey: 'dr_gacha',
-            getState() {
+            _opToken: 0,
+            _spinning: false,
+
+            async init() {
+                const token = ++this._opToken;
                 try {
-                    const raw = localStorage.getItem(this.storageKey);
-                    if (!raw) return null;
-                    const s = JSON.parse(raw);
-                    if (s.date !== new Date().toISOString().slice(0, 10)) return null;
-                    return s;
-                } catch { return null; }
-            },
-            saveState(spins, item) {
-                localStorage.setItem(this.storageKey, JSON.stringify({
-                    date: new Date().toISOString().slice(0, 10),
-                    spins: spins,
-                    item: item || null,
-                }));
-            },
-            init() {
-                const MAX_SPINS = 2;
-                const state = this.getState();
-                const limitEl = document.getElementById('drGachaLimit');
-                const spins = state ? state.spins : 0;
-                if (!state || spins === 0) {
-                    this.showIdle();
-                    if (limitEl) limitEl.textContent = '残り 2/2 回';
-                } else if (spins < MAX_SPINS) {
-                    if (state.item) {
-                        this.showResult(state.item, spins);
-                    } else {
+                    const res = await fetch('/drama/api/gacha.php?action=status');
+                    const json = await res.json();
+                    if (token !== this._opToken) return;
+                    if (json.status !== 'success') {
                         this.showIdle();
+                        this.updateLimit(0);
+                        return;
                     }
-                    if (limitEl) limitEl.textContent = `残り ${MAX_SPINS - spins}/${MAX_SPINS} 回`;
-                } else {
-                    if (state.item) {
-                        this.showResult(state.item, spins);
-                    } else {
-                        this.showDone();
+                    const spins = Number(json.data?.spins || 0);
+                    const item = json.data?.item || null;
+                    this.updateLimit(spins);
+                    if (!item) {
+                        if (spins >= 2) this.showDone();
+                        else this.showIdle();
+                        return;
                     }
-                    if (limitEl) limitEl.textContent = '残り 0/2 回';
+                    this.showResult(item, spins);
+                } catch (e) {
+                    console.error(e);
+                    this.showIdle();
+                    this.updateLimit(0);
                 }
             },
             showIdle() {
@@ -704,48 +692,45 @@ try {
                 if (done) done.classList.remove('hidden');
             },
             async spin() {
-                const MAX_SPINS = 2;
-                const state = this.getState();
-                const currentSpins = state ? state.spins : 0;
-                if (currentSpins >= MAX_SPINS) {
-                    App.toast('本日のガチャは終了です');
-                    return;
-                }
+                if (this._spinning) return;
+                const token = ++this._opToken;
                 const idle = document.getElementById('drGachaIdle');
                 const result = document.getElementById('drGachaResult');
                 if (idle) idle.classList.add('hidden');
                 if (result) result.classList.remove('hidden');
                 const card = document.getElementById('drGachaCard');
                 if (card) card.classList.add('spinning');
+                this._spinning = true;
                 try {
                     const res = await fetch('/drama/api/gacha.php');
                     const json = await res.json();
                     setTimeout(() => {
+                        if (token !== this._opToken) return;
                         if (card) card.classList.remove('spinning');
-                        if (json.status === 'success' && json.data) {
-                            const newSpins = currentSpins + 1;
-                            const d = json.data;
-                            const item = {
-                                id: d.id,
-                                title: d.title,
-                                name: d.title,
-                                poster_path: d.poster_path || null,
-                                first_air_date: d.first_air_date || null,
-                                vote_average: d.vote_average || null,
-                                runtime_avg: d.runtime_avg || null,
-                            };
-                            this.saveState(newSpins, item);
-                            const limitEl = document.getElementById('drGachaLimit');
-                            if (limitEl) limitEl.textContent = `残り ${MAX_SPINS - newSpins}/${MAX_SPINS} 回`;
-                            this.showResult(item, newSpins);
+                        this._spinning = false;
+                        if (json.status === 'success' && json.data?.item) {
+                            const spins = Number(json.data.spins || 0);
+                            const item = json.data.item;
+                            this.updateLimit(spins);
+                            this.showResult(item, spins);
+                        } else if (json.status === 'done') {
+                            this.updateLimit(2);
+                            this.showDone();
+                            App.toast('本日のガチャは終了です');
                         } else if (json.status === 'empty') {
                             App.toast('見たいリストが空です');
+                            this.showIdle();
+                        } else {
+                            App.toast(json.message || 'エラーが発生しました');
+                            this.showIdle();
                         }
                     }, 700);
                 } catch (e) {
                     if (card) card.classList.remove('spinning');
+                    this._spinning = false;
                     console.error(e);
                     App.toast('エラーが発生しました');
+                    this.showIdle();
                 }
             },
             updateUI(item) {
@@ -790,16 +775,10 @@ try {
                     });
                     if (result.status === 'success') {
                         App.toast('「見た」に移動しました！');
-                        const state = this.getState();
-                        if (state) {
-                            const refunded = Math.max(0, state.spins - 1);
-                            this.saveState(refunded, null);
-                        }
+                        await App.post('/drama/api/gacha.php', { action: 'refund' });
+                        this.currentId = null;
                         this.showIdle();
-                        const limitEl = document.getElementById('drGachaLimit');
-                        const s = this.getState();
-                        const spins = s ? s.spins : 0;
-                        if (limitEl) limitEl.textContent = `残り ${2 - spins}/2 回`;
+                        await this.init();
                     } else {
                         App.toast(result.message || '更新に失敗しました');
                     }
@@ -808,6 +787,12 @@ try {
                     App.toast('エラーが発生しました');
                 }
             }
+        };
+
+        DrGacha.updateLimit = function(spins) {
+            const el = document.getElementById('drGachaLimit');
+            const max = 2;
+            if (el) el.textContent = `残り ${max - Number(spins || 0)}/${max} 回`;
         };
 
         DrGacha.init();

@@ -124,6 +124,18 @@ class TmdbApiClient {
     }
 
     /**
+     * 人物の映画クレジット（cast/crew）を取得
+     */
+    public function getPersonMovieCredits(int $personTmdbId): ?array {
+        if (!$this->isConfigured() || $personTmdbId <= 0) return null;
+
+        return $this->request("/person/{$personTmdbId}/movie_credits", [
+            'api_key' => $this->apiKey,
+            'language' => 'ja-JP',
+        ]);
+    }
+
+    /**
      * ジャンル名からTMDB Genre IDを取得
      */
     public static function genreNameToId(string $name): ?int {
