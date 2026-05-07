@@ -472,6 +472,7 @@ if (!empty($members)) {
             ];
             return $acc;
         }, []), JSON_UNESCAPED_UNICODE) ?>;
+        const STORAGE_SELECTED_MEMBER_KEY = 'hinata_selected_member_id';
 
         // メンバー横スクロール選択（フォームのメンバー選択に反映）
         const memberStrip = document.getElementById('memberStrip');
@@ -641,6 +642,7 @@ if (!empty($members)) {
             filterNetaBySelectedMember(memberId);
             applyMemoFilters();
             highlightRegisteredMember(memberId);
+            try { sessionStorage.setItem(STORAGE_SELECTED_MEMBER_KEY, String(memberId)); } catch (e) {}
         }
 
         function highlightRegisteredMember(memberId) {
@@ -837,9 +839,14 @@ if (!empty($members)) {
 
         // 初期表示：最推し（favorite_level最大）を選択状態にする
         document.addEventListener('DOMContentLoaded', () => {
-            if (DEFAULT_MEMBER_ID) {
-                syncSelectedMember(DEFAULT_MEMBER_ID);
-            }
+            let initialMemberId = DEFAULT_MEMBER_ID;
+            try {
+                const saved = sessionStorage.getItem(STORAGE_SELECTED_MEMBER_KEY);
+                if (saved && (MEMBER_META[String(saved)] || MEMBER_META[Number(saved)])) {
+                    initialMemberId = saved;
+                }
+            } catch (e) {}
+            if (initialMemberId) syncSelectedMember(initialMemberId);
             setFormNetaType('none');
             renderTags();
             // default: 未使用（全種類）
