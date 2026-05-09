@@ -64,6 +64,34 @@ class TmdbApiClient {
     }
 
     /**
+     * 人物を検索
+     */
+    public function searchPersons(string $query, int $page = 1): ?array {
+        if (!$this->isConfigured()) return null;
+
+        return $this->request('/search/person', [
+            'api_key' => $this->apiKey,
+            'query' => $query,
+            'language' => 'ja-JP',
+            'page' => $page,
+            'include_adult' => 'false',
+        ]);
+    }
+
+    /**
+     * キーワードを検索
+     */
+    public function searchKeywords(string $query, int $page = 1): ?array {
+        if (!$this->isConfigured()) return null;
+
+        return $this->request('/search/keyword', [
+            'api_key' => $this->apiKey,
+            'query' => $query,
+            'page' => $page,
+        ]);
+    }
+
+    /**
      * 映画詳細を取得
      */
     public function getMovieDetail(int $tmdbId): ?array {

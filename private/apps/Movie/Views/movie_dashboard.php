@@ -181,7 +181,7 @@ try {
                             <div class="flex-1 relative">
                                 <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
                                 <input type="text" id="dashSearchInput"
-                                       placeholder="タイトルで検索..."
+                                       placeholder="映画・人物・キーワード・ジャンルで検索..."
                                        class="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--mv-theme)] focus:border-transparent"
                                        onkeydown="if(event.key==='Enter') MovieSearch.search()"
                                        autocomplete="off">
@@ -1182,6 +1182,7 @@ try {
             inputId: 'dashSearchInput',
             resultsId: 'dashSearchResults',
             wrapperId: 'dashSearchWrapper',
+            unified: true,
         });
 
     </script>

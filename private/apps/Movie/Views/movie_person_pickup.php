@@ -104,6 +104,17 @@ if ($namesCsvForRequest === '' && $namesLabel !== '') {
         function _esc(s) {
             return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         }
+        const PickupPreview = {
+            cache: {},
+            store(m) {
+                if (m && m.id) this.cache[m.id] = m;
+            },
+            open(tmdbId) {
+                const m = this.cache[tmdbId];
+                if (!m || typeof MoviePreview === 'undefined' || typeof MoviePreview.open !== 'function') return;
+                MoviePreview.open(m);
+            }
+        };
         function renderCard(m) {
             const poster = m.poster_path
                 ? `<img src="https://image.tmdb.org/t/p/w342${m.poster_path}" alt="${_esc(m.title)}" class="w-full aspect-[2/3] object-cover rounded-xl" loading="lazy">`
@@ -114,7 +125,7 @@ if ($namesCsvForRequest === '' && $namesLabel !== '') {
 
             return `
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                    <div class="relative">
+                    <div class="relative cursor-pointer" onclick="PickupPreview.open(${Number(m.id || 0)})" title="詳細を見る">
                         ${poster}
                         ${rating ? `<div class="absolute bottom-2 right-2 text-[11px] font-bold text-white bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded-lg"><i class="fa-solid fa-star text-amber-400 text-[9px] mr-0.5"></i>${rating}</div>` : ''}
                     </div>
@@ -123,8 +134,8 @@ if ($namesCsvForRequest === '' && $namesLabel !== '') {
                         <p class="text-[11px] text-slate-400 mt-1">${year ? year + '年' : ''}</p>
                         ${namesText ? `<div class="mt-1"><span class="inline-flex items-center text-[10px] font-black bg-slate-50 text-slate-600 border border-slate-200 px-2 py-0.5 rounded-full max-w-full truncate">${_esc(namesText)}</span></div>` : ''}
                         <div class="flex gap-1.5 mt-2">
-                            <button onclick="addMovie(${m.id}, 'watchlist', this)" class="flex-1 text-[11px] font-bold text-white py-1.5 rounded-lg mv-theme-btn transition"><i class="fa-solid fa-bookmark mr-0.5"></i>見たい</button>
-                            <button onclick="addMovie(${m.id}, 'watched', this)" class="flex-1 text-[11px] font-bold text-slate-500 border border-slate-200 py-1.5 rounded-lg hover:bg-slate-50 transition"><i class="fa-solid fa-check mr-0.5"></i>見た</button>
+                            <button onclick="event.stopPropagation(); addMovie(${m.id}, 'watchlist', this)" class="flex-1 text-[11px] font-bold text-white py-1.5 rounded-lg mv-theme-btn transition"><i class="fa-solid fa-bookmark mr-0.5"></i>見たい</button>
+                            <button onclick="event.stopPropagation(); addMovie(${m.id}, 'watched', this)" class="flex-1 text-[11px] font-bold text-slate-500 border border-slate-200 py-1.5 rounded-lg hover:bg-slate-50 transition"><i class="fa-solid fa-check mr-0.5"></i>見た</button>
                         </div>
                     </div>
                 </div>`;
@@ -165,6 +176,7 @@ if ($namesCsvForRequest === '' && $namesLabel !== '') {
                 }
                 const movies = json.data?.results || [];
                 statusEl.innerHTML = `<span class="font-bold mv-theme-text">${movies.length}</span> 本（未登録のみ）`;
+                movies.forEach(m => PickupPreview.store(m));
                 grid.innerHTML = movies.map(renderCard).join('');
                 if (movies.length === 0) {
                     grid.innerHTML = `<div class="col-span-full text-center py-16 text-slate-400">

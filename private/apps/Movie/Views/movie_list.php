@@ -689,6 +689,7 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
             }
         };
 
+
         const SearchModal = {
             currentQuery: '',
             currentPage: 0,
@@ -963,6 +964,7 @@ $viewMode = $_GET['view'] ?? ($_COOKIE['mv_view_mode'] ?? 'grid');
             inputId: 'inlineSearchInput',
             resultsId: 'inlineSearchResults',
             wrapperId: 'inlineSearchWrapper',
+            unified: true,
             onAdded(status, tmdbId) {
                 updateTabCount(status, 1);
             }

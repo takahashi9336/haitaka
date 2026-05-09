@@ -443,6 +443,7 @@ class MovieController {
                 $picked[] = [
                     'id' => $mid,
                     'title' => $title,
+                    'overview' => (string)($m['overview'] ?? ''),
                     'release_date' => (string)($m['release_date'] ?? ''),
                     'poster_path' => (string)($m['poster_path'] ?? ''),
                     'popularity' => (float)($m['popularity'] ?? 0),

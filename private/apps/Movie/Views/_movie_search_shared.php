@@ -279,12 +279,22 @@ const MovieSearch = {
     totalResults: 0,
     isLoading: false,
     _observer: null,
+    unified: false,
+    _debounceTimer: null,
+    _reqToken: 0,
 
     init(config) {
         this.inputId = config.inputId;
         this.resultsId = config.resultsId;
         this.wrapperId = config.wrapperId;
         this.onAddedCallback = config.onAdded || null;
+        this.unified = !!config.unified;
+
+        const input = document.getElementById(this.inputId);
+        if (input && this.unified) {
+            input.addEventListener('input', () => this._debouncedUnifiedSearch(), { passive: true });
+            input.addEventListener('focus', () => this._debouncedUnifiedSearch(), { passive: true });
+        }
 
         document.addEventListener('click', (e) => {
             const wrapper = document.getElementById(this.wrapperId);
@@ -297,6 +307,10 @@ const MovieSearch = {
     },
 
     async search() {
+        if (this.unified) {
+            await this.unifiedSearch();
+            return;
+        }
         const input = document.getElementById(this.inputId);
         const query = input?.value.trim();
         if (!query) return;
@@ -343,6 +357,137 @@ const MovieSearch = {
         } finally {
             this.isLoading = false;
         }
+    },
+
+    _debouncedUnifiedSearch() {
+        if (!this.unified) return;
+        if (this._debounceTimer) clearTimeout(this._debounceTimer);
+        this._debounceTimer = setTimeout(() => this.unifiedSearch(), 250);
+    },
+
+    async unifiedSearch() {
+        const input = document.getElementById(this.inputId);
+        const query = input?.value.trim() || '';
+        if (query.length < 2) { this.closeResults(); return; }
+
+        const token = ++this._reqToken;
+        const container = document.getElementById(this.resultsId);
+        if (!container) return;
+
+        container.classList.remove('hidden');
+        container.innerHTML = '<div class="text-center py-6"><i class="fa-solid fa-spinner fa-spin text-xl text-slate-300"></i></div>';
+
+        const movieUrl = `/movie/api/search.php?q=${encodeURIComponent(query)}&page=1`;
+        const personUrl = `/movie/api/search_person.php?q=${encodeURIComponent(query)}&page=1`;
+        const keywordUrl = `/movie/api/search_keyword.php?q=${encodeURIComponent(query)}&page=1`;
+
+        const [moviesR, personsR, keywordsR] = await Promise.allSettled([
+            fetch(movieUrl).then(r => r.json()),
+            fetch(personUrl).then(r => r.json()),
+            fetch(keywordUrl).then(r => r.json()),
+        ]);
+
+        if (token !== this._reqToken) return;
+
+        const movies = (moviesR.status === 'fulfilled' && moviesR.value?.status === 'success')
+            ? (moviesR.value.data?.results || [])
+            : [];
+        const persons = (personsR.status === 'fulfilled' && personsR.value?.status === 'success')
+            ? (personsR.value.data?.results || [])
+            : [];
+        const keywords = (keywordsR.status === 'fulfilled' && keywordsR.value?.status === 'success')
+            ? (keywordsR.value.data?.results || [])
+            : [];
+
+        movies.forEach(m => MoviePreview.storeMovie(m));
+
+        const genreMatches = this._matchGenres(query);
+        const manualHtml = this.renderManualAdd(query);
+
+        const sections = [];
+        if (movies.length) sections.push(this._renderSection('映画', movies.slice(0, 6).map(m => this.renderResult(m)).join(''), `/movie/search.php?q=${encodeURIComponent(query)}`));
+        if (persons.length) sections.push(this._renderSection('人物', persons.slice(0, 6).map(p => this._renderPerson(p)).join('')));
+        if (keywords.length) sections.push(this._renderSection('キーワード', keywords.slice(0, 6).map(k => this._renderKeyword(k)).join('')));
+        if (genreMatches.length) sections.push(this._renderSection('ジャンル', genreMatches.slice(0, 8).map(g => this._renderGenre(g)).join('')));
+
+        if (!sections.length) {
+            container.innerHTML = '<div class="text-center py-4 text-slate-400 text-sm">該当する候補が見つかりませんでした</div>' + manualHtml;
+            return;
+        }
+
+        container.innerHTML = sections.join('') + manualHtml;
+    },
+
+    _renderSection(title, bodyHtml, moreUrl = '') {
+        const more = moreUrl
+            ? `<a href="${moreUrl}" class="text-[10px] font-bold mv-theme-text hover:underline">もっと見る <i class="fa-solid fa-arrow-right text-[9px] ml-0.5"></i></a>`
+            : '';
+        return `
+            <div class="border-b border-slate-100 last:border-b-0">
+                <div class="flex items-center justify-between px-4 py-2 bg-slate-50">
+                    <span class="text-[11px] font-black text-slate-600">${_esc(title)}</span>
+                    ${more}
+                </div>
+                <div>${bodyHtml}</div>
+            </div>`;
+    },
+
+    _renderPerson(p) {
+        const img = p.profile_path
+            ? `<img src="https://image.tmdb.org/t/p/w92${p.profile_path}" class="w-10 h-[60px] object-cover rounded-lg shrink-0 bg-slate-100" loading="lazy">`
+            : `<div class="w-10 h-[60px] bg-slate-100 rounded-lg flex items-center justify-center shrink-0"><i class="fa-solid fa-user text-slate-400 text-xs"></i></div>`;
+        const name = _esc(p.name || '');
+        const dept = _esc(p.known_for_department || '');
+        const known = Array.isArray(p.known_for)
+            ? p.known_for.slice(0, 2).map(x => x.title || x.name).filter(Boolean).map(_esc).join(' / ')
+            : '';
+        const personId = Number(p.id || 0);
+        const url = `/movie/pickup.php?person_ids=${personId}&person_names=${encodeURIComponent(p.name || '')}`;
+        return `<div class="flex items-center gap-3 px-4 py-2.5 border-b border-slate-100 last:border-b-0 hover:bg-slate-50 transition cursor-pointer" onclick="window.location.href='${url}'">
+            ${img}
+            <div class="flex-1 min-w-0">
+                <h4 class="text-sm font-bold text-slate-800 line-clamp-1">${name}</h4>
+                <div class="text-[11px] text-slate-400 line-clamp-1">${dept}${dept && known ? '・' : ''}${known}</div>
+            </div>
+            <div class="shrink-0 text-[11px] font-bold text-slate-500">映画を探す</div>
+        </div>`;
+    },
+
+    _renderKeyword(k) {
+        const name = _esc(k.name || '');
+        const url = `/movie/search.php?q=${encodeURIComponent(k.name || '')}`;
+        return `<a href="${url}" class="flex items-center gap-3 px-4 py-2.5 border-b border-slate-100 last:border-b-0 hover:bg-slate-50 transition">
+            <div class="w-10 h-[60px] bg-slate-100 rounded-lg flex items-center justify-center shrink-0"><i class="fa-solid fa-hashtag text-slate-400 text-xs"></i></div>
+            <div class="flex-1 min-w-0">
+                <h4 class="text-sm font-bold text-slate-800 line-clamp-1">${name}</h4>
+                <div class="text-[11px] text-slate-400">キーワードで検索</div>
+            </div>
+            <div class="shrink-0 text-[11px] font-bold text-slate-500">検索</div>
+        </a>`;
+    },
+
+    _renderGenre(g) {
+        const name = _esc(g.name);
+        const url = `/movie/search.php?q=${encodeURIComponent(g.name)}`;
+        return `<a href="${url}" class="flex items-center gap-3 px-4 py-2.5 border-b border-slate-100 last:border-b-0 hover:bg-slate-50 transition">
+            <div class="w-10 h-[60px] bg-slate-100 rounded-lg flex items-center justify-center shrink-0"><i class="fa-solid fa-tags text-slate-400 text-xs"></i></div>
+            <div class="flex-1 min-w-0">
+                <h4 class="text-sm font-bold text-slate-800 line-clamp-1">${name}</h4>
+                <div class="text-[11px] text-slate-400">ジャンル候補</div>
+            </div>
+            <div class="shrink-0 text-[11px] font-bold text-slate-500">検索</div>
+        </a>`;
+    },
+
+    _matchGenres(query) {
+        const q = (query || '').toLowerCase();
+        const out = [];
+        for (const [id, name] of Object.entries(GENRE_MAP || {})) {
+            if (!name) continue;
+            const n = String(name);
+            if (n.toLowerCase().includes(q)) out.push({ id: Number(id), name: n });
+        }
+        return out;
     },
 
     async loadMore() {
@@ -495,4 +640,9 @@ const MovieSearch = {
         if (el) el.classList.add('hidden');
     }
 };
+
+// 他画面（pickup等）から呼べるように公開
+window.PosterPreview = PosterPreview;
+window.MoviePreview = MoviePreview;
+window.MovieSearch = MovieSearch;
 </script>
