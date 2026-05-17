@@ -16,6 +16,7 @@ class TrainingMenuModel extends BaseModel {
         'user_id',
         'name',
         'reps',
+        'duration_sec',
         'created_at',
         'updated_at',
     ];

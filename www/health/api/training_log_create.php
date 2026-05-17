@@ -1,12 +1,12 @@
 <?php
 /**
- * Health: トレーニングメニュー更新 API
+ * Health: トレーニング実施履歴 作成 API
  */
 require_once __DIR__ . '/../../../private/bootstrap.php';
 
 use Core\Auth;
 use App\Health\Model\TrainingDuration;
-use App\Health\Model\TrainingMenuModel;
+use App\Health\Model\TrainingLogModel;
 
 $auth = new Auth();
 if (!$auth->check()) {
@@ -22,32 +22,36 @@ try {
     if (!is_array($input)) {
         throw new \Exception('Invalid input');
     }
-    $id = (int)($input['id'] ?? 0);
-    if ($id <= 0) {
+
+    $menuItemId = (int) ($input['menu_item_id'] ?? 0);
+    if ($menuItemId <= 0) {
         http_response_code(422);
-        echo json_encode(['status' => 'error', 'message' => 'id が不正です'], JSON_UNESCAPED_UNICODE);
+        echo json_encode(['status' => 'error', 'message' => 'メニューを選択してください'], JSON_UNESCAPED_UNICODE);
         exit;
     }
 
-    $patch = [];
-    if (array_key_exists('name', $input)) {
-        $name = trim((string)$input['name']);
-        if ($name === '') {
-            http_response_code(422);
-            echo json_encode(['status' => 'error', 'message' => 'メニュー名を入力してください'], JSON_UNESCAPED_UNICODE);
-            exit;
-        }
-        $patch['name'] = $name;
+    $performedAt = trim((string) ($input['performed_at'] ?? ''));
+    if ($performedAt === '') {
+        $performedAt = date('Y-m-d');
     }
+    $dt = \DateTime::createFromFormat('Y-m-d', $performedAt);
+    if (!$dt || $dt->format('Y-m-d') !== $performedAt) {
+        http_response_code(422);
+        echo json_encode(['status' => 'error', 'message' => '実施日が不正です'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $repsOverride = null;
     if (array_key_exists('reps', $input)) {
-        $reps = (int)$input['reps'];
-        if ($reps < 1) {
+        $repsOverride = (int) $input['reps'];
+        if ($repsOverride < 1) {
             http_response_code(422);
             echo json_encode(['status' => 'error', 'message' => '回数は1以上を指定してください'], JSON_UNESCAPED_UNICODE);
             exit;
         }
-        $patch['reps'] = $reps;
     }
+
+    $durationOverride = null;
     if (array_key_exists('duration_sec', $input)
         || array_key_exists('duration_min', $input)
         || array_key_exists('duration_sec_part', $input)) {
@@ -57,20 +61,18 @@ try {
             echo json_encode(['status' => 'error', 'message' => $durationResult['message']], JSON_UNESCAPED_UNICODE);
             exit;
         }
-        $patch['duration_sec'] = $durationResult['sec'];
+        $durationOverride = $durationResult['sec'];
     }
 
-    if (empty($patch)) {
-        echo json_encode(['status' => 'success'], JSON_UNESCAPED_UNICODE);
+    $model = new TrainingLogModel();
+    $ok = $model->createFromMenuItem($menuItemId, $performedAt, $repsOverride, $durationOverride);
+    if (!$ok) {
+        http_response_code(422);
+        echo json_encode(['status' => 'error', 'message' => 'メニューが見つからないか、記録に失敗しました'], JSON_UNESCAPED_UNICODE);
         exit;
     }
 
-    $model = new TrainingMenuModel();
-    $ok = $model->update($id, $patch);
-    if (!$ok) {
-        throw new \Exception('update failed');
-    }
-    echo json_encode(['status' => 'success'], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['status' => 'success', 'id' => (int) $model->lastInsertId()], JSON_UNESCAPED_UNICODE);
 } catch (\Throwable $e) {
     http_response_code(500);
     echo json_encode(['status' => 'error', 'message' => 'System Error'], JSON_UNESCAPED_UNICODE);

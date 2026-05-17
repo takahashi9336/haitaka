@@ -5,6 +5,7 @@
 require_once __DIR__ . '/../../../private/bootstrap.php';
 
 use Core\Auth;
+use App\Health\Model\TrainingDuration;
 use App\Health\Model\TrainingMenuModel;
 
 $auth = new Auth();
@@ -35,9 +36,17 @@ try {
         exit;
     }
 
+    $durationResult = TrainingDuration::parseFromInput($input, false, TrainingDuration::DEFAULT_SEC);
+    if (!$durationResult['ok']) {
+        http_response_code(422);
+        echo json_encode(['status' => 'error', 'message' => $durationResult['message']], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
     $data = [
         'name' => $name,
         'reps' => $reps,
+        'duration_sec' => $durationResult['sec'],
     ];
 
     $model = new TrainingMenuModel();
