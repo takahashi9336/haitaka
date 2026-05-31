@@ -25,6 +25,11 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         input:focus, select:focus { outline: none; }
         details.hiit-log summary { cursor: pointer; list-style: none; }
         details.hiit-log summary::-webkit-details-marker { display: none; }
+        .heatmap-cell { width: 13px; height: 13px; border-radius: 2px; background: #ebedf0; }
+        .heatmap-cell:hover { outline: 1px solid #94a3b8; outline-offset: -1px; }
+        .heatmap-cell[data-level="1"] { background: color-mix(in srgb, var(--health-theme) 30%, #ebedf0); }
+        .heatmap-cell[data-level="2"] { background: color-mix(in srgb, var(--health-theme) 60%, white); }
+        .heatmap-cell[data-level="3"] { background: var(--health-theme); }
     </style>
     <?php if ($isThemeHex): ?>
     <style>
@@ -52,6 +57,22 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
         <div class="flex-1 overflow-y-auto p-4 md:p-10">
             <div class="max-w-4xl mx-auto space-y-8">
                 <div class="bg-white rounded-xl border <?= $cardBorder ?> shadow-sm p-5">
+                    <h2 class="text-sm font-black text-slate-600 mb-1">アクティビティ</h2>
+                    <div id="heatmapStats" class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 mb-4"></div>
+                    <div class="overflow-x-auto pb-1">
+                        <div id="heatmap"></div>
+                    </div>
+                    <div class="flex items-center justify-end gap-1.5 mt-2 text-[10px] text-slate-400">
+                        <span>少</span>
+                        <span class="inline-block w-[11px] h-[11px] rounded-sm" style="background:#ebedf0"></span>
+                        <span class="inline-block w-[11px] h-[11px] rounded-sm" style="background:color-mix(in srgb,var(--health-theme) 30%,#ebedf0)"></span>
+                        <span class="inline-block w-[11px] h-[11px] rounded-sm" style="background:color-mix(in srgb,var(--health-theme) 60%,white)"></span>
+                        <span class="inline-block w-[11px] h-[11px] rounded-sm" style="background:var(--health-theme)"></span>
+                        <span>多</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl border <?= $cardBorder ?> shadow-sm p-5">
                     <h2 class="text-sm font-black text-slate-600 mb-4">HIIT実施を後から追加</h2>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                         <div class="flex flex-col md:col-span-2">
@@ -64,7 +85,7 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                             </button>
                         </div>
                     </div>
-                    <p class="text-[11px] text-slate-400 mt-3">直近3ヶ月分を表示。追加時は現在の登録メニューがスナップショットとして保存されます。</p>
+                    <p class="text-[11px] text-slate-400 mt-3">直近6ヶ月分を表示。追加時は現在の登録メニューがスナップショットとして保存されます。</p>
                 </div>
 
                 <div class="bg-white rounded-xl border <?= $cardBorder ?> shadow-sm overflow-hidden overflow-x-auto">
@@ -109,12 +130,16 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
             return d.sec + '\u79d2';
         }
 
-        function todayStr() {
-            const t = new Date();
-            const y = t.getFullYear();
-            const m = String(t.getMonth() + 1).padStart(2, '0');
-            const d = String(t.getDate()).padStart(2, '0');
-            return y + '-' + m + '-' + d;
+        function dateToStr(dt) {
+            return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
+        }
+
+        function todayStr() { return dateToStr(new Date()); }
+
+        function heatmapFromStr() {
+            const d = new Date();
+            d.setMonth(d.getMonth() - 6);
+            return dateToStr(d);
         }
 
         function parseSnapshot(raw) {
@@ -150,10 +175,102 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
                 '</tr></thead><tbody>' + rows + '</tbody></table>';
         }
 
+        function buildHeatmapCounts(items) {
+            const counts = {};
+            (items || []).forEach(row => {
+                const d = row.performed_at;
+                if (d) counts[d] = (counts[d] || 0) + 1;
+            });
+            return counts;
+        }
+
+        function calcStats(counts) {
+            let total = 0;
+            Object.values(counts).forEach(c => { total += c; });
+            let currentStreak = 0;
+            const d = new Date(); d.setHours(0, 0, 0, 0);
+            while (counts[dateToStr(d)]) { currentStreak++; d.setDate(d.getDate() - 1); }
+            const dates = Object.keys(counts).filter(k => counts[k] > 0).sort();
+            let longestStreak = 0, streak = 0;
+            for (let i = 0; i < dates.length; i++) {
+                if (i === 0) { streak = 1; } else {
+                    const diff = Math.round((new Date(dates[i] + 'T00:00:00') - new Date(dates[i - 1] + 'T00:00:00')) / 86400000);
+                    streak = diff === 1 ? streak + 1 : 1;
+                }
+                longestStreak = Math.max(longestStreak, streak);
+            }
+            const mp = todayStr().substring(0, 7);
+            let thisMonth = 0;
+            Object.entries(counts).forEach(([k, c]) => { if (k.startsWith(mp)) thisMonth += c; });
+            return { total, currentStreak, longestStreak, thisMonth };
+        }
+
+        function renderHeatmapSection(items) {
+            const counts = buildHeatmapCounts(items);
+            const stats = calcStats(counts);
+            const el = document.getElementById('heatmapStats');
+            el.innerHTML =
+                '<span>\u76f4\u8fd16\u30f6\u6708: <strong class="text-slate-700">' + stats.total + '\u56de</strong></span>' +
+                '<span>\u73fe\u5728: <strong class="text-slate-700">' + (stats.currentStreak > 0 ? stats.currentStreak + '\u65e5\u9023\u7d9a' : '\u2015') + '</strong></span>' +
+                '<span>\u6700\u9577: <strong class="text-slate-700">' + (stats.longestStreak > 0 ? stats.longestStreak + '\u65e5\u9023\u7d9a' : '\u2015') + '</strong></span>' +
+                '<span>\u4eca\u6708: <strong class="text-slate-700">' + stats.thisMonth + '\u56de</strong></span>';
+            renderHeatmapGrid(counts);
+        }
+
+        function renderHeatmapGrid(counts) {
+            const el = document.getElementById('heatmap');
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            const numWeeks = 26;
+            const start = new Date(today);
+            start.setDate(start.getDate() - (numWeeks * 7 - 1));
+            start.setDate(start.getDate() - start.getDay());
+            const weeks = [];
+            const d = new Date(start);
+            while (true) {
+                const week = [];
+                for (let i = 0; i < 7; i++) {
+                    const ds = dateToStr(d);
+                    week.push({ date: ds, count: d > today ? -1 : (counts[ds] || 0) });
+                    d.setDate(d.getDate() + 1);
+                }
+                weeks.push(week);
+                if (d > today) break;
+            }
+            const monthMap = {};
+            let lastMonth = -1;
+            weeks.forEach((w, wi) => {
+                const m = parseInt(w[0].date.substring(5, 7), 10);
+                if (m !== lastMonth) { monthMap[wi] = m + '\u6708'; lastMonth = m; }
+            });
+            const cols = weeks.length;
+            let h = '<div style="display:inline-grid;grid-template-columns:20px repeat(' + cols + ',13px);grid-template-rows:16px repeat(7,13px);gap:3px">';
+            h += '<div></div>';
+            for (let w = 0; w < cols; w++) {
+                h += monthMap[w]
+                    ? '<div style="font-size:9px;color:#94a3b8;line-height:16px;white-space:nowrap">' + monthMap[w] + '</div>'
+                    : '<div></div>';
+            }
+            const dayLabels = ['', '\u6708', '', '\u6c34', '', '\u91d1', ''];
+            for (let day = 0; day < 7; day++) {
+                h += '<div style="font-size:9px;color:#94a3b8;line-height:13px;text-align:right;padding-right:2px">' + dayLabels[day] + '</div>';
+                for (let w = 0; w < cols; w++) {
+                    const cell = weeks[w][day];
+                    if (cell.count < 0) { h += '<div></div>'; }
+                    else {
+                        const lv = cell.count === 0 ? 0 : cell.count === 1 ? 1 : cell.count === 2 ? 2 : 3;
+                        h += '<div class="heatmap-cell" data-level="' + lv + '" title="' + cell.date + ': ' + cell.count + '\u56de"></div>';
+                    }
+                }
+            }
+            h += '</div>';
+            el.innerHTML = h;
+        }
+
         async function loadLogs() {
-            const res = await App.post('/health/api/training_log_list.php', {});
+            const res = await App.post('/health/api/training_log_list.php', { from: heatmapFromStr() });
             if (res && res.status === 'success') {
                 logs = res.items || [];
+                renderHeatmapSection(logs);
                 renderLogs();
             } else {
                 App.toast((res && res.message) ? res.message : '\u8aad\u307f\u8fbc\u307f\u306b\u5931\u6557\u3057\u307e\u3057\u305f');
