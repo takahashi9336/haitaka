@@ -200,6 +200,24 @@ $allCategories = [
                         <p class="text-slate-400 font-bold">予定されているイベントはありません</p>
                     </div>
                     <?php else: ?>
+                        <!-- 過去イベント: 無限スクロール読み込みエリア -->
+                        <div id="pastEventsArea" class="hidden">
+                            <div id="pastEventsLoader" class="hidden text-center py-4">
+                                <i class="fa-solid fa-spinner fa-spin text-slate-300 text-lg"></i>
+                            </div>
+                            <div id="pastEventsList" class="space-y-3"></div>
+                            <div class="flex items-center gap-3 py-2 mb-1">
+                                <div class="flex-1 h-px bg-slate-200"></div>
+                                <span class="text-[10px] font-black text-slate-400 tracking-widest shrink-0"><i class="fa-solid fa-clock-rotate-left mr-1"></i>過去のイベント ↑</span>
+                                <div class="flex-1 h-px bg-slate-200"></div>
+                            </div>
+                        </div>
+                        <!-- 過去イベントを表示するボタン -->
+                        <button type="button" id="btnLoadPastEvents" class="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50/80 py-3 text-xs font-black text-slate-500 hover:bg-slate-100 hover:border-slate-400 transition-colors mb-2">
+                            <i class="fa-solid fa-clock-rotate-left text-slate-400"></i>
+                            <span>過去のイベントを表示</span>
+                        </button>
+
                         <?php if (!empty($nextEvent)):
                             $neCat = $getCatInfo($nextEvent['category']);
                             $neDaysLeft = max(0, (int)$nextEvent['days_left']);
@@ -1540,6 +1558,320 @@ $allCategories = [
             });
         }
         <?php endif; ?>
+
+        // ---- Past Events Infinite Scroll ----
+        (function pastEventsInit() {
+            var btn = document.getElementById('btnLoadPastEvents');
+            var area = document.getElementById('pastEventsArea');
+            var list = document.getElementById('pastEventsList');
+            var loader = document.getElementById('pastEventsLoader');
+            var mainScroll = document.getElementById('mainScroll');
+            if (!btn || !area || !list || !loader || !mainScroll) return;
+
+            var PAGE_SIZE = 20;
+            var pastOffset = 0;
+            var pastHasMore = true;
+            var pastLoading = false;
+            var pastActivated = false;
+            var sentinel = null;
+            var observer = null;
+
+            // 現在表示中のイベントの最も古い日付を基準にする
+            var beforeDate = _todayStr();
+            // コントローラが先月からロードしているので、先月1日を基準にする
+            var d = new Date();
+            d.setMonth(d.getMonth() - 1);
+            d.setDate(1);
+            beforeDate = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+
+            function buildPastEventCard(e) {
+                var cat = catColors[e.category] || '#64748b';
+                var catName = catNames[e.category] || 'その他';
+                var icon = catIcons[e.category] || 'fa-calendar';
+                var di = _dateInfo(e.event_date.substring(0, 10));
+
+                var card = document.createElement('div');
+                card.className = 'bg-white rounded-lg border border-sky-50 shadow-sm overflow-hidden hover:border-sky-200 transition-all event-card-past';
+                card.setAttribute('data-event-id', e.id);
+                card.setAttribute('data-category', e.category);
+                card.setAttribute('data-date', e.event_date.substring(0, 10));
+
+                var h = '<div class="flex items-stretch cursor-pointer active:bg-slate-50" onclick="togglePastDetail(' + e.id + ')">';
+                h += '<div class="date-col flex flex-col items-center justify-center py-4 border-r border-slate-100 bg-slate-50/50">';
+                h += '<span class="text-[10px] font-black tracking-wider text-slate-400">' + di.dow + '</span>';
+                h += '<span class="text-lg font-black leading-none text-slate-700">' + di.m + '/' + di.day + '</span>';
+                h += '</div>';
+                h += '<div class="w-1.5 shrink-0" style="background-color: #cbd5e1;"></div>';
+                h += '<div class="flex-1 p-4 min-w-0 flex items-center justify-between">';
+                h += '<div class="min-w-0">';
+                h += '<div class="flex items-center gap-2 mb-1">';
+                h += '<i class="fa-solid ' + icon + ' text-[8px]" style="color: ' + cat + ';"></i>';
+                h += '<span class="text-[9px] font-black text-slate-400 tracking-wider">' + _esc(catName) + '</span>';
+                if (e.series_name) {
+                    h += '<span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[9px] font-black text-slate-600 max-w-[16rem] truncate" title="' + _esc(e.series_name) + '">' + _esc(e.series_name) + '</span>';
+                }
+                h += '</div>';
+                h += '<h3 class="font-black text-slate-800 text-sm md:text-base truncate">' + _esc(e.event_name) + '</h3>';
+                if (e.event_place) {
+                    h += '<p class="text-[10px] text-slate-400 mt-1 flex items-center gap-1"><i class="fa-solid fa-location-dot text-sky-300"></i> ' + _esc(e.event_place) + '</p>';
+                }
+                h += '</div>';
+                h += '<div class="px-2"><i id="past-arrow-' + e.id + '" class="fa-solid fa-chevron-down text-slate-200 text-xs transition-transform duration-300"></i></div>';
+                h += '</div></div>';
+
+                // 詳細パネル
+                h += '<div id="past-detail-' + e.id + '" class="detail-panel border-t border-slate-50 bg-slate-50/30">';
+                h += '<div class="p-4 space-y-4">';
+                // LIVE: 参戦・セットリスト・影ナレ・初参戦ガイド
+                var eCat = parseInt(e.category);
+                if (eCat === 1) {
+                    var pastAtt = attendedIds.indexOf(parseInt(e.id)) !== -1;
+                    h += '<div class="flex items-center gap-2">';
+                    h += '<button onclick="toggleAttendancePast(' + e.id + ', this)" class="attendance-btn text-[10px] font-bold px-3 py-1.5 rounded-full border transition flex items-center gap-1 ' + (pastAtt ? 'bg-sky-500 text-white border-sky-500' : 'bg-white text-slate-500 border-slate-200 hover:border-sky-300') + '" data-attended="' + (pastAtt ? '1' : '0') + '">';
+                    h += '<i class="fa-solid fa-flag text-[8px]"></i><span>' + (pastAtt ? '参戦済み' : '参戦した') + '</span></button>';
+                    h += '<a href="/hinata/setlist.php?event_id=' + e.id + '" class="text-[10px] font-bold text-slate-400 hover:text-slate-600 px-3 py-1.5 rounded-full border border-slate-200 hover:border-slate-300 transition inline-flex items-center gap-1"><i class="fa-solid fa-list-ol text-[8px]"></i>セットリスト</a>';
+                    h += '<button onclick="loadShadowNarrationPast(' + e.id + ')" class="text-[10px] font-bold text-slate-400 hover:text-slate-600 px-3 py-1.5 rounded-full border border-slate-200 hover:border-slate-300 transition flex items-center gap-1"><i class="fa-solid fa-microphone-lines text-[8px]"></i>影ナレ</button>';
+                    h += '<a href="/hinata/live_guide.php?event_id=' + e.id + '" class="text-[10px] font-bold text-sky-600 hover:text-sky-700 px-3 py-1.5 rounded-full border border-sky-200 hover:border-sky-300 transition flex items-center gap-1"><i class="fa-solid fa-music text-[8px]"></i>初参戦ガイド</a>';
+                    h += '</div>';
+                    h += '<div id="shadow-narration-past-' + e.id + '" class="hidden"></div>';
+                }
+                // MG/RMG: レポを書く
+                if (eCat === 2 || eCat === 3) {
+                    h += '<a href="/hinata/meetgreet_report.php?event_id=' + e.id + '" class="text-[10px] font-bold text-white px-4 py-2 rounded-full transition inline-flex items-center gap-2 hover:opacity-90" style="background: var(--hinata-theme);"><i class="fa-solid fa-pen-to-square"></i>レポを書く</a>';
+                }
+                // 座席・感想
+                h += '<div class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">';
+                h += '<div class="px-4 py-2 bg-slate-50 flex items-center gap-2"><i class="fa-solid fa-chair text-slate-500 text-xs"></i><span class="text-[10px] font-bold text-slate-600 tracking-wider">座席・感想</span></div>';
+                h += '<div class="p-4 space-y-3">';
+                h += '<div><label class="block text-[9px] font-bold text-slate-400 mb-0.5">座席</label><input type="text" id="seat-past-' + e.id + '" value="' + _esc(e.seat_info || '') + '" placeholder="アリーナ○列、天空席など" class="w-full border border-slate-200 rounded px-3 py-2 text-sm"></div>';
+                h += '<div><label class="block text-[9px] font-bold text-slate-400 mb-0.5">感想</label><textarea id="impression-past-' + e.id + '" rows="3" placeholder="参加後の感想" class="w-full border border-slate-200 rounded px-3 py-2 text-sm">' + _esc(e.impression || '') + '</textarea></div>';
+                h += '<button type="button" onclick="saveSeatImpressionPast(' + e.id + ')" class="text-[10px] font-bold text-white px-4 py-2 rounded-full transition" style="background:var(--hinata-theme)"><i class="fa-solid fa-check mr-1"></i>保存</button>';
+                h += '</div></div>';
+                if (e.event_info) h += '<div class="text-xs text-slate-600 bg-white p-4 rounded-xl border border-slate-100 shadow-sm whitespace-pre-wrap">' + _esc(e.event_info) + '</div>';
+                if (e.event_url) h += '<a href="' + _esc(e.event_url) + '" target="_blank" class="text-[10px] font-bold text-sky-600 bg-sky-50 px-4 py-2 rounded-full border border-sky-100 hover:bg-sky-100 transition inline-flex items-center gap-2"><i class="fa-solid fa-arrow-up-right-from-square"></i> 特設サイトを開く</a>';
+                if (e.video_key) h += '<div class="aspect-video w-full max-w-2xl mx-auto rounded-lg overflow-hidden bg-black shadow-lg ring-4 ring-white"><iframe width="100%" height="100%" src="https://www.youtube.com/embed/' + _esc(e.video_key) + '?rel=0" frameborder="0" allowfullscreen></iframe></div>';
+                h += '</div></div>';
+
+                card.innerHTML = h;
+                return card;
+            }
+
+            function getOrCreateMonthHeader(ym) {
+                var existing = list.querySelector('[data-past-month="' + ym + '"]');
+                if (existing) return existing;
+                var parts = ym.split('-');
+                var label = parseInt(parts[0]) + '年 ' + parseInt(parts[1]) + '月';
+                var header = document.createElement('div');
+                header.className = 'sticky top-0 z-[5] -mx-4 md:-mx-8 px-4 md:px-8 py-2 bg-gradient-to-r from-slate-100/95 to-slate-50/80 backdrop-blur-sm';
+                header.setAttribute('data-past-month', ym);
+                header.innerHTML = '<span class="text-xs font-black text-slate-400 tracking-wider">' + _esc(label) + '</span>';
+                return header;
+            }
+
+            function loadPastEvents() {
+                if (pastLoading || !pastHasMore) return;
+                pastLoading = true;
+                loader.classList.remove('hidden');
+
+                var url = '/hinata/api/past_events.php?before=' + encodeURIComponent(beforeDate) + '&limit=' + PAGE_SIZE + '&offset=' + pastOffset;
+                if (activeFilter > 0) url += '&category=' + activeFilter;
+
+                // スクロール位置を維持するため、挿入前の高さを記録
+                var scrollBefore = mainScroll.scrollTop;
+                var heightBefore = list.scrollHeight;
+
+                fetch(url)
+                    .then(function(r) { return r.json(); })
+                    .then(function(res) {
+                        if (res.status !== 'success') {
+                            App.toast(res.message || 'エラー', 'error');
+                            return;
+                        }
+                        var events = res.data || [];
+                        pastHasMore = !!res.has_more;
+                        pastOffset += events.length;
+
+                        if (events.length === 0) {
+                            if (pastOffset === 0) {
+                                list.innerHTML = '<div class="text-center py-8"><p class="text-xs text-slate-400 font-bold">過去のイベントはありません</p></div>';
+                            }
+                            return;
+                        }
+
+                        // APIはDESC（新しい順）で返すので、逆順にして古い→新しいにする
+                        events.reverse();
+
+                        // リストの先頭に挿入するためのフラグメントを構築
+                        var fragment = document.createDocumentFragment();
+                        var currentMonth = '';
+                        for (var i = 0; i < events.length; i++) {
+                            var e = events[i];
+                            var ym = e.event_date.substring(0, 7);
+                            if (ym !== currentMonth) {
+                                currentMonth = ym;
+                                // 既存のヘッダがなければ作成
+                                var hdr = list.querySelector('[data-past-month="' + ym + '"]');
+                                if (!hdr) {
+                                    fragment.appendChild(getOrCreateMonthHeader(ym));
+                                }
+                            }
+                            fragment.appendChild(buildPastEventCard(e));
+                        }
+
+                        // リストの先頭に挿入（古いイベントが上に来る）
+                        list.prepend(fragment);
+
+                        // スクロール位置を維持（先頭に要素が増えた分だけ下にずらす）
+                        var heightAfter = list.scrollHeight;
+                        var diff = heightAfter - heightBefore;
+                        if (diff > 0 && pastOffset > events.length) {
+                            mainScroll.scrollTop = scrollBefore + diff;
+                        }
+
+                        // 上方向無限スクロール用のsentinelを更新
+                        updateSentinel();
+                    })
+                    .catch(function(err) {
+                        App.toast('通信エラー: ' + (err.message || ''), 'error');
+                    })
+                    .finally(function() {
+                        pastLoading = false;
+                        loader.classList.add('hidden');
+                    });
+            }
+
+            function updateSentinel() {
+                if (sentinel) sentinel.remove();
+                if (!pastHasMore) return;
+                sentinel = document.createElement('div');
+                sentinel.id = 'pastEventsSentinel';
+                sentinel.style.height = '1px';
+                // リストの先頭（画面上部方向）にsentinelを置く
+                list.prepend(sentinel);
+
+                if (observer) observer.disconnect();
+                observer = new IntersectionObserver(function(entries) {
+                    if (entries[0].isIntersecting && !pastLoading && pastHasMore) {
+                        loadPastEvents();
+                    }
+                }, { root: mainScroll, rootMargin: '200px 0px 0px 0px' });
+                observer.observe(sentinel);
+            }
+
+            btn.addEventListener('click', function() {
+                if (pastActivated) {
+                    // トグル: 非表示に
+                    area.classList.add('hidden');
+                    btn.querySelector('span').textContent = '過去のイベントを表示';
+                    btn.querySelector('i').className = 'fa-solid fa-clock-rotate-left text-slate-400';
+                    pastActivated = false;
+                    if (observer) observer.disconnect();
+                    return;
+                }
+                pastActivated = true;
+                area.classList.remove('hidden');
+                btn.querySelector('span').textContent = '過去のイベントを閉じる';
+                btn.querySelector('i').className = 'fa-solid fa-chevron-up text-slate-400';
+
+                if (pastOffset === 0) {
+                    loadPastEvents();
+                } else {
+                    updateSentinel();
+                }
+            });
+
+            // カテゴリフィルタ変更時にリセット
+            var origFilterCategory = window.filterCategory;
+            window.filterCategory = function(catId) {
+                if (typeof origFilterCategory === 'function') origFilterCategory(catId);
+                // 過去イベントもフィルタに合わせてリセット・再取得
+                if (pastActivated) {
+                    pastOffset = 0;
+                    pastHasMore = true;
+                    list.innerHTML = '';
+                    if (sentinel) sentinel.remove();
+                    sentinel = null;
+                    loadPastEvents();
+                }
+            };
+        })();
+
+        window.togglePastDetail = function(id) {
+            var panel = document.getElementById('past-detail-' + id);
+            var arrow = document.getElementById('past-arrow-' + id);
+            if (!panel) return;
+            if (panel.classList.contains('open')) {
+                panel.style.maxHeight = '0';
+                panel.classList.remove('open');
+                if (arrow) arrow.style.transform = '';
+            } else {
+                panel.style.maxHeight = panel.scrollHeight + 'px';
+                panel.classList.add('open');
+                if (arrow) arrow.style.transform = 'rotate(180deg)';
+            }
+        };
+
+        window.saveSeatImpressionPast = function(eventId) {
+            var seatInp = document.getElementById('seat-past-' + eventId);
+            var impInp = document.getElementById('impression-past-' + eventId);
+            if (!seatInp || !impInp) return;
+            _doSaveSeatImpression(eventId, seatInp.value, impInp.value);
+        };
+
+        window.toggleAttendancePast = function(eventId, btn) {
+            App.post('/hinata/api/toggle_attendance.php', { event_id: eventId }, function(res) {
+                if (res.status === 'success') {
+                    var attended = res.attended;
+                    btn.dataset.attended = attended ? '1' : '0';
+                    btn.className = 'attendance-btn text-[10px] font-bold px-3 py-1.5 rounded-full border transition flex items-center gap-1 ' + (attended ? 'bg-sky-500 text-white border-sky-500' : 'bg-white text-slate-500 border-slate-200 hover:border-sky-300');
+                    btn.querySelector('span').textContent = attended ? '参戦済み' : '参戦した';
+                    var idx = attendedIds.indexOf(parseInt(eventId));
+                    if (attended && idx === -1) attendedIds.push(parseInt(eventId));
+                    if (!attended && idx !== -1) attendedIds.splice(idx, 1);
+                    App.toast(res.message, 'success');
+                }
+            });
+        };
+
+        window.loadShadowNarrationPast = function(eventId) {
+            var container = document.getElementById('shadow-narration-past-' + eventId);
+            if (!container) return;
+            if (!container.classList.contains('hidden')) { container.classList.add('hidden'); return; }
+            container.innerHTML = '<p class="text-xs text-slate-400 py-2"><i class="fa-solid fa-spinner fa-spin mr-1"></i>読み込み中...</p>';
+            container.classList.remove('hidden');
+            fetch('/hinata/api/get_event_shadow_narration.php?event_id=' + eventId)
+                .then(function(r) { return r.json(); })
+                .then(function(res) {
+                    if (res.status !== 'success' || !res.data) {
+                        container.innerHTML = '<p class="text-xs text-slate-400 py-2">影ナレは未登録です</p>';
+                        return;
+                    }
+                    var d = res.data;
+                    var h = '<div class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">';
+                    h += '<div class="px-4 py-2 bg-slate-50 flex items-center gap-2"><i class="fa-solid fa-microphone-lines text-slate-500 text-xs"></i><span class="text-[10px] font-bold text-slate-600 tracking-wider">影ナレ</span></div>';
+                    h += '<div class="p-4">';
+                    if (d.member_names && d.member_names.length > 0) {
+                        h += '<div class="flex flex-wrap gap-1.5 mb-2">';
+                        for (var i = 0; i < d.member_names.length; i++) {
+                            h += '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-100">' + _esc(d.member_names[i]) + '</span>';
+                        }
+                        h += '</div>';
+                    }
+                    if (d.memo) {
+                        h += '<div class="text-xs text-slate-600 whitespace-pre-wrap">' + _esc(d.memo) + '</div>';
+                    }
+                    h += '</div></div>';
+                    container.innerHTML = h;
+                    // 詳細パネルの高さを再計算
+                    var panel = document.getElementById('past-detail-' + eventId);
+                    if (panel && panel.classList.contains('open')) {
+                        panel.style.maxHeight = panel.scrollHeight + 'px';
+                    }
+                })
+                .catch(function() {
+                    container.innerHTML = '<p class="text-xs text-slate-400 py-2">読み込みに失敗しました</p>';
+                });
+        };
     </script>
 </body>
 </html>

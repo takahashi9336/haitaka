@@ -46,6 +46,43 @@ class EventModel extends BaseModel {
         return $stmt->fetchAll();
     }
 
+    /**
+     * 過去イベント取得（無限スクロール用）
+     * $beforeDate より前のイベントを新しい順に返す
+     */
+    public function getPastEvents(string $beforeDate, int $limit = 20, int $offset = 0, ?int $category = null): array {
+        $sql = "SELECT e.*, hm_series.name AS series_name,
+                       s.status as my_status, s.seat_info as seat_info, s.impression as impression,
+                       ma.media_key as video_key,
+                       evm.member_ids_csv AS member_ids_csv
+                FROM {$this->table} e
+                LEFT JOIN hn_event_series hm_series ON e.series_id = hm_series.id
+                LEFT JOIN hn_user_events_status s ON e.id = s.event_id AND s.user_id = :uid
+                LEFT JOIN hn_event_movies em ON e.id = em.event_id
+                LEFT JOIN com_media_assets ma ON em.movie_id = ma.id AND ma.platform = 'youtube'
+                LEFT JOIN (
+                    SELECT event_id,
+                           GROUP_CONCAT(DISTINCT member_id ORDER BY member_id) AS member_ids_csv
+                    FROM hn_event_members
+                    GROUP BY event_id
+                ) evm ON evm.event_id = e.id
+                WHERE e.event_date < :before_date";
+        $params = ['uid' => $_SESSION['user']['id'] ?? 0, 'before_date' => $beforeDate];
+        if ($category !== null) {
+            $sql .= " AND e.category = :cat";
+            $params['cat'] = $category;
+        }
+        $sql .= " ORDER BY e.event_date DESC LIMIT :lim OFFSET :off";
+        $stmt = $this->pdo->prepare($sql);
+        foreach ($params as $k => $v) {
+            $stmt->bindValue($k, $v);
+        }
+        $stmt->bindValue('lim', $limit, \PDO::PARAM_INT);
+        $stmt->bindValue('off', $offset, \PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
     public function getNextEvent(): ?array {
         $sql = "SELECT *, DATEDIFF(event_date, NOW()) as days_left 
                 FROM {$this->table} 
