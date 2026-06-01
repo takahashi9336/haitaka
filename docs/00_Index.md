@@ -31,9 +31,22 @@ AIアシスタント（Cursor等）は、機能改修や仕様把握を行う際
 * **80_補足資料/** : (任意) 外部API連携仕様など
 * **99_変更履歴_設計決定録.md** : アーキテクチャの変更履歴と、その「背景・理由 (ADR)」
 
-### 配置例（実装済みセット）
+### 機能別設計書一覧
 
-遠征管理: [docs/live_trip/](live_trip/)
+| 機能 | ディレクトリ | 概要 |
+|------|------------|------|
+| 管理画面 | [docs/admin/](admin/) | アプリ・ロール・ユーザー・ガイド・改善管理 等 |
+| ダッシュボード | [docs/dashboard/](dashboard/) | ポータルトップ、記事トレーニング、YouTube集中視聴 |
+| エンタメ統合 | [docs/entame/](entame/) | 映画・ドラマ・アニメの統合ダッシュボードと各メディア機能 |
+| 映画 | [docs/movie/](movie/) | 映画管理の詳細設計（TMDB連携、ガチャ、レコメンド 等） |
+| フォーカスノート | [docs/focus_note/](focus_note/) | 月次・週次・日次の振り返り計画、WOOP目標設定 |
+| フレンズアクティビティ | [docs/friends_activity/](friends_activity/) | 友人の映画/ドラマ/アニメ視聴履歴の閲覧・管理 |
+| ヘルスケア | [docs/health/](health/) | キッチンストック、トレーニングメニュー、トレーニング履歴 |
+| 遠征管理 | [docs/live_trip/](live_trip/) | ライブ遠征プラン・イベント・持ち物チェックリスト |
+| メモ | [docs/note/](note/) | Google Keep風メモ、構造化リスト（6種別） |
+| センスラボ | [docs/sense_lab/](sense_lab/) | スクラップ収集（本番・クイック）、カテゴリ管理 |
+| タスク管理 | [docs/task_manager/](task_manager/) | タスクCRUD、カテゴリ、カレンダービュー |
+| ユーザー設定 | [docs/users_settings/](users_settings/) | パスワード変更、ユーザー作成、ロール管理（管理者） |
 
 ## 新規ドキュメントの生成ルール
 AIアシスタントが新しい設計書を生成・更新する場合は、必ず `docs/templates/` 配下にある該当のテンプレートフォーマットを踏襲し、各テンプレート先頭の **HTML コメント（`<!-- ... -->`）** による指示に従って出力すること（索引は [docs/templates/README.md](templates/README.md)）。
