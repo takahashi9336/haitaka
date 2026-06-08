@@ -47,6 +47,13 @@ AIアシスタント（Cursor等）は、機能改修や仕様把握を行う際
 | センスラボ | [docs/sense_lab/](sense_lab/) | スクラップ収集（本番・クイック）、カテゴリ管理 |
 | タスク管理 | [docs/task_manager/](task_manager/) | タスクCRUD、カテゴリ、カレンダービュー |
 | ユーザー設定 | [docs/users_settings/](users_settings/) | パスワード変更、ユーザー作成、ロール管理（管理者） |
+| **日向坂ポータル** | [docs/hinata/](hinata/) | **6サブドメインに分割**（下記参照） |
+| 　├ ポータル・お知らせ | [docs/hinata/portal/](hinata/portal/) | ポータルダッシュボード、トピック・お知らせ管理、認証 |
+| 　├ メンバー・推し | [docs/hinata/member/](hinata/member/) | メンバー管理、推し設定・タイムライン、ペンライト |
+| 　├ イベント・ライブ | [docs/hinata/event/](hinata/event/) | イベント管理、セットリスト、ライブガイド、影ナレ |
+| 　├ ミーグリ・ネタ帳 | [docs/hinata/meetgreet/](hinata/meetgreet/) | ミーグリスロット・レポート、ネタ帳管理 |
+| 　├ メディア・バッチ | [docs/hinata/media/](hinata/media/) | メディアアセット管理（YouTube/TikTok/ブログ）、バッチジョブ |
+| 　└ 楽曲・リリース | [docs/hinata/music/](hinata/music/) | 楽曲・歌唱メンバー、リリース・エディション、アー写 |
 
 ## 新規ドキュメントの生成ルール
 AIアシスタントが新しい設計書を生成・更新する場合は、必ず `docs/templates/` 配下にある該当のテンプレートフォーマットを踏襲し、各テンプレート先頭の **HTML コメント（`<!-- ... -->`）** による指示に従って出力すること（索引は [docs/templates/README.md](templates/README.md)）。
