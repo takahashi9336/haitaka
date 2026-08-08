@@ -38,5 +38,12 @@ class HealthController {
         $user = $_SESSION['user'];
         require_once __DIR__ . '/../Views/training_history.php';
     }
+
+    public function routine(): void {
+        $this->auth->requireLogin();
+
+        $user = $_SESSION['user'];
+        require_once __DIR__ . '/../Views/routine.php';
+    }
 }
 
