@@ -7,7 +7,7 @@
 | ミーグリ予定一覧 | `www/hinata/meetgreet.php` | スロットを日付ごとにグループ化して表示。KPIサマリ、今後/過去/すべてフィルタ、インポート・手動追加モーダルを含む |
 | ミーグリ レポ | `www/hinata/meetgreet_report.php` (slot_id 指定時) | チャット形式のレポ作成・閲覧・編集画面。メモ欄、アバター管理、HC表示モードを含む |
 | ミーグリ レポ新規作成 | `www/hinata/meetgreet_report.php` (slot_id 未指定時) | メンバー・日付・イベント・部を選択してスロットを作成し、レポページへ遷移する |
-| ネタ帳 | `www/hinata/talk.php` | メンバーごとのネタをカード形式で管理。メンバー横スクロール選択、種類/タグ/お気に入りフィルタ、次回イベント情報表示 |
+| ネタ帳 | `www/hinata/talk.php` | メンバーごとのネタをカード形式で管理。メンバー横スクロール選択、種類/タグ/お気に入り/**アーカイブ**フィルタ、使用済み・アーカイブのステータス切替、次回イベント情報表示 |
 
 ## 2. 機能・アクション一覧
 
@@ -44,7 +44,7 @@
 | ネタ保存（新規/更新） | API (JSON) | POST `api/save_neta.php` | ネタの新規作成または既存更新。タグの差し替えも同時に行う |
 | ネタ更新（内容のみ） | API (JSON) | POST `api/update_neta.php` | ネタ内容のみを更新する簡易エンドポイント |
 | ネタ削除 | API (JSON) | POST `api/delete_neta.php` | ネタを削除（タグ紐付けもCASCADE削除） |
-| ステータス切り替え | API (JSON) | POST `api/update_neta_status.php` | ネタの使用済み/未使用ステータスを切り替え |
+| ステータス切り替え | API (JSON) | POST `api/update_neta_status.php` | ネタのステータス（`stock` 未使用 / `done` 使用済み / `archive` アーカイブ）を切り替え。許可値をバリデーション。使用済みとアーカイブは排他 |
 | お気に入り更新 | API (JSON) | POST `api/update_neta_favorite.php` | ネタのお気に入りフラグを更新 |
 
 ## 3. 関連テーブル一覧

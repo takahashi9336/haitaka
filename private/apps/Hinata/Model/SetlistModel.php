@@ -111,13 +111,10 @@ class SetlistModel extends BaseModel {
                 $songId = null;
             }
 
-            $encore = 0;
-            if ($entryType === 'song') {
-                $ev = isset($item['encore']) ? (int)$item['encore'] : 0;
-                if ($ev === 1 || $ev === 2) {
-                    $encore = $ev;
-                }
-            }
+            // encore（セクション区分）は曲・MC・ブロックいずれも保持する
+            // 0=本編, 1=アンコール, 2=Wアンコール
+            $ev = isset($item['encore']) ? (int)$item['encore'] : 0;
+            $encore = ($ev === 1 || $ev === 2) ? $ev : 0;
             $label = isset($item['label']) && trim((string)$item['label']) !== '' ? trim((string)$item['label']) : null;
             $blockKind = isset($item['block_kind']) && trim((string)$item['block_kind']) !== '' ? trim((string)$item['block_kind']) : null;
 

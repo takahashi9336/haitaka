@@ -40,6 +40,8 @@ if (!empty($members)) {
         
         .color-strip { width: 8px; flex-shrink: 0; }
         .neta-item.done { opacity: 0.45; }
+        .neta-item.archived { opacity: 0.35; }
+        .neta-card .acts .iconbtn[data-state="archived"] svg[data-icon="archive"] { stroke: #7c3aed; }
         
         .neta-card { 
             transition: box-shadow 0.2s, transform 0.2s; 
@@ -237,6 +239,7 @@ if (!empty($members)) {
                             <button type="button" class="memo-quick-btn px-3 py-1.5 rounded-full text-[10px] font-bold bg-white text-slate-600 hover:bg-slate-50 shadow-sm ring-1 ring-black/5 active:scale-[0.98] transition" data-mode="impression"><i class="fa-solid fa-comment-dots text-[9px] mr-1 text-emerald-500"></i>感想</button>
                             <button type="button" class="memo-quick-btn px-3 py-1.5 rounded-full text-[10px] font-bold bg-white text-slate-600 hover:bg-slate-50 shadow-sm ring-1 ring-black/5 active:scale-[0.98] transition" data-mode="joke"><i class="fa-solid fa-face-laugh-squint text-[9px] mr-1 text-amber-500"></i>ネタ</button>
                             <button type="button" class="memo-quick-btn px-3 py-1.5 rounded-full text-[10px] font-bold bg-white text-slate-600 hover:bg-slate-50 shadow-sm ring-1 ring-black/5 active:scale-[0.98] transition" data-mode="favorite"><i class="fa-solid fa-star text-[9px] mr-1 text-amber-500"></i>お気に入り</button>
+                            <button type="button" class="memo-quick-btn px-3 py-1.5 rounded-full text-[10px] font-bold bg-white text-slate-600 hover:bg-slate-50 shadow-sm ring-1 ring-black/5 active:scale-[0.98] transition" data-mode="archived"><i class="fa-solid fa-box-archive text-[9px] mr-1 text-violet-500"></i>アーカイブ</button>
                             <button type="button" class="memo-quick-btn px-3 py-1.5 rounded-full text-[10px] font-bold bg-white text-slate-600 hover:bg-slate-50 shadow-sm ring-1 ring-black/5 active:scale-[0.98] transition" data-mode="all">すべて</button>
                         </div>
                         <div id="cardView" class="space-y-8">
@@ -259,14 +262,16 @@ if (!empty($members)) {
                                                 $typeClass = $type === 'question' ? 'bg-blue-100 text-blue-700' : ($type === 'impression' ? 'bg-emerald-100 text-emerald-700' : ($type === 'joke' ? 'bg-amber-100 text-amber-700' : ''));
                                                 $isFav = !empty($item['is_favorite']);
                                             ?>
-                                            <div class="neta-card neta-item relative bg-white border-l-4 rounded-xl p-4 outline-none focus:outline-none focus:ring-2 focus:ring-sky-200 w-full <?= $item['status'] === 'done' ? 'done' : '' ?>"
+                                            <div class="neta-card neta-item relative bg-white border-l-4 rounded-xl p-4 outline-none focus:outline-none focus:ring-2 focus:ring-sky-200 w-full <?= $item['status'] === 'done' ? 'done' : ($item['status'] === 'archive' ? 'archived' : '') ?>"
                                                  style="border-left-color: <?= $color1 ?>;"
                                                  data-neta-type="<?= htmlspecialchars($type ?? '') ?>"
+                                                 data-status="<?= htmlspecialchars($item['status'] ?? 'stock') ?>"
                                                  tabindex="0">
                                                 <?php if ($typeLabel): ?>
                                                     <span class="absolute top-2 left-2 text-[9px] font-black px-2 py-0.5 rounded-full <?= $typeClass ?>"><?= $typeLabel ?></span>
                                                 <?php endif; ?>
                                                 <span class="used-badge absolute top-2 <?= $typeLabel ? 'left-[64px]' : 'left-2' ?> text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 <?= $item['status'] === 'done' ? '' : 'hidden' ?>">使用済</span>
+                                                <span class="archive-badge absolute top-2 <?= $typeLabel ? 'left-[64px]' : 'left-2' ?> text-[9px] font-black px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 <?= $item['status'] === 'archive' ? '' : 'hidden' ?>">アーカイブ</span>
                                                 <div class="text-sm text-slate-700 leading-relaxed neta-content pr-10 pt-4">
                                                     <?= nl2br(htmlspecialchars($item['content'])) ?>
                                                 </div>
@@ -312,6 +317,17 @@ if (!empty($members)) {
                                                                 onclick="toggleStatus(this, <?= (int)$item['id'] ?>, <?= $item['status'] === 'done' ? 'false' : 'true' ?>)">
                                                             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" data-icon="check">
                                                                 <path d="M20 6L9 17l-5-5"></path>
+                                                            </svg>
+                                                        </button>
+                                                        <!-- アーカイブ -->
+                                                        <button type="button"
+                                                                class="iconbtn"
+                                                                data-role="archive-btn"
+                                                                data-state="<?= $item['status'] === 'archive' ? 'archived' : 'off' ?>"
+                                                                title="アーカイブ" aria-label="アーカイブ"
+                                                                onclick="toggleArchive(this, <?= (int)$item['id'] ?>, <?= $item['status'] === 'archive' ? 'false' : 'true' ?>)">
+                                                            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" data-icon="archive">
+                                                                <path d="M21 8v13H3V8"></path><path d="M1 3h22v5H1z"></path><path d="M10 12h4"></path>
                                                             </svg>
                                                         </button>
                                                     </div>
@@ -376,6 +392,7 @@ if (!empty($members)) {
                                 $rmTotalMembers = count($rmList);
                                 $rmTotalNeta = (int)($totalNetaCount ?? 0);
                                 $rmTotalUsed = (int)($totalUsedCount ?? 0);
+                                $rmTotalArchived = (int)($totalArchivedCount ?? 0);
                                 $rmGroups = ['oshi' => [], 'kininaru' => [], 'other' => []];
                                 foreach ($rmList as $rm) {
                                     $k = $rm['fav_type'] ?? 'other';
@@ -388,7 +405,7 @@ if (!empty($members)) {
                             <div class="flex items-center gap-2">
                                 <h5 class="text-sm font-black text-slate-800">👥 登録メンバー</h5>
                                 <span class="text-[11px] text-slate-400 font-bold">
-                                    <?= $rmTotalMembers ?>名 ・ ネタ<?= $rmTotalNeta ?>件 ・ 使用済<?= $rmTotalUsed ?>
+                                    <?= $rmTotalMembers ?>名 ・ ネタ<?= $rmTotalNeta ?>件 ・ 使用済<?= $rmTotalUsed ?> ・ 保管<?= $rmTotalArchived ?>
                                 </span>
                             </div>
 
@@ -504,19 +521,24 @@ if (!empty($members)) {
             const cardView = document.getElementById('cardView');
             if (!cardView) return;
             cardView.querySelectorAll('.neta-item').forEach(item => {
-                const isDone = item.classList.contains('done');
+                const st = (item.dataset.status || 'stock').trim();
+                const isDone = st === 'done';
+                const isArchived = st === 'archive';
+                const isActive = !isDone && !isArchived;
                 const t = (item.dataset.netaType || '').trim();
                 const isFav = (item.dataset.isFavorite || '0') === '1';
 
                 let show = true;
                 if (memoQuickMode === 'all') {
-                    show = true; // 未使用/使用済み両方、種類不問
+                    show = true;
                 } else if (memoQuickMode === 'unused') {
-                    show = !isDone; // 未使用、かつ全種類
+                    show = isActive;
                 } else if (memoQuickMode === 'favorite') {
-                    show = !isDone && isFav; // お気に入り、かつ未使用（種類不問）
+                    show = isActive && isFav;
+                } else if (memoQuickMode === 'archived') {
+                    show = isArchived;
                 } else if (memoQuickMode === 'question' || memoQuickMode === 'impression' || memoQuickMode === 'joke') {
-                    show = !isDone && (t === memoQuickMode); // 未使用、かつ種類一致
+                    show = isActive && (t === memoQuickMode);
                 }
 
                 item.classList.toggle('hidden', !show);
@@ -878,11 +900,16 @@ if (!empty($members)) {
          */
         function updateCardUiAfterStatus(cardEl, isDone) {
             cardEl.classList.toggle('done', isDone);
+            if (isDone) cardEl.classList.remove('archived');
+            cardEl.dataset.status = isDone ? 'done' : 'stock';
             const badge = cardEl.querySelector('.used-badge');
             if (badge) badge.classList.toggle('hidden', !isDone);
+            const archBadge = cardEl.querySelector('.archive-badge');
+            if (isDone && archBadge) archBadge.classList.add('hidden');
             const doneBtn = cardEl.querySelector('[data-role="done-btn"]');
             if (doneBtn) doneBtn.dataset.state = isDone ? 'done' : 'off';
-            // フィルタ条件に合わせて表示更新
+            const archBtn = cardEl.querySelector('[data-role="archive-btn"]');
+            if (isDone && archBtn) archBtn.dataset.state = 'off';
             applyMemoFilters();
         }
 
@@ -901,6 +928,37 @@ if (!empty($members)) {
             });
             if (res.status === 'success') {
                 if (card) updateCardUiAfterStatus(card, !!checked);
+                if (btnEl) btnEl.setAttribute('onclick', `toggleStatus(this, ${id}, ${checked ? 'false' : 'true'})`);
+            } else {
+                alert('更新に失敗しました');
+            }
+        }
+
+        function updateCardUiAfterArchive(cardEl, isArchived) {
+            cardEl.classList.toggle('archived', isArchived);
+            if (isArchived) cardEl.classList.remove('done');
+            cardEl.dataset.status = isArchived ? 'archive' : 'stock';
+            const archBadge = cardEl.querySelector('.archive-badge');
+            if (archBadge) archBadge.classList.toggle('hidden', !isArchived);
+            const usedBadge = cardEl.querySelector('.used-badge');
+            if (isArchived && usedBadge) usedBadge.classList.add('hidden');
+            const archBtn = cardEl.querySelector('[data-role="archive-btn"]');
+            if (archBtn) archBtn.dataset.state = isArchived ? 'archived' : 'off';
+            const doneBtn = cardEl.querySelector('[data-role="done-btn"]');
+            if (isArchived && doneBtn) doneBtn.dataset.state = 'off';
+            applyMemoFilters();
+        }
+
+        async function toggleArchive(btnEl, id, checked) {
+            saveScroll();
+            const card = btnEl?.closest?.('.neta-item');
+            const res = await App.post('api/update_neta_status.php', {
+                id: id,
+                status: checked ? 'archive' : 'stock'
+            });
+            if (res.status === 'success') {
+                if (card) updateCardUiAfterArchive(card, !!checked);
+                if (btnEl) btnEl.setAttribute('onclick', `toggleArchive(this, ${id}, ${checked ? 'false' : 'true'})`);
             } else {
                 alert('更新に失敗しました');
             }

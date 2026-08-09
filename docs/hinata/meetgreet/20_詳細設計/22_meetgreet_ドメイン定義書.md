@@ -100,7 +100,10 @@
 ### hn_neta.status
 - `stock` = 未使用（デフォルト。通常表示）
 - `done` = 使用済み（カード半透明 `opacity: 0.45` + 「使用済」バッジ表示。「未使用」フィルタで非表示）
+- `archive` = アーカイブ（カード半透明 `opacity: 0.35` + 「アーカイブ」バッジ〔紫〕表示。「未使用」フィルタで非表示、専用「アーカイブ」フィルタでのみ閲覧。`done` とは排他で、一方を ON にすると他方は OFF になる）
 - `delete` = 論理削除（`getGroupedNeta()` のSQL条件 `status != 'delete'` で除外）
+
+> `updateStatus()`（`update_neta_status.php`）は許可値を `stock` / `done` / `archive` の3つに限定してバリデーションする。`archive` は「使用済み」とは別軸の保管ステータスで、消化とは区別してネタを退避する用途（2026-08-09 追加）。
 
 ### hn_neta.is_favorite
 - `0` = 通常

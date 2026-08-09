@@ -8,7 +8,7 @@
 | イベント管理画面 | `www/hinata/event_admin.php` -> `EventController::admin()` -> `Views/event_admin.php` | 管理者向け。イベントの登録・編集・削除フォーム。カテゴリ選択、系列マスタ連携、出演メンバー選択（世代別/一括選択）、関連リンクのチップ入力（自動種別判定）、会場住所ジオコーディング、ミニカレンダー、最近の編集リストを含む。 |
 | カレンダー画面 | `www/hinata/calendar.php` | イベントカレンダーの独立エントリポイント |
 | セットリスト閲覧画面 | `www/hinata/setlist.php` -> `SetlistController::show()` -> `Views/setlist_show.php` | イベント別のセットリスト（曲順/アンコール/Wアンコール区分）と影ナレメンバーを表示する。曲名リンクから楽曲詳細への遷移、複数センター表示に対応。 |
-| セットリスト編集画面 | `www/hinata/setlist_edit.php` -> `SetlistController::edit()` -> `Views/setlist_edit.php` | 管理者向け。セットリスト行の追加・削除・並替。曲/MC/ブロックの種別切替、アンコール区分、複数センター選択、影ナレメンバー・メモ編集を含む。 |
+| セットリスト編集画面 | `www/hinata/setlist_edit.php` -> `SetlistController::edit()` -> `Views/setlist_edit.php` | 管理者向け。セットリスト行の追加・削除・**並替（ドラッグ&ドロップ）**・**途中挿入**。曲/MC/ブロックの種別切替、アンコール区分（全種別で設定可）、曲の部分一致検索コンボボックス、複数センター選択（ダブルセンター対応）、影ナレメンバー・メモ編集、**TSV一括インポート**を含む。 |
 | ライブガイド閲覧画面 | `www/hinata/live_guide.php` -> `LiveGuideController::index()` -> `Views/live_guide.php` | 初参戦者向け。イベント選択後、候補曲を確度別（ほぼ確実/高確率/可能性あり）に一覧表示。MV/コール動画サムネイル、Spotify/Apple Music埋め込みプレイヤー、ペンライトカラー表リンク、コラボURL、ハッシュタグ付き動画（YouTube/TikTok分離）を含む。 |
 | ライブガイド楽曲管理画面 | `www/hinata/live_guide_admin.php` -> `LiveGuideController::admin()` -> `Views/live_guide_admin.php` | 管理者向け。イベント別に候補曲を追加・削除し、出る確度（certain/high/possible）を設定する。リリース別の楽曲検索、確度変更、一括保存。 |
 
@@ -32,6 +32,7 @@
 | 会場ジオコーディング | API (POST) | 会場住所から緯度・経度・place_id を取得し保存する（`geocode_event_place.php`） |
 | セットリスト表示 | 画面 | ログインユーザーがイベントのセットリストと影ナレを閲覧する |
 | セットリスト編集 | 画面/API | 管理者がセットリスト行を追加・並替・保存する |
+| セットリスト一括インポート | 画面 | TSV（タイプ/内容/センター/区分）を貼り付けて解析し、フォーム行として一括反映する（クライアント側 `parseSetlistTsv()`、既存置き換え・プレビュー方式） |
 | セットリスト保存 | API (POST) | セットリスト全行を一括保存する（`save_setlist.php`、delete-insert） |
 | セットリスト取得 | API (GET) | イベントのセットリストを JSON で取得する（`get_event_setlist.php`） |
 | 影ナレ取得 | API (GET) | イベントの影ナレ情報（メンバー一覧+メモ）を取得する（`get_event_shadow_narration.php`） |

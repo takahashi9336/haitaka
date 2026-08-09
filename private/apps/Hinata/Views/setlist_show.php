@@ -7,6 +7,14 @@ require_once __DIR__ . '/../../../components/theme_from_session.php';
 
 $eventId = (int)($event['id'] ?? 0);
 $isAdmin = in_array(($user['role'] ?? ''), ['admin', 'hinata_admin'], true);
+
+// ブロック種別の内部キー → 表示ラベル（setlist_edit.php の blockKindOptions と対応）
+$blockKindLabels = [
+    'announcement'   => '告知',
+    'dance_session'  => 'ダンスセッション',
+    'session_other'  => 'セッション',
+    'other'          => 'その他',
+];
 $songCount = 0;
 foreach ($setlist as $it) {
     $t = $it['entry_type'] ?? 'song';
@@ -68,38 +76,49 @@ foreach ($setlist as $it) {
             <div class="p-4 text-sm text-slate-500">未登録です。</div>
         <?php else: ?>
             <ol class="divide-y divide-slate-50">
-                <?php $lastPrinted = 0; $i = 0; ?>
-                <?php foreach ($setlist as $row): $i++; ?>
-                    <?php $t = $row['entry_type'] ?? 'song'; $isSong = ($t === 'song'); ?>
-                    <?php if ($isSong): ?>
-                        <?php
+                <?php $lastPrinted = 0; $songNo = 0; ?>
+                <?php foreach ($setlist as $row): ?>
+                    <?php
+                        $t = $row['entry_type'] ?? 'song';
+                        $isSong = ($t === 'song');
                         $L = (int)($row['encore'] ?? 0);
-                        if ($L < 0) {
-                            $L = 0;
-                        } elseif ($L > 2) {
-                            $L = 2;
-                        }
-                        ?>
-                        <?php if ($L >= 1 && $lastPrinted < 1): ?>
-                        <li class="px-4 py-2 bg-slate-50 text-center">
-                            <span class="text-[10px] font-black text-slate-400 tracking-wider">ENCORE</span>
-                        </li>
-                        <?php $lastPrinted = 1; ?>
-                        <?php endif; ?>
-                        <?php if ($L >= 2 && $lastPrinted < 2): ?>
-                        <li class="px-4 py-2 bg-slate-50 text-center">
-                            <span class="text-[10px] font-black text-slate-400 tracking-wider">W ENCORE</span>
-                        </li>
-                        <?php $lastPrinted = 2; ?>
-                        <?php endif; ?>
+                        if ($L < 0) { $L = 0; } elseif ($L > 2) { $L = 2; }
+                    ?>
+                    <?php if ($L >= 1 && $lastPrinted < 1): ?>
+                    <li class="px-4 py-2 bg-slate-50 text-center">
+                        <span class="text-[10px] font-black text-slate-400 tracking-wider">ENCORE</span>
+                    </li>
+                    <?php $lastPrinted = 1; ?>
+                    <?php endif; ?>
+                    <?php if ($L >= 2 && $lastPrinted < 2): ?>
+                    <li class="px-4 py-2 bg-slate-50 text-center">
+                        <span class="text-[10px] font-black text-slate-400 tracking-wider">W ENCORE</span>
+                    </li>
+                    <?php $lastPrinted = 2; ?>
                     <?php endif; ?>
 
-                    <li class="px-4 py-3 flex items-center gap-3">
-                        <span class="text-xs text-slate-400 w-6 text-right font-mono"><?= $i ?></span>
+                    <?php
+                        if ($isSong) $songNo++;
+                        // タイプ別アイコン（左端）: 曲=音符 / MC=マイク / ブロック=区分ブロック
+                        $typeIcon = $isSong ? 'fa-music' : ($t === 'mc' ? 'fa-microphone-lines' : 'fa-layer-group');
+                        $typeIconColor = $isSong ? 'text-sky-400' : ($t === 'mc' ? 'text-amber-500' : 'text-violet-500');
+                    ?>
+                    <li class="px-4 py-3 flex items-center gap-3 <?= $isSong ? '' : 'bg-slate-50/40' ?>">
+                        <span class="w-6 text-right shrink-0 flex items-center justify-end gap-1">
+                            <?php if ($isSong): ?>
+                                <span class="text-xs text-slate-400 font-mono"><?= $songNo ?></span>
+                            <?php endif; ?>
+                        </span>
+                        <i class="fa-solid <?= $typeIcon ?> <?= $typeIconColor ?> text-xs w-4 text-center shrink-0" aria-hidden="true"></i>
                         <?php if ($isSong): ?>
-                            <a href="/hinata/song.php?id=<?= (int)$row['song_id'] ?>&from=setlist&event_id=<?= $eventId ?>" class="flex-1 min-w-0 font-bold text-slate-800 hover:text-sky-600 transition truncate">
-                                <?= htmlspecialchars($row['song_title'] ?? '') ?>
-                            </a>
+                            <div class="flex-1 min-w-0 flex items-baseline gap-2">
+                                <a href="/hinata/song.php?id=<?= (int)$row['song_id'] ?>&from=setlist&event_id=<?= $eventId ?>" class="min-w-0 font-bold text-slate-800 hover:text-sky-600 transition truncate">
+                                    <?= htmlspecialchars($row['song_title'] ?? '') ?>
+                                </a>
+                                <?php if (trim((string)($row['release_title'] ?? '')) !== ''): ?>
+                                    <span class="text-[10px] text-slate-400 shrink-0 truncate max-w-[8rem]"><?= htmlspecialchars($row['release_title']) ?></span>
+                                <?php endif; ?>
+                            </div>
                             <?php
                                 $centerNames = [];
                                 if (!empty($row['center_members']) && is_array($row['center_members'])) {
@@ -115,16 +134,18 @@ foreach ($setlist as $it) {
                                     C:<?= htmlspecialchars(implode('、', $centerNames)) ?>
                                 </span>
                             <?php endif; ?>
-                            <span class="text-[10px] text-slate-400 shrink-0 truncate max-w-[9rem]"><?= htmlspecialchars($row['release_title'] ?? '') ?></span>
                         <?php else: ?>
                             <?php
                                 $label = trim((string)($row['label'] ?? ''));
                                 $kind = trim((string)($row['block_kind'] ?? ''));
-                                $kindText = ($t === 'mc') ? 'MC' : ($kind !== '' ? $kind : 'BLOCK');
+                                $kindText = ($t === 'mc') ? 'MC' : ($kind !== '' ? ($blockKindLabels[$kind] ?? $kind) : 'BLOCK');
                                 if ($label === '') $label = $kindText;
+                                $tagClass = ($t === 'mc')
+                                    ? 'text-amber-600 bg-amber-50'
+                                    : 'text-violet-600 bg-violet-50';
                             ?>
-                            <span class="flex-1 min-w-0 font-bold text-slate-700 truncate"><?= htmlspecialchars($label) ?></span>
-                            <span class="text-[10px] text-slate-400 shrink-0"><?= htmlspecialchars($kindText) ?></span>
+                            <span class="flex-1 min-w-0 font-bold text-slate-600 truncate"><?= htmlspecialchars($label) ?></span>
+                            <span class="text-[10px] font-bold <?= $tagClass ?> px-2 py-0.5 rounded-full shrink-0"><?= htmlspecialchars($kindText) ?></span>
                         <?php endif; ?>
                     </li>
                 <?php endforeach; ?>

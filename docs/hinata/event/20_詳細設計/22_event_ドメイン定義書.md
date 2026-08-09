@@ -195,6 +195,8 @@
 - `1` = アンコール (ENCORE)
 - `2` = ダブルアンコール (W ENCORE)
 
+> 2026-08-09 変更: encore（セクション区分）は従来「曲行のみ有効」だったが、MC行・ブロック行にも設定可能とした。これによりアンコール直後のMC等を正しくアンコールセクションに含められる。`SetlistModel::saveForEvent()` は entry_type を問わず encore を保持し、表示側（`setlist_show.php`）は全行の encore を見て ENCORE / W ENCORE 見出しを挿入する。
+
 ### hn_setlists.block_kind（セットリスト編集画面の blockKindOptions）
 - `announcement` = 告知
 - `dance_session` = ダンスセッション

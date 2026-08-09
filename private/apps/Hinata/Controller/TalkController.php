@@ -99,14 +99,18 @@ class TalkController {
         $registeredMembers = [];
         $totalNetaCount = 0;
         $totalUsedCount = 0;
+        $totalArchivedCount = 0;
         foreach ($groupedNeta as $mid => $group) {
             $count = count($group['items'] ?? []);
             $totalNetaCount += $count;
             $usedCount = 0;
+            $archivedCount = 0;
             foreach (($group['items'] ?? []) as $it) {
                 if (($it['status'] ?? '') === 'done') $usedCount++;
+                if (($it['status'] ?? '') === 'archive') $archivedCount++;
             }
             $totalUsedCount += $usedCount;
+            $totalArchivedCount += $archivedCount;
             $mm = $memberMap[(int)$mid] ?? null;
             $favLevel = (int)($mm['favorite_level'] ?? ($group['favorite_level'] ?? 0));
             $favType = $favLevel >= 2 ? 'oshi' : ($favLevel === 1 ? 'kininaru' : 'other');
@@ -120,6 +124,7 @@ class TalkController {
                 'color1' => $group['color1'] ?? null,
                 'count' => $count,
                 'used_count' => $usedCount,
+                'archived_count' => $archivedCount,
             ];
         }
 
@@ -213,8 +218,12 @@ class TalkController {
         header('Content-Type: application/json');
         try {
             $input = json_decode(file_get_contents('php://input'), true);
+            $newStatus = $input['status'] ?? '';
+            if (!in_array($newStatus, ['stock', 'done', 'archive'], true)) {
+                throw new \Exception('不正なステータスです');
+            }
             $model = new NetaModel();
-            $model->update((int)$input['id'], ['status' => $input['status']]);
+            $model->update((int)$input['id'], ['status' => $newStatus]);
             echo json_encode(['status' => 'success']);
         } catch (\Exception $e) {
             http_response_code(500);

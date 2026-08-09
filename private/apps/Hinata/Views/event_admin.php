@@ -1394,6 +1394,17 @@ $hinataTokusetsuDomainsJson = json_encode(EventRelatedLinkService::parseTokusets
             if (cat !== 2 && cat !== 3) {
                 data.mg_rounds = '';
             }
+
+            const seriesName = String(document.getElementById('f_series_name')?.value || '').trim();
+            if (seriesName && !data.series_id) {
+                const seriesRes = await App.post('api/save_event_series.php', { name: seriesName });
+                if (seriesRes.status !== 'success') {
+                    alert('系列の登録に失敗しました: ' + (seriesRes.message || ''));
+                    return;
+                }
+                data.series_id = String(seriesRes.id);
+            }
+
             const res = await App.post('api/save_event.php', data);
             if (res.status === 'success') location.reload(); else alert('エラー: ' + res.message);
         };
